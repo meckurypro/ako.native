@@ -25,7 +25,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet } from "react-native";
+import Animated, { FadeOut } from "react-native-reanimated";
 
 interface Entry {
   zIndex: number;
@@ -72,9 +73,14 @@ export function PortalHost({ children }: { children: ReactNode }) {
       {layers.map(([key, entry]) => (
         // box-none: the layer itself is transparent to touches; only the
         // portalled content (backdrop, panel…) captures them.
-        <View key={key} pointerEvents="box-none" style={[StyleSheet.absoluteFill, { zIndex: entry.zIndex }]}>
+        <Animated.View
+          key={key}
+          pointerEvents="box-none"
+          exiting={FadeOut.duration(120)}
+          style={[StyleSheet.absoluteFill, { zIndex: entry.zIndex }]}
+        >
           {entry.node}
-        </View>
+        </Animated.View>
       ))}
     </PortalContext.Provider>
   );

@@ -33,3 +33,6 @@ export { PatternBackground } from "./PatternBackground";
 export { UnlockReveal } from "./UnlockReveal";
 export { VoiceWaveform } from "./VoiceWaveform";
 export { Wallpaper } from "./Wallpaper";
+export { Sheet, useSheet } from "./Sheet";
+export { SheetCancel, SheetCaption, SheetRow, SheetTitle } from "./SheetParts";
+export { SwipeableTabs, useTabsGesture } from "./SwipeableTabs";

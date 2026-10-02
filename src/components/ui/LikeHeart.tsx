@@ -16,6 +16,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { textColorFromClassName } from "@/lib/colorClass";
+import { haptics } from "@/lib/haptics";
 import { useTheme } from "@/theme/ThemeProvider";
 
 interface LikeHeartProps {
@@ -66,6 +67,7 @@ export function LikeHeart({ active, size = 24, className }: LikeHeartProps) {
   useEffect(() => {
     if (active && !wasActive.current && !reduceMotion) {
       setAnimating(true);
+      haptics.light();
       // 1 → 1.32 → 0.94 → 1 over ~380ms (the web's ako-like-pop keyframes)
       scale.value = withSequence(
         withTiming(1.32, { duration: 133, easing: Easing.out(Easing.back(1.5)) }),

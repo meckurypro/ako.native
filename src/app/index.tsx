@@ -1,7 +1,7 @@
 // src/app/index.tsx
 // Temporary: design-system gallery for visually checking every primitive on a
 // device (light / dark / page mode). Replaced by the real feed in step 6.
-import { Bell, Link2, Trash2 } from "lucide-react-native";
+import { Archive, Bell, Link2, Pin, Trash2 } from "lucide-react-native";
 import { useRef, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -22,6 +22,11 @@ import {
   PresenceDot,
   PrivacyToggle,
   SettingsSection,
+  Sheet,
+  SheetCancel,
+  SheetCaption,
+  SheetRow,
+  SwipeableTabs,
   Text,
   TierBadge,
   Toggle,
@@ -55,6 +60,8 @@ export default function Gallery() {
   const [priv, setPriv] = useState(false);
   const [toggle, setToggle] = useState(true);
   const [open, setOpen] = useState<string | null>("a");
+  const [sheet, setSheet] = useState(false);
+  const [tab, setTab] = useState(0);
   const menuAnchor = useRef<View>(null);
 
   return (
@@ -165,6 +172,9 @@ export default function Gallery() {
           <Button size="sm" onPress={() => setConfirm(true)}>
             Confirm dialog
           </Button>
+          <Button size="sm" variant="secondary" onPress={() => setSheet(true)}>
+            Bottom sheet
+          </Button>
           <View ref={menuAnchor} collapsable={false}>
             <Button size="sm" variant="secondary" onPress={() => setMenu(true)}>
               Dropdown
@@ -187,6 +197,25 @@ export default function Gallery() {
         </View>
       </Section>
 
+      <Section title="Swipeable tabs">
+        <View className="mb-3 flex-row gap-2">
+          {["For you", "Following", "Top"].map((t, i) => (
+            <Pressable key={t} onPress={() => setTab(i)} className={`rounded-full px-3 py-1.5 ${tab === i ? "bg-accent" : "bg-accent-soft"}`}>
+              <Text className={`text-sm ${tab === i ? "text-canvas" : "text-ink"}`}>{t}</Text>
+            </Pressable>
+          ))}
+        </View>
+        <View className="h-28 rounded-2xl border border-border bg-surface">
+          <SwipeableTabs index={tab} onIndexChange={setTab}>
+            {["Pane one", "Pane two", "Pane three"].map((label) => (
+              <View key={label} className="flex-1 items-center justify-center">
+                <Text className="text-ink">{label} — swipe me</Text>
+              </View>
+            ))}
+          </SwipeableTabs>
+        </View>
+      </Section>
+
       <Section title="Backgrounds">
         <View className="h-40 overflow-hidden rounded-2xl border border-border bg-canvas">
           <Wallpaper />
@@ -202,6 +231,20 @@ export default function Gallery() {
         </View>
       </Section>
 
+      {sheet && (
+        <Sheet onClose={() => setSheet(false)} accessibilityLabel="Conversation actions">
+          <SheetCaption>Ada Obi</SheetCaption>
+          <SheetRow label="Pin to top" icon={<Icon as={Pin} size={18} className="text-ink" />} onPress={() => toast("Pinned")} />
+          <SheetRow label="Archive" icon={<Icon as={Archive} size={18} className="text-ink" />} onPress={() => toast("Archived")} />
+          <SheetRow
+            label="Delete chat"
+            danger
+            icon={<Icon as={Trash2} size={18} className="text-danger" />}
+            onPress={() => setConfirm(true)}
+          />
+          <SheetCancel />
+        </Sheet>
+      )}
       {confirm && (
         <ConfirmDialog
           title="Delete this chat?"
