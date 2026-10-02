@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "Akọ",
+    "slug": "ako",
+    "scheme": "ako",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/app-icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F7F4EF"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.meckurypro.ako"
+    },
+    "android": {
+      "package": "com.meckurypro.ako",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon-foreground.png",
+        "backgroundColor": "#0A1915"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-font"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

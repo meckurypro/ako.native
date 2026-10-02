@@ -1,0 +1,59 @@
+/* File: src/global.css */
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css";
+@import "nativewind/theme";
+
+/*
+  Akọ design tokens — ported 1:1 from the web app's src/index.css.
+
+  These are the LIGHT defaults and exist so Tailwind generates the
+  bg-canvas / text-ink / border-border / ... utilities. The live values
+  (dark mode, page mode) are injected at runtime by ThemeProvider
+  (src/theme/ThemeProvider.tsx) from src/theme/palettes.ts, which is the
+  source of truth for every swap. Keep the two in sync when adding a token.
+*/
+@theme {
+  --color-canvas: #F7F4EF;
+  --color-surface: #FDFBF6;
+  --color-ink: #1F1D1A;
+  --color-ink-muted: #6B675F;
+  --color-accent: #3D5A45;
+  --color-accent-hover: #2F4636;
+  --color-accent-soft: #E3E9E1;
+  --color-border: #E9E4D8;
+  --color-danger: #A64B3F;
+  --color-pushback: #B8862E;
+  --color-online-glow: #FF6A00;
+  --color-tick-blue: #53BDEB;
+  --color-presence-online: #39FF6A;
+  --color-highlight: #BFE6C6;
+  --color-post-header: #1E4C9A;
+  --color-bubble-mine: #3D5A45;
+  --color-bubble-theirs: #FFFFFF;
+
+  /* Overlay chrome — theme-independent fixed dark glass */
+  --color-overlay-surface: #1C1C1E;
+  --color-overlay-surface-raised: #2C2C2E;
+  --color-overlay-ink: #F5F5F7;
+  --color-overlay-ink-muted: #98989D;
+  --color-overlay-border: #FFFFFF1F;
+  --color-overlay-danger: #D6968A;
+  --color-overlay-danger-soft: #4A2E2A;
+  --color-overlay-accent: #8FB89C;
+  --color-overlay-accent-soft: #263831;
+
+  /* Selectable post heading colors (light values) */
+  --color-heading-emerald: #08633F;
+  --color-heading-amber: #7A4A00;
+  --color-heading-garnet: #7A1140;
+  --color-heading-amethyst: #5B3A8A;
+  --color-heading-petrol: #0E5F63;
+  --color-heading-espresso: #5C3A1E;
+  --color-heading-graphite: #2B2B2E;
+
+  /* Font families are loaded in src/theme/fonts.ts under these exact names */
+  --font-display: "PlayfairDisplay_600SemiBold";
+  --font-body: "Inter_400Regular";
+  --font-simple: "Roboto_400Regular";
+}
