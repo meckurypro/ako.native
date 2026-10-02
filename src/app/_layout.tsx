@@ -11,6 +11,11 @@ import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
+import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
+import { PortalHost } from "@/components/ui/Portal";
+import { ToastProvider } from "@/components/ui/Toast";
+import { SoundProvider } from "@/hooks/useSound";
 import { queryClient } from "@/lib/queryClient";
 import { ThemeProvider, useTheme } from "@/theme/ThemeProvider";
 import { fontAssets } from "@/theme/fonts";
@@ -28,6 +33,7 @@ function ThemedStack() {
           contentStyle: { backgroundColor: colors.canvas },
         }}
       />
+      <LoadingOverlay />
     </>
   );
 }
@@ -42,7 +48,16 @@ function Shell() {
   }, [appReady]);
 
   if (!appReady) return null;
-  return <ThemedStack />;
+  return (
+    <ErrorBoundary>
+      <ToastProvider>
+        {/* Toasts paint above everything the host layers (sheets 50, modals 60). */}
+        <PortalHost>
+          <ThemedStack />
+        </PortalHost>
+      </ToastProvider>
+    </ErrorBoundary>
+  );
 }
 
 export default function RootLayout() {
@@ -51,7 +66,9 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
-            <Shell />
+            <SoundProvider>
+              <Shell />
+            </SoundProvider>
           </ThemeProvider>
         </QueryClientProvider>
       </SafeAreaProvider>
