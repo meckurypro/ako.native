@@ -36,3 +36,5 @@ export { Wallpaper } from "./Wallpaper";
 export { Sheet, useSheet } from "./Sheet";
 export { SheetCancel, SheetCaption, SheetRow, SheetTitle } from "./SheetParts";
 export { SwipeableTabs, useTabsGesture } from "./SwipeableTabs";
+export { AuthScreen } from "./AuthScreen";
+export { TextLink } from "./TextLink";
