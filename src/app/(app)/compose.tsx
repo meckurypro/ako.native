@@ -1,0 +1,6 @@
+// src/app/(app)/compose.tsx
+import { ScreenPlaceholder } from "@/components/ui/ScreenPlaceholder";
+
+export default function Screen() {
+  return <ScreenPlaceholder name="Compose" step={6} />;
+}
