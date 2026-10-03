@@ -40,6 +40,11 @@ export function headingColorValue(key: string | null | undefined, colors: Palett
   }
 }
 
+/** Swatch colour for the picker: like headingColorValue, but sapphire resolves to the default heading colour. */
+export function headingSwatchColor(key: string, colors: Palette): string {
+  return headingColorValue(key, colors) ?? colors.postHeader;
+}
+
 function Paragraphs({ content }: { content: string }) {
   const paragraphs = content.split(/\n{2,}/);
   return (

@@ -205,13 +205,18 @@ export function Feed() {
   const params = useLocalSearchParams<{ interest?: string; justPostedId?: string; scrollToPostId?: string }>();
   const interestId = params.interest || undefined;
 
-  // One-shot navigation hints: read once, then strip them so a later refocus doesn't replay them.
-  const [justPostedId] = useState<string | null>(() => params.justPostedId ?? null);
-  const [scrollToPostId] = useState<string | null>(() => params.scrollToPostId ?? null);
+  // One-shot navigation hints (a post was just published / we're returning to a post).
+  // They arrive as route params — including when Compose dismisses back onto this
+  // already-mounted screen — so they're picked up whenever they change, kept in
+  // state, and stripped from the URL so a later refocus doesn't replay them.
+  const [justPostedId, setJustPostedId] = useState<string | null>(null);
+  const [scrollToPostId, setScrollToPostId] = useState<string | null>(null);
   useEffect(() => {
-    if (justPostedId || scrollToPostId) router.setParams({ justPostedId: undefined, scrollToPostId: undefined });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (!params.justPostedId && !params.scrollToPostId) return;
+    if (params.justPostedId) setJustPostedId(params.justPostedId);
+    if (params.scrollToPostId) setScrollToPostId(params.scrollToPostId);
+    router.setParams({ justPostedId: undefined, scrollToPostId: undefined });
+  }, [params.justPostedId, params.scrollToPostId]);
 
   const [activeTab, setActiveTab] = useTabState<TabKey>(TAB_KEYS, "for-you");
   const activeIndex = TABS.findIndex((t) => t.key === activeTab);
