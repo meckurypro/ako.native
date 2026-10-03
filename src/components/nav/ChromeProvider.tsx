@@ -26,6 +26,9 @@ interface ChromeContextValue {
   /** Measured nav height including safe-area padding (0 until laid out). */
   navHeight: number;
   setNavHeight: (h: number) => void;
+  /** Measured height of the auto-hiding top bar of the focused screen (0 when none). */
+  topBarHeight: number;
+  setTopBarHeight: (h: number) => void;
 }
 
 const ChromeContext = createContext<ChromeContextValue | null>(null);
@@ -33,7 +36,11 @@ const ChromeContext = createContext<ChromeContextValue | null>(null);
 export function ChromeProvider({ children }: { children: ReactNode }) {
   const hidden = useSharedValue(0);
   const [navHeight, setNavHeight] = useState(0);
-  const value = useMemo(() => ({ hidden, navHeight, setNavHeight }), [hidden, navHeight]);
+  const [topBarHeight, setTopBarHeight] = useState(0);
+  const value = useMemo(
+    () => ({ hidden, navHeight, setNavHeight, topBarHeight, setTopBarHeight }),
+    [hidden, navHeight, topBarHeight]
+  );
   return <ChromeContext.Provider value={value}>{children}</ChromeContext.Provider>;
 }
 

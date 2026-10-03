@@ -98,12 +98,14 @@ interface PostCardProps {
   isOwnerView?: boolean;
   /** Expanded post-detail variant: shows time · date · views and routes the comment tap to the page. */
   showStats?: boolean;
-  /** False while the card is off-screen — pauses its per-post queries and music. */
+  /** False while the card's tab/screen isn't in use — pauses its per-post queries. */
   active?: boolean;
+  /** True while the card is actually on screen (≥60% visible) — only then may its music clip play. */
+  visible?: boolean;
   onRequestOpenComments?: () => void;
 }
 
-function PostCardImpl({ post, isOwnerView = false, showStats = false, active = true, onRequestOpenComments }: PostCardProps) {
+function PostCardImpl({ post, isOwnerView = false, showStats = false, active = true, visible = true, onRequestOpenComments }: PostCardProps) {
   const { user } = useAuth();
   const { colors } = useTheme();
   const toast = useToast();
@@ -503,7 +505,7 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
             ) : null}
             <PostMedia mediaUrls={original!.media_urls} />
             {original!.music_catalogue_id ? (
-              <MusicAttribution catalogueId={original!.music_catalogue_id} postId={post.id} active={active} />
+              <MusicAttribution catalogueId={original!.music_catalogue_id} postId={post.id} active={active && visible} />
             ) : null}
           </>
         )
@@ -515,7 +517,7 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
             </Pressable>
           ) : null}
           <PostMedia mediaUrls={post.media_urls} />
-          {post.music_catalogue_id ? <MusicAttribution catalogueId={post.music_catalogue_id} postId={post.id} active={active} /> : null}
+          {post.music_catalogue_id ? <MusicAttribution catalogueId={post.music_catalogue_id} postId={post.id} active={active && visible} /> : null}
         </>
       )}
 
