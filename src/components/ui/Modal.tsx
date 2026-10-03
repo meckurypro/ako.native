@@ -20,6 +20,8 @@ interface ModalProps {
   maxWidth?: number;
   /** Skip the card chrome and just provide the centered, scrollable box. */
   bare?: boolean;
+  /** Vertical placement: centred (default) or docked to the bottom (stance/comment composers). */
+  align?: "center" | "bottom";
   /** Layer tier. Default 60 sits above sheets (50); ArchivedPostModal uses 40 so sheets it spawns stack above it. */
   zIndex?: number;
 }
@@ -31,6 +33,7 @@ export function Modal({
   ariaLabel,
   maxWidth = 384,
   bare = false,
+  align = "center",
   zIndex = 60,
 }: ModalProps) {
   useBackDismiss(onClose);
@@ -39,7 +42,7 @@ export function Modal({
     <Portal zIndex={zIndex}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
-        className="flex-1 items-center justify-center px-6"
+        className={`flex-1 items-center px-6 ${align === "bottom" ? "justify-end pb-4" : "justify-center"}`}
         accessibilityViewIsModal
         accessibilityRole={role === "alertdialog" ? "alert" : undefined}
         accessibilityLabel={ariaLabel}

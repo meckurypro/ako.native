@@ -38,3 +38,4 @@ export { SheetCancel, SheetCaption, SheetRow, SheetTitle } from "./SheetParts";
 export { SwipeableTabs, useTabsGesture } from "./SwipeableTabs";
 export { AuthScreen } from "./AuthScreen";
 export { TextLink } from "./TextLink";
+export { SheetFrame } from "./SheetFrame";

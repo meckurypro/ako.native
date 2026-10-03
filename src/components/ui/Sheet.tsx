@@ -55,6 +55,10 @@ interface SheetProps {
   showHandle?: boolean;
   /** Fraction of the screen height the panel may occupy (default 0.9). */
   maxHeightRatio?: number;
+  /** Fixed panel height as a fraction of the screen (comments: 0.82). Content then fills it. */
+  heightRatio?: number;
+  /** Corner radius of the top edge. */
+  radius?: "2xl" | "3xl";
   /** Lift above the keyboard — for sheets containing text inputs. */
   avoidKeyboard?: boolean;
   /** Layer tier; default 50 (modals are 60). */
@@ -74,6 +78,8 @@ export function Sheet({
   dragZone = "sheet",
   showHandle = false,
   maxHeightRatio = 0.9,
+  heightRatio,
+  radius = "2xl",
   avoidKeyboard = false,
   zIndex = 50,
   accessibilityLabel,
@@ -143,12 +149,19 @@ export function Sheet({
         panelH.value = h;
         if (first) translateY.value = withTiming(0, { duration: SLIDE_MS, easing: EASE });
       }}
-      style={[{ width: "100%", maxWidth: MAX_WIDTH, maxHeight: windowH * maxHeightRatio }, panelStyle]}
-      className="rounded-t-2xl border-t border-border bg-surface"
+      style={[
+        {
+          width: "100%",
+          maxWidth: MAX_WIDTH,
+          ...(heightRatio ? { height: windowH * heightRatio } : { maxHeight: windowH * maxHeightRatio }),
+        },
+        panelStyle,
+      ]}
+      className={`border-t border-border bg-surface ${radius === "3xl" ? "rounded-t-3xl" : "rounded-t-2xl"}`}
     >
       {handleVisible && dragZone === "handle" ? <GestureDetector gesture={pan}>{grabber}</GestureDetector> : null}
       {handleVisible && dragZone === "sheet" ? grabber : null}
-      <View style={{ paddingBottom: insets.bottom }}>{children}</View>
+      <View style={{ paddingBottom: insets.bottom, flex: heightRatio ? 1 : undefined, flexShrink: 1 }}>{children}</View>
     </Animated.View>
   );
 

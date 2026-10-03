@@ -58,9 +58,9 @@ export function Text({ className, style, children, ...rest }: TextProps) {
     else kept.push(token);
   }
 
-  // Playfair ships real italics; for other families keep the italic class so
+  // Playfair and Inter ship real italics; for Roboto keep the italic class so
   // the platform's synthetic slant applies.
-  const hasRealItalic = italic && family === "display";
+  const hasRealItalic = italic && (family === "display" || family === "body");
   if (italic && !hasRealItalic) kept.push("italic");
 
   const fontFamily = resolveFontFamily(family, weight, hasRealItalic);

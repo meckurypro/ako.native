@@ -3,6 +3,10 @@
 // browser pick the weight. React Native needs one registered font per weight,
 // so this module registers them and maps (family, weight, italic) -> name.
 import { Inter_400Regular } from "@expo-google-fonts/inter/400Regular";
+import { Inter_400Regular_Italic } from "@expo-google-fonts/inter/400Regular_Italic";
+import { Inter_500Medium_Italic } from "@expo-google-fonts/inter/500Medium_Italic";
+import { Inter_600SemiBold_Italic } from "@expo-google-fonts/inter/600SemiBold_Italic";
+import { Inter_700Bold_Italic } from "@expo-google-fonts/inter/700Bold_Italic";
 import { Inter_500Medium } from "@expo-google-fonts/inter/500Medium";
 import { Inter_600SemiBold } from "@expo-google-fonts/inter/600SemiBold";
 import { Inter_700Bold } from "@expo-google-fonts/inter/700Bold";
@@ -23,6 +27,10 @@ import { Roboto_700Bold } from "@expo-google-fonts/roboto/700Bold";
 
 export const fontAssets = {
   Inter_400Regular,
+  Inter_400Regular_Italic,
+  Inter_500Medium_Italic,
+  Inter_600SemiBold_Italic,
+  Inter_700Bold_Italic,
   Inter_500Medium,
   Inter_600SemiBold,
   Inter_700Bold,
@@ -67,6 +75,8 @@ const AVAILABLE: Record<FontFamilyKey, FontWeightKey[]> = {
   simple: [400, 500, 600, 700],
 };
 const ITALIC_AVAILABLE: FontWeightKey[] = [400, 500, 600, 700];
+// Families that ship real italic files (Roboto doesn't; it falls back to the platform slant).
+const ITALIC_FAMILIES = new Set<FontFamilyKey>(["display", "body"]);
 
 /** Snap a requested weight to the nearest weight the family ships. */
 function snap(family: FontFamilyKey, weight: FontWeightKey): FontWeightKey {
@@ -80,8 +90,8 @@ export function resolveFontFamily(
   italic = false
 ): string {
   const w = snap(family, weight);
-  if (italic && family === "display" && ITALIC_AVAILABLE.includes(w)) {
-    return `${FAMILY_PREFIX.display}_${WEIGHT_SUFFIX[w]}_Italic`;
+  if (italic && ITALIC_FAMILIES.has(family) && ITALIC_AVAILABLE.includes(w)) {
+    return `${FAMILY_PREFIX[family]}_${WEIGHT_SUFFIX[w]}_Italic`;
   }
   return `${FAMILY_PREFIX[family]}_${WEIGHT_SUFFIX[w]}`;
 }
