@@ -45,3 +45,5 @@ export { DateTimeField } from "./DateTimeField";
 export { QrCode } from "./QrCode";
 export { SwipeToSwitch } from "./SwipeToSwitch";
 export { ScreenHeader } from "./ScreenHeader";
+export { SelectField, type SelectOption } from "./SelectField";
+export { SurfaceInput } from "./SurfaceInput";
