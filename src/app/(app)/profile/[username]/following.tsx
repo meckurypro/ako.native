@@ -1,6 +1,6 @@
 // src/app/(app)/profile/[username]/following.tsx
-import { ScreenPlaceholder } from "@/components/ui/ScreenPlaceholder";
+import { FollowListPage } from "@/screens/FollowListPage";
 
-export default function Screen() {
-  return <ScreenPlaceholder name="FollowListPage · following" step={7} />;
+export default function Following() {
+  return <FollowListPage type="following" />;
 }

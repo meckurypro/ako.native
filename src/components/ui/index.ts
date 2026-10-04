@@ -42,3 +42,6 @@ export { SheetFrame } from "./SheetFrame";
 export { Collapsible } from "./Collapsible";
 export { Skeleton } from "./Skeleton";
 export { DateTimeField } from "./DateTimeField";
+export { QrCode } from "./QrCode";
+export { SwipeToSwitch } from "./SwipeToSwitch";
+export { ScreenHeader } from "./ScreenHeader";

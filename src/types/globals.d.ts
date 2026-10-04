@@ -10,3 +10,15 @@ interface KeyValueStorage {
 }
 declare var localStorage: KeyValueStorage;
 declare var sessionStorage: KeyValueStorage;
+
+// qrcode's pure-JS core (the package root pulls in Node-only modules that Metro can't bundle).
+declare module "qrcode/lib/core/qrcode" {
+  interface QrModules {
+    size: number;
+    get(row: number, col: number): number | boolean;
+  }
+  const QRCode: {
+    create(text: string, options?: { errorCorrectionLevel?: "L" | "M" | "Q" | "H" }): { modules: QrModules };
+  };
+  export default QRCode;
+}

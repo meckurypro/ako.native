@@ -47,7 +47,7 @@ const AXIS_LOCK_PX = 6;
 const SETTLE_MS = 300;
 const EASE = Easing.bezier(0.16, 1, 0.3, 1);
 
-const TabsGestureContext = createContext<GestureType | null>(null);
+export const TabsGestureContext = createContext<GestureType | null>(null);
 
 /**
  * Mark a child gesture as owning horizontal drags (the web's
