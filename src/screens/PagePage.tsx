@@ -22,7 +22,7 @@ import { FlashList } from "@shopify/flash-list";
 import { useBottomNavInset } from "@/components/nav/BottomNav";
 import { useChromeScroll } from "@/components/nav/ChromeProvider";
 import { PostCard } from "@/components/post/PostCard";
-import { ProjectMiniGrid } from "@/components/post/ProjectMiniCard";
+import { ProjectCardList } from "@/components/project/ProjectCardList";
 import { Avatar } from "@/components/ui/Avatar";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { DropdownMenu, type DropdownMenuItem } from "@/components/ui/DropdownMenu";
@@ -368,7 +368,7 @@ export function PagePage() {
               case "projects":
                 return (
                   <View className="p-4">
-                    <ProjectMiniGrid projects={projects ?? []} showStatus={isMember} />
+                    <ProjectCardList projects={projects ?? []} isOwnerView={isMember} />
                   </View>
                 );
               case "message":

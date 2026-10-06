@@ -1,6 +1,6 @@
 // src/app/(app)/projects/[projectId]/index.tsx
-import { ScreenPlaceholder } from "@/components/ui/ScreenPlaceholder";
+import { ProjectDetail } from "@/screens/ProjectDetail";
 
-export default function Screen() {
-  return <ScreenPlaceholder name="ProjectDetail" step={9} />;
+export default function ProjectDetailRoute() {
+  return <ProjectDetail />;
 }

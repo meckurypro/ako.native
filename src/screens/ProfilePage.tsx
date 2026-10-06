@@ -8,8 +8,6 @@
 // tab's items — so the whole page scrolls as a single virtualized surface.
 // Swiping sideways switches tab (SwipeToSwitch).
 //
-// Project items render as mini cards here until the full ProjectCard arrives
-// with the Projects build step.
 import {
   Activity as ActivityIcon,
   ArrowUp,
@@ -44,7 +42,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomNavInset } from "@/components/nav/BottomNav";
 import { useChromeScroll } from "@/components/nav/ChromeProvider";
 import { PostCard } from "@/components/post/PostCard";
-import { ProjectMiniCard, ProjectMiniGrid } from "@/components/post/ProjectMiniCard";
+import { ProjectMiniCard } from "@/components/post/ProjectMiniCard";
+import { ProjectCardList } from "@/components/project/ProjectCardList";
 import { AccountSwitcher } from "@/components/account/AccountSwitcher";
 import { ProfileAdSlot } from "@/components/profile/ProfileAdSlot";
 import { ProfileShareScreen } from "@/components/profile/ProfileShareScreen";
@@ -548,7 +547,7 @@ export function ProfilePage() {
       case "grid":
         return (
           <View className="px-4 pt-4">
-            <ProjectMiniGrid projects={item.projects} />
+            <ProjectCardList projects={item.projects} isOwnerView={showOwnerView} />
           </View>
         );
       case "gigs":
