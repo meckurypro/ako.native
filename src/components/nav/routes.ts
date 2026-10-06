@@ -24,13 +24,13 @@ const SHOWS_BOTTOM_NAV: RegExp[] = [
   /^\/messages$/,
   /^\/messages\/archive$/,
   /^\/page-inbox$/,
-  /^\/page-inbox\/[^/]+$/,
   /^\/activity$/,
   /^\/activity\/(saved|liked|history|library|events)$/,
 ];
 
 // "/projects/new" and "/projects/:id" look alike; "new" is the create flow.
-const NEVER: RegExp[] = [/^\/projects\/new$/, /^\/messages\/[^/]+$/];
+// Page-inbox threads also hide the nav: a docked message composer can't share the bottom edge with it.
+const NEVER: RegExp[] = [/^\/projects\/new$/, /^\/messages\/[^/]+$/, /^\/page-inbox\/[^/]+$/];
 
 export function showsBottomNav(pathname: string): boolean {
   if (pathname === "/messages/archive") return true;

@@ -38,6 +38,8 @@ interface DropdownMenuProps {
   width?: number;
   /** Height of docked bottom chrome (BottomNav) to keep the menu clear of. */
   bottomInset?: number;
+  /** Overlay layer (default 50). Raise it when opening from inside another overlay. */
+  zIndex?: number;
 }
 
 const ROW_HEIGHT = 52;
@@ -50,7 +52,7 @@ interface Placement {
   bottom?: number;
 }
 
-export function DropdownMenu({ anchorRef, items, onClose, width = 224, bottomInset = 0 }: DropdownMenuProps) {
+export function DropdownMenu({ anchorRef, items, onClose, width = 224, bottomInset = 0, zIndex = 50 }: DropdownMenuProps) {
   useBackDismiss(onClose);
   const insets = useSafeAreaInsets();
   const { width: windowW, height: windowH } = useWindowDimensions();
@@ -81,7 +83,7 @@ export function DropdownMenu({ anchorRef, items, onClose, width = 224, bottomIns
   }, [anchorRef, items, windowH, windowW, width, bottomInset, insets.bottom, insets.top]);
 
   return (
-    <Portal zIndex={50}>
+    <Portal zIndex={zIndex}>
       <Animated.View entering={FadeIn.duration(150)} exiting={FadeOut.duration(100)} className={SCRIM_CLASS}>
         <Pressable className="flex-1" onPress={onClose} accessibilityLabel="Close menu" accessibilityRole="button" />
       </Animated.View>
