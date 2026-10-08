@@ -51,9 +51,9 @@ export function RoomChat({ projectId, conversationId, canPost, cantPostReason }:
   const memberByUserId = useMemo(() => new Map((members ?? []).map((m) => [m.user_id, m.profile])), [members]);
   useBackDismiss(() => setEmojiOpen(false), emojiOpen);
 
-  const voiceRecorder = useVoiceRecorder(async (file, durationSec, peaks, viewOnce) => {
+  const voiceRecorder = useVoiceRecorder(async (file, durationSec, peaks, viewOnce, localUrl) => {
     try {
-      await sendVoiceNote.mutateAsync({ file, durationSec, peaks, viewOnce, replyToMessageId: null });
+      await sendVoiceNote.mutateAsync({ file, durationSec, peaks, viewOnce, replyToMessageId: null, localUrl });
     } catch {
       toast("Couldn't send the voice message. Please try again.", { variant: "error" });
       throw new Error("send failed"); // keeps the recorder from discarding a preview it couldn't send
