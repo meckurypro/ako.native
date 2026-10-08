@@ -17,3 +17,15 @@ export function localInputToDate(value: string): Date | null {
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? null : d;
 }
+
+/**
+ * Server timestamp (ISO, UTC) → local "YYYY-MM-DDTHH:mm" for the form.
+ * The web edit screens sliced the string ("...".slice(0, 16)), which reads the
+ * UTC clock time as if it were local; converting through Date keeps an event
+ * at the time the creator originally picked, in their own timezone.
+ */
+export function isoToLocalInput(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "" : dateToLocalInput(d);
+}
