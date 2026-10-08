@@ -1,6 +1,6 @@
 // src/app/(app)/activity/history.tsx
-import { ScreenPlaceholder } from "@/components/ui/ScreenPlaceholder";
+import { HistoryActivity } from "@/screens/HistoryActivity";
 
-export default function Screen() {
-  return <ScreenPlaceholder name="HistoryActivity" step={12} />;
+export default function HistoryActivityRoute() {
+  return <HistoryActivity />;
 }

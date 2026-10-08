@@ -1,6 +1,6 @@
 // src/app/(app)/library.tsx
-import { ScreenPlaceholder } from "@/components/ui/ScreenPlaceholder";
+import { LibraryActivity } from "@/screens/LibraryActivity";
 
-export default function Screen() {
-  return <ScreenPlaceholder name="LibraryActivity" step={12} />;
+export default function LibraryActivityRoute() {
+  return <LibraryActivity />;
 }

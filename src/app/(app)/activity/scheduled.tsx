@@ -1,6 +1,6 @@
 // src/app/(app)/activity/scheduled.tsx
-import { ScreenPlaceholder } from "@/components/ui/ScreenPlaceholder";
+import { ScheduledPosts } from "@/screens/ScheduledPosts";
 
-export default function Screen() {
-  return <ScreenPlaceholder name="ScheduledPosts" step={12} />;
+export default function ScheduledPostsRoute() {
+  return <ScheduledPosts />;
 }

@@ -1,6 +1,7 @@
 // src/app/(app)/saved-projects.tsx
-import { ScreenPlaceholder } from "@/components/ui/ScreenPlaceholder";
+// Saved projects folded into Activity → Saved (Projects tab).
+import { Redirect, type Href } from "expo-router";
 
-export default function Screen() {
-  return <ScreenPlaceholder name="SavedProjects" step={12} />;
+export default function RedirectRoute() {
+  return <Redirect href={"/activity/saved?tab=projects" as Href} />;
 }

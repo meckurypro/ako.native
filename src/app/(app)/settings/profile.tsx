@@ -1,6 +1,6 @@
 // src/app/(app)/settings/profile.tsx
-import { ScreenPlaceholder } from "@/components/ui/ScreenPlaceholder";
+import { Settings } from "@/screens/Settings";
 
-export default function Screen() {
-  return <ScreenPlaceholder name="Settings · profile" step={12} />;
+export default function SettingsRoute() {
+  return <Settings />;
 }

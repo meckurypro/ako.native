@@ -1,6 +1,6 @@
 // src/app/(app)/gigs.tsx
-import { ScreenPlaceholder } from "@/components/ui/ScreenPlaceholder";
+import { MyGigs } from "@/screens/MyGigs";
 
-export default function Screen() {
-  return <ScreenPlaceholder name="MyGigs" step={12} />;
+export default function MyGigsRoute() {
+  return <MyGigs />;
 }

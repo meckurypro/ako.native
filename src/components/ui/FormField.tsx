@@ -12,10 +12,12 @@ export interface FormFieldProps extends TextInputProps {
   error?: string;
   /** Rendered inside the input row, right-aligned (PasswordField's eye toggle). */
   trailing?: React.ReactNode;
+  /** Rendered inside the input row, before the text (a fixed "@" prefix). */
+  leading?: React.ReactNode;
 }
 
 export const FormField = forwardRef<TextInput, FormFieldProps>(function FormField(
-  { label, error, trailing, onFocus, onBlur, style, ...inputProps },
+  { label, error, trailing, leading, onFocus, onBlur, style, ...inputProps },
   ref
 ) {
   const { colors } = useTheme();
@@ -27,6 +29,7 @@ export const FormField = forwardRef<TextInput, FormFieldProps>(function FormFiel
     <View className="mb-6">
       <Text className="mb-2.5 text-[11px] font-medium uppercase tracking-[1.54px] text-ink-muted">{label}</Text>
       <View className={`flex-row items-center border-b-2 ${underline}`}>
+        {leading}
         <TextInput
           ref={ref}
           accessibilityLabel={label}

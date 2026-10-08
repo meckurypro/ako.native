@@ -1,6 +1,7 @@
 // src/app/(app)/bookmarks.tsx
-import { ScreenPlaceholder } from "@/components/ui/ScreenPlaceholder";
+// Bookmarks folded into Activity → Saved.
+import { Redirect, type Href } from "expo-router";
 
-export default function Screen() {
-  return <ScreenPlaceholder name="Bookmarks" step={12} />;
+export default function RedirectRoute() {
+  return <Redirect href={"/activity/saved" as Href} />;
 }

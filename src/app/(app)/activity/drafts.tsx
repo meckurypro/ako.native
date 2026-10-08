@@ -1,6 +1,6 @@
 // src/app/(app)/activity/drafts.tsx
-import { ScreenPlaceholder } from "@/components/ui/ScreenPlaceholder";
+import { DraftPosts } from "@/screens/DraftPosts";
 
-export default function Screen() {
-  return <ScreenPlaceholder name="DraftPosts" step={12} />;
+export default function DraftPostsRoute() {
+  return <DraftPosts />;
 }

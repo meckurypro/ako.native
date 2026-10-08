@@ -1,6 +1,6 @@
 // src/app/(app)/activity/saved.tsx
-import { ScreenPlaceholder } from "@/components/ui/ScreenPlaceholder";
+import { SavedHub } from "@/screens/SavedHub";
 
-export default function Screen() {
-  return <ScreenPlaceholder name="SavedHub" step={12} />;
+export default function SavedHubRoute() {
+  return <SavedHub />;
 }

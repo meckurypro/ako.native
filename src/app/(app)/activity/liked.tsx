@@ -1,6 +1,6 @@
 // src/app/(app)/activity/liked.tsx
-import { ScreenPlaceholder } from "@/components/ui/ScreenPlaceholder";
+import { LikedHub } from "@/screens/LikedHub";
 
-export default function Screen() {
-  return <ScreenPlaceholder name="LikedHub" step={12} />;
+export default function LikedHubRoute() {
+  return <LikedHub />;
 }
