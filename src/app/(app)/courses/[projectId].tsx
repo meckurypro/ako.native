@@ -1,6 +1,6 @@
 // src/app/(app)/courses/[projectId].tsx
-import { ScreenPlaceholder } from "@/components/ui/ScreenPlaceholder";
+import { Course } from "@/screens/Course";
 
-export default function Screen() {
-  return <ScreenPlaceholder name="Course" step={9} />;
+export default function CourseRoute() {
+  return <Course />;
 }
