@@ -1,6 +1,6 @@
 // src/app/(app)/projects/[projectId]/ticket.tsx
-import { ScreenPlaceholder } from "@/components/ui/ScreenPlaceholder";
+import { TicketView } from "@/screens/TicketView";
 
-export default function Screen() {
-  return <ScreenPlaceholder name="TicketView" step={9} />;
+export default function TicketRoute() {
+  return <TicketView />;
 }

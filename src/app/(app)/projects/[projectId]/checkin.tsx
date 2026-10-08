@@ -1,6 +1,6 @@
 // src/app/(app)/projects/[projectId]/checkin.tsx
-import { ScreenPlaceholder } from "@/components/ui/ScreenPlaceholder";
+import { EventCheckIn } from "@/screens/EventCheckIn";
 
-export default function Screen() {
-  return <ScreenPlaceholder name="EventCheckIn" step={9} />;
+export default function CheckInRoute() {
+  return <EventCheckIn />;
 }
