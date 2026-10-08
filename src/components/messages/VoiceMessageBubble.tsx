@@ -6,7 +6,7 @@
 // path is available.
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { EyeOff, Mic, Pause, Play } from "lucide-react-native";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Pressable, View } from "react-native";
 
 import { Avatar } from "@/components/ui/Avatar";
@@ -23,6 +23,8 @@ import {
   clearRememberedPosition,
   getPreferredPlaybackSpeed,
   getRememberedPosition,
+  hasPlayed,
+  markPlayed,
   nextPlaybackSpeed,
   setPreferredPlaybackSpeed,
   setRememberedPosition,
@@ -40,6 +42,8 @@ interface VoiceMessageBubbleProps {
   onOpened?: () => void;
   senderAvatarUrl?: string | null;
   senderName?: string;
+  /** Time + ticks, drawn at the right end of the duration row (chat bubbles; Rooms leave it out). */
+  footer?: ReactNode;
 }
 
 export function VoiceMessageBubble({
@@ -53,6 +57,7 @@ export function VoiceMessageBubble({
   onOpened,
   senderAvatarUrl,
   senderName,
+  footer,
 }: VoiceMessageBubbleProps) {
   const stableKey = path ?? url ?? "";
   const enforceViewOnce = !!viewOnce && !isMine;
@@ -61,6 +66,7 @@ export function VoiceMessageBubble({
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(url ?? null);
   const [speed, setSpeed] = useState<PlaybackSpeed>(() => getPreferredPlaybackSpeed());
   const [hasStarted, setHasStarted] = useState(false);
+  const [played, setPlayed] = useState(() => hasPlayed(stableKey));
 
   useEffect(() => {
     if (url) {
@@ -145,6 +151,10 @@ export function VoiceMessageBubble({
       player.setPlaybackRate(speed);
       player.play();
       setHasStarted(true);
+      if (!played) {
+        markPlayed(stableKey);
+        setPlayed(true);
+      }
     } catch {
       /* released */
     }
@@ -182,14 +192,26 @@ export function VoiceMessageBubble({
     );
   }
 
+  // Received + not yet listened → accent mic; once played it turns blue (WhatsApp's green → blue).
+  const badgeBg = isMine ? "bg-white" : played ? "bg-tick-blue" : "bg-accent";
+
   return (
-    <View className="min-w-[220px] flex-row items-center gap-2.5 py-0.5">
-      {senderAvatarUrl !== undefined ? (
+    <View className="min-w-[230px] flex-row items-center gap-2 py-0.5">
+      {/* Leading slot: while a note is playing, the speed chip takes the avatar's place (as in WhatsApp). */}
+      {showSpeed ? (
+        <Pressable
+          onPress={cycleSpeed}
+          accessibilityRole="button"
+          accessibilityLabel={`Playback speed, currently ${speed}x. Tap to change.`}
+          hitSlop={6}
+          className={`h-10 w-10 shrink-0 items-center justify-center rounded-full ${isMine ? "bg-white/25" : "bg-accent/12"}`}
+        >
+          <Text className={`text-xs font-bold ${isMine ? "text-white" : "text-accent"}`}>{speed}x</Text>
+        </Pressable>
+      ) : senderAvatarUrl !== undefined ? (
         <View className="shrink-0">
           <Avatar src={senderAvatarUrl} name={senderName ?? "?"} size="sm" />
-          <View
-            className={`absolute -bottom-0.5 -right-0.5 h-4 w-4 items-center justify-center rounded-full ${isMine ? "bg-white" : "bg-accent"}`}
-          >
+          <View className={`absolute -bottom-0.5 -right-0.5 h-4 w-4 items-center justify-center rounded-full ${badgeBg}`}>
             <Icon as={Mic} size={9} className={isMine ? "text-accent" : "text-white"} />
           </View>
         </View>
@@ -205,29 +227,19 @@ export function VoiceMessageBubble({
         <Icon as={playing ? Pause : Play} size={15} fill={isMine ? "#3D5A45" : "#FFFFFF"} className={isMine ? "text-accent" : "text-white"} />
       </Pressable>
 
-      <VoiceWaveform levels={barLevels} progress={progress} filledColor={filledColor} mutedColor={mutedColor} onSeek={seek} />
-
-      <View className="shrink-0 items-end gap-0.5">
-        <View className="flex-row items-center gap-1">
-          {viewOnce ? (
-            <View className={`h-3.5 w-3.5 items-center justify-center rounded-full ${isMine ? "bg-white/25" : "bg-accent/15"}`} accessibilityLabel="View once">
-              <Text className={`text-[9px] font-bold ${isMine ? "text-white" : "text-accent"}`}>1</Text>
-            </View>
-          ) : null}
-          <Text className={`text-[11px] opacity-80 ${isMine ? "text-white" : "text-ink"}`}>{formatVoiceDuration(showSpeed || elapsed > 0 ? elapsed : durationSec)}</Text>
+      <View className="min-w-0 flex-1">
+        <VoiceWaveform levels={barLevels} progress={progress} filledColor={filledColor} mutedColor={mutedColor} onSeek={seek} thumbColor={filledColor} />
+        <View className="mt-0.5 flex-row items-center justify-between gap-2">
+          <View className="flex-row items-center gap-1">
+            {viewOnce ? (
+              <View className={`h-3.5 w-3.5 items-center justify-center rounded-full ${isMine ? "bg-white/25" : "bg-accent/15"}`} accessibilityLabel="View once">
+                <Text className={`text-[9px] font-bold ${isMine ? "text-white" : "text-accent"}`}>1</Text>
+              </View>
+            ) : null}
+            <Text className={`text-[11px] opacity-80 ${isMine ? "text-white" : "text-ink"}`}>{formatVoiceDuration(showSpeed || elapsed > 0 ? elapsed : durationSec)}</Text>
+          </View>
+          {footer}
         </View>
-        {/* Speed stays out of the way until a note has actually started. */}
-        {showSpeed ? (
-          <Pressable
-            onPress={cycleSpeed}
-            accessibilityRole="button"
-            accessibilityLabel={`Playback speed, currently ${speed}x. Tap to change.`}
-            hitSlop={6}
-            className={`rounded-full px-1.5 py-0.5 ${isMine ? "bg-white/20" : "bg-accent/10"}`}
-          >
-            <Text className={`text-[10px] font-semibold ${isMine ? "text-white" : "text-accent"}`}>{speed}x</Text>
-          </Pressable>
-        ) : null}
       </View>
     </View>
   );

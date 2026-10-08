@@ -12,7 +12,7 @@ import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import type { ConversationSummary } from "@/hooks/useMessaging";
 import { haptics } from "@/lib/haptics";
-import { decodeVoiceNote, VOICE_NOTE_LABEL } from "@/lib/voiceNotes";
+import { MessagePreviewLine } from "./MessagePreviewLine";
 
 /** Compact list stamp: now / 5m / 3h / 2d. */
 export function listAgo(dateString: string): string {
@@ -130,16 +130,14 @@ export function ConversationRow({
               <MessageStatusTicks deliveredAt={c.last_message.delivered_at} readAt={c.last_message.read_at} variant="list" size={13} />
             </View>
           ) : null}
-          <Text
-            numberOfLines={1}
-            className={`min-w-0 flex-1 text-sm ${unread ? "text-ink" : "text-ink-muted"} ${c.last_message?.is_deleted ? "italic opacity-70" : ""}`}
-          >
-            {c.last_message?.is_deleted
-              ? "This message was deleted"
-              : c.last_message && decodeVoiceNote(c.last_message.content)
-                ? VOICE_NOTE_LABEL
-                : (c.last_message?.content ?? "Say hello")}
-          </Text>
+          <View className="min-w-0 flex-1">
+            <MessagePreviewLine
+              variant="list"
+              content={c.last_message?.is_deleted ? "This message was deleted" : (c.last_message?.content ?? "Say hello")}
+              className={`text-sm ${unread ? "text-ink" : "text-ink-muted"} ${c.last_message?.is_deleted ? "italic opacity-70" : ""}`}
+              iconClassName={unread ? "text-ink" : "text-ink-muted"}
+            />
+          </View>
         </View>
       </View>
 

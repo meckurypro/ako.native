@@ -15,6 +15,8 @@ interface VoiceWaveformProps {
   onSeek?: (ratio: number) => void;
   /** Height class (web default h-7). */
   heightClass?: string;
+  /** WhatsApp's round scrub handle riding the bars at the current position (a bg-* class). */
+  thumbColor?: string;
 }
 
 export function VoiceWaveform({
@@ -24,6 +26,7 @@ export function VoiceWaveform({
   mutedColor,
   onSeek,
   heightClass = "h-7",
+  thumbColor,
 }: VoiceWaveformProps) {
   const [width, setWidth] = useState(0);
 
@@ -42,6 +45,13 @@ export function VoiceWaveform({
           />
         );
       })}
+      {thumbColor && width > 0 ? (
+        <View
+          pointerEvents="none"
+          className={`absolute h-3 w-3 rounded-full ${thumbColor}`}
+          style={{ left: Math.max(0, Math.min(width - 12, progress * width - 6)), top: "50%", marginTop: -6 }}
+        />
+      ) : null}
     </View>
   );
 

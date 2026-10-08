@@ -31,7 +31,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Akọ uses the camera to scan event tickets at the door.",
+          "cameraPermission": "Akọ uses the camera to scan event tickets at the door and to take photos you send in chats.",
           "microphonePermission": false,
           "recordAudioAndroid": false
         }

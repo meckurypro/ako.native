@@ -6,6 +6,7 @@
 //   drag left past 80px     → cancel
 //   drag up past 64px       → lock (hands-free; stop/pause via the toolbar)
 //   release (unlocked)      → preview (listen, toggle view-once, send/discard)
+//                             — or, with `sendOnRelease` (DM chat), straight send like WhatsApp
 //
 // What changed underneath:
 //   • MediaRecorder + getUserMedia → expo-audio's AudioRecorder (m4a/AAC)
@@ -23,6 +24,7 @@ import {
 } from "expo-audio";
 import { File as FsFile } from "expo-file-system";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { chatFileName } from "../lib/chatMedia";
 import type { LocalFile } from "../lib/localFile";
 import { dbToLevel, peaksFromMetering, WAVEFORM_BAR_COUNT } from "../lib/waveform";
 
@@ -51,9 +53,22 @@ const VOICE_OPTIONS = {
   isMeteringEnabled: true,
 };
 
+interface VoiceRecorderOptions {
+  /** Releasing an unlocked hold sends immediately (WhatsApp) instead of opening the preview.
+   *  Off by default so existing callers (Rooms) keep their preview-then-send flow. */
+  sendOnRelease?: boolean;
+  /** Called when a hold was too short to be a recording — show "Hold to record, release to send". */
+  onTooShort?: () => void;
+}
+
 export function useVoiceRecorder(
-  onSend: (file: LocalFile, durationSec: number, peaks: number[], viewOnce: boolean) => Promise<void>
+  onSend: (file: LocalFile, durationSec: number, peaks: number[], viewOnce: boolean, localUrl: string) => Promise<void>,
+  options: VoiceRecorderOptions = {}
 ) {
+  const sendOnReleaseRef = useRef(!!options.sendOnRelease);
+  sendOnReleaseRef.current = !!options.sendOnRelease;
+  const onTooShortRef = useRef(options.onTooShort);
+  onTooShortRef.current = options.onTooShort;
   const recorder = useAudioRecorder(VOICE_OPTIONS);
 
   const [phase, setPhase] = useState<VoiceRecorderPhase>("idle");
@@ -144,7 +159,8 @@ export function useVoiceRecorder(
     setDrag({ x: 0, y: 0 });
   }, [recorder, releaseAudioSession, stopTimers]);
 
-  const stopToPreview = useCallback(async () => {
+  /** Stops the recorder and returns the finished clip (or null if nothing usable came out). */
+  const finalizeRecording = useCallback(async (): Promise<PreviewData | null> => {
     endedRef.current = true;
     const finalElapsedMs = pausedRef.current
       ? accumulatedMsRef.current
@@ -156,14 +172,14 @@ export function useVoiceRecorder(
     } catch {
       releaseAudioSession();
       setPhase("idle");
-      return;
+      return null;
     }
 
     const uri = recorder.uri;
     releaseAudioSession();
     if (!uri) {
       setPhase("idle");
-      return;
+      return null;
     }
 
     let size = 0;
@@ -173,15 +189,45 @@ export function useVoiceRecorder(
       /* size is informational only */
     }
 
-    setPreview({
-      file: { uri, name: `voice-${Date.now()}.m4a`, type: "audio/mp4", size },
+    return {
+      // WhatsApp-style name: PTT-20261008-AKO114501.m4a
+      file: { uri, name: chatFileName("PTT", "m4a"), type: "audio/mp4", size },
       url: uri,
       durationSec: Math.max(1, Math.round(finalElapsedMs / 1000)),
       peaks: peaksFromMetering(meterSamplesRef.current),
       viewOnce: false,
-    });
-    setPhase("preview");
+    };
   }, [recorder, releaseAudioSession, stopTimers]);
+
+  const stopToPreview = useCallback(async () => {
+    const data = await finalizeRecording();
+    if (!data) return;
+    setPreview(data);
+    setPhase("preview");
+  }, [finalizeRecording]);
+
+  /** Stop and send in one step — the "release to send" / locked-mode send button. */
+  const stopAndSend = useCallback(async () => {
+    const data = await finalizeRecording();
+    if (!data) return;
+    // Hand the composer back right away; the bubble appears optimistically while the upload runs.
+    setLocked(false);
+    lockedRef.current = false;
+    setDrag({ x: 0, y: 0 });
+    setPhase("idle");
+    try {
+      await onSend(data.file, data.durationSec, data.peaks, data.viewOnce, data.url);
+      try {
+        new FsFile(data.file.uri).delete();
+      } catch {
+        /* temp file — the OS cleans the cache anyway */
+      }
+    } catch {
+      // Upload failed: keep the clip as a draft so nothing recorded is lost.
+      setPreview(data);
+      setPhase("preview");
+    }
+  }, [finalizeRecording, onSend]);
 
   const togglePauseResume = useCallback(() => {
     if (pausedRef.current) {
@@ -219,7 +265,7 @@ export function useVoiceRecorder(
     if (!preview) return;
     setSending(true);
     try {
-      await onSend(preview.file, preview.durationSec, preview.peaks, preview.viewOnce);
+      await onSend(preview.file, preview.durationSec, preview.peaks, preview.viewOnce, preview.url);
       try {
         new FsFile(preview.file.uri).delete();
       } catch {
@@ -274,9 +320,12 @@ export function useVoiceRecorder(
     }
     if (endedRef.current || lockedRef.current) return; // locked → hands-free, only the toolbar ends it now
     const heldMs = accumulatedMsRef.current + (Date.now() - segmentStartRef.current);
-    if (heldMs < TAP_CANCEL_MS) cancelRecording();
+    if (heldMs < TAP_CANCEL_MS) {
+      cancelRecording();
+      onTooShortRef.current?.();
+    } else if (sendOnReleaseRef.current) void stopAndSend();
     else void stopToPreview();
-  }, [cancelRecording, stopToPreview]);
+  }, [cancelRecording, stopToPreview, stopAndSend]);
 
   const onHoldCancel = useCallback(() => {
     if (endedRef.current || lockedRef.current) return;
@@ -305,6 +354,7 @@ export function useVoiceRecorder(
     micGesture: { onHoldStart, onHoldMove, onHoldEnd, onHoldCancel },
     cancelRecording,
     stopToPreview,
+    stopAndSend,
     togglePauseResume,
     toggleViewOnce,
     discardPreview,

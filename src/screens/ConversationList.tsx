@@ -29,7 +29,7 @@ import {
   type ConversationSummary,
 } from "@/hooks/useMessaging";
 import { useUnseenPosts } from "@/hooks/useUnseenPosts";
-import { decodeVoiceNote } from "@/lib/voiceNotes";
+import { messagePlainText } from "@/lib/chatMedia";
 import { useTheme } from "@/theme/ThemeProvider";
 
 const MAX_PINNED = 3;
@@ -111,7 +111,7 @@ export function ConversationList() {
       return (
         name.toLowerCase().includes(q) ||
         username.toLowerCase().includes(q) ||
-        (!!c.last_message && !decodeVoiceNote(c.last_message.content) && c.last_message.content.toLowerCase().includes(q))
+        (!!c.last_message && messagePlainText(c.last_message.content).toLowerCase().includes(q))
       );
     });
   }, [conversations, searchQuery]);

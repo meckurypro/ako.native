@@ -10,7 +10,7 @@ import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { Text } from "@/components/ui/Text";
 import { useAuth } from "@/hooks/useAuth";
 import { useHiddenMessages, useUnhideMessage } from "@/hooks/useMessageReactions";
-import { decodeVoiceNote, VOICE_NOTE_LABEL } from "@/lib/voiceNotes";
+import { MessagePreviewLine } from "@/components/messages/MessagePreviewLine";
 
 function formatTime(dateString: string): string {
   return new Date(dateString).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
@@ -43,9 +43,7 @@ export function HiddenMessages() {
                 <Text className="mb-0.5 text-xs text-ink-muted">
                   {m.sender_id === user?.id ? "You" : "Them"} · {formatTime(m.created_at)}
                 </Text>
-                <Text numberOfLines={1} className={`text-sm text-ink ${m.is_deleted ? "italic opacity-70" : ""}`}>
-                  {m.is_deleted ? "This message was deleted" : decodeVoiceNote(m.content) ? VOICE_NOTE_LABEL : m.content}
-                </Text>
+                <MessagePreviewLine content={m.is_deleted ? "This message was deleted" : m.content} className={`text-sm text-ink ${m.is_deleted ? "italic opacity-70" : ""}`} iconClassName="text-ink-muted" />
               </View>
               <Pressable onPress={() => unhide.mutate(m.id)} accessibilityRole="button" hitSlop={8} className="shrink-0 flex-row items-center gap-1.5 py-1">
                 <Icon as={Undo2} size={14} className="text-accent" />

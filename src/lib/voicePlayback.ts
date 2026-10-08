@@ -109,3 +109,34 @@ export function nextPlaybackSpeed(current: PlaybackSpeed): PlaybackSpeed {
   const i = PLAYBACK_SPEEDS.indexOf(current);
   return PLAYBACK_SPEEDS[(i + 1) % PLAYBACK_SPEEDS.length];
 }
+
+// "Played" state — WhatsApp turns a received voice message's mic from green to blue once you've
+// listened. Same client-local approach as view-once above (no schema change); capped so the
+// stored list can't grow without bound.
+const PLAYED_STORAGE_KEY = "ako:voice-played";
+const PLAYED_MAX = 500;
+
+function readPlayedList(): string[] {
+  try {
+    const raw = localStorage.getItem(PLAYED_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function hasPlayed(key: string): boolean {
+  return !!key && readPlayedList().includes(key);
+}
+
+export function markPlayed(key: string): void {
+  if (!key) return;
+  try {
+    const list = readPlayedList();
+    if (list.includes(key)) return;
+    list.push(key);
+    localStorage.setItem(PLAYED_STORAGE_KEY, JSON.stringify(list.slice(-PLAYED_MAX)));
+  } catch {
+    // Storage unavailable — the mic just stays "unplayed" colour next session.
+  }
+}

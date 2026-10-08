@@ -32,7 +32,7 @@ import {
 import { useUserPostsWithArchived } from "@/hooks/usePosts";
 import { useUserProjects } from "@/hooks/useProjects";
 import { haptics } from "@/lib/haptics";
-import { decodeVoiceNote, VOICE_NOTE_LABEL } from "@/lib/voiceNotes";
+import { MessagePreviewLine } from "@/components/messages/MessagePreviewLine";
 import { isPlainReshare, isQuote, type PostWithAuthor } from "@/types/database";
 
 type Section = "posts" | "projects" | "messages";
@@ -154,16 +154,14 @@ export function Archive() {
                 <Text className="text-[11px] font-medium text-accent">Request</Text>
               </View>
             ) : null}
-            <Text
-              numberOfLines={1}
-              className={`min-w-0 flex-1 text-sm ${c.unreadCount > 0 ? "text-ink" : "text-ink-muted"} ${c.last_message?.is_deleted ? "italic opacity-70" : ""}`}
-            >
-              {c.last_message?.is_deleted
-                ? "This message was deleted"
-                : c.last_message && decodeVoiceNote(c.last_message.content)
-                  ? VOICE_NOTE_LABEL
-                  : (c.last_message?.content ?? "Say hello")}
-            </Text>
+            <View className="min-w-0 flex-1">
+              <MessagePreviewLine
+                variant="list"
+                content={c.last_message?.is_deleted ? "This message was deleted" : (c.last_message?.content ?? "Say hello")}
+                className={`text-sm ${c.unreadCount > 0 ? "text-ink" : "text-ink-muted"} ${c.last_message?.is_deleted ? "italic opacity-70" : ""}`}
+                iconClassName={c.unreadCount > 0 ? "text-ink" : "text-ink-muted"}
+              />
+            </View>
           </View>
         </View>
 

@@ -18,8 +18,11 @@ import type { MessageReaction } from "@/hooks/useMessageReactions";
 import type { MessageWithSender } from "@/hooks/useMessaging";
 import { getEmojiOnlyInfo } from "@/lib/emoji";
 import { haptics } from "@/lib/haptics";
-import { formatMessageTime } from "@/lib/messageTime";
-import { decodeVoiceNote, VOICE_NOTE_LABEL } from "@/lib/voiceNotes";
+import { decodeMedia } from "@/lib/chatMedia";
+import { formatMessageDayLabel, formatMessageTime } from "@/lib/messageTime";
+import { decodeVoiceNote } from "@/lib/voiceNotes";
+import { MediaMessage } from "./MediaMessage";
+import { MessagePreviewLine } from "./MessagePreviewLine";
 import { VoiceMessageBubble } from "./VoiceMessageBubble";
 import type { Rect } from "./ReactionOptionsPopover";
 
@@ -152,9 +155,10 @@ function MessageBubbleImpl({
   const isMine = m.sender_id === currentUserId;
   const voiceNote = !m.is_deleted ? decodeVoiceNote(m.content) : null;
   const repliedTo = m.reply_to?.[0];
-  const repliedToVoiceNote = repliedTo && !repliedTo.is_deleted ? decodeVoiceNote(repliedTo.content) : null;
+  const media = !m.is_deleted ? decodeMedia(m.content) : null;
+  const isPhoto = media?.items[0].kind === "image";
   const timeStr = formatMessageTime(m.created_at);
-  const emojiInfo = !m.is_deleted && !voiceNote && !repliedTo ? getEmojiOnlyInfo(m.content) : { isEmojiOnly: false, count: 0 };
+  const emojiInfo = !m.is_deleted && !voiceNote && !media && !repliedTo ? getEmojiOnlyInfo(m.content) : { isEmojiOnly: false, count: 0 };
   const isJumbo = emojiInfo.isEmojiOnly;
   const ticks = isMine ? <MessageStatusTicks deliveredAt={m.delivered_at} readAt={m.read_at} size={14} /> : null;
 
@@ -236,7 +240,7 @@ function MessageBubbleImpl({
               className={
                 isJumbo
                   ? ""
-                  : `rounded-2xl px-3 py-2 ${isMine ? "rounded-br-md bg-bubble-mine" : "rounded-bl-md bg-bubble-theirs"} ${m.is_deleted ? "opacity-70" : ""}`
+                  : `rounded-2xl ${isPhoto ? "p-1" : "px-3 py-2"} ${isMine ? "rounded-br-md bg-bubble-mine" : "rounded-bl-md bg-bubble-theirs"} ${m.is_deleted ? "opacity-70" : ""}`
               }
               style={[
                 bubbleStyle,
@@ -258,9 +262,13 @@ function MessageBubbleImpl({
                   <Text className={`text-xs font-medium ${isMine ? "text-white/80" : "text-ink-muted"}`}>
                     {repliedTo.sender_id === currentUserId ? "You" : otherParticipantName}
                   </Text>
-                  <Text numberOfLines={1} className={`text-xs ${isMine ? "text-white/80" : "text-ink-muted"}`}>
-                    {repliedTo.is_deleted ? "Original message deleted" : repliedToVoiceNote ? VOICE_NOTE_LABEL : repliedTo.content}
-                  </Text>
+                  {repliedTo.is_deleted ? (
+                    <Text numberOfLines={1} className={`text-xs ${isMine ? "text-white/80" : "text-ink-muted"}`}>
+                      Original message deleted
+                    </Text>
+                  ) : (
+                    <MessagePreviewLine content={repliedTo.content} className={`text-xs ${isMine ? "text-white/80" : "text-ink-muted"}`} iconClassName={isMine ? "text-white/80" : "text-ink-muted"} />
+                  )}
                 </Pressable>
               ) : null}
 
@@ -274,25 +282,36 @@ function MessageBubbleImpl({
                     </View>
                   ) : null}
                 </View>
+              ) : media ? (
+                <MediaMessage
+                  media={media}
+                  isMine={isMine}
+                  timeStr={timeStr}
+                  ticks={ticks}
+                  senderName={otherParticipantName}
+                  sentLabel={`${formatMessageDayLabel(m.created_at)}, ${timeStr}`}
+                  footerColor={footerColor}
+                  textColor={textColor}
+                />
               ) : voiceNote ? (
-                <View>
-                  <VoiceMessageBubble
-                    url={voiceNote.url}
-                    path={voiceNote.path}
-                    durationSec={voiceNote.durationSec}
-                    peaks={voiceNote.peaks}
-                    isMine={isMine}
-                    viewOnce={voiceNote.viewOnce}
-                    openedOnceAt={voiceNoteOpenedAt}
-                    onOpened={() => onVoiceNoteOpened?.(m.id)}
-                    senderAvatarUrl={isMine ? myAvatarUrl : otherParticipantAvatarUrl}
-                    senderName={isMine ? (myName ?? "You") : otherParticipantName}
-                  />
-                  <View className="mt-1 flex-row items-center justify-end gap-1">
-                    <Text className={`text-[11px] ${footerColor}`}>{timeStr}</Text>
-                    {ticks}
-                  </View>
-                </View>
+                <VoiceMessageBubble
+                  url={voiceNote.url}
+                  path={voiceNote.path}
+                  durationSec={voiceNote.durationSec}
+                  peaks={voiceNote.peaks}
+                  isMine={isMine}
+                  viewOnce={voiceNote.viewOnce}
+                  openedOnceAt={voiceNoteOpenedAt}
+                  onOpened={() => onVoiceNoteOpened?.(m.id)}
+                  senderAvatarUrl={isMine ? myAvatarUrl : otherParticipantAvatarUrl}
+                  senderName={isMine ? (myName ?? "You") : otherParticipantName}
+                  footer={
+                    <View className="flex-row items-center gap-1">
+                      <Text className={`text-[11px] ${footerColor}`}>{timeStr}</Text>
+                      {ticks}
+                    </View>
+                  }
+                />
               ) : isJumbo ? (
                 <View className="items-end">
                   <Text style={{ fontSize: JUMBO_SIZE[emojiInfo.count] ?? 36, lineHeight: (JUMBO_SIZE[emojiInfo.count] ?? 36) + 6 }}>{m.content.trim()}</Text>

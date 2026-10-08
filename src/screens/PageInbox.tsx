@@ -11,7 +11,7 @@ import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { Text } from "@/components/ui/Text";
 import { usePageConversations, type PageConversationSummary } from "@/hooks/usePageInbox";
 import { useActiveIdentity } from "@/hooks/usePages";
-import { decodeVoiceNote, VOICE_NOTE_LABEL } from "@/lib/voiceNotes";
+import { messagePreview } from "@/lib/chatMedia";
 
 function Row({ c }: { c: PageConversationSummary }) {
   const unread = c.unreadCount > 0;
@@ -31,7 +31,7 @@ function Row({ c }: { c: PageConversationSummary }) {
         </View>
         <Text numberOfLines={1} className={`text-sm ${unread ? "text-ink" : "text-ink-muted"}`}>
           {c.last_message
-            ? `${c.last_message.sender_type === "page" ? "You: " : ""}${decodeVoiceNote(c.last_message.content) ? VOICE_NOTE_LABEL : c.last_message.content}`
+            ? `${c.last_message.sender_type === "page" ? "You: " : ""}${(() => { const p = messagePreview(c.last_message.content); return p.icon === "mic" && p.meta ? `${p.label} (${p.meta})` : p.label; })()}`
             : "Say hello"}
         </Text>
       </View>

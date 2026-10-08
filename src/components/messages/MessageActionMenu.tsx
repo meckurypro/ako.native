@@ -16,7 +16,8 @@ import { Portal } from "@/components/ui/Portal";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useBackDismiss } from "@/hooks/useBackDismiss";
-import { decodeVoiceNote, VOICE_NOTE_LABEL } from "@/lib/voiceNotes";
+import { messagePlainText } from "@/lib/chatMedia";
+import { MessagePreviewLine } from "./MessagePreviewLine";
 import { useTheme } from "@/theme/ThemeProvider";
 import type { Rect } from "./ReactionOptionsPopover";
 
@@ -89,7 +90,8 @@ export function MessageActionMenu({
     onClose();
   };
 
-  const voice = !isDeleted ? decodeVoiceNote(content) : null;
+  // Copy only makes sense for text (or a photo's caption) — never a voice message / bare photo.
+  const copyable = !isDeleted && messagePlainText(content).trim().length > 0;
 
   const moreItems: (DropdownMenuItem | "divider")[] = [
     { key: "select", label: "Select", icon: <Icon as={CheckSquare} size={22} className="text-overlay-ink" />, onSelect: done(onSelect) },
@@ -130,9 +132,11 @@ export function MessageActionMenu({
             <Pressable onPress={done(onForward)} accessibilityRole="button" accessibilityLabel="Forward" className={barButton}>
               <Icon as={Forward} size={19} className="text-ink" />
             </Pressable>
-            <Pressable onPress={done(onCopy)} accessibilityRole="button" accessibilityLabel="Copy" className={barButton}>
-              <Icon as={Copy} size={19} className="text-ink" />
-            </Pressable>
+{copyable ? (
+              <Pressable onPress={done(onCopy)} accessibilityRole="button" accessibilityLabel="Copy" className={barButton}>
+                <Icon as={Copy} size={19} className="text-ink" />
+              </Pressable>
+            ) : null}
             <Pressable onPress={done(onToggleStar)} accessibilityRole="button" accessibilityLabel={isStarred ? "Unstar" : "Star"} className={barButton}>
               <Star size={19} color={isStarred ? colors.accent : colors.ink} fill={isStarred ? colors.accent : "none"} />
             </Pressable>
@@ -201,9 +205,12 @@ export function MessageActionMenu({
       />
       <View pointerEvents="none" style={{ position: "absolute", top: anchorRect.y, left: anchorRect.x, width: anchorRect.width }}>
         <View className={`rounded-2xl px-3 py-2 ${isMine ? "bg-bubble-mine" : "bg-bubble-theirs"} ${isMine ? "rounded-br-md" : "rounded-bl-md"}`}>
-          <Text className={`text-sm ${isMine ? "text-white" : "text-ink"} ${isDeleted ? "italic opacity-70" : ""}`}>
-            {isDeleted ? "This message was deleted" : voice ? VOICE_NOTE_LABEL : content}
-          </Text>
+          <MessagePreviewLine
+            content={isDeleted ? "This message was deleted" : content}
+            numberOfLines={6}
+            className={`text-sm ${isMine ? "text-white" : "text-ink"} ${isDeleted ? "italic opacity-70" : ""}`}
+            iconClassName={isMine ? "text-white" : "text-ink-muted"}
+          />
         </View>
       </View>
     </Portal>

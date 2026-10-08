@@ -10,10 +10,12 @@ import {
   ChevronUp,
   EyeOff,
   Forward,
+  Camera,
   Inbox,
   Keyboard as KeyboardIcon,
   Mic,
   MoreHorizontal,
+  Paperclip,
   Search,
   Send,
   Share2,
@@ -34,11 +36,14 @@ import Animated, { FadeIn, FadeOut, useAnimatedKeyboard, useAnimatedStyle } from
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
 
+import { AttachSheet } from "@/components/messages/AttachSheet";
 import { DeleteMessageSheet } from "@/components/messages/DeleteMessageSheet";
 import { EmojiPickerSheet, removeLastGrapheme } from "@/components/messages/EmojiPickerSheet";
 import { ForwardMessageSheet } from "@/components/messages/ForwardMessageSheet";
+import { MediaComposeModal } from "@/components/messages/MediaComposeModal";
 import { MessageActionMenu } from "@/components/messages/MessageActionMenu";
 import { MessageBubble } from "@/components/messages/MessageBubble";
+import { MessagePreviewLine } from "@/components/messages/MessagePreviewLine";
 import { ReactionOptionsPopover, type ReactionPopoverTarget, type Rect } from "@/components/messages/ReactionOptionsPopover";
 import { VoicePreviewBar } from "@/components/messages/VoicePreviewBar";
 import { VoiceRecordingBar } from "@/components/messages/VoiceRecordingBar";
@@ -71,6 +76,7 @@ import {
   useConversationReactions,
   useMarkVoiceNoteOpened,
   useMessageUserStates,
+  type MessageReaction,
   useRemoveReaction,
   useSetReaction,
   useToggleMessageState,
@@ -78,12 +84,15 @@ import {
   useUserTopEmojis,
 } from "@/hooks/useMessageReactions";
 import { useUnseenPosts } from "@/hooks/useUnseenPosts";
+import { useSendMedia } from "@/hooks/useSendMedia";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
+import { MAX_MEDIA_BYTES, messagePlainText, messagePreview, type MediaKind } from "@/lib/chatMedia";
 import { haptics } from "@/lib/haptics";
+import type { LocalFile } from "@/lib/localFile";
 import { dayKeyFor, formatMessageDayLabel } from "@/lib/messageTime";
+import { pickDocument, pickGalleryImages, takePhoto } from "@/lib/pickChatMedia";
 import { formatLastSeen } from "@/lib/presence";
 import { supabase } from "@/lib/supabase";
-import { decodeVoiceNote, VOICE_NOTE_LABEL } from "@/lib/voiceNotes";
 import { useTheme } from "@/theme/ThemeProvider";
 
 function useConversationHeader(conversationId: string) {
@@ -134,6 +143,9 @@ interface ActiveMessage {
   message: MessageWithSender;
   anchorRect: Rect;
 }
+const EMPTY_REACTIONS: MessageReaction[] = []; // one shared array, so bubbles with no reactions keep memo() hits
+const VIEWABILITY_CONFIG = { itemVisiblePercentThreshold: 20 };
+
 type ThreadItem = { key: string; message: MessageWithSender; showDaySeparator: boolean; dayLabel: string };
 
 export function MessageThread() {
@@ -158,6 +170,7 @@ export function MessageThread() {
 
   const sendMessage = useSendMessage(conversationId);
   const sendVoiceNote = useSendVoiceNote(conversationId);
+  const sendMedia = useSendMedia(conversationId);
   const deleteMessage = useDeleteMessage(conversationId);
   const bulkDeleteMessages = useBulkDeleteMessages(conversationId);
   const bulkSetHidden = useBulkSetMessagesHidden(conversationId);
@@ -227,6 +240,9 @@ export function MessageThread() {
   const [emojiPickerTarget, setEmojiPickerTarget] = useState<EmojiPickerTarget>(null);
   const [inputHeight, setInputHeight] = useState(0);
   const [infoBanner, setInfoBanner] = useState<string | null>(null);
+  const [attachOpen, setAttachOpen] = useState(false);
+  const [mediaDraft, setMediaDraft] = useState<{ kind: MediaKind; files: LocalFile[] } | null>(null);
+  useBackDismiss(() => setAttachOpen(false), attachOpen);
   useBackDismiss(() => setEmojiPickerTarget(null), emojiPickerTarget?.mode === "input");
 
   const [flashMessageId, setFlashMessageId] = useState<string | null>(null);
@@ -282,25 +298,74 @@ export function MessageThread() {
     }
   }
 
-  const voiceRecorder = useVoiceRecorder(async (file, durationSec, peaks, viewOnce) => {
-    const replyingTo = replyTarget;
-    const localUrl = voiceRecorder.preview?.url;
+  const voiceRecorder = useVoiceRecorder(
+    async (file, durationSec, peaks, viewOnce, localUrl) => {
+      const replyingTo = replyTarget;
+      try {
+        await sendVoiceNote.mutateAsync({
+          file,
+          durationSec,
+          peaks,
+          viewOnce,
+          replyToMessageId: replyingTo?.id ?? null,
+          replyToSnippet: replyingTo ? { id: replyingTo.id, content: replyingTo.content, sender_id: replyingTo.sender_id, is_deleted: replyingTo.is_deleted } : null,
+          localUrl,
+        });
+        setReplyTarget(null);
+      } catch {
+        toast("Couldn't send the voice message. Please try again.", { variant: "error" });
+        throw new Error("send failed"); // keeps the hook from clearing a clip it couldn't send
+      }
+    },
+    // WhatsApp: release to send; slide up to lock for hands-free + draft preview.
+    { sendOnRelease: true, onTooShort: () => toast("Hold to record, release to send") }
+  );
+
+  // ── attach: gallery · camera · document → preview with caption → send ──
+  async function openPicker(which: "gallery" | "camera" | "document") {
     try {
-      await sendVoiceNote.mutateAsync({
-        file,
-        durationSec,
-        peaks,
-        viewOnce,
+      const files = which === "gallery" ? await pickGalleryImages() : which === "camera" ? await takePhoto() : await pickDocument();
+      if (!files.length) return;
+      if (files.some((f) => f.size > MAX_MEDIA_BYTES)) {
+        toast("That file is larger than 25 MB.", { variant: "error" });
+        return;
+      }
+      setMediaDraft({ kind: which === "document" ? "document" : "image", files });
+    } catch (e) {
+      toast(e instanceof Error && e.message === "camera_denied" ? "Allow camera access in Settings to take photos." : "Couldn't open that. Please try again.", { variant: "error" });
+    }
+  }
+
+  function handleSendMedia(files: LocalFile[], caption: string, hd: boolean) {
+    const draft = mediaDraft;
+    if (!draft) return;
+    const replyingTo = replyTarget;
+    setMediaDraft(null);
+    setReplyTarget(null);
+    sendMedia.mutate(
+      {
+        kind: draft.kind,
+        files,
+        caption,
+        hd,
         replyToMessageId: replyingTo?.id ?? null,
         replyToSnippet: replyingTo ? { id: replyingTo.id, content: replyingTo.content, sender_id: replyingTo.sender_id, is_deleted: replyingTo.is_deleted } : null,
-        localUrl,
-      });
-      setReplyTarget(null);
-    } catch {
-      toast("Couldn't send the voice message. Please try again.", { variant: "error" });
-      throw new Error("send failed"); // keeps the hook from clearing a preview it couldn't send
-    }
-  });
+      },
+      {
+        onError: (err) => {
+          const msg = err instanceof Error ? err.message : "";
+          toast(
+            msg === "too_large"
+              ? "That file is larger than 25 MB."
+              : /bucket not found/i.test(msg)
+                ? "Photo and file sharing isn't set up on the server yet."
+                : "Couldn't send that. Please try again.",
+            { variant: "error" }
+          );
+        },
+      }
+    );
+  }
 
   // Hold the mic to record. The button stays mounted throughout (the recording UI is an
   // overlay on top), because unmounting the touched element mid-hold would end the gesture.
@@ -371,7 +436,7 @@ export function MessageThread() {
   const matches = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q || !visibleMessages) return [];
-    return visibleMessages.filter((m) => !m.is_deleted && !decodeVoiceNote(m.content) && m.content.toLowerCase().includes(q));
+    return visibleMessages.filter((m) => !m.is_deleted && messagePlainText(m.content).toLowerCase().includes(q));
   }, [visibleMessages, searchQuery]);
   useEffect(() => setMatchIndex(0), [searchQuery]);
   useEffect(() => {
@@ -441,6 +506,31 @@ export function MessageThread() {
     stickyDayHideTimer.current = setTimeout(() => setStickyDayVisible(false), 1200);
   }, []);
 
+  // Stable callbacks for the bubbles. They read the latest state through a ref, so their identity never
+  // changes — which is what lets memo(MessageBubble) skip re-rendering every row on each keystroke/scroll.
+  const latest = useRef({ selectMode, toggleSelected, setReaction: setReaction.mutate, markOpened: markVoiceNoteOpened.mutate, onMutationError });
+  latest.current = { selectMode, toggleSelected, setReaction: setReaction.mutate, markOpened: markVoiceNoteOpened.mutate, onMutationError };
+  const onRowPress = useCallback((id: string) => {
+    if (latest.current.selectMode) latest.current.toggleSelected(id);
+  }, []);
+  const onBubbleLongPress = useCallback((message: MessageWithSender, rect: Rect) => setActiveMessage({ message, anchorRect: rect }), []);
+  const onAddReaction = useCallback(
+    (messageId: string, emoji: string) => latest.current.setReaction({ messageId, emoji }, { onError: latest.current.onMutationError }),
+    []
+  );
+  const onRequestManageReaction = useCallback((messageId: string, anchorRect: Rect, emoji: string) => setReactionPopover({ messageId, anchorRect, emoji }), []);
+  const onVoiceNoteOpened = useCallback((id: string) => latest.current.markOpened(id), []);
+  const listExtraData = useMemo(
+    () => ({ selectMode, selectedIds, currentMatchId, flashMessageId, searchQuery, reactionsByMessage, userStates }),
+    [selectMode, selectedIds, currentMatchId, flashMessageId, searchQuery, reactionsByMessage, userStates]
+  );
+  // FlashList recycles cells by type; mixing photos/voice/text in one pool makes rows re-layout while scrolling.
+  const getItemType = useCallback((item: ThreadItem) => {
+    const m = item.message;
+    const kind = m.is_deleted ? "deleted" : m.content.startsWith("ako-media:") ? "media" : m.content.startsWith("ako-voice-note:") ? "voice" : "text";
+    return item.showDaySeparator ? `${kind}-day` : kind;
+  }, []);
+
   // Keep the keyboard from covering the composer; drop the safe-area padding while it's up.
   const rootStyle = useAnimatedStyle(() => ({ paddingBottom: keyboard.height.value }));
   const composerSafeStyle = useAnimatedStyle(() => ({ paddingBottom: keyboard.height.value > 0 ? 0 : insets.bottom }));
@@ -502,7 +592,8 @@ export function MessageThread() {
           void shareText(
             selectedMessages
               .filter((m) => !m.is_deleted)
-              .map((m) => (decodeVoiceNote(m.content) ? VOICE_NOTE_LABEL : m.content))
+              .map((m) => messagePlainText(m.content) || messagePreview(m.content).label)
+              .filter(Boolean)
               .join("\n")
           )
         }
@@ -668,14 +759,15 @@ export function MessageThread() {
             ref={listRef}
             data={items}
             keyExtractor={(i) => i.key}
-            extraData={{ selectMode, selectedIds, currentMatchId, flashMessageId, searchQuery, reactionsByMessage, userStates }}
+            extraData={listExtraData}
+            getItemType={getItemType}
             maintainVisibleContentPosition={{ autoscrollToBottomThreshold: 0.2, startRenderingFromBottom: true, animateAutoScrollToBottom: true }}
             onStartReached={() => hasMore && !isLoadingOlder && loadOlder()}
             onStartReachedThreshold={0.3}
             onScroll={onScroll}
             scrollEventThrottle={16}
             onViewableItemsChanged={onViewableItemsChanged}
-            viewabilityConfig={{ itemVisiblePercentThreshold: 20 }}
+            viewabilityConfig={VIEWABILITY_CONFIG}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="interactive"
             showsVerticalScrollIndicator={false}
@@ -683,7 +775,7 @@ export function MessageThread() {
             ListHeaderComponent={isLoadingOlder ? <Text className="py-2 text-center text-xs text-ink-muted">Loading earlier messages…</Text> : null}
             renderItem={({ item, index }) => {
               const m = item.message;
-              const reactions = m.is_deleted ? [] : reactionsByMessage?.[m.id] ?? [];
+              const reactions = m.is_deleted ? EMPTY_REACTIONS : (reactionsByMessage?.[m.id] ?? EMPTY_REACTIONS);
               const myReaction = reactions.find((r) => r.user_id === user?.id)?.emoji ?? null;
               const animateIn = hasLoadedRef.current && !seenKeysRef.current.has(item.key);
               return (
@@ -703,7 +795,7 @@ export function MessageThread() {
                     myAvatarUrl={profile?.avatar_url}
                     myName="You"
                     voiceNoteOpenedAt={userStates?.[m.id]?.opened_once_at}
-                    onVoiceNoteOpened={(id) => markVoiceNoteOpened.mutate(id)}
+                    onVoiceNoteOpened={onVoiceNoteOpened}
                     reactions={reactions}
                     myReaction={myReaction}
                     isSelected={selectedIds.has(m.id)}
@@ -711,12 +803,12 @@ export function MessageThread() {
                     isHighlighted={m.id === currentMatchId || m.id === flashMessageId}
                     searchQuery={searchQuery}
                     animateIn={animateIn}
-                    onRowPress={(id) => selectMode && toggleSelected(id)}
-                    onLongPress={(message, rect) => setActiveMessage({ message, anchorRect: rect })}
+                    onRowPress={onRowPress}
+                    onLongPress={onBubbleLongPress}
                     onSwipeReply={startReply}
                     onScrollToMessage={scrollToMessage}
-                    onAddReaction={(messageId, emoji) => setReaction.mutate({ messageId, emoji }, { onError: onMutationError })}
-                    onRequestManageReaction={(messageId, anchorRect, emoji) => setReactionPopover({ messageId, anchorRect, emoji })}
+                    onAddReaction={onAddReaction}
+                    onRequestManageReaction={onRequestManageReaction}
                   />
                 </View>
               );
@@ -752,9 +844,7 @@ export function MessageThread() {
             <View className="flex-row items-start gap-2 px-4 pt-2.5">
               <View className="min-w-0 flex-1 border-l-2 border-accent py-0.5 pl-2">
                 <Text className="text-xs font-medium text-accent">Replying to {replyTarget.sender_id === user?.id ? "yourself" : (otherParticipant?.display_name ?? "them")}</Text>
-                <Text numberOfLines={1} className="text-xs text-ink-muted">
-                  {decodeVoiceNote(replyTarget.content) ? VOICE_NOTE_LABEL : replyTarget.content}
-                </Text>
+                <MessagePreviewLine content={replyTarget.content} className="text-xs text-ink-muted" />
               </View>
               <Pressable onPress={() => setReplyTarget(null)} accessibilityRole="button" accessibilityLabel="Cancel reply" hitSlop={10} className="shrink-0 p-1">
                 <Icon as={X} size={16} className="text-ink-muted" />
@@ -764,37 +854,50 @@ export function MessageThread() {
 
           {/* ALWAYS mounted — the mic button below is the touch target for the whole
               hold-to-record gesture, so it must never unmount mid-hold. */}
-          <View className="flex-row items-end gap-2 px-4 py-3" pointerEvents={recordingOverlayActive ? "none" : "auto"} accessibilityElementsHidden={recordingOverlayActive}>
-            <Pressable
-              onPress={() => {
-                const switchingToKeyboard = emojiPickerTarget?.mode === "input";
-                setEmojiPickerTarget(switchingToKeyboard ? null : { mode: "input" });
-                if (switchingToKeyboard) requestAnimationFrame(() => inputRef.current?.focus());
-                else inputRef.current?.blur(); // stop the OS keyboard fighting our panel for space
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={emojiPickerTarget?.mode === "input" ? "Switch to keyboard" : "Add emoji"}
-              className="shrink-0 pb-2.5"
-            >
-              <Icon as={emojiPickerTarget?.mode === "input" ? KeyboardIcon : Smile} size={22} className="text-ink-muted" />
-            </Pressable>
+          <View className="flex-row items-end gap-2 px-3 py-2.5" pointerEvents={recordingOverlayActive ? "none" : "auto"} accessibilityElementsHidden={recordingOverlayActive}>
+            {/* One rounded pill, like WhatsApp: emoji · message · attach · camera. */}
+            <View className="min-w-0 flex-1 flex-row items-end rounded-3xl border border-border bg-surface pl-3 pr-1.5">
+              <Pressable
+                onPress={() => {
+                  const switchingToKeyboard = emojiPickerTarget?.mode === "input";
+                  setEmojiPickerTarget(switchingToKeyboard ? null : { mode: "input" });
+                  if (switchingToKeyboard) requestAnimationFrame(() => inputRef.current?.focus());
+                  else inputRef.current?.blur(); // stop the OS keyboard fighting our panel for space
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={emojiPickerTarget?.mode === "input" ? "Switch to keyboard" : "Add emoji"}
+                hitSlop={6}
+                className="shrink-0 pb-[11px] pr-2"
+              >
+                <Icon as={emojiPickerTarget?.mode === "input" ? KeyboardIcon : Smile} size={23} className="text-ink-muted" />
+              </Pressable>
 
-            <TextInput
-              ref={inputRef}
-              value={content}
-              onChangeText={setContent}
-              onContentSizeChange={(e) => setInputHeight(e.nativeEvent.contentSize.height)}
-              onFocus={() => setEmojiPickerTarget((prev) => (prev?.mode === "input" ? null : prev))}
-              maxLength={2000}
-              multiline
-              placeholder="Message…"
-              placeholderTextColor={colors.inkMuted}
-              selectionColor={colors.accent}
-              cursorColor={colors.accent}
-              textAlignVertical="center"
-              className="min-w-0 flex-1 rounded-3xl border border-border bg-surface px-4 py-2.5 text-base text-ink"
-              style={{ fontFamily: "Inter_400Regular", maxHeight: 120, height: Math.min(Math.max(inputHeight + 22, 44), 120) }}
-            />
+              <TextInput
+                ref={inputRef}
+                value={content}
+                onChangeText={setContent}
+                onContentSizeChange={(e) => setInputHeight(e.nativeEvent.contentSize.height)}
+                onFocus={() => setEmojiPickerTarget((prev) => (prev?.mode === "input" ? null : prev))}
+                maxLength={2000}
+                multiline
+                placeholder="Message"
+                placeholderTextColor={colors.inkMuted}
+                selectionColor={colors.accent}
+                cursorColor={colors.accent}
+                textAlignVertical="center"
+                className="min-w-0 flex-1 py-2.5 text-base text-ink"
+                style={{ fontFamily: "Inter_400Regular", maxHeight: 120, height: Math.min(Math.max(inputHeight + 20, 42), 120) }}
+              />
+
+              <Pressable onPress={() => setAttachOpen(true)} accessibilityRole="button" accessibilityLabel="Attach" hitSlop={6} className="shrink-0 px-2 pb-[11px]">
+                <Icon as={Paperclip} size={22} className="text-ink-muted" />
+              </Pressable>
+              {!content.trim() ? (
+                <Pressable onPress={() => void openPicker("camera")} accessibilityRole="button" accessibilityLabel="Take a photo" hitSlop={6} className="shrink-0 px-2 pb-[11px]">
+                  <Icon as={Camera} size={22} className="text-ink-muted" />
+                </Pressable>
+              ) : null}
+            </View>
 
             {content.trim() ? (
               <Pressable
@@ -802,14 +905,14 @@ export function MessageThread() {
                 disabled={sendMessage.isPending}
                 accessibilityRole="button"
                 accessibilityLabel="Send"
-                className={`shrink-0 rounded-full bg-accent p-2.5 active:bg-accent-hover ${sendMessage.isPending ? "opacity-50" : ""}`}
+                className={`h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent active:bg-accent-hover ${sendMessage.isPending ? "opacity-50" : ""}`}
               >
-                <Icon as={Send} size={18} className="text-white" />
+                <Icon as={Send} size={20} className="text-white" />
               </Pressable>
             ) : (
               <GestureDetector gesture={micGesture}>
-                <View accessibilityRole="button" accessibilityLabel="Hold to record a voice message" className="shrink-0 rounded-full bg-accent p-2.5">
-                  <Icon as={Mic} size={18} className="text-white" />
+                <View accessibilityRole="button" accessibilityLabel="Hold to record a voice message" className="h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent">
+                  <Icon as={Mic} size={20} className="text-white" />
                 </View>
               </GestureDetector>
             )}
@@ -834,6 +937,8 @@ export function MessageThread() {
                   onCancel={voiceRecorder.cancelRecording}
                   onTogglePause={voiceRecorder.togglePauseResume}
                   onStop={voiceRecorder.stopToPreview}
+                  onSend={voiceRecorder.stopAndSend}
+                  onPreview={voiceRecorder.stopToPreview}
                 />
               ) : null}
               {phase === "preview" && voiceRecorder.preview ? (
@@ -873,6 +978,17 @@ export function MessageThread() {
         </Animated.View>
       )}
 
+      {attachOpen ? (
+        <AttachSheet
+          onClose={() => setAttachOpen(false)}
+          onGallery={() => void openPicker("gallery")}
+          onCamera={() => void openPicker("camera")}
+          onDocument={() => void openPicker("document")}
+        />
+      ) : null}
+
+      {mediaDraft ? <MediaComposeModal kind={mediaDraft.kind} files={mediaDraft.files} onClose={() => setMediaDraft(null)} onSend={handleSendMedia} /> : null}
+
       {headerMenuOpen ? (
         <DropdownMenu
           anchorRef={headerMenuRef}
@@ -898,11 +1014,11 @@ export function MessageThread() {
           onReact={(emoji) => setReaction.mutate({ messageId: activeMessage.message.id, emoji }, { onError: onMutationError })}
           onRequestRemoveReaction={() => activeMyReaction && setReactionPopover({ messageId: activeMessage.message.id, anchorRect: activeMessage.anchorRect, emoji: activeMyReaction })}
           onOpenFullPicker={() => setEmojiPickerTarget({ mode: "reaction", messageId: activeMessage.message.id })}
-          onCopy={() => void Clipboard.setStringAsync(activeMessage.message.content).then(() => toast("Copied."))}
+          onCopy={() => void Clipboard.setStringAsync(messagePlainText(activeMessage.message.content)).then(() => toast("Copied."))}
           onDeletePress={() =>
             setDeleteTarget({ messageIds: [activeMessage.message.id], allowEveryone: activeMessage.message.sender_id === user?.id && !activeMessage.message.is_deleted })
           }
-          onShare={() => void shareText(decodeVoiceNote(activeMessage.message.content) ? VOICE_NOTE_LABEL : activeMessage.message.content)}
+          onShare={() => void shareText(messagePlainText(activeMessage.message.content) || messagePreview(activeMessage.message.content).label)}
           onForward={() => setForwardMessages([{ content: activeMessage.message.content }])}
           onReply={() => startReply(activeMessage.message)}
           onToggleStar={() => toggleStar.mutate({ messageId: activeMessage.message.id, active: !activeState?.starred_at }, { onError: onMutationError })}

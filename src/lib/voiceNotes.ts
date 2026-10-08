@@ -67,9 +67,9 @@ export function decodeVoiceNote(content: string): VoiceNotePayload | null {
   }
 }
 
-/** Plain-text stand-in for a voice note wherever raw text is expected
- *  (reply-to quote snippets, search matching, forwarding preview). */
-export const VOICE_NOTE_LABEL = "Voice note";
+/** What a voice message is called everywhere it is named in the UI (WhatsApp: "Voice message").
+ *  Plain-text stand-in wherever raw text is expected — reply quotes, forwarding previews. */
+export const VOICE_NOTE_LABEL = "Voice message";
 
 /** mm:ss formatting shared by the recorder UI and playback bubble. */
 export function formatVoiceDuration(totalSeconds: number): string {

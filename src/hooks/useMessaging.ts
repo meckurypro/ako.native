@@ -5,7 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "./useAuth";
 import { useSound } from "./useSound";
-import { encodeVoiceNote } from "../lib/voiceNotes";
+import { CHAT_MEDIA_BUCKET, chatFileName, decodeMedia, encodeMedia, safeStorageName } from "../lib/chatMedia";
+import { decodeVoiceNote, encodeVoiceNote } from "../lib/voiceNotes";
 import { upsertMessageUserState } from "./useMessageReactions";
 import { fileExtension, type LocalFile } from "../lib/localFile";
 import { uploadLocalFile } from "../lib/storageUpload";
@@ -532,7 +533,7 @@ interface SendMessageInput {
  *  loaded `limit` variant — used by the optimistic-update helpers
  *  below so a sent message shows up regardless of which page window
  *  is currently mounted. */
-function getMessagesQueries(queryClient: ReturnType<typeof useQueryClient>, conversationId: string) {
+export function getMessagesQueries(queryClient: ReturnType<typeof useQueryClient>, conversationId: string) {
   return queryClient.getQueriesData<MessageWithSender[]>({ queryKey: ["messages", conversationId], exact: false });
 }
 
@@ -693,7 +694,7 @@ export function useSendVoiceNote(conversationId: string) {
       // whether the OTHER participant (not the uploader) can read this
       // file back — see the private_audio_bucket_with_participant_
       // read_rls migration.
-      const path = `${user.id}/dm/${conversationId}/${Date.now()}.${ext}`;
+      const path = `${user.id}/dm/${conversationId}/${Date.now()}-${chatFileName("PTT", ext)}`;
       await uploadLocalFile("audio", path, file);
 
       // Stores the PATH, not a URL — the bucket is private, so there's
@@ -858,6 +859,36 @@ export function useBulkDeleteMessages(conversationId: string) {
 }
 
 /**
+ * Re-homes a message's stored files (chat photos/documents, voice messages) into the target
+ * conversation's folder so the new recipient can read them. Text passes through untouched.
+ * A failed media copy throws (the forward shouldn't silently send a broken photo); a failed
+ * voice copy falls back to the original content, which is what forwarding did before.
+ */
+async function contentForConversation(content: string, targetConversationId: string, userId: string): Promise<string> {
+  const media = decodeMedia(content);
+  if (media) {
+    const items = await Promise.all(
+      media.items.map(async (item, i) => {
+        if (!item.path) return item;
+        const dest = `${userId}/dm/${targetConversationId}/${Date.now()}-${i}-${safeStorageName(item.name)}`;
+        const { error } = await supabase.storage.from(CHAT_MEDIA_BUCKET).copy(item.path, dest);
+        if (error) throw error;
+        return { ...item, path: dest };
+      })
+    );
+    return encodeMedia({ ...media, items });
+  }
+
+  const voice = decodeVoiceNote(content);
+  if (voice?.path && !voice.viewOnce) {
+    const dest = `${userId}/dm/${targetConversationId}/${Date.now()}-${voice.path.split("/").pop() ?? "voice.m4a"}`;
+    const { error } = await supabase.storage.from("audio").copy(voice.path, dest);
+    if (!error) return encodeVoiceNote({ ...voice, path: dest });
+  }
+  return content;
+}
+
+/**
  * Forwards one or more messages' content into one or more OTHER
  * conversations, as brand-new messages sent by the current user right
  * now — this is the in-app "share to another user" path (as opposed to
@@ -882,13 +913,22 @@ export function useForwardMessages() {
       if (!user) throw new Error("Not signed in");
       if (!messages.length || !targetConversationIds.length) return;
 
-      const rows = targetConversationIds.flatMap((conversation_id) =>
-        messages.map((m) => ({
-          conversation_id,
-          sender_id: user.id,
-          content: m.content,
-        }))
-      );
+      // Photos, documents and voice messages live in storage under the ORIGINAL conversation's
+      // folder, which the new recipient can't read — so each forward copies the files into the
+      // target conversation's own folder and points the forwarded message at the copies.
+      const rows = (
+        await Promise.all(
+          targetConversationIds.map((conversation_id) =>
+            Promise.all(
+              messages.map(async (m) => ({
+                conversation_id,
+                sender_id: user.id,
+                content: await contentForConversation(m.content, conversation_id, user.id),
+              }))
+            )
+          )
+        )
+      ).flat();
       const { error } = await supabase.from("messages").insert(rows);
       if (error) throw error;
 
