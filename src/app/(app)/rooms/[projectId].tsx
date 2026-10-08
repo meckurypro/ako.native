@@ -1,6 +1,6 @@
 // src/app/(app)/rooms/[projectId].tsx
-import { ScreenPlaceholder } from "@/components/ui/ScreenPlaceholder";
+import { Room } from "@/screens/Room";
 
-export default function Screen() {
-  return <ScreenPlaceholder name="Room" step={9} />;
+export default function RoomRoute() {
+  return <Room />;
 }
