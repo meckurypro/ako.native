@@ -1,6 +1,6 @@
 // src/app/(app)/notifications.tsx
-import { ScreenPlaceholder } from "@/components/ui/ScreenPlaceholder";
+import { Notifications } from "@/screens/Notifications";
 
-export default function Screen() {
-  return <ScreenPlaceholder name="Notifications" step={11} />;
+export default function NotificationsRoute() {
+  return <Notifications />;
 }

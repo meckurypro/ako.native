@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AdvancedSection } from "@/components/settings/AdvancedSection";
 import { AppearanceSection } from "@/components/settings/AppearanceSection";
+import { NotificationsSection } from "@/components/settings/NotificationsSection";
 import { PrivacySection } from "@/components/settings/PrivacySection";
 import { ProfileSection } from "@/components/settings/ProfileSection";
 import { SecuritySection } from "@/components/settings/SecuritySection";
@@ -24,8 +25,8 @@ import { useOwnProfile } from "@/hooks/useOwnProfile";
 import { removeSavedAccount } from "@/lib/accountSessions";
 import { APP_URL } from "@/lib/config";
 
-export type SettingsSectionId = "profile" | "security" | "privacy" | "appearance" | "sound" | "advanced";
-const SECTION_IDS: SettingsSectionId[] = ["profile", "security", "privacy", "appearance", "sound", "advanced"];
+export type SettingsSectionId = "profile" | "security" | "privacy" | "notifications" | "appearance" | "sound" | "advanced";
+const SECTION_IDS: SettingsSectionId[] = ["profile", "security", "privacy", "notifications", "appearance", "sound", "advanced"];
 
 function asSectionId(value: string | string[] | undefined): SettingsSectionId | null {
   const raw = Array.isArray(value) ? value[0] : value;
@@ -71,6 +72,7 @@ export function Settings() {
           <ProfileSection open={openSection === "profile"} onToggle={() => toggle("profile")} />
           <SecuritySection open={openSection === "security"} onToggle={() => toggle("security")} />
           <PrivacySection open={openSection === "privacy"} onToggle={() => toggle("privacy")} />
+          <NotificationsSection open={openSection === "notifications"} onToggle={() => toggle("notifications")} />
           <AppearanceSection open={openSection === "appearance"} onToggle={() => toggle("appearance")} />
           <SoundSection open={openSection === "sound"} onToggle={() => toggle("sound")} />
           <AdvancedSection open={openSection === "advanced"} onToggle={() => toggle("advanced")} />

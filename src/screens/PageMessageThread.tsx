@@ -15,6 +15,7 @@ import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useFeatureFlag } from "@/hooks/useFeatureFlags";
 import { useMarkPageThreadRead, usePageThread, useSendPageMessage } from "@/hooks/usePageInbox";
+import { useActiveConversationPush } from "@/hooks/useActiveConversationPush";
 import { dayKeyFor, formatMessageDayLabel } from "@/lib/messageTime";
 import { useTheme } from "@/theme/ThemeProvider";
 
@@ -23,6 +24,7 @@ type Item = { key: string; message: PageMessage; showDay: boolean; dayLabel: str
 
 export function PageMessageThread() {
   const { conversationId } = useLocalSearchParams<{ conversationId: string }>();
+  useActiveConversationPush(conversationId);
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const keyboard = useAnimatedKeyboard({ isStatusBarTranslucentAndroid: true });

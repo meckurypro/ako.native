@@ -1,8 +1,9 @@
 // File: src/lib/supabase.ts
 import "react-native-url-polyfill/auto";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient } from "@supabase/supabase-js";
 import { AppState, Platform } from "react-native";
+
+import { encryptedAuthStorage } from "./secureStorage";
 
 // Expo inlines EXPO_PUBLIC_* at build time (the native equivalent of the web
 // app's import.meta.env.VITE_*). Only the anon key ever ships in the client —
@@ -18,7 +19,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    storage: AsyncStorage,
+    // Session tokens are AES-encrypted at rest (key in Keychain/Keystore) — see lib/secureStorage.ts.
+    storage: encryptedAuthStorage,
     autoRefreshToken: true,
     persistSession: true,
     // No URL-based session on native; OAuth/magic links are handled through

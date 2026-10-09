@@ -1,8 +1,9 @@
 // src/lib/calendar.ts
-// Builds a standalone .ics file and opens the system share sheet so the user
-// can add it to Google Calendar, Apple Calendar or Outlook — no backend, API
-// key or calendar permission needed (every calendar app imports .ics). The web
-// build triggered a browser download; native writes to the cache and shares.
+// Add-to-calendar, least-privilege: the OS's OWN "new event" screen (addToCalendar) — the app never reads or
+// writes the calendar itself, so it needs no calendar permission (and the Android READ/WRITE_CALENDAR
+// permissions that expo-calendar declares are blocked in app.json). If that screen can't open, fall back to a
+// standalone .ics file + the system share sheet, which every calendar app can import (shareIcsEvent).
+import { createEventInCalendarAsync } from "expo-calendar/legacy";
 import { randomUUID } from "expo-crypto";
 import { File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
@@ -63,4 +64,22 @@ export async function shareIcsEvent(input: IcsEventInput): Promise<void> {
     UTI: "public.calendar-event",
     dialogTitle: "Add to calendar",
   });
+}
+
+export type AddToCalendarResult = "saved" | "canceled" | "shared";
+
+/**
+ * Opens the system add-event screen pre-filled. "saved"/"canceled" are iOS-only signals — Android doesn't
+ * report what the user did there, so it always resolves "saved" (never claim more than we know in the UI).
+ */
+export async function addToCalendar(input: IcsEventInput): Promise<AddToCalendarResult> {
+  const startDate = new Date(input.startIso);
+  const endDate = new Date(startDate.getTime() + (input.durationHours ?? 2) * 60 * 60 * 1000);
+  try {
+    const result = await createEventInCalendarAsync({ title: input.title, notes: input.description, location: input.location, startDate, endDate });
+    return result.action === "canceled" ? "canceled" : "saved";
+  } catch {
+    await shareIcsEvent(input);
+    return "shared";
+  }
 }

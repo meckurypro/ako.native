@@ -3,6 +3,7 @@ import { randomUUID } from "expo-crypto";
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { notifyMessagePush } from "../lib/pushNotify";
 import { useAuth } from "./useAuth";
 import { useSound } from "./useSound";
 import { CHAT_MEDIA_BUCKET, chatFileName, decodeMedia, encodeMedia, safeStorageName } from "../lib/chatMedia";
@@ -559,6 +560,7 @@ export function useSendMessage(conversationId: string) {
         .select("id, conversation_id, sender_id, content, created_at, delivered_at, read_at, reply_to_message_id, is_deleted")
         .single();
       if (error) throw error;
+      notifyMessagePush(data.id);
 
       // Replying accepts a pending message request — moves this
       // conversation out of MY Archive. No-ops for a normal chat, and
@@ -715,6 +717,7 @@ export function useSendVoiceNote(conversationId: string) {
         .select("id, conversation_id, sender_id, content, created_at, delivered_at, read_at, reply_to_message_id, is_deleted")
         .single();
       if (error) throw error;
+      notifyMessagePush(data.id);
 
       // Mirrors useSendMessage's request-accept side effect — a voice
       // note reply should move a pending request out of Archive too.
@@ -929,8 +932,9 @@ export function useForwardMessages() {
           )
         )
       ).flat();
-      const { error } = await supabase.from("messages").insert(rows);
+      const { data: inserted, error } = await supabase.from("messages").insert(rows).select("id");
       if (error) throw error;
+      for (const row of inserted ?? []) notifyMessagePush(row.id);
 
       // Forwarding into a conversation that was a pending request (rare,
       // but possible if forwarding into an old thread) should accept it

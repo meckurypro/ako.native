@@ -40,7 +40,7 @@ import { useMarkProjectSeen } from "@/hooks/useMarkProjectSeen";
 import { useSmartBack } from "@/hooks/useSmartBack";
 import { useEventDetails, useGigDetails, useGigSamples, useGigsFeaturingProject, useMeetingDetails } from "@/hooks/useProjectTypeDetails";
 import { PROJECT_TYPE_LABELS, useProjectDetail, useSimilarProjects } from "@/hooks/useProjects";
-import { shareIcsEvent } from "@/lib/calendar";
+import { addToCalendar } from "@/lib/calendar";
 import { pageModeLabel } from "@/lib/pageRoles";
 import { getProjectUrl } from "@/lib/projectLinks";
 
@@ -148,7 +148,7 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
                     {eventDetails.event_date ? (
                       <Pressable
                         onPress={() =>
-                          void shareIcsEvent({
+                          void addToCalendar({
                             title: project.title,
                             description: project.description ?? undefined,
                             location: eventDetails.location_value || undefined,

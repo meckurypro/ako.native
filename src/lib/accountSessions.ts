@@ -5,16 +5,19 @@
 // Nothing here talks to the server; see hooks/useAccountSwitcher.ts
 // for the mutations that call supabase.auth on top of this.
 //
-// Storing refresh tokens in localStorage is not a new risk this
-// introduces — it's exactly what @supabase/supabase-js already does
-// for the single active session by default. This just keeps more than
-// one around instead of overwriting the previous one on sign-in.
+// On the web, refresh tokens in localStorage match what supabase-js does for
+// the active session. On native that's not good enough: these are bearer
+// credentials for EVERY saved account, so they're AES-encrypted at rest
+// (lib/secureStorage.ts; key in the Keychain/Keystore). Older plain-text values
+// are migrated the first time they're read.
 //
 // Deliberately NOT React state / a hook of its own: reads and writes
 // are synchronous and cheap, and the couple of places that need to
 // react to changes (AccountSwitcher's list) just re-read after a
 // mutation succeeds rather than needing a subscription.
 // ============================================================
+
+import { decryptSync, encryptSync, isEncrypted } from "./secureStorage";
 
 const STORAGE_KEY = "ako.saved_accounts.v1";
 
@@ -27,9 +30,22 @@ export interface SavedAccount {
   refresh_token: string;
 }
 
+/** Decrypts a stored value; a legacy plain-text one is returned as-is and immediately re-saved encrypted. */
+function readProtected(key: string, stored: string): string | null {
+  if (isEncrypted(stored)) return decryptSync(stored);
+  localStorage.setItem(key, encryptSync(stored));
+  return stored;
+}
+
+function writeAccounts(accounts: SavedAccount[]): void {
+  localStorage.setItem(STORAGE_KEY, encryptSync(JSON.stringify(accounts)));
+}
+
 export function listSavedAccounts(): SavedAccount[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return [];
+    const raw = readProtected(STORAGE_KEY, stored);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
@@ -43,12 +59,12 @@ export function listSavedAccounts(): SavedAccount[] {
 export function saveAccount(account: SavedAccount): void {
   const accounts = listSavedAccounts().filter((a) => a.user_id !== account.user_id);
   accounts.push(account);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(accounts));
+  writeAccounts(accounts);
 }
 
 export function removeSavedAccount(userId: string): void {
   const accounts = listSavedAccounts().filter((a) => a.user_id !== userId);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(accounts));
+  writeAccounts(accounts);
 }
 
 export function getSavedAccount(userId: string): SavedAccount | undefined {
@@ -70,7 +86,7 @@ export function updateSavedAccountTokens(
   const idx = accounts.findIndex((a) => a.user_id === userId);
   if (idx === -1) return;
   accounts[idx] = { ...accounts[idx], ...tokens };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(accounts));
+  writeAccounts(accounts);
 }
 
 // ------------------------------------------------------------
@@ -90,17 +106,18 @@ export function updateSavedAccountTokens(
 const PENDING_ADD_KEY = "ako.pending_add_account.v1";
 
 export function setPendingAddAccount(account: SavedAccount): void {
-  localStorage.setItem(PENDING_ADD_KEY, JSON.stringify(account));
+  localStorage.setItem(PENDING_ADD_KEY, encryptSync(JSON.stringify(account)));
 }
 
 // Reads and clears in one step — this is only ever meant to be
 // consumed once, by the next SIGNED_IN event after it's set.
 export function takePendingAddAccount(): SavedAccount | null {
   try {
-    const raw = localStorage.getItem(PENDING_ADD_KEY);
+    const stored = localStorage.getItem(PENDING_ADD_KEY);
     localStorage.removeItem(PENDING_ADD_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as SavedAccount;
+    if (!stored) return null;
+    const raw = isEncrypted(stored) ? decryptSync(stored) : stored;
+    return raw ? (JSON.parse(raw) as SavedAccount) : null;
   } catch {
     return null;
   }

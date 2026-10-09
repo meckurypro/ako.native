@@ -22,7 +22,11 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon-foreground.png",
         "backgroundColor": "#0A1915"
-      }
+      },
+      "blockedPermissions": [
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR"
+      ]
     },
     "plugins": [
       "expo-router",
@@ -32,8 +36,48 @@
         "expo-camera",
         {
           "cameraPermission": "Akọ uses the camera to scan event tickets at the door and to take photos you send in chats.",
-          "microphonePermission": false,
-          "recordAudioAndroid": false
+          "microphonePermission": "Akọ uses the microphone to record voice messages you choose to send.",
+          "recordAudioAndroid": true
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notifications/notification-icon.png",
+          "color": "#3D5A45",
+          "defaultChannel": "default",
+          "sounds": [
+            "./assets/notifications/ako_message.wav",
+            "./assets/notifications/ako_activity.wav"
+          ]
+        }
+      ],
+      [
+        "expo-sqlite",
+        {
+          "useSQLCipher": true
+        }
+      ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Akọ lets you add events and meetings you choose to your calendar.",
+          "remindersPermission": false
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Akọ uses the microphone to record voice messages you choose to send.",
+          "recordAudioAndroid": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Akọ lets you choose photos and videos from your library to share in posts, chats and projects.",
+          "cameraPermission": "Akọ uses the camera to scan event tickets at the door and to take photos you send in chats.",
+          "microphonePermission": "Akọ uses the microphone to record voice messages you choose to send."
         }
       ]
     ],

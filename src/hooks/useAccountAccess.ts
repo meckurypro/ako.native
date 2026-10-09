@@ -15,6 +15,8 @@
 // for the per-account approval state.
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
+import { unregisterPushToken } from "../lib/push";
+import { wipeSecureCache } from "../lib/secureDb";
 import { useAuth } from "./useAuth";
 
 export type AccountStatus = "pending" | "approved" | "declined" | "suspended";
@@ -75,6 +77,9 @@ export function useSignOut() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
+      // Detach this device from the account while the session can still satisfy RLS (best-effort, time-boxed).
+      await unregisterPushToken();
+      await wipeSecureCache(); // cached lists belong to the account that is leaving
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
     },

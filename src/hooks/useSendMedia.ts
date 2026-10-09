@@ -22,6 +22,7 @@ import {
 } from "../lib/chatMedia";
 import { fileExtension, type LocalFile } from "../lib/localFile";
 import { supabase } from "../lib/supabase";
+import { notifyMessagePush } from "../lib/pushNotify";
 import { uploadLocalFile } from "../lib/storageUpload";
 import { useAuth } from "./useAuth";
 import { getMessagesQueries, type MessageWithSender } from "./useMessaging";
@@ -106,6 +107,7 @@ export function useSendMedia(conversationId: string) {
         .select("id, conversation_id, sender_id, content, created_at, delivered_at, read_at, reply_to_message_id, is_deleted")
         .single();
       if (error) throw error;
+      notifyMessagePush(data.id);
 
       // Replying with media accepts a pending message request, same as sending text.
       const { error: acceptError } = await supabase

@@ -86,6 +86,7 @@ import {
 import { useUnseenPosts } from "@/hooks/useUnseenPosts";
 import { useSendMedia } from "@/hooks/useSendMedia";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
+import { useActiveConversationPush } from "@/hooks/useActiveConversationPush";
 import { MAX_MEDIA_BYTES, messagePlainText, messagePreview, type MediaKind } from "@/lib/chatMedia";
 import { haptics } from "@/lib/haptics";
 import type { LocalFile } from "@/lib/localFile";
@@ -150,6 +151,7 @@ type ThreadItem = { key: string; message: MessageWithSender; showDaySeparator: b
 
 export function MessageThread() {
   const { conversationId, draftMessage } = useLocalSearchParams<{ conversationId: string; draftMessage?: string }>();
+  useActiveConversationPush(conversationId);
   const { user, profile } = useAuth();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
