@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "595480640282",
+    "project_id": "ako-by-meckury",
+    "storage_bucket": "ako-by-meckury.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:595480640282:android:cc0e6088bb416d8f694aa3",
+        "android_client_info": {
+          "package_name": "com.meckurypro.ako"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBvR107OsnbePlq5LQnliLq1WOfAdHC7mc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
