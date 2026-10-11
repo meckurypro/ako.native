@@ -1,0 +1,74 @@
+# .github/workflows/eas-update.yml
+# Publishes an over-the-air (OTA) update to EAS whenever JS/UI changes land on main.
+# Installed APKs (preview profile, channel "preview") download it next time they open.
+# Native changes (new native package, plugin or app.json native field) change the
+# fingerprint, so those need a new build: run "npm run build:apk".
+name: EAS Update
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "scripts/**"
+      - ".gitignore"
+      - "LICENSE"
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: "EAS channel to publish to"
+        type: choice
+        default: preview
+        options: [preview, production]
+
+concurrency:
+  group: eas-update-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  update:
+    name: Typecheck and publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CHANNEL: ${{ inputs.channel || 'preview' }}
+      COMMIT_MESSAGE: ${{ github.event.head_commit.message || 'Manual update' }}
+    steps:
+      - name: Check for EXPO_TOKEN
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::EXPO_TOKEN secret is missing (repo Settings > Secrets and variables > Actions)"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Publish update
+        run: |
+          MSG="$(printf '%s' "$COMMIT_MESSAGE" | head -n 1 | cut -c1-120)"
+          eas update \
+            --channel "$CHANNEL" \
+            --environment "$CHANNEL" \
+            --message "$MSG" \
+            --non-interactive
