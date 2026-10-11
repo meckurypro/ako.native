@@ -15,7 +15,8 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.meckurypro.ako"
+      "bundleIdentifier": "com.meckurypro.ako",
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "package": "com.meckurypro.ako",
@@ -44,7 +45,8 @@
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
-      ]
+      ],
+      "googleServicesFile": "./google-services.json"
     },
     "plugins": [
       "expo-router",
