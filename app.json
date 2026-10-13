@@ -37,13 +37,6 @@
         "android.permission.WRITE_CALENDAR",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.READ_CALENDAR",
-        "android.permission.WRITE_CALENDAR",
-        "android.permission.MODIFY_AUDIO_SETTINGS",
-        "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
       ],
       "googleServicesFile": "./google-services.json"
@@ -109,15 +102,14 @@
     },
     "updates": {
       "checkAutomatically": "ON_LOAD",
-      "fallbackToCacheTimeout": 0,
-      "url": "https://u.expo.dev/a847a67c-7557-4ae5-ba92-a7265a747aa6"
+      "fallbackToCacheTimeout": 0
     },
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "a847a67c-7557-4ae5-ba92-a7265a747aa6"
+        "projectId": "ebe5d175-1ab8-47d2-85c8-099e5eea4575"
       }
     },
-    "owner": "emmyblisschuks"
+    "owner": "meckury"
   }
 }
