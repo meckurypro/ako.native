@@ -1,4 +1,5 @@
 // src/components/ui/Avatar.tsx
+import { useState } from "react";
 import { View } from "react-native";
 
 import { Image } from "./styled";
@@ -10,12 +11,9 @@ interface AvatarProps {
   size?: "sm" | "md" | "lg" | "xl";
 }
 
-const BOX = {
-  sm: "w-8 h-8",
-  md: "w-10 h-10",
-  xl: "w-16 h-16",
-  lg: "w-20 h-20",
-} as const;
+// Pixel sizes (w-8 / w-10 / w-16 / w-20). Applied as inline style so the avatar
+// can never stretch with its row, whatever the image's intrinsic size is.
+const PX = { sm: 32, md: 40, xl: 64, lg: 80 } as const;
 
 const TEXT = {
   sm: "text-xs",
@@ -25,6 +23,9 @@ const TEXT = {
 } as const;
 
 export function Avatar({ src, name, size = "md" }: AvatarProps) {
+  const [failed, setFailed] = useState(false);
+  const px = PX[size];
+  const box = { width: px, height: px, borderRadius: px / 2, flexShrink: 0, overflow: "hidden" } as const;
   const initials = name
     .split(" ")
     .map((w) => w[0])
@@ -32,21 +33,24 @@ export function Avatar({ src, name, size = "md" }: AvatarProps) {
     .join("")
     .toUpperCase();
 
-  if (src) {
+  if (src && !failed) {
     return (
-      <Image
-        source={{ uri: src }}
-        accessibilityLabel={name}
-        contentFit="cover"
-        transition={120}
-        recyclingKey={src}
-        className={`${BOX[size]} rounded-full shrink-0`}
-      />
+      <View style={box}>
+        <Image
+          source={{ uri: src }}
+          accessibilityLabel={name}
+          contentFit="cover"
+          transition={120}
+          recyclingKey={src}
+          onError={() => setFailed(true)}
+          style={{ width: px, height: px }}
+        />
+      </View>
     );
   }
 
   return (
-    <View className={`${BOX[size]} rounded-full bg-accent-soft items-center justify-center shrink-0`}>
+    <View style={box} className="bg-accent-soft items-center justify-center">
       <Text className={`${TEXT[size]} font-medium text-accent`}>{initials}</Text>
     </View>
   );
