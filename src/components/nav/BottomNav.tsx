@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
 
 import { Text } from "@/components/ui/Text";
+import { useIsRestricted } from "@/hooks/useAccountAccess";
 import { useAuth } from "@/hooks/useAuth";
 import { useUnreadConversationCount } from "@/hooks/useMessaging";
 import { usePageInboxUnreadCount } from "@/hooks/usePageInbox";
@@ -61,6 +62,7 @@ export function BottomNav() {
   const { resolvedTheme } = useTheme();
 
   const { user, profile } = useAuth();
+  const restricted = useIsRestricted();
   const { data: identity } = useActiveIdentity();
   const activePageId = identity?.mode === "page" ? identity.page.id : undefined;
   const personalUnread = useUnreadConversationCount();
@@ -149,7 +151,7 @@ export function BottomNav() {
 
         <View style={{ paddingHorizontal: 8, paddingTop: 12, paddingBottom: insets.bottom + 12 }}>
           <View className="flex-row items-center justify-around">
-            {ITEMS.map(({ key, label, Icon }) => {
+            {ITEMS.filter((item) => !(restricted && item.key === "feed")).map(({ key, label, Icon }) => {
               const active = isActive(key);
               const color = active ? colors.accent : colors.inkMuted;
               return (

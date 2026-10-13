@@ -1,2 +1,5 @@
 // src/app/(app)/compose.tsx
-export { Compose as default } from "@/screens/Compose";
+import { withFullAccess } from "@/components/nav/RequireFullAccess";
+import { Compose } from "@/screens/Compose";
+
+export default withFullAccess(Compose);

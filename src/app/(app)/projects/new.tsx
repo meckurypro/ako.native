@@ -1,2 +1,5 @@
 // src/app/(app)/projects/new.tsx
-export { CreateProject as default } from "@/screens/CreateProject";
+import { withFullAccess } from "@/components/nav/RequireFullAccess";
+import { CreateProject } from "@/screens/CreateProject";
+
+export default withFullAccess(CreateProject);

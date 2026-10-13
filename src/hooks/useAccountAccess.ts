@@ -25,8 +25,21 @@ export interface AccountAccess {
   /** Whether the review gate is currently enforced at all. */
   gateEnabled: boolean;
   accountStatus: AccountStatus;
-  /** The actual access decision: gateEnabled ? status === 'approved' : true. */
+  /**
+   * May this user enter the app at all? Approved users, and everyone when
+   * the gate is off, always can. A 'pending' user can too — but in
+   * restricted (consumer-only) mode, see `restricted`. Declined/suspended
+   * accounts stay locked out on the Under Review screen.
+   */
   canAccess: boolean;
+  /**
+   * Consumer-only mode: the gate is enforced and this account is still
+   * 'pending'. They get the app minus the Feed and every creation entry
+   * point, with NO messaging about being restricted — the UI simply
+   * doesn't offer those surfaces. Server-side RLS/edge checks
+   * (fn_can_access_feature) are the real enforcement.
+   */
+  restricted: boolean;
 }
 
 export function useAccountAccess() {
@@ -56,10 +69,13 @@ export function useAccountAccess() {
       const gateEnabled = flagRow?.enabled ?? false;
       const accountStatus = (profile?.account_status ?? "approved") as AccountStatus;
 
+      const restricted = gateEnabled && accountStatus === "pending";
+
       return {
         gateEnabled,
         accountStatus,
-        canAccess: gateEnabled ? accountStatus === "approved" : true,
+        canAccess: gateEnabled ? accountStatus === "approved" || restricted : true,
+        restricted,
       };
     },
     enabled: !!user,
@@ -71,6 +87,21 @@ export function useAccountAccess() {
     refetchOnWindowFocus: true,
   });
 }
+
+/**
+ * True while the signed-in user is in restricted (consumer-only) mode.
+ * Silent by design: callers just hide/redirect, never explain. Resolves
+ * to false until the access query has data (RequireAuth/AuthGate always
+ * resolve it before rendering protected screens, so in practice it is
+ * already cached by the time any screen reads it).
+ */
+export function useIsRestricted(): boolean {
+  const { data } = useAccountAccess();
+  return data?.restricted ?? false;
+}
+
+/** Where a restricted user lands instead of the Feed. */
+export const RESTRICTED_HOME = "/topics";
 
 /** Logout from the Under Review screen — same signOut used by Settings. */
 export function useSignOut() {

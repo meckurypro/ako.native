@@ -1,2 +1,5 @@
 // src/app/(app)/create.tsx
-export { CreateChoice as default } from "@/screens/CreateChoice";
+import { withFullAccess } from "@/components/nav/RequireFullAccess";
+import { CreateChoice } from "@/screens/CreateChoice";
+
+export default withFullAccess(CreateChoice);

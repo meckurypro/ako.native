@@ -60,6 +60,7 @@ import { TierBadge } from "@/components/ui/TierBadge";
 import { useToast } from "@/components/ui/Toast";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import { MediaViewer } from "@/components/post/MediaViewer";
+import { useIsRestricted } from "@/hooks/useAccountAccess";
 import { useAuth } from "@/hooks/useAuth";
 import { useContactNickname } from "@/hooks/useContactNicknames";
 import { useCancelFollowRequest, useHasPendingFollowRequest, useIncomingFollowRequestCount, useSendFollowRequest } from "@/hooks/useFollowRequests";
@@ -118,6 +119,7 @@ function Message({ text }: { text: string }) {
 export function ProfilePage() {
   const { username, fromPost } = useLocalSearchParams<{ username: string; fromPost?: string }>();
   const { user } = useAuth();
+  const restricted = useIsRestricted();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const bottomInset = useBottomNavInset();
@@ -378,9 +380,11 @@ export function ProfilePage() {
         {showOwnerView ? (
           <View className="w-full flex-row items-center gap-2">
             <ProfileAdSlot className="min-w-0 flex-1" />
-            <Pressable onPress={() => router.push("/create")} accessibilityRole="button" accessibilityLabel="Create" hitSlop={8} className="shrink-0 p-2">
-              <Icon as={Plus} size={22} className="text-ink-muted" />
-            </Pressable>
+            {!restricted ? (
+              <Pressable onPress={() => router.push("/create")} accessibilityRole="button" accessibilityLabel="Create" hitSlop={8} className="shrink-0 p-2">
+                <Icon as={Plus} size={22} className="text-ink-muted" />
+              </Pressable>
+            ) : null}
             <View ref={ownerMenuButtonRef} collapsable={false}>
               <Pressable onPress={() => setOwnerMenuOpen(true)} accessibilityRole="button" accessibilityLabel="Profile options" className="relative p-2">
                 <Icon as={MoreHorizontal} size={20} className="text-ink-muted" />

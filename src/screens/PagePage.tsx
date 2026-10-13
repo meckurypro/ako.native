@@ -32,6 +32,7 @@ import { SwipeToSwitch } from "@/components/ui/SwipeToSwitch";
 import { Text } from "@/components/ui/Text";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsRestricted } from "@/hooks/useAccountAccess";
 import { useFeatureFlag } from "@/hooks/useFeatureFlags";
 import {
   useActiveIdentity,
@@ -93,6 +94,7 @@ export function PagePage() {
   const nameButtonRef = useRef<View>(null);
 
   const { user } = useAuth();
+  const restricted = useIsRestricted();
   const { data: me } = useMyProfile();
   const { data: page, isLoading } = usePageByUsername(username ?? "");
   const { data: members } = usePageMembers(page?.id ?? "");
@@ -202,7 +204,7 @@ export function PagePage() {
           { key: "team", label: "Manage team", icon: <Icon as={UserCog} size={22} className="text-overlay-ink" />, onSelect: () => router.push(`/page/${page.username}/team` as Href) } satisfies DropdownMenuItem,
         ]
       : []),
-    ...(isAdmin && subsidiariesEnabled
+    ...(isAdmin && subsidiariesEnabled && !restricted
       ? [{ key: "subsidiary", label: "Add Subsidiary", icon: <Icon as={Building2} size={22} className="text-overlay-ink" />, onSelect: () => router.push(`/pages/new?parent=${page.id}` as Href) } satisfies DropdownMenuItem]
       : []),
     // Only the resolved owner sees this at all (creator, or the longest-standing admin if the creator is gone).
@@ -218,7 +220,7 @@ export function PagePage() {
         right={
           <View className="flex-row items-center gap-1">
             {/* Only while actually ACTING as this page, so "what I create next" matches "who I'm posting as". */}
-            {isActiveHere ? (
+            {isActiveHere && !restricted ? (
               <Pressable onPress={() => router.push("/create")} accessibilityRole="button" accessibilityLabel="Create" hitSlop={8} className="p-2">
                 <Icon as={Plus} size={22} className="text-ink-muted" />
               </Pressable>

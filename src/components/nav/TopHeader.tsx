@@ -9,6 +9,7 @@ import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { Wordmark } from "@/components/ui/Wordmark";
 import { useUnreadCount } from "@/hooks/useNotifications";
+import { useIsRestricted } from "@/hooks/useAccountAccess";
 import { useMyProfile } from "@/hooks/useProfile";
 
 interface TopHeaderProps {
@@ -18,10 +19,13 @@ interface TopHeaderProps {
 export function TopHeader({ leftAction = "avatar" }: TopHeaderProps) {
   const unreadCount = useUnreadCount();
   const { data: me } = useMyProfile();
+  const restricted = useIsRestricted();
 
   return (
     <View className="flex-row items-center justify-between px-4 pb-2 pt-5">
-      {leftAction === "create" ? (
+      {leftAction === "create" && restricted ? (
+        <View className="-ml-1.5 h-9 w-9" />
+      ) : leftAction === "create" ? (
         // Opens as a native modal over the current screen (web: the "modal route" pattern).
         <Pressable
           onPress={() => router.push("/create" as Href)}

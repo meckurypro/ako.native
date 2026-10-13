@@ -1,2 +1,5 @@
 // src/app/(app)/promote/[postId].tsx
-export { PromoteComposer as default } from "@/screens/PromoteComposer";
+import { withFullAccess } from "@/components/nav/RequireFullAccess";
+import { PromoteComposer } from "@/screens/PromoteComposer";
+
+export default withFullAccess(PromoteComposer);

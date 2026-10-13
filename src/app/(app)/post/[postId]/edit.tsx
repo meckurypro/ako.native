@@ -1,2 +1,5 @@
 // src/app/(app)/post/[postId]/edit.tsx
-export { EditPost as default } from "@/screens/EditPost";
+import { withFullAccess } from "@/components/nav/RequireFullAccess";
+import { EditPost } from "@/screens/EditPost";
+
+export default withFullAccess(EditPost);

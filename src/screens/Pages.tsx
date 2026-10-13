@@ -13,11 +13,13 @@ import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { Text } from "@/components/ui/Text";
 import { TextLink } from "@/components/ui/TextLink";
 import { useToast } from "@/components/ui/Toast";
+import { useIsRestricted } from "@/hooks/useAccountAccess";
 import { usePagesFeatureSettings } from "@/hooks/useAdmin";
 import { useMyPendingPageInvites, useRespondToPageInvite } from "@/hooks/usePages";
 import { pageModeLabel } from "@/lib/pageRoles";
 
 export function Pages() {
+  const restricted = useIsRestricted();
   const insets = useSafeAreaInsets();
   const { data: invites } = useMyPendingPageInvites();
   const respond = useRespondToPageInvite();
@@ -79,7 +81,7 @@ export function Pages() {
 
           <Text className="mt-4 px-1 text-xs text-ink-muted">
             While you're acting as a page, your posts, name, and photo show its instead of yours — everyone managing it shares the same page.
-            {(pagesFeature?.pages_creation_enabled ?? true) ? (
+            {(pagesFeature?.pages_creation_enabled ?? true) && !restricted ? (
               <>
                 {" "}
                 <TextLink onPress={() => router.push("/pages/new")} className="text-accent">

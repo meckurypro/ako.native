@@ -9,6 +9,7 @@ import { Pressable, View } from "react-native";
 import { Avatar } from "@/components/ui/Avatar";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
+import { useIsRestricted } from "@/hooks/useAccountAccess";
 import { usePagesFeatureSettings } from "@/hooks/useAdmin";
 import { useActiveIdentity, useMyPages, useSwitchActiveMode } from "@/hooks/usePages";
 import { useMyProfile } from "@/hooks/useProfile";
@@ -55,6 +56,7 @@ function Row({
 }
 
 export function AccountModeSwitcher() {
+  const restricted = useIsRestricted();
   const { data: me } = useMyProfile();
   const { data: identity } = useActiveIdentity();
   const { data: pages } = useMyPages();
@@ -98,7 +100,7 @@ export function AccountModeSwitcher() {
       })}
 
       {/* Admin kill switch — only ever hides starting a NEW page. Existing pages above stay switchable. */}
-      {(pagesFeature?.pages_creation_enabled ?? true) ? (
+      {(pagesFeature?.pages_creation_enabled ?? true) && !restricted ? (
         <Pressable
           accessibilityRole="button"
           onPress={() => router.push("/pages/new")}

@@ -1,6 +1,9 @@
 // src/app/(app)/activity/drafts.tsx
+import { withFullAccess } from "@/components/nav/RequireFullAccess";
 import { DraftPosts } from "@/screens/DraftPosts";
 
-export default function DraftPostsRoute() {
+function DraftPostsRoute() {
   return <DraftPosts />;
 }
+
+export default withFullAccess(DraftPostsRoute);

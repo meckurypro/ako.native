@@ -1,2 +1,5 @@
 // src/app/(app)/feed.tsx
-export { Feed as default } from "@/screens/Feed";
+import { withFullAccess } from "@/components/nav/RequireFullAccess";
+import { Feed } from "@/screens/Feed";
+
+export default withFullAccess(Feed);

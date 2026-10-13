@@ -5,7 +5,8 @@
 //
 //   signed out                       → /login
 //   access check failed              → retry screen (fails CLOSED, like web)
-//   account under review             → AccountUnderReview
+//   pending account (gate on)        → enters in restricted consumer-only mode (silent; see useIsRestricted)
+//   declined / suspended             → AccountUnderReview
 //   onboarding incomplete            → resume at the right step
 //   onboarding already complete      → (onboardingOnly) back to /feed
 import { Redirect, type Href } from "expo-router";
