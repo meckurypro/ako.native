@@ -5,12 +5,20 @@
 // mode, with light text on a near-black panel.
 import { View, type ViewProps } from "react-native";
 
+import { overlay } from "@/theme/palettes";
+
 export function OverlayPanel({ style, className = "", ...rest }: ViewProps & { className?: string }) {
   return (
     <View
-      className={`border border-overlay-border bg-overlay-surface/95 ${className}`}
+      className={className}
       style={[
         {
+          // Inline, not bg-overlay-surface/95: opacity-modified colour classes
+          // resolved to NO background on device, so panels rendered see-through.
+          // Web: rgba(overlay-surface, 0.96) + 1px overlay-border.
+          backgroundColor: `${overlay.surface}F5`,
+          borderWidth: 1,
+          borderColor: overlay.border,
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 20 },
           shadowOpacity: 0.5,
@@ -24,5 +32,5 @@ export function OverlayPanel({ style, className = "", ...rest }: ViewProps & { c
   );
 }
 
-/** Dim scrim behind overlays (bg-black/40; the web build's 1.2px blur is imperceptible, so it's skipped). */
-export const SCRIM_CLASS = "absolute inset-0 bg-black/40";
+/** Dim scrim behind overlays (web: bg-black/40; its 1.2px blur is imperceptible, so it's skipped). Inline style — the bg-black/40 class didn't render. */
+export const SCRIM_STYLE = { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.4)" } as const;

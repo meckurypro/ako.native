@@ -8,7 +8,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView } from "react-nat
 import Animated, { FadeIn, FadeOut, ZoomIn } from "react-native-reanimated";
 
 import { useBackDismiss } from "@/hooks/useBackDismiss";
-import { OverlayPanel, SCRIM_CLASS } from "./OverlayPanel";
+import { OverlayPanel, SCRIM_STYLE } from "./OverlayPanel";
 import { Portal } from "./Portal";
 
 interface ModalProps {
@@ -47,7 +47,7 @@ export function Modal({
         accessibilityRole={role === "alertdialog" ? "alert" : undefined}
         accessibilityLabel={ariaLabel}
       >
-        <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(120)} className={SCRIM_CLASS}>
+        <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(120)} style={SCRIM_STYLE}>
           <Pressable className="flex-1" onPress={onClose} accessibilityLabel="Close" accessibilityRole="button" />
         </Animated.View>
 

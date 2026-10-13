@@ -9,13 +9,16 @@
 // `anchorRef` points at the trigger's <View>/<Pressable>. `bottomInset` is the
 // height of anything docked at the screen bottom (BottomNav) so "room below"
 // means room above that bar; the shell supplies it once built.
-import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { VariableContextProvider } from "nativewind";
+import { useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { runAfterDismiss, useBackDismiss } from "@/hooks/useBackDismiss";
-import { OverlayPanel, SCRIM_CLASS } from "./OverlayPanel";
+import { overlay, paletteToCssVars } from "@/theme/palettes";
+import { useTheme } from "@/theme/ThemeProvider";
+import { OverlayPanel, SCRIM_STYLE } from "./OverlayPanel";
 import { Portal } from "./Portal";
 import { Text } from "./Text";
 
@@ -54,7 +57,33 @@ interface Placement {
 
 export function DropdownMenu({ anchorRef, items, onClose, width = 224, bottomInset = 0, zIndex = 50 }: DropdownMenuProps) {
   useBackDismiss(onClose);
+  const { colors, resolvedTheme } = useTheme();
   const insets = useSafeAreaInsets();
+
+  // Light mode: light panel, dark text and icons. Dark mode keeps the
+  // fixed dark-glass overlay chrome (same as web's .ako-overlay-panel).
+  const light = resolvedTheme === "light";
+  const menu = light
+    ? { bg: `${colors.surface}F5`, border: colors.border, ink: colors.ink, danger: colors.danger, pressed: `${colors.ink}0F`, shadowOpacity: 0.18 }
+    : { bg: `${overlay.surface}F5`, border: overlay.border, ink: overlay.ink, danger: overlay.danger, pressed: overlay.surfaceRaised, shadowOpacity: 0.5 };
+  // Callers colour their icons with text-overlay-ink / text-overlay-danger classes.
+  // Re-point those tokens inside the panel so the icons follow the light panel too.
+  const iconVars = useMemo(
+    () => ({
+      ...paletteToCssVars(colors),
+      ...(light
+        ? {
+            "--color-overlay-ink": colors.ink,
+            "--color-overlay-ink-muted": colors.inkMuted,
+            "--color-overlay-danger": colors.danger,
+            "--color-overlay-border": colors.border,
+            "--color-overlay-surface-raised": `${colors.ink}0F`,
+            "--color-overlay-accent": colors.accent,
+          }
+        : {}),
+    }),
+    [colors, light]
+  );
   const { width: windowW, height: windowH } = useWindowDimensions();
   const [placement, setPlacement] = useState<Placement | null>(null);
   const measured = useRef(false);
@@ -84,7 +113,7 @@ export function DropdownMenu({ anchorRef, items, onClose, width = 224, bottomIns
 
   return (
     <Portal zIndex={zIndex}>
-      <Animated.View entering={FadeIn.duration(150)} exiting={FadeOut.duration(100)} className={SCRIM_CLASS}>
+      <Animated.View entering={FadeIn.duration(150)} exiting={FadeOut.duration(100)} style={SCRIM_STYLE}>
         <Pressable className="flex-1" onPress={onClose} accessibilityLabel="Close menu" accessibilityRole="button" />
       </Animated.View>
 
@@ -94,36 +123,39 @@ export function DropdownMenu({ anchorRef, items, onClose, width = 224, bottomIns
           exiting={FadeOut.duration(100)}
           style={{ position: "absolute", width, ...placement }}
         >
-          <OverlayPanel className="overflow-hidden rounded-2xl py-2" style={{ maxHeight: placement.maxHeight }}>
-            <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
-              {items.map((item, i) =>
-                item === "divider" ? (
-                  <View key={`divider-${i}`} className="my-2 h-px bg-overlay-border" />
-                ) : (
-                  <Pressable
-                    key={item.key}
-                    accessibilityRole="menuitem"
-                    accessibilityState={{ disabled: !!item.disabled }}
-                    disabled={item.disabled}
-                    onPress={() => runAfterDismiss(onClose, item.onSelect)}
-                    className={`flex-row items-center gap-4 px-5 py-3.5 active:bg-overlay-surface-raised ${
-                      item.disabled ? "opacity-40" : ""
-                    }`}
-                  >
-                    {/* Fixed-size slot on every row so labels line up whether or not there's an icon. */}
-                    <View className="h-6 w-6 shrink-0 items-center justify-center">{item.icon}</View>
-                    <Text
-                      className={`flex-1 text-base leading-snug ${
-                        item.variant === "danger" ? "text-overlay-danger" : "text-overlay-ink"
-                      }`}
+          <OverlayPanel
+            className="overflow-hidden rounded-2xl py-2"
+            style={{ maxHeight: placement.maxHeight, backgroundColor: menu.bg, borderColor: menu.border, shadowOpacity: menu.shadowOpacity }}
+          >
+            <VariableContextProvider value={iconVars}>
+              <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
+                {items.map((item, i) =>
+                  item === "divider" ? (
+                    <View key={`divider-${i}`} style={{ height: 1, marginVertical: 8, backgroundColor: menu.border }} />
+                  ) : (
+                    <Pressable
+                      key={item.key}
+                      accessibilityRole="menuitem"
+                      accessibilityState={{ disabled: !!item.disabled }}
+                      disabled={item.disabled}
+                      onPress={() => runAfterDismiss(onClose, item.onSelect)}
+                      className={`flex-row items-center gap-4 px-5 py-3.5 ${item.disabled ? "opacity-40" : ""}`}
+                      style={({ pressed }) => ({ backgroundColor: pressed ? menu.pressed : "transparent" })}
                     >
-                      {item.label}
-                    </Text>
-                    {item.badge}
-                  </Pressable>
-                )
-              )}
-            </ScrollView>
+                      {/* Fixed-size slot on every row so labels line up whether or not there's an icon. */}
+                      <View className="h-6 w-6 shrink-0 items-center justify-center">{item.icon}</View>
+                      <Text
+                        className="flex-1 text-base leading-snug"
+                        style={{ color: item.variant === "danger" ? menu.danger : menu.ink }}
+                      >
+                        {item.label}
+                      </Text>
+                      {item.badge}
+                    </Pressable>
+                  )
+                )}
+              </ScrollView>
+            </VariableContextProvider>
           </OverlayPanel>
         </Animated.View>
       )}
