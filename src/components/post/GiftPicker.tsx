@@ -3,7 +3,8 @@
 // Gift art ships inside the app (lib/giftAssets); the "sent" step plays a small
 // pop + rising-glyph moment.
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, View } from "react-native";
+import { BlurView } from "expo-blur";
+import { Pressable, StyleSheet, View } from "react-native";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -86,20 +87,27 @@ function SentBurst({ gift }: { gift: GiftType }) {
 
 /** Full-screen "insufficient balance" notice that sits above the sheet. Tap anywhere to dismiss. */
 function InsufficientNotice({ gift, onDismiss, onOpenWallet }: { gift: GiftType; onDismiss: () => void; onOpenWallet: () => void }) {
-  const { colors } = useTheme();
+  const { colors, resolvedTheme } = useTheme();
   return (
     <Portal zIndex={70}>
       <Pressable
         onPress={onDismiss}
         accessibilityRole="alert"
         className="flex-1 items-center justify-center gap-4 px-10"
-        // Web: bg-canvas/70 + 1.2px backdrop blur. The /70 class resolves to NO
-        // background on device (see OverlayPanel), so tint inline — otherwise the
-        // sheet shows through un-dimmed and the message collides with the grid.
-        // The blur is skipped: the sheet lives in the portal, outside the blur
-        // target, and 1.2px is imperceptible anyway.
-        style={{ backgroundColor: `${colors.canvas}B3` }}
+        // Web: bg-canvas/70 + backdrop-blur-overlay (1.2px). The /70 class resolves to NO
+        // background on device (see OverlayPanel), so tint inline. The blur is a BlurView
+        // at the matching low intensity (iOS: real blur; Android: tint only, since the
+        // sheet lives in the portal outside the blur target).
+        style={{ backgroundColor: "transparent" }}
       >
+        <BlurView
+          pointerEvents="none"
+          intensity={5}
+          tint={resolvedTheme === "dark" ? "dark" : "light"}
+          blurMethod="none"
+          style={StyleSheet.absoluteFill}
+        />
+        <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: `${colors.canvas}B3` }]} />
         <GiftIcon gift={gift} size={176} glyphClass="text-8xl" />
         <Text className="max-w-xs text-center text-base font-medium text-ink">
           {`Insufficient balance to gift ${article(gift.name)} ${gift.name}. Please fund your `}

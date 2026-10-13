@@ -128,10 +128,13 @@ export function BottomNav() {
           overflow: "hidden",
         }}
       >
-        {/* backdrop-blur-md (12px): intensity 50 ≈ 12px on Android (÷4 reduction). */}
+        {/* backdrop-blur-md (12px): intensity 50 ≈ 12px on Android (÷4 reduction).
+            Web's blur has no tint of its own, so use the most transparent system
+            material on iOS instead of "light"/"dark", which whiten/darken the glass
+            on top of the bg-surface/80 fill below. */}
         <BlurView
           intensity={50}
-          tint={resolvedTheme === "dark" ? "dark" : "light"}
+          tint={resolvedTheme === "dark" ? "systemUltraThinMaterialDark" : "systemUltraThinMaterialLight"}
           blurTarget={blurTarget}
           blurMethod="dimezisBlurView"
           style={StyleSheet.absoluteFill}
