@@ -437,6 +437,7 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
               <View className="min-w-0 flex-1 flex-row items-center gap-1.5">
                 <Text
                   numberOfLines={1}
+                  includeFontPadding={false}
                   onPress={openIdentity}
                   accessibilityRole="link"
                   className="min-w-0 shrink font-simple text-[17px] font-semibold leading-5 text-ink"
@@ -461,7 +462,7 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
 
             {/* Roles (person) or tagline (page) */}
             {postedAsPage ? (
-              <Text numberOfLines={1} className="text-[13px] leading-[18px] text-ink-muted">
+              <Text numberOfLines={1} includeFontPadding={false} className="text-[13px] leading-[18px] text-ink-muted">
                 {postedAsPage.tagline?.trim() || `@${postedAsPage.username}`}
               </Text>
             ) : post.author.roles.length > 0 ? (
@@ -469,7 +470,7 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
             ) : null}
 
             <View className="flex-row items-center gap-1">
-              <Text className="text-xs leading-[18px] text-ink-muted">
+              <Text includeFontPadding={false} className="text-xs leading-[18px] text-ink-muted">
                 {timeAgo(post.created_at)}
                 {post.edited_at ? " · edited" : ""}
               </Text>
