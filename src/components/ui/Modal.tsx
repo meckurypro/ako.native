@@ -8,7 +8,8 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView } from "react-nat
 import Animated, { FadeIn, FadeOut, ZoomIn } from "react-native-reanimated";
 
 import { useBackDismiss } from "@/hooks/useBackDismiss";
-import { OverlayPanel, SCRIM_STYLE } from "./OverlayPanel";
+import { useTheme } from "@/theme/ThemeProvider";
+import { OverlayPanel, SCRIM_STYLE, scrimColor } from "./OverlayPanel";
 import { Portal } from "./Portal";
 
 interface ModalProps {
@@ -24,6 +25,8 @@ interface ModalProps {
   align?: "center" | "bottom";
   /** Layer tier. Default 60 sits above sheets (50); ArchivedPostModal uses 40 so sheets it spawns stack above it. */
   zIndex?: number;
+  /** Backdrop: default black/40 (web Modal). "canvas" = canvas/70, used by the composer-style modals that are sheets on web. */
+  scrim?: "black" | "canvas";
 }
 
 export function Modal({
@@ -35,7 +38,9 @@ export function Modal({
   bare = false,
   align = "center",
   zIndex = 60,
+  scrim = "black",
 }: ModalProps) {
+  const { colors } = useTheme();
   useBackDismiss(onClose);
 
   return (
@@ -47,7 +52,7 @@ export function Modal({
         accessibilityRole={role === "alertdialog" ? "alert" : undefined}
         accessibilityLabel={ariaLabel}
       >
-        <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(120)} style={SCRIM_STYLE}>
+        <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(120)} style={scrim === "canvas" ? { ...SCRIM_STYLE, backgroundColor: scrimColor("canvas", colors) } : SCRIM_STYLE}>
           <Pressable className="flex-1" onPress={onClose} accessibilityLabel="Close" accessibilityRole="button" />
         </Animated.View>
 

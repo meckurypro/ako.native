@@ -7,6 +7,7 @@ import { ArrowLeft, X } from "lucide-react-native";
 import type { ReactNode } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 
+import type { ScrimTone } from "./OverlayPanel";
 import { Sheet, useSheet } from "./Sheet";
 import { Icon } from "./styled";
 import { Text } from "./Text";
@@ -24,6 +25,8 @@ interface SheetFrameProps {
   footer?: ReactNode;
   onClose: () => void;
   zIndex?: number;
+  /** Backdrop tint — see Sheet. */
+  scrim?: ScrimTone;
   /** Lift above the keyboard (sheets with a search box). */
   avoidKeyboard?: boolean;
   /** Fixed height (fraction of the screen) instead of fitting the content. */
@@ -70,6 +73,7 @@ export function SheetFrame({
   footer,
   onClose,
   zIndex = 60,
+  scrim,
   avoidKeyboard = false,
   heightRatio,
   bodyScroll = true,
@@ -81,6 +85,7 @@ export function SheetFrame({
       dragZone="handle"
       radius="3xl"
       zIndex={zIndex}
+      scrim={scrim}
       avoidKeyboard={avoidKeyboard}
       heightRatio={heightRatio}
       maxHeightRatio={0.85}

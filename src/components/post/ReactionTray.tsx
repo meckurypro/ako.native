@@ -88,8 +88,16 @@ export function ReactionTray({ leftActions, middleActions, rightActions, onOpenM
         </View>
 
         {belowLeftLabel ? (
-          <Pressable onPress={belowLeftLabel.onClick} hitSlop={8} accessibilityRole="button" className="mt-2">
-            <Text className="text-xs font-medium leading-none text-ink-muted">{belowLeftLabel.text}</Text>
+          // Fixed, wider-than-slot width so the label never wraps (web uses whitespace-nowrap);
+          // it overflows the narrow left slot evenly on both sides, centred under the Like button.
+          <Pressable
+            onPress={belowLeftLabel.onClick}
+            hitSlop={8}
+            accessibilityRole="button"
+            className="mt-2 items-center"
+            style={{ width: 140 }}
+          >
+            <Text numberOfLines={1} className="text-xs font-medium leading-none text-ink-muted">{belowLeftLabel.text}</Text>
           </Pressable>
         ) : null}
       </View>

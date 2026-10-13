@@ -26,6 +26,7 @@ import { useSendGift, useSendMediaGift } from "@/hooks/useGifting";
 import { useGiftTypes, useTopGiftTypeIds, useWallet } from "@/hooks/useWallet";
 import { giftIconSource } from "@/lib/giftAssets";
 import { haptics } from "@/lib/haptics";
+import { useTheme } from "@/theme/ThemeProvider";
 import type { GiftType } from "@/types/database";
 
 interface GiftPickerProps {
@@ -85,12 +86,19 @@ function SentBurst({ gift }: { gift: GiftType }) {
 
 /** Full-screen "insufficient balance" notice that sits above the sheet. Tap anywhere to dismiss. */
 function InsufficientNotice({ gift, onDismiss, onOpenWallet }: { gift: GiftType; onDismiss: () => void; onOpenWallet: () => void }) {
+  const { colors } = useTheme();
   return (
     <Portal zIndex={70}>
       <Pressable
         onPress={onDismiss}
         accessibilityRole="alert"
-        className="flex-1 items-center justify-center gap-4 bg-canvas/70 px-10"
+        className="flex-1 items-center justify-center gap-4 px-10"
+        // Web: bg-canvas/70 + 1.2px backdrop blur. The /70 class resolves to NO
+        // background on device (see OverlayPanel), so tint inline — otherwise the
+        // sheet shows through un-dimmed and the message collides with the grid.
+        // The blur is skipped: the sheet lives in the portal, outside the blur
+        // target, and 1.2px is imperceptible anyway.
+        style={{ backgroundColor: `${colors.canvas}B3` }}
       >
         <GiftIcon gift={gift} size={176} glyphClass="text-8xl" />
         <Text className="max-w-xs text-center text-base font-medium text-ink">

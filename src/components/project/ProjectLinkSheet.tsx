@@ -69,7 +69,7 @@ export function ProjectLinkSheet({ project, onClose }: { project: Project; onClo
   const canSave = !!normalized && !formatError && !(debounced === normalized && checking) && !setSlug.isPending;
 
   return (
-    <SheetFrame title="Custom URL" subtitle={project.title} onClose={onClose} avoidKeyboard zIndex={55}>
+    <SheetFrame title="Custom URL" subtitle={project.title} onClose={onClose} avoidKeyboard zIndex={55} scrim="ink">
       <Text className="mb-4 mt-1 text-sm text-ink-muted">
         This is the link people use to find this Project. You can change it any time — the old link will still bring people here.
       </Text>

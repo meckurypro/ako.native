@@ -86,7 +86,7 @@ export function AffiliateProgramSheet({ projectId, projectTitle, priceUsd, onClo
   const cannotEnable = !enabled && (isFree || !affiliateProgramsEnabled);
 
   return (
-    <SheetFrame title="Affiliate program" subtitle={projectTitle} onClose={onClose} avoidKeyboard zIndex={55}>
+    <SheetFrame title="Affiliate program" subtitle={projectTitle} onClose={onClose} avoidKeyboard zIndex={55} scrim="ink">
       {isLoading ? (
         <Text className="py-6 text-center text-sm text-ink-muted">Loading…</Text>
       ) : (

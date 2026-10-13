@@ -405,6 +405,7 @@ export function CommentSheet({
         titleSuffix={totalCount > 0 ? formatCompactCount(totalCount) : undefined}
         onClose={onClose}
         zIndex={50}
+        scrim="canvasLight"
         heightRatio={0.82}
         bodyScroll={false}
         accessibilityLabel="Comments"

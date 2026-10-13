@@ -25,7 +25,7 @@ export function ManageAccessSheet({ projectId, projectTitle, onClose }: { projec
   const busy = addMember.isPending || removeMember.isPending;
 
   return (
-    <SheetFrame title="Manage access" subtitle={projectTitle} onClose={onClose} avoidKeyboard heightRatio={0.8} zIndex={55}>
+    <SheetFrame title="Manage access" subtitle={projectTitle} onClose={onClose} avoidKeyboard heightRatio={0.8} zIndex={55} scrim="ink">
       <View className="mb-3 flex-row items-center rounded-full border border-border bg-canvas px-3.5">
         <Icon as={Search} size={16} className="shrink-0 text-ink-muted" />
         <TextInput

@@ -40,7 +40,7 @@ export function SupportPitchSheet({ projectId, projectTitle, onClose, onSupporte
   const input = "rounded-xl border border-border bg-canvas px-4 py-3 text-ink";
 
   return (
-    <SheetFrame title="Support this idea" subtitle={projectTitle} onClose={onClose} avoidKeyboard zIndex={55}>
+    <SheetFrame title="Support this idea" subtitle={projectTitle} onClose={onClose} avoidKeyboard zIndex={55} scrim="ink">
       <Text className="mb-1.5 text-sm font-medium text-ink-muted">Amount (USD)</Text>
       <TextInput
         value={amount}

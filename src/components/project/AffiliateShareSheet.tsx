@@ -82,7 +82,7 @@ export function AffiliateShareSheet({ projectId, projectTitle, shareUrl, onClose
   const link = relationship?.status === "active" ? affiliateLinkFor(baseUrl, relationship.referral_token) : null;
 
   return (
-    <SheetFrame title="Share & earn" subtitle={projectTitle} onClose={onClose} zIndex={55}>
+    <SheetFrame title="Share & earn" subtitle={projectTitle} onClose={onClose} zIndex={55} scrim="ink">
       {loadingRelationship ? (
         <Text className="py-6 text-center text-sm text-ink-muted">Loading…</Text>
       ) : relationship?.status === "revoked" ? (

@@ -111,7 +111,7 @@ export function StanceComposer({ postId, stance: initialStance, onClose, parentC
   }
 
   return (
-    <Modal onClose={onClose} bare align="bottom" maxWidth={448} ariaLabel={`${colors.label} composer`}>
+    <Modal onClose={onClose} bare align="bottom" scrim="canvas" maxWidth={448} ariaLabel={`${colors.label} composer`}>
       <View className={`overflow-hidden rounded-2xl bg-canvas ${colors.topBorderClass}`}>
         {stances.length > 1 ? (
           <View className="flex-row border-b border-border">

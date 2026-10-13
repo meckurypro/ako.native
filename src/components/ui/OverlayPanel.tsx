@@ -34,3 +34,17 @@ export function OverlayPanel({ style, className = "", ...rest }: ViewProps & { c
 
 /** Dim scrim behind overlays (web: bg-black/40; its 1.2px blur is imperceptible, so it's skipped). Inline style — the bg-black/40 class didn't render. */
 export const SCRIM_STYLE = { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.4)" } as const;
+
+/**
+ * Theme-tinted scrim colours matching the web backdrops. Built as hex + alpha and applied
+ * INLINE — `bg-canvas/70`-style classes resolve to no background on device.
+ *   canvas   web: bg-canvas/70  (bottom sheets, composers)
+ *   canvasLight web: bg-canvas/50 (comments sheet)
+ *   ink      web: bg-ink/40     (project sheets)
+ * Web also adds a 1.2px backdrop blur, which is imperceptible and skipped here.
+ */
+export type ScrimTone = "canvas" | "canvasLight" | "ink";
+const SCRIM_ALPHA: Record<ScrimTone, string> = { canvas: "B3", canvasLight: "80", ink: "66" };
+export function scrimColor(tone: ScrimTone, colors: { canvas: string; ink: string }): string {
+  return `${tone === "ink" ? colors.ink : colors.canvas}${SCRIM_ALPHA[tone]}`;
+}

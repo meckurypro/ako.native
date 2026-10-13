@@ -83,7 +83,7 @@ export function ReshareSheet({ postId, source, onClose }: ReshareSheetProps) {
   }
 
   return (
-    <Modal onClose={onClose} bare align="bottom" maxWidth={448} ariaLabel="Quote post">
+    <Modal onClose={onClose} bare align="bottom" scrim="canvas" maxWidth={448} ariaLabel="Quote post">
       <View className="overflow-hidden rounded-2xl border-t-4 border-accent bg-canvas">
         <View className="p-5">
           <TextInput
