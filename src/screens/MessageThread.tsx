@@ -928,16 +928,17 @@ export function MessageThread() {
               // While merely HOLDING the mic the finger is on the button underneath, so the overlay must not
               // intercept; once locked or in preview its own buttons need touches.
               pointerEvents={phase === "preview" || voiceRecorder.locked ? "auto" : "none"}
+              // Above the message list on both platforms: the lock capsule (holding) and the locked panel
+              // both extend upward past the composer, and Android orders overlapping siblings by elevation.
+              style={{ zIndex: 30, elevation: 8 }}
             >
               {phase === "recording" ? (
                 <VoiceRecordingBar
                   locked={voiceRecorder.locked}
                   paused={voiceRecorder.paused}
-                  elapsedMs={voiceRecorder.elapsedMs}
-                  drag={voiceRecorder.drag}
+                  live={voiceRecorder.live}
                   cancelThresholdPx={voiceRecorder.cancelThresholdPx}
                   lockThresholdPx={voiceRecorder.lockThresholdPx}
-                  liveLevels={voiceRecorder.liveLevels}
                   onCancel={voiceRecorder.cancelRecording}
                   onTogglePause={voiceRecorder.togglePauseResume}
                   onStop={voiceRecorder.stopToPreview}

@@ -5,23 +5,23 @@
 //   Locked:  a panel — row 1: timer + live waveform; row 2: trash · big "Pause" pill · send.
 //            (Without `onSend` — the Rooms composer — it keeps the original pause/stop layout.)
 import { ChevronLeft, ChevronUp, Lock, Mic, Pause, Play, Send, Square, Trash2 } from "lucide-react-native";
-import { useEffect } from "react";
+import { memo, useEffect } from "react";
 import { Pressable, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from "react-native-reanimated";
 
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { VoiceWaveform } from "@/components/ui/VoiceWaveform";
+import { useRecorderLive, type RecorderLiveStore } from "@/lib/recorderLiveStore";
 import { formatVoiceDuration } from "@/lib/voiceNotes";
 
 interface VoiceRecordingBarProps {
   locked: boolean;
   paused: boolean;
-  elapsedMs: number;
-  drag: { x: number; y: number };
+  /** Timer, drag offset and live waveform — read here (not in the screen) so only this bar re-renders per tick. */
+  live: RecorderLiveStore;
   cancelThresholdPx: number;
   lockThresholdPx: number;
-  liveLevels: number[];
   onCancel: () => void;
   onTogglePause: () => void;
   onStop: () => void;
@@ -54,20 +54,19 @@ function Breathing({ children }: { children: React.ReactNode }) {
   return <Animated.View style={style}>{children}</Animated.View>;
 }
 
-export function VoiceRecordingBar({
+function VoiceRecordingBarImpl({
   locked,
   paused,
-  elapsedMs,
-  drag,
+  live,
   cancelThresholdPx,
   lockThresholdPx,
-  liveLevels,
   onCancel,
   onTogglePause,
   onStop,
   onSend,
   onPreview,
 }: VoiceRecordingBarProps) {
+  const { elapsedMs, drag, levels: liveLevels } = useRecorderLive(live);
   if (locked && onSend) {
     return (
       <View className="rounded-t-3xl border-t border-border bg-surface px-4 pb-4 pt-5">
@@ -180,3 +179,5 @@ export function VoiceRecordingBar({
     </View>
   );
 }
+
+export const VoiceRecordingBar = memo(VoiceRecordingBarImpl);

@@ -25,6 +25,7 @@ import {
 import { File as FsFile } from "expo-file-system";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { chatFileName } from "../lib/chatMedia";
+import { createRecorderLiveStore } from "../lib/recorderLiveStore";
 import type { LocalFile } from "../lib/localFile";
 import { dbToLevel, peaksFromMetering, WAVEFORM_BAR_COUNT } from "../lib/waveform";
 
@@ -74,11 +75,13 @@ export function useVoiceRecorder(
   const [phase, setPhase] = useState<VoiceRecorderPhase>("idle");
   const [locked, setLocked] = useState(false);
   const [paused, setPaused] = useState(false);
-  const [elapsedMs, setElapsedMs] = useState(0);
-  const [drag, setDrag] = useState({ x: 0, y: 0 });
+  // High-frequency values (timer, drag, live waveform) live outside React state — see recorderLiveStore.ts.
+  // They used to be useState here, which re-rendered the whole chat screen ~20×/second while recording.
+  const [live] = useState(() => createRecorderLiveStore(IDLE_LEVELS));
+  const setElapsedMs = useCallback((ms: number) => live.set({ elapsedMs: ms }), [live]);
+  const setDrag = useCallback((d: { x: number; y: number }) => live.set({ drag: d }), [live]);
   const [preview, setPreview] = useState<PreviewData | null>(null);
   const [sending, setSending] = useState(false);
-  const [liveLevels, setLiveLevels] = useState<number[]>(IDLE_LEVELS);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const meterRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -100,10 +103,10 @@ export function useVoiceRecorder(
 
   const releaseAudioSession = useCallback(() => {
     stopTimers();
-    setLiveLevels(IDLE_LEVELS);
+    live.set({ levels: IDLE_LEVELS });
     // Back to playback routing (iOS keeps the earpiece route while allowsRecording is on).
     setAudioModeAsync({ allowsRecording: false, playsInSilentMode: false }).catch(() => {});
-  }, [stopTimers]);
+  }, [live, stopTimers]);
 
   const startRecording = useCallback(async () => {
     startingRef.current = true;
@@ -128,15 +131,19 @@ export function useVoiceRecorder(
       setPhase("recording");
 
       timerRef.current = setInterval(() => {
-        setElapsedMs(accumulatedMsRef.current + (Date.now() - segmentStartRef.current));
-      }, 100);
+        // Paused: the clock must stand still (it used to keep counting — and double-count — while paused).
+        if (pausedRef.current) return;
+        const ms = accumulatedMsRef.current + (Date.now() - segmentStartRef.current);
+        // The bar only shows whole seconds, so only publish when the second changes.
+        if (Math.floor(ms / 1000) !== Math.floor(live.get().elapsedMs / 1000)) setElapsedMs(ms);
+      }, 200);
 
       meterRef.current = setInterval(() => {
         if (pausedRef.current) return;
         const db = recorder.getStatus().metering;
         meterSamplesRef.current.push(typeof db === "number" ? db : -160);
         const level = Math.max(0.08, dbToLevel(db));
-        setLiveLevels((prev) => [...prev.slice(1), level]);
+        live.set({ levels: [...live.get().levels.slice(1), level] });
       }, METER_INTERVAL_MS);
     } catch {
       endedRef.current = true;
@@ -145,7 +152,7 @@ export function useVoiceRecorder(
     } finally {
       startingRef.current = false;
     }
-  }, [recorder, releaseAudioSession]);
+  }, [live, recorder, releaseAudioSession, setDrag, setElapsedMs]);
 
   const cancelRecording = useCallback(() => {
     endedRef.current = true;
@@ -157,7 +164,7 @@ export function useVoiceRecorder(
     setLocked(false);
     lockedRef.current = false;
     setDrag({ x: 0, y: 0 });
-  }, [recorder, releaseAudioSession, stopTimers]);
+  }, [recorder, releaseAudioSession, setDrag, stopTimers]);
 
   /** Stops the recorder and returns the finished clip (or null if nothing usable came out). */
   const finalizeRecording = useCallback(async (): Promise<PreviewData | null> => {
@@ -227,7 +234,7 @@ export function useVoiceRecorder(
       setPreview(data);
       setPhase("preview");
     }
-  }, [finalizeRecording, onSend]);
+  }, [finalizeRecording, onSend, setDrag]);
 
   const togglePauseResume = useCallback(() => {
     if (pausedRef.current) {
@@ -239,9 +246,10 @@ export function useVoiceRecorder(
       recorder.pause();
       accumulatedMsRef.current += Date.now() - segmentStartRef.current;
       pausedRef.current = true;
+      setElapsedMs(accumulatedMsRef.current);
       setPaused(true);
     }
-  }, [recorder]);
+  }, [recorder, setElapsedMs]);
 
   const toggleViewOnce = useCallback(() => {
     setPreview((prev) => (prev ? { ...prev, viewOnce: !prev.viewOnce } : prev));
@@ -303,7 +311,7 @@ export function useVoiceRecorder(
       }
       setDrag({ x: Math.min(0, dx), y: Math.max(0, up) });
     },
-    [cancelRecording]
+    [cancelRecording, setDrag]
   );
 
   const onHoldEnd = useCallback(() => {
@@ -344,9 +352,8 @@ export function useVoiceRecorder(
     phase,
     locked,
     paused,
-    elapsedMs,
-    drag,
-    liveLevels,
+    /** Timer, drag offset and live waveform — subscribe with useRecorderLive(live). */
+    live,
     preview,
     sending,
     cancelThresholdPx: CANCEL_THRESHOLD_PX,

@@ -12,16 +12,14 @@ type Recorder = ReturnType<typeof useVoiceRecorder>;
 export function VoiceComposerOverlay({ recorder, allowViewOnce = false }: { recorder: Recorder; allowViewOnce?: boolean }) {
   if (recorder.phase === "idle") return null;
   return (
-    <View className="absolute inset-0 bg-canvas" pointerEvents={recorder.phase === "preview" || recorder.locked ? "auto" : "none"}>
+    <View className="absolute inset-0 bg-canvas" style={{ zIndex: 30, elevation: 8 }} pointerEvents={recorder.phase === "preview" || recorder.locked ? "auto" : "none"}>
       {recorder.phase === "recording" ? (
         <VoiceRecordingBar
           locked={recorder.locked}
           paused={recorder.paused}
-          elapsedMs={recorder.elapsedMs}
-          drag={recorder.drag}
+          live={recorder.live}
           cancelThresholdPx={recorder.cancelThresholdPx}
           lockThresholdPx={recorder.lockThresholdPx}
-          liveLevels={recorder.liveLevels}
           onCancel={recorder.cancelRecording}
           onTogglePause={recorder.togglePauseResume}
           onStop={recorder.stopToPreview}
