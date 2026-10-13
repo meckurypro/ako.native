@@ -35,7 +35,7 @@ const GAP = 2;
 function Tile({ item, width, height, overlay, onPress }: { item: MediaItem; width: number; height: number; overlay?: ReactNode; onPress: () => void }) {
   const { url, failed, uploading } = useMediaUrl(item);
   return (
-    <Pressable onPress={onPress} accessibilityRole="imagebutton" accessibilityLabel={`Photo ${item.name}`} style={{ width, height }} className="overflow-hidden bg-ink-muted/15">
+    <Pressable onPress={onPress} accessibilityRole="imagebutton" accessibilityLabel={`Photo ${item.name}`} style={{ width, height }} className="overflow-hidden bg-ink-muted-a15">
       {failed ? (
         <View className="flex-1 items-center justify-center gap-1">
           <Icon as={ImageOff} size={22} className="text-ink-muted" />
@@ -45,8 +45,8 @@ function Tile({ item, width, height, overlay, onPress }: { item: MediaItem; widt
         <Image source={{ uri: url }} contentFit="cover" style={{ width, height }} transition={150} cachePolicy="disk" recyclingKey={item.path ?? item.url} />
       ) : null}
       {uploading ? (
-        <View className="absolute inset-0 items-center justify-center bg-black/25">
-          <View className="h-11 w-11 items-center justify-center rounded-full bg-black/50">
+        <View className="absolute inset-0 items-center justify-center bg-black-a25">
+          <View className="h-11 w-11 items-center justify-center rounded-full bg-black-a50">
             <ActivityIndicator color="#FFFFFF" />
           </View>
         </View>
@@ -61,7 +61,7 @@ function PhotoGrid({ items, width, onOpen }: { items: MediaItem[]; width: number
   const half = (width - GAP) / 2;
   const more = (i: number) =>
     extra > 0 && i === shown - 1 ? (
-      <View className="absolute inset-0 items-center justify-center bg-black/50">
+      <View className="absolute inset-0 items-center justify-center bg-black-a50">
         <Text className="text-2xl font-semibold text-white">+{extra + 1}</Text>
       </View>
     ) : undefined;
@@ -130,7 +130,7 @@ function DocumentCard({ item, isMine }: { item: MediaItem; isMine: boolean }) {
       onPress={() => void open()}
       accessibilityRole="button"
       accessibilityLabel={`Document ${item.name}`}
-      className={`min-w-[220px] flex-row items-center gap-3 rounded-xl p-2 ${isMine ? "bg-black/10" : "bg-ink-muted/10"}`}
+      className={`min-w-[220px] flex-row items-center gap-3 rounded-xl p-2 ${isMine ? "bg-black-a10" : "bg-ink-muted-a10"}`}
     >
       <View className="h-11 w-11 items-center justify-center rounded-lg" style={{ backgroundColor: style.color }}>
         <Icon as={FileText} size={20} color="#FFFFFF" />
@@ -139,9 +139,9 @@ function DocumentCard({ item, isMine }: { item: MediaItem; isMine: boolean }) {
         <Text numberOfLines={2} className={`text-sm font-medium ${isMine ? "text-white" : "text-ink"}`}>
           {item.name}
         </Text>
-        <Text className={`text-[11px] ${isMine ? "text-white/70" : "text-ink-muted"}`}>{[style.label, formatFileSize(item.size)].filter(Boolean).join(" · ")}</Text>
+        <Text className={`text-[11px] ${isMine ? "text-white-a70" : "text-ink-muted"}`}>{[style.label, formatFileSize(item.size)].filter(Boolean).join(" · ")}</Text>
       </View>
-      <View className={`h-9 w-9 items-center justify-center rounded-full ${isMine ? "bg-white/20" : "bg-ink-muted/15"}`}>
+      <View className={`h-9 w-9 items-center justify-center rounded-full ${isMine ? "bg-white-a20" : "bg-ink-muted-a15"}`}>
         {busy || uploading ? <ActivityIndicator size="small" color={isMine ? "#FFFFFF" : undefined} /> : <Icon as={ArrowDown} size={18} className={isMine ? "text-white" : "text-ink"} />}
       </View>
     </Pressable>
@@ -176,7 +176,7 @@ export function MediaMessage({ media, isMine, timeStr, ticks, senderName, sentLa
       <View className="overflow-hidden rounded-xl">
         <PhotoGrid items={media.items} width={gridWidth} onOpen={setViewerIndex} />
         {!media.caption ? (
-          <View pointerEvents="none" className="absolute bottom-1.5 right-1.5 flex-row items-center gap-1 rounded-full bg-black/45 px-2 py-0.5">
+          <View pointerEvents="none" className="absolute bottom-1.5 right-1.5 flex-row items-center gap-1 rounded-full bg-black-a45 px-2 py-0.5">
             <Text className="text-[11px] text-white">{timeStr}</Text>
             {ticks}
           </View>

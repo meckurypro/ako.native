@@ -148,7 +148,7 @@ export function EditPage() {
             ) : (
               <Text className="text-xs text-ink-muted">{uploadingCover ? "Uploading…" : "Add a cover photo"}</Text>
             )}
-            <View className="absolute bottom-2 right-2 h-8 w-8 items-center justify-center rounded-full bg-canvas/80">
+            <View className="absolute bottom-2 right-2 h-8 w-8 items-center justify-center rounded-full bg-canvas-a80">
               <Icon as={Camera} size={14} className="text-ink" />
             </View>
           </Pressable>

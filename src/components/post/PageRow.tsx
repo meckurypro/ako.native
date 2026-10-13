@@ -27,7 +27,7 @@ export function PageRow({ page }: { page: PageSearchResult }) {
           {page.tagline || `${pageModeLabel(page.page_type)} · @${page.username}`}
         </Text>
         {page.tagline ? (
-          <Text numberOfLines={1} className="text-xs text-ink-muted/80">
+          <Text numberOfLines={1} className="text-xs text-ink-muted-a80">
             {pageModeLabel(page.page_type)} · @{page.username}
           </Text>
         ) : null}

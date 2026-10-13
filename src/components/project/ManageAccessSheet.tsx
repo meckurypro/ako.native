@@ -69,7 +69,7 @@ export function ManageAccessSheet({ projectId, projectTitle, onClose }: { projec
                     }
                     disabled={busy}
                     accessibilityRole="button"
-                    className={`flex-row items-center gap-1.5 rounded-full px-3 py-1.5 ${isMember ? "bg-danger/10" : "bg-accent-soft"} ${busy ? "opacity-50" : ""}`}
+                    className={`flex-row items-center gap-1.5 rounded-full px-3 py-1.5 ${isMember ? "bg-danger-a10" : "bg-accent-soft"} ${busy ? "opacity-50" : ""}`}
                   >
                     <Icon as={isMember ? UserMinus : UserPlus} size={13} className={isMember ? "text-danger" : "text-accent"} />
                     <Text className={`text-xs font-medium ${isMember ? "text-danger" : "text-accent"}`}>{isMember ? "Remove" : "Add"}</Text>
@@ -108,7 +108,7 @@ export function ManageAccessSheet({ projectId, projectTitle, onClose }: { projec
               disabled={removeMember.isPending}
               accessibilityRole="button"
               accessibilityLabel={`Remove ${m.profile.display_name}`}
-              className={`flex-row items-center gap-1.5 rounded-full bg-danger/10 px-3 py-1.5 ${removeMember.isPending ? "opacity-50" : ""}`}
+              className={`flex-row items-center gap-1.5 rounded-full bg-danger-a10 px-3 py-1.5 ${removeMember.isPending ? "opacity-50" : ""}`}
             >
               <Icon as={UserMinus} size={13} className="text-danger" />
               <Text className="text-xs font-medium text-danger">Remove</Text>

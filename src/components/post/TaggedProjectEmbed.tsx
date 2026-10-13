@@ -30,7 +30,7 @@ export function TaggedProjectEmbed({ project }: { project: TaggedProjectSummary 
 
   if (project.status !== "active") {
     return (
-      <View className="mt-3 rounded-xl border border-border/60 bg-surface/70 px-3.5 py-2.5">
+      <View className="mt-3 rounded-xl border border-border-a60 bg-surface-a70 px-3.5 py-2.5">
         <Text className="text-sm text-ink-muted">This tagged project is no longer available.</Text>
       </View>
     );
@@ -40,9 +40,9 @@ export function TaggedProjectEmbed({ project }: { project: TaggedProjectSummary 
     <Pressable
       onPress={() => router.push(getProjectPath(project) as Href)}
       accessibilityRole="link"
-      className="mt-3 flex-row items-center gap-2.5 rounded-xl border border-border/60 bg-surface/60 px-2.5 py-2 active:bg-surface/80"
+      className="mt-3 flex-row items-center gap-2.5 rounded-xl border border-border-a60 bg-surface-a60 px-2.5 py-2 active:bg-surface-a80"
     >
-      <View className="h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border/50 bg-surface/80">
+      <View className="h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border-a50 bg-surface-a80">
         {project.thumbnail_url ? (
           <Image source={{ uri: project.thumbnail_url }} contentFit="cover" style={{ width: "100%", height: "100%" }} />
         ) : (

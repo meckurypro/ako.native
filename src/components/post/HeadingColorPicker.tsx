@@ -60,7 +60,7 @@ export function HeadingColorPicker({ value, onChange }: HeadingColorPickerProps)
         accessibilityRole="button"
         accessibilityLabel={currentDef ? `Heading color: ${currentDef.label}` : "Heading color"}
         accessibilityState={{ expanded: open }}
-        className={`h-6 w-6 shrink-0 rounded-full ${currentDef ? "" : "border-2 border-dashed border-ink-muted/40"}`}
+        className={`h-6 w-6 shrink-0 rounded-full ${currentDef ? "" : "border-2 border-dashed border-ink-muted-a40"}`}
         style={currentDef ? { backgroundColor: headingSwatchColor(currentDef.key, colors) } : undefined}
       />
 
@@ -75,7 +75,7 @@ export function HeadingColorPicker({ value, onChange }: HeadingColorPickerProps)
                   onPress={() => pick(null)}
                   accessibilityRole="button"
                   accessibilityLabel="Default heading color"
-                  className="items-center justify-center rounded-full border-2 border-dashed border-overlay-ink-muted/60"
+                  className="items-center justify-center rounded-full border-2 border-dashed border-overlay-ink-muted-a60"
                   style={{ width: SWATCH, height: SWATCH }}
                 >
                   {value === null ? <Icon as={Check} size={16} className="text-overlay-ink-muted" /> : null}
@@ -93,7 +93,7 @@ export function HeadingColorPicker({ value, onChange }: HeadingColorPickerProps)
                     {/* Always-white badge behind the check: the swatch fills range from deep wine to
                         pale gold, so one fixed icon colour can't stay legible against all of them. */}
                     {value === c.key ? (
-                      <View className="h-4 w-4 items-center justify-center rounded-full bg-white/95">
+                      <View className="h-4 w-4 items-center justify-center rounded-full bg-white-a95">
                         <Icon as={Check} size={11} strokeWidth={3} className="text-neutral-800" />
                       </View>
                     ) : null}

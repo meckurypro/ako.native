@@ -60,7 +60,7 @@ function SwitcherBody() {
               },
             });
           }}
-          className={`flex-row items-center gap-3 px-4 py-3 active:bg-border/40 ${switchAccount.isPending ? "opacity-60" : ""}`}
+          className={`flex-row items-center gap-3 px-4 py-3 active:bg-border-a40 ${switchAccount.isPending ? "opacity-60" : ""}`}
         >
           <Avatar src={account.avatar_url} name={account.display_name} size="sm" />
           <Text numberOfLines={1} className="min-w-0 flex-1 text-sm text-ink">
@@ -75,7 +75,7 @@ function SwitcherBody() {
       <Pressable
         accessibilityRole="button"
         onPress={() => runAfterDismiss(close, () => router.push("/login?add=1" as Href))}
-        className="flex-row items-center gap-3 px-4 py-3 active:bg-border/40"
+        className="flex-row items-center gap-3 px-4 py-3 active:bg-border-a40"
       >
         <View className="h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-soft">
           <Icon as={Plus} size={15} className="text-accent" />

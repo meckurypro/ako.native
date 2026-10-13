@@ -83,7 +83,7 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
             onPress={smartBack}
             accessibilityRole="button"
             accessibilityLabel="Back"
-            className="mb-4 h-10 w-10 items-center justify-center self-start rounded-full border border-border/60 bg-surface"
+            className="mb-4 h-10 w-10 items-center justify-center self-start rounded-full border border-border-a60 bg-surface"
             style={{ elevation: 2 }}
           >
             <Icon as={ArrowLeft} size={20} className="text-ink-muted" />
@@ -229,7 +229,7 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
               {project.topics.length > 0 ? (
                 <View className="mb-4 mt-4 flex-row flex-wrap gap-2">
                   {project.topics.map((topic) => (
-                    <View key={topic.id} className="rounded-full border border-border/60 bg-surface px-3 py-1">
+                    <View key={topic.id} className="rounded-full border border-border-a60 bg-surface px-3 py-1">
                       <Text className="text-xs font-medium text-ink-muted">{topic.name}</Text>
                     </View>
                   ))}
@@ -241,7 +241,7 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
               <Pressable
                 onPress={() => router.push((project.posted_as_page ? `/page/${project.posted_as_page.username}` : `/profile/${project.owner.username}`) as Href)}
                 accessibilityRole="link"
-                className="flex-row items-center gap-3 rounded-2xl border border-border/60 bg-surface p-4 active:opacity-90"
+                className="flex-row items-center gap-3 rounded-2xl border border-border-a60 bg-surface p-4 active:opacity-90"
                 style={{ elevation: 2 }}
               >
                 {project.posted_as_page ? (

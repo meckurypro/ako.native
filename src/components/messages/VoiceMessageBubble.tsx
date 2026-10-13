@@ -179,15 +179,15 @@ export function VoiceMessageBubble({
   }
 
   const barLevels = peaks?.length ? peaks : flatPeaks();
-  const mutedColor = isMine ? "bg-white/35" : "bg-ink-muted/25";
+  const mutedColor = isMine ? "bg-white-a35" : "bg-ink-muted-a25";
   const filledColor = isMine ? "bg-white" : "bg-accent";
   const showSpeed = playing || (hasStarted && elapsed > 0);
 
   if (spent) {
     return (
       <View className="flex-row items-center gap-2 py-0.5">
-        <Icon as={EyeOff} size={15} className={isMine ? "text-white/70" : "text-ink-muted"} />
-        <Text className={`text-sm italic ${isMine ? "text-white/70" : "text-ink-muted"}`}>Opened</Text>
+        <Icon as={EyeOff} size={15} className={isMine ? "text-white-a70" : "text-ink-muted"} />
+        <Text className={`text-sm italic ${isMine ? "text-white-a70" : "text-ink-muted"}`}>Opened</Text>
       </View>
     );
   }
@@ -204,7 +204,7 @@ export function VoiceMessageBubble({
           accessibilityRole="button"
           accessibilityLabel={`Playback speed, currently ${speed}x. Tap to change.`}
           hitSlop={6}
-          className={`h-10 w-10 shrink-0 items-center justify-center rounded-full ${isMine ? "bg-white/25" : "bg-accent/12"}`}
+          className={`h-10 w-10 shrink-0 items-center justify-center rounded-full ${isMine ? "bg-white-a25" : "bg-accent-a12"}`}
         >
           <Text className={`text-xs font-bold ${isMine ? "text-white" : "text-accent"}`}>{speed}x</Text>
         </Pressable>
@@ -232,7 +232,7 @@ export function VoiceMessageBubble({
         <View className="mt-0.5 flex-row items-center justify-between gap-2">
           <View className="flex-row items-center gap-1">
             {viewOnce ? (
-              <View className={`h-3.5 w-3.5 items-center justify-center rounded-full ${isMine ? "bg-white/25" : "bg-accent/15"}`} accessibilityLabel="View once">
+              <View className={`h-3.5 w-3.5 items-center justify-center rounded-full ${isMine ? "bg-white-a25" : "bg-accent-a15"}`} accessibilityLabel="View once">
                 <Text className={`text-[9px] font-bold ${isMine ? "text-white" : "text-accent"}`}>1</Text>
               </View>
             ) : null}

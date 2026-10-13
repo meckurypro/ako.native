@@ -111,7 +111,7 @@ function ZoomPage({ item, width, height, onToggleChrome, onZoomChange }: { item:
         {failed ? (
           <View className="items-center gap-2">
             <Icon as={ImageOff} size={32} color="rgba(255,255,255,0.6)" />
-            <Text className="text-sm text-white/60">Photo unavailable</Text>
+            <Text className="text-sm text-white-a60">Photo unavailable</Text>
           </View>
         ) : url ? (
           <Animated.View style={[{ width, height }, style]}>
@@ -171,7 +171,7 @@ export function ImageViewer({ items, initialIndex, title, subtitle, caption, onC
 
         {chrome ? (
           <Animated.View entering={FadeIn.duration(120)} exiting={FadeOut.duration(120)} pointerEvents="box-none" className="absolute inset-0">
-            <View className="absolute inset-x-0 top-0 flex-row items-center bg-black/55 px-1 pb-2" style={{ paddingTop: insets.top + 4 }}>
+            <View className="absolute inset-x-0 top-0 flex-row items-center bg-black-a55 px-1 pb-2" style={{ paddingTop: insets.top + 4 }}>
               <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close" hitSlop={8} className="p-3">
                 <Icon as={ArrowLeft} size={22} color="#FFFFFF" />
               </Pressable>
@@ -179,7 +179,7 @@ export function ImageViewer({ items, initialIndex, title, subtitle, caption, onC
                 <Text numberOfLines={1} className="text-base font-semibold text-white">
                   {title}
                 </Text>
-                <Text numberOfLines={1} className="text-xs text-white/70">
+                <Text numberOfLines={1} className="text-xs text-white-a70">
                   {items.length > 1 ? `${index + 1} of ${items.length} · ${subtitle}` : subtitle}
                 </Text>
               </View>
@@ -188,7 +188,7 @@ export function ImageViewer({ items, initialIndex, title, subtitle, caption, onC
               </Pressable>
             </View>
             {caption ? (
-              <View className="absolute inset-x-0 bottom-0 bg-black/55 px-4 pt-3" style={{ paddingBottom: insets.bottom + 12 }}>
+              <View className="absolute inset-x-0 bottom-0 bg-black-a55 px-4 pt-3" style={{ paddingBottom: insets.bottom + 12 }}>
                 <Text className="text-sm text-white">{caption}</Text>
               </View>
             ) : null}

@@ -58,7 +58,7 @@ export function SheetRow({
       accessibilityState={{ disabled: !!disabled }}
       disabled={disabled}
       onPress={() => (closeFirst ? runAfterDismiss(close, onPress) : onPress())}
-      className={`flex-row gap-3 px-4 py-3.5 active:bg-border/40 ${description ? "items-start" : "items-center"} ${
+      className={`flex-row gap-3 px-4 py-3.5 active:bg-border-a40 ${description ? "items-start" : "items-center"} ${
         divider ? "border-t border-border" : ""
       } ${disabled ? "opacity-40" : ""}`}
     >
@@ -77,7 +77,7 @@ export function SheetCancel({ label = "Cancel" }: { label?: string }) {
     <Pressable
       accessibilityRole="button"
       onPress={close}
-      className="mt-1 w-full items-center border-t border-border py-3.5 active:bg-border/40"
+      className="mt-1 w-full items-center border-t border-border py-3.5 active:bg-border-a40"
     >
       <Text className="text-sm text-ink-muted">{label}</Text>
     </Pressable>

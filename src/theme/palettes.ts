@@ -5,6 +5,8 @@
 // `bg-canvas` / `text-ink` / `border-border` class re-themes with zero
 // component changes — same trick the web app uses with its `.dark` class.
 
+import { ALPHA_TOKENS, hexWithAlpha } from "./alphaTokens";
+
 export type ColorScheme = "light" | "dark";
 
 export interface Palette {
@@ -151,7 +153,7 @@ export const overlay = {
 
 /** Palette → CSS custom properties consumed by the generated utilities. */
 export function paletteToCssVars(p: Palette): Record<`--${string}`, string> {
-  return {
+  const vars: Record<`--${string}`, string> = {
     "--color-canvas": p.canvas,
     "--color-surface": p.surface,
     "--color-ink": p.ink,
@@ -177,4 +179,12 @@ export function paletteToCssVars(p: Palette): Record<`--${string}`, string> {
     "--color-heading-espresso": p.headingEspresso,
     "--color-heading-graphite": p.headingGraphite,
   };
+  // Alpha variants (bg-ink-a10 …) follow the live palette — see scripts/sync-alpha-tokens.mjs.
+  for (const [name, alphas] of Object.entries(ALPHA_TOKENS)) {
+    const key = name.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase()) as keyof Palette;
+    const base = p[key];
+    if (typeof base !== "string") continue;
+    for (const pct of alphas) vars[`--color-${name}-a${pct}`] = hexWithAlpha(base, pct);
+  }
+  return vars;
 }

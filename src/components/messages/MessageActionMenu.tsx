@@ -201,7 +201,7 @@ export function MessageActionMenu({
       {/* The message, lifted onto a highlight so it's clear which one this is. */}
       <View
         pointerEvents="none"
-        className="absolute rounded-xl bg-accent-soft/60"
+        className="absolute rounded-xl bg-accent-soft-a60"
         style={{ top: anchorRect.y - 6, left: anchorRect.x - 6, width: anchorRect.width + 12, height: anchorRect.height + 12 }}
       />
       <View pointerEvents="none" style={{ position: "absolute", top: anchorRect.y, left: anchorRect.x, width: anchorRect.width }}>

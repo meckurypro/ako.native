@@ -406,7 +406,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, shareUrl, visible
 
   return (
     <View
-      className="relative mb-4 overflow-hidden rounded-[28px] border border-border/60 bg-surface"
+      className="relative mb-4 overflow-hidden rounded-[28px] border border-border-a60 bg-surface"
       style={{ shadowColor: `rgb(${colors.shadowInkRgb})`, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.14, shadowRadius: 18, elevation: 3 }}
     >
       <View style={{ aspectRatio }} className="w-full items-center justify-center overflow-hidden bg-canvas">
@@ -438,12 +438,12 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, shareUrl, visible
       {showOwnerBadges ? (
         <View className="absolute left-3 top-3 flex-row items-center gap-1.5">
           {project.status !== "active" ? (
-            <View className="rounded-full bg-ink/85 px-2.5 py-1">
+            <View className="rounded-full bg-ink-a85 px-2.5 py-1">
               <Text className="text-xs font-medium text-canvas">{project.status === "draft" ? "Draft" : project.status === "cancelled" ? "Cancelled" : "Archived"}</Text>
             </View>
           ) : null}
           {project.is_private ? (
-            <View className="flex-row items-center gap-1 rounded-full bg-ink/70 px-2.5 py-1">
+            <View className="flex-row items-center gap-1 rounded-full bg-ink-a70 px-2.5 py-1">
               <Icon as={EyeOff} size={10} className="text-canvas" />
               <Text className="text-xs font-medium text-canvas">Private</Text>
             </View>
@@ -458,7 +458,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, shareUrl, visible
               onPress={() => setMenuOpen(true)}
               accessibilityRole="button"
               accessibilityLabel="Project options"
-              className="rounded-full bg-canvas/90 p-1.5"
+              className="rounded-full bg-canvas-a90 p-1.5"
               style={{ elevation: 3 }}
             >
               <Icon as={MoreHorizontal} size={16} className="text-ink-muted" />
@@ -483,7 +483,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, shareUrl, visible
               <Text className="text-xs text-ink-muted">{PROJECT_TYPE_LABELS[project.project_type]}</Text>
               {accessCount > 0 ? (
                 <View className="flex-row items-center gap-1">
-                  <View className="h-1 w-1 rounded-full bg-ink-muted/50" />
+                  <View className="h-1 w-1 rounded-full bg-ink-muted-a50" />
                   <Icon as={Eye} size={11} className="text-ink-muted" />
                   <Text className="text-xs text-ink-muted">{accessCount}</Text>
                 </View>
@@ -719,7 +719,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, shareUrl, visible
               </Pressable>
             ) : null}
 
-            <View className="mt-1 border-t border-border/60 pt-3">
+            <View className="mt-1 border-t border-border-a60 pt-3">
               <ReactionTray
                 leftActions={[]}
                 middleActions={middleActions}

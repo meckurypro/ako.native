@@ -19,7 +19,7 @@ interface MessageStatusTicksProps {
 }
 
 export function MessageStatusTicks({ deliveredAt, readAt, variant = "bubble", size = 18 }: MessageStatusTicksProps) {
-  const unread = variant === "bubble" ? "text-white/80" : "text-ink-muted";
+  const unread = variant === "bubble" ? "text-white-a80" : "text-ink-muted";
 
   if (readAt) {
     return <Icon as={CheckCheck} size={size} strokeWidth={1.75} className="text-tick-blue" accessibilityLabel="Read" />;

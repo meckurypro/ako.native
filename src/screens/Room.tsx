@@ -145,7 +145,7 @@ export function Room() {
         </View>
 
         {isClosed && (
-          <View className="mx-4 mb-3 flex-row items-center justify-between rounded-xl bg-accent-soft/60 px-3 py-2">
+          <View className="mx-4 mb-3 flex-row items-center justify-between rounded-xl bg-accent-soft-a60 px-3 py-2">
             <Text className="min-w-0 flex-1 text-sm text-ink-muted">This cohort has ended — media stays here for people who were in it.</Text>
             {isHost && (
               <Pressable onPress={() => setViewArchivedChat((v) => !v)} accessibilityRole="button" className="ml-2 shrink-0 flex-row items-center gap-1" hitSlop={8}>

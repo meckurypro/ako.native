@@ -434,7 +434,7 @@ export function ProfilePage() {
               accessibilityRole="button"
               className={`rounded-full px-5 py-2 ${
                 toggleFollow.isPending || sendFollowRequest.isPending || cancelFollowRequest.isPending || isBlocked ? "opacity-40" : ""
-              } ${hasPendingRequest ? "bg-accent-soft" : isFollowedByUser ? "bg-pushback/15" : "bg-ink/10"}`}
+              } ${hasPendingRequest ? "bg-accent-soft" : isFollowedByUser ? "bg-pushback-a15" : "bg-ink-a10"}`}
             >
               <Text className={`text-sm font-medium ${hasPendingRequest ? "text-accent" : isFollowedByUser ? "text-pushback" : "text-ink"}`}>
                 {hasPendingRequest ? "Requested" : isFollowedByUser ? "Follow back" : "Follow"}

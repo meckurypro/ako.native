@@ -399,7 +399,7 @@ export function EditProject() {
                   accessibilityState={{ selected: status === opt.value }}
                   className={`flex-row items-center gap-3 rounded-xl border px-4 py-3 ${status === opt.value ? "border-accent bg-accent-soft" : "border-border bg-canvas"}`}
                 >
-                  <View className={`h-4 w-4 items-center justify-center rounded-full border ${status === opt.value ? "border-accent" : "border-ink-muted/50"}`}>
+                  <View className={`h-4 w-4 items-center justify-center rounded-full border ${status === opt.value ? "border-accent" : "border-ink-muted-a50"}`}>
                     {status === opt.value ? <View className="h-2 w-2 rounded-full bg-accent" /> : null}
                   </View>
                   <View className="flex-1">
@@ -461,7 +461,7 @@ export function EditProject() {
           {t === "gig" ? (
             <>
               {existingGigDetails?.is_complete === false ? (
-                <View className="mb-4 rounded-xl border border-accent/30 bg-accent-soft p-3">
+                <View className="mb-4 rounded-xl border border-accent-a30 bg-accent-soft p-3">
                   <Text className="text-sm font-medium text-ink">Finish setting up this Gig</Text>
                   <Text className="mt-0.5 text-xs text-ink-muted">
                     {existingGigDetails.source === "auto_collaboration" ? "This was started automatically from a collaboration you were credited on." : "This Gig isn't complete yet."}{" "}

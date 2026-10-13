@@ -731,7 +731,7 @@ export function MessageThread() {
       </View>
 
       {myParticipantState?.is_request ? (
-        <View className="flex-row items-center gap-2 border-b border-border bg-accent-soft/60 px-4 py-2.5">
+        <View className="flex-row items-center gap-2 border-b border-border bg-accent-soft-a60 px-4 py-2.5">
           <Icon as={Inbox} size={15} className="shrink-0 text-accent" />
           <Text className="flex-1 text-sm text-ink-muted">Message request — reply to move this to your inbox.</Text>
         </View>
@@ -747,7 +747,7 @@ export function MessageThread() {
 
         {/* Floating date badge while scrolling */}
         <View pointerEvents="none" className="absolute inset-x-0 top-2 z-20 items-center" style={{ opacity: stickyDayVisible && stickyDayLabel ? 1 : 0 }}>
-          <View className="rounded-full border border-border bg-surface/95 px-3 py-1">
+          <View className="rounded-full border border-border bg-surface-a95 px-3 py-1">
             <Text className="text-[11px] font-medium text-ink-muted">{stickyDayLabel}</Text>
           </View>
         </View>
@@ -784,7 +784,7 @@ export function MessageThread() {
                 <View>
                   {item.showDaySeparator ? (
                     <View className={`items-center ${index === 0 ? "pb-2 pt-0" : "py-2"}`}>
-                      <View className="rounded-full border border-border bg-surface/90 px-3 py-1">
+                      <View className="rounded-full border border-border bg-surface-a90 px-3 py-1">
                         <Text className="text-[11px] font-medium text-ink-muted">{item.dayLabel}</Text>
                       </View>
                     </View>

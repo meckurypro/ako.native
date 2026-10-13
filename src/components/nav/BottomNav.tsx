@@ -132,7 +132,7 @@ export function BottomNav() {
         {/* backdrop-blur-md (12px): intensity 50 ≈ 12px on Android (÷4 reduction).
             Web's blur has no tint of its own, so use the most transparent system
             material on iOS instead of "light"/"dark", which whiten/darken the glass
-            on top of the bg-surface/80 fill below. */}
+            on top of the bg-surface-a80 fill below. */}
         <BlurView
           intensity={NAV_BLUR_INTENSITY}
           tint={

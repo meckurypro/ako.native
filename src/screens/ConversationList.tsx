@@ -171,7 +171,7 @@ export function ConversationList() {
       <Pressable
         onPress={() => router.push("/messages/archive")}
         accessibilityRole="button"
-        className="flex-row items-center gap-3 border-b border-border/60 bg-canvas px-4 py-3 active:bg-surface/60"
+        className="flex-row items-center gap-3 border-b border-border-a60 bg-canvas px-4 py-3 active:bg-surface-a60"
       >
         <View className="h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent-soft">
           <Icon as={Archive} size={18} className="text-accent" />

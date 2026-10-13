@@ -18,7 +18,7 @@ export function ArchivedPostModal({ post, onClose }: { post: PostWithAuthor; onC
         onPress={onClose}
         accessibilityRole="button"
         accessibilityLabel="Close"
-        className="mb-3 flex-row items-center gap-1.5 self-start rounded-full bg-ink/70 px-3 py-1.5"
+        className="mb-3 flex-row items-center gap-1.5 self-start rounded-full bg-ink-a70 px-3 py-1.5"
       >
         <Icon as={X} size={15} className="text-canvas" />
         <Text className="text-sm text-canvas">Close</Text>

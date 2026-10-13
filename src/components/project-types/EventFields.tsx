@@ -68,7 +68,7 @@ export function EventFields({ value, onChange }: { value: EventFieldsValue; onCh
 
       <View className="mb-4">
         <Text className="mb-1.5 text-sm font-medium text-ink-muted">Ticket design (optional)</Text>
-        <Text className="mb-2 text-xs text-ink-muted/70">
+        <Text className="mb-2 text-xs text-ink-muted-a70">
           Upload a background image and we'll overlay attendee details on it. Skip this and we'll use a clean default layout instead.
         </Text>
         {value.ticket_template_url ? (

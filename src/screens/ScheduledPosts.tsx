@@ -53,7 +53,7 @@ export function ScheduledPosts() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: insets.bottom + 24, gap: 12 }}
           renderItem={({ item: post }) => (
-            <View className="rounded-2xl border border-accent/30 bg-accent-soft/40 p-4">
+            <View className="rounded-2xl border border-accent-a30 bg-accent-soft-a40 p-4">
               <View className="mb-2 flex-row items-center justify-between">
                 <View className="flex-row items-center gap-1.5">
                   <Icon as={Send} size={12} className="text-accent" />

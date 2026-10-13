@@ -217,7 +217,7 @@ export function ProfileSection({ open, onToggle }: ProfileSectionProps) {
       {roles && roles.length > 0 && (
         <View className="mb-6">
           <Text className="mb-2.5 text-[11px] font-medium uppercase tracking-[1.54px] text-ink-muted">
-            Job or hobby <Text className="text-ink-muted/70">({roleIds.length}/{MAX_ROLES})</Text>
+            Job or hobby <Text className="text-ink-muted-a70">({roleIds.length}/{MAX_ROLES})</Text>
           </Text>
           <View className="flex-row flex-wrap gap-2">
             {roles.map((role) => {

@@ -60,7 +60,7 @@ export function MediaComposeModal({ kind, files: initialFiles, onClose, onSend }
               accessibilityRole="switch"
               accessibilityState={{ checked: hd }}
               accessibilityLabel="Send in HD quality"
-              className={`mr-2 rounded-full px-3 py-1.5 ${hd ? "bg-white" : "bg-white/20"}`}
+              className={`mr-2 rounded-full px-3 py-1.5 ${hd ? "bg-white" : "bg-white-a20"}`}
             >
               <Text className={`text-xs font-bold ${hd ? "text-black" : "text-white"}`}>HD</Text>
             </Pressable>
@@ -79,7 +79,7 @@ export function MediaComposeModal({ kind, files: initialFiles, onClose, onSend }
               <Text numberOfLines={3} className="text-center text-base text-white">
                 {current.name}
               </Text>
-              <Text className="text-sm text-white/60">{[doc?.label, formatFileSize(current.size)].filter(Boolean).join(" · ")}</Text>
+              <Text className="text-sm text-white-a60">{[doc?.label, formatFileSize(current.size)].filter(Boolean).join(" · ")}</Text>
             </View>
           )}
         </View>
@@ -99,7 +99,7 @@ export function MediaComposeModal({ kind, files: initialFiles, onClose, onSend }
                     accessibilityRole="button"
                     accessibilityLabel="Remove photo"
                     hitSlop={6}
-                    className="absolute -right-1 -top-1 h-5 w-5 items-center justify-center rounded-full bg-black/80"
+                    className="absolute -right-1 -top-1 h-5 w-5 items-center justify-center rounded-full bg-black-a80"
                   >
                     <Icon as={X} size={12} color="#FFFFFF" />
                   </Pressable>
@@ -118,7 +118,7 @@ export function MediaComposeModal({ kind, files: initialFiles, onClose, onSend }
             placeholder={files.length > 1 ? "Add a caption to all…" : "Add a caption…"}
             placeholderTextColor="rgba(255,255,255,0.55)"
             selectionColor="#FFFFFF"
-            className="min-w-0 flex-1 rounded-3xl bg-white/15 px-4 py-2.5 text-base text-white"
+            className="min-w-0 flex-1 rounded-3xl bg-white-a15 px-4 py-2.5 text-base text-white"
             style={{ maxHeight: 110, fontFamily: "Inter_400Regular" }}
           />
           <Pressable

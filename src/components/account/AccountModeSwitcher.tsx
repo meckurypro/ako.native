@@ -38,7 +38,7 @@ function Row({
       accessibilityState={{ selected: active, disabled }}
       disabled={disabled}
       onPress={onPress}
-      className="flex-row items-center gap-3 p-4 active:bg-border/40"
+      className="flex-row items-center gap-3 p-4 active:bg-border-a40"
     >
       <Avatar src={avatarSrc} name={name} size="md" />
       <View className="min-w-0 flex-1">
@@ -102,7 +102,7 @@ export function AccountModeSwitcher() {
         <Pressable
           accessibilityRole="button"
           onPress={() => router.push("/pages/new")}
-          className="flex-row items-center gap-3 border-t border-border p-4 active:bg-border/40"
+          className="flex-row items-center gap-3 border-t border-border p-4 active:bg-border-a40"
         >
           <View className="h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-soft">
             <Icon as={Plus} size={18} className="text-accent" />

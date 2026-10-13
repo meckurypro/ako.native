@@ -269,7 +269,7 @@ export function Compose() {
                     accessibilityRole="button"
                     accessibilityLabel="Remove photo"
                     hitSlop={8}
-                    className="absolute right-1.5 top-1.5 rounded-full bg-ink/60 p-1"
+                    className="absolute right-1.5 top-1.5 rounded-full bg-ink-a60 p-1"
                   >
                     <Icon as={X} size={14} className="text-canvas" />
                   </Pressable>
@@ -340,7 +340,7 @@ export function Compose() {
           </View>
 
           {error ? (
-            <Text accessibilityRole="alert" className="mt-4 rounded-xl bg-danger/10 p-3 text-sm text-danger">
+            <Text accessibilityRole="alert" className="mt-4 rounded-xl bg-danger-a10 p-3 text-sm text-danger">
               {error}
             </Text>
           ) : null}

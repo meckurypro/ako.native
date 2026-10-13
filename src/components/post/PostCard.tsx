@@ -391,7 +391,7 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
             onPress={handleToggleArchive}
             accessibilityRole="button"
             accessibilityLabel="Restore"
-            className="flex-row items-center gap-1.5 rounded-full bg-ink/70 px-3 py-1.5"
+            className="flex-row items-center gap-1.5 rounded-full bg-ink-a70 px-3 py-1.5"
           >
             <Icon as={RotateCcw} size={14} className="text-canvas" />
             <Text className="text-xs font-medium text-canvas">Restore</Text>
@@ -400,7 +400,7 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
             onPress={() => setShowDeleteConfirm(true)}
             accessibilityRole="button"
             accessibilityLabel="Delete"
-            className="flex-row items-center gap-1.5 rounded-full bg-danger/85 px-3 py-1.5"
+            className="flex-row items-center gap-1.5 rounded-full bg-danger-a85 px-3 py-1.5"
           >
             <Icon as={Trash2} size={14} className="text-canvas" />
             <Text className="text-xs font-medium text-canvas">Delete</Text>
@@ -416,7 +416,7 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
             onPress={() => setShowDeleteConfirm(true)}
             accessibilityRole="button"
             accessibilityLabel="Delete"
-            className="flex-row items-center gap-1.5 rounded-full bg-danger/85 px-3 py-1.5"
+            className="flex-row items-center gap-1.5 rounded-full bg-danger-a85 px-3 py-1.5"
           >
             <Icon as={Trash2} size={14} className="text-canvas" />
             <Text className="text-xs font-medium text-canvas">Delete</Text>

@@ -94,14 +94,14 @@ export function SlideCarousel({ mediaUrls, onTap, frameHeight }: SlideCarouselPr
 
       <View
         pointerEvents="none"
-        className="absolute bottom-2.5 flex-row items-center gap-1.5 self-center rounded-full bg-ink/40 px-2 py-1"
+        className="absolute bottom-2.5 flex-row items-center gap-1.5 self-center rounded-full bg-ink-a40 px-2 py-1"
       >
         {mediaUrls.map((_, i) => (
-          <View key={i} className={`h-1.5 rounded-full ${i === index ? "w-4 bg-white" : "w-1.5 bg-white/50"}`} />
+          <View key={i} className={`h-1.5 rounded-full ${i === index ? "w-4 bg-white" : "w-1.5 bg-white-a50"}`} />
         ))}
       </View>
 
-      <View pointerEvents="none" className="absolute right-2 top-2 rounded-full bg-ink/50 px-2 py-0.5">
+      <View pointerEvents="none" className="absolute right-2 top-2 rounded-full bg-ink-a50 px-2 py-0.5">
         <Text className="text-xs font-medium text-white">
           {index + 1}/{count}
         </Text>

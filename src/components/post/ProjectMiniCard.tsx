@@ -26,7 +26,7 @@ export function ProjectMiniCard({ project, showStatus = false, width }: { projec
     <Pressable
       onPress={() => router.push(getProjectPath(project) as Href)}
       accessibilityRole="link"
-      className="overflow-hidden rounded-2xl border border-border/60 bg-surface active:opacity-90"
+      className="overflow-hidden rounded-2xl border border-border-a60 bg-surface active:opacity-90"
       style={{
         width: width ?? "100%",
         shadowColor: `rgb(${colors.shadowInkRgb})`,
@@ -38,7 +38,7 @@ export function ProjectMiniCard({ project, showStatus = false, width }: { projec
     >
       <View className="aspect-square w-full items-center justify-center overflow-hidden bg-canvas">
         {statusLabel ? (
-          <View className="absolute left-2 top-2 z-10 rounded-full bg-ink/75 px-2 py-0.5">
+          <View className="absolute left-2 top-2 z-10 rounded-full bg-ink-a75 px-2 py-0.5">
             <Text className="text-[11px] font-medium text-canvas">{statusLabel}</Text>
           </View>
         ) : null}

@@ -106,7 +106,7 @@ export function BookFields({ value, onChange, onError }: { value: BookFieldsValu
               accessibilityState={{ selected: value.content_source === opt.value }}
               className={`flex-row items-start gap-3 rounded-xl border px-4 py-3 ${value.content_source === opt.value ? "border-accent bg-accent-soft" : "border-border bg-canvas"}`}
             >
-              <View className={`mt-0.5 h-4 w-4 items-center justify-center rounded-full border ${value.content_source === opt.value ? "border-accent" : "border-ink-muted/50"}`}>
+              <View className={`mt-0.5 h-4 w-4 items-center justify-center rounded-full border ${value.content_source === opt.value ? "border-accent" : "border-ink-muted-a50"}`}>
                 {value.content_source === opt.value ? <View className="h-2 w-2 rounded-full bg-accent" /> : null}
               </View>
               <View className="flex-1">

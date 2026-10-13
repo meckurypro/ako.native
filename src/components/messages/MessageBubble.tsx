@@ -206,7 +206,7 @@ function MessageBubbleImpl({
   }, [selectMode, m, onLongPress]);
 
   const textColor = isMine ? "text-white" : "text-ink";
-  const footerColor = isMine ? "text-white/70" : "text-ink-muted";
+  const footerColor = isMine ? "text-white-a70" : "text-ink-muted";
   const entering = animateIn ? (isMine ? FadeInRight.duration(220) : FadeInLeft.duration(220)) : undefined;
 
   return (
@@ -250,24 +250,24 @@ function MessageBubbleImpl({
               ]}
             >
               {isHighlighted || isSelected ? (
-                <View pointerEvents="none" className={`absolute inset-0 rounded-2xl ${isSelected ? "bg-highlight/50" : "bg-accent/25"}`} />
+                <View pointerEvents="none" className={`absolute inset-0 rounded-2xl ${isSelected ? "bg-highlight-a50" : "bg-accent-a25"}`} />
               ) : null}
 
               {repliedTo && !m.is_deleted ? (
                 <Pressable
                   onPress={() => onScrollToMessage(repliedTo.id)}
                   accessibilityRole="button"
-                  className={`mb-1.5 rounded-sm border-l-2 pl-2 ${isMine ? "border-white/50" : "border-accent/50"}`}
+                  className={`mb-1.5 rounded-sm border-l-2 pl-2 ${isMine ? "border-white-a50" : "border-accent-a50"}`}
                 >
-                  <Text className={`text-xs font-medium ${isMine ? "text-white/80" : "text-ink-muted"}`}>
+                  <Text className={`text-xs font-medium ${isMine ? "text-white-a80" : "text-ink-muted"}`}>
                     {repliedTo.sender_id === currentUserId ? "You" : otherParticipantName}
                   </Text>
                   {repliedTo.is_deleted ? (
-                    <Text numberOfLines={1} className={`text-xs ${isMine ? "text-white/80" : "text-ink-muted"}`}>
+                    <Text numberOfLines={1} className={`text-xs ${isMine ? "text-white-a80" : "text-ink-muted"}`}>
                       Original message deleted
                     </Text>
                   ) : (
-                    <MessagePreviewLine content={repliedTo.content} className={`text-xs ${isMine ? "text-white/80" : "text-ink-muted"}`} iconClassName={isMine ? "text-white/80" : "text-ink-muted"} />
+                    <MessagePreviewLine content={repliedTo.content} className={`text-xs ${isMine ? "text-white-a80" : "text-ink-muted"}`} iconClassName={isMine ? "text-white-a80" : "text-ink-muted"} />
                   )}
                 </Pressable>
               ) : null}

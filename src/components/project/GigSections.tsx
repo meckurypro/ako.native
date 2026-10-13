@@ -15,7 +15,7 @@ function FaqRow({ item }: { item: { question: string; answer: string } }) {
   const [open, setOpen] = useState(false);
   const chevron = useAnimatedStyle(() => ({ transform: [{ rotate: withTiming(open ? "180deg" : "0deg", { duration: 200 }) }] }));
   return (
-    <View className="overflow-hidden rounded-2xl border border-border/60 bg-surface">
+    <View className="overflow-hidden rounded-2xl border border-border-a60 bg-surface">
       <Pressable onPress={() => setOpen((o) => !o)} accessibilityRole="button" accessibilityState={{ expanded: open }} className="flex-row items-center justify-between gap-2 px-4 py-3">
         <Text className="flex-1 text-sm font-medium text-ink">{item.question}</Text>
         <Animated.View style={chevron}>

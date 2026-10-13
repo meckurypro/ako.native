@@ -112,7 +112,7 @@ function PollCard({ projectId, poll }: { projectId: string; poll: Poll }) {
               accessibilityState={{ selected: mine }}
               className={`overflow-hidden rounded-lg border px-3 py-2 ${mine ? "border-accent" : "border-border"}`}
             >
-              <View className="absolute inset-y-0 left-0 bg-accent-soft/50" style={{ width: `${pct}%` }} />
+              <View className="absolute inset-y-0 left-0 bg-accent-soft-a50" style={{ width: `${pct}%` }} />
               <View className="flex-row items-center justify-between gap-2">
                 <Text className="min-w-0 flex-1 text-sm text-ink">{opt.label}</Text>
                 <Text className="text-xs text-ink-muted">

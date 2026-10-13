@@ -22,7 +22,7 @@ export function MeetingFields({ value, onChange, error }: { value: MeetingFields
         onPress={() => onChange({ ...value, recording_enabled: !value.recording_enabled })}
         accessibilityRole="switch"
         accessibilityState={{ checked: value.recording_enabled }}
-        className={`mb-4 w-full flex-row items-center gap-2.5 rounded-xl border px-4 py-3 ${value.recording_enabled ? "border-accent bg-accent-soft/60" : "border-border bg-surface"}`}
+        className={`mb-4 w-full flex-row items-center gap-2.5 rounded-xl border px-4 py-3 ${value.recording_enabled ? "border-accent bg-accent-soft-a60" : "border-border bg-surface"}`}
       >
         <Icon as={Video} size={16} className={value.recording_enabled ? "text-accent" : "text-ink-muted"} />
         <View className="flex-1">

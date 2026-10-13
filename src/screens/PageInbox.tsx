@@ -19,7 +19,7 @@ function Row({ c }: { c: PageConversationSummary }) {
     <Pressable
       onPress={() => router.push(`/page-inbox/${c.id}` as Href)}
       accessibilityRole="link"
-      className="flex-row items-center gap-3 py-3 active:bg-surface/60"
+      className="flex-row items-center gap-3 py-3 active:bg-surface-a60"
     >
       <Avatar src={c.other_participant.avatar_url} name={c.other_participant.display_name} />
       <View className="min-w-0 flex-1">

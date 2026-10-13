@@ -291,7 +291,7 @@ function Body(props: ShareProfileSheetProps & { mode: Mode; setMode: (m: Mode) =
                 <View>
                   <Avatar src={contact.avatar_url} name={contact.display_name} size="lg" />
                   {sent ? (
-                    <View className="absolute inset-0 items-center justify-center rounded-full bg-ink/50">
+                    <View className="absolute inset-0 items-center justify-center rounded-full bg-ink-a50">
                       <Icon as={Check} size={22} className="text-canvas" />
                     </View>
                   ) : null}
@@ -312,7 +312,7 @@ function Body(props: ShareProfileSheetProps & { mode: Mode; setMode: (m: Mode) =
           <WhatsAppGlyph />
         </ExternalTarget>
         <ExternalTarget label="Copy link" onPress={() => void handleCopyLink()}>
-          <Round className="bg-ink/10">
+          <Round className="bg-ink-a10">
             <Icon as={Link2} size={20} className="text-ink" />
           </Round>
         </ExternalTarget>
@@ -325,7 +325,7 @@ function Body(props: ShareProfileSheetProps & { mode: Mode; setMode: (m: Mode) =
           label="Email"
           onPress={() => openExternal(`mailto:?subject=${encodeURIComponent(profile.display_name)}&body=${encodeURIComponent(`${shareText} ${profileUrl}`)}`)}
         >
-          <Round className="bg-ink/70">
+          <Round className="bg-ink-a70">
             <Icon as={Mail} size={20} className="text-canvas" />
           </Round>
         </ExternalTarget>
@@ -339,7 +339,7 @@ function Body(props: ShareProfileSheetProps & { mode: Mode; setMode: (m: Mode) =
           <XGlyph />
         </ExternalTarget>
         <ExternalTarget label="More" onPress={() => void handleMore()}>
-          <Round className="bg-ink/10">
+          <Round className="bg-ink-a10">
             <Icon as={Share2} size={20} className="text-ink" />
           </Round>
         </ExternalTarget>
@@ -350,7 +350,7 @@ function Body(props: ShareProfileSheetProps & { mode: Mode; setMode: (m: Mode) =
       <View className="flex-row flex-wrap gap-y-4 px-2 py-4">
         {actions.map((action) => (
           <Pressable key={action.key} onPress={action.onSelect} accessibilityRole="button" className="items-center gap-1.5" style={{ width: "25%" }}>
-            <Round className={action.danger ? "bg-danger/10" : "bg-ink/10"}>{action.icon}</Round>
+            <Round className={action.danger ? "bg-danger-a10" : "bg-ink-a10"}>{action.icon}</Round>
             <Text className={`px-0.5 text-center text-[11px] leading-tight ${action.danger ? "text-danger" : "text-ink"}`}>{action.label}</Text>
           </Pressable>
         ))}

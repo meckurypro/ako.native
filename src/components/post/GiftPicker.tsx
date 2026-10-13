@@ -232,7 +232,7 @@ function Body(props: GiftPickerProps & { step: Step; setStep: (s: Step) => void 
           </View>
 
           {insufficientBalance ? (
-            <View className="w-full rounded-xl bg-danger/10 p-3">
+            <View className="w-full rounded-xl bg-danger-a10 p-3">
               <Text className="text-sm text-danger">
                 {"Insufficient balance. Fund your "}
                 <Text className="text-danger underline" accessibilityRole="link" onPress={openWallet}>

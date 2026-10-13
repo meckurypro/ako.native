@@ -50,7 +50,7 @@ export function VoicePreviewBar({ url, durationSec, peaks, sending, viewOnce, on
         onPress={onDiscard}
         accessibilityRole="button"
         accessibilityLabel="Discard recording"
-        className="h-9 w-9 shrink-0 items-center justify-center rounded-full bg-danger/10"
+        className="h-9 w-9 shrink-0 items-center justify-center rounded-full bg-danger-a10"
       >
         <Icon as={Trash2} size={18} className="text-danger" />
       </Pressable>
@@ -68,7 +68,7 @@ export function VoicePreviewBar({ url, durationSec, peaks, sending, viewOnce, on
           levels={peaks.length ? peaks : flatPeaks()}
           progress={progress}
           filledColor="bg-accent"
-          mutedColor="bg-ink-muted/25"
+          mutedColor="bg-ink-muted-a25"
           onSeek={peaks.length ? (r) => void player.seekTo(r * total).catch(() => {}) : undefined}
         />
         <Text className="shrink-0 text-[11px] text-ink-muted">{formatVoiceDuration(status.playing || status.currentTime > 0 ? status.currentTime : durationSec)}</Text>
@@ -78,7 +78,7 @@ export function VoicePreviewBar({ url, durationSec, peaks, sending, viewOnce, on
             accessibilityRole="switch"
             accessibilityState={{ checked: !!viewOnce }}
             accessibilityLabel={viewOnce ? "View once enabled — tap to allow replay" : "Enable view once"}
-            className={`h-6 w-6 shrink-0 items-center justify-center rounded-full ${viewOnce ? "bg-accent" : "bg-ink-muted/15"}`}
+            className={`h-6 w-6 shrink-0 items-center justify-center rounded-full ${viewOnce ? "bg-accent" : "bg-ink-muted-a15"}`}
           >
             <Text className={`text-[11px] font-bold ${viewOnce ? "text-white" : "text-ink-muted"}`}>1</Text>
           </Pressable>

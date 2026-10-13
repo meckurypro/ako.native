@@ -254,7 +254,7 @@ export function MediaViewer({ mediaUrls, startIndex, onClose }: MediaViewerProps
 
         {mediaUrls.length > 1 ? (
           <View pointerEvents="none" className="absolute inset-x-0 items-center" style={{ top: insets.top + 16 }}>
-            <Text className="text-sm text-white/80">
+            <Text className="text-sm text-white-a80">
               {index + 1} / {mediaUrls.length}
             </Text>
           </View>

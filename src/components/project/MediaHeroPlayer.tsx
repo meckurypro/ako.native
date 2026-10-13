@@ -119,7 +119,7 @@ export function MediaHeroPlayer({ kind, thumbnailUrl, hasAccess, previewSrc, isL
             <Icon as={ImageIcon} size={32} className="text-ink-muted" />
           </View>
         )}
-        <View className="absolute inset-0 items-center justify-center gap-1.5 bg-ink/40">
+        <View className="absolute inset-0 items-center justify-center gap-1.5 bg-ink-a40">
           <Icon as={Lock} size={20} className="text-canvas" />
           <Text className="text-xs font-medium text-canvas">{kind === "video" ? "Video locked" : "Audio locked"}</Text>
         </View>
@@ -150,14 +150,14 @@ export function MediaHeroPlayer({ kind, thumbnailUrl, hasAccess, previewSrc, isL
       )}
 
       <View pointerEvents="none" className="absolute inset-0 items-center justify-center">
-        <View className="h-14 w-14 items-center justify-center rounded-full bg-ink/60">
+        <View className="h-14 w-14 items-center justify-center rounded-full bg-ink-a60">
           {isBusy ? <ActivityIndicator color="#F7F4EF" /> : <Icon as={isPlaying ? Pause : Play} size={22} fill="#F7F4EF" className="text-canvas" />}
         </View>
       </View>
 
       {previewSrc ? (
         <View pointerEvents="none" className="absolute inset-x-2 bottom-2 flex-row items-center gap-2">
-          <View className="h-1 flex-1 overflow-hidden rounded-full bg-canvas/40">
+          <View className="h-1 flex-1 overflow-hidden rounded-full bg-canvas-a40">
             <View className="h-full bg-canvas" style={{ width: `${progressPct}%` }} />
           </View>
           <Text className="shrink-0 text-[10px] text-canvas">

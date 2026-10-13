@@ -187,7 +187,7 @@ export function CreatePage() {
           </View>
 
           {eligibility && !eligibility.eligible ? (
-            <View className="gap-3 rounded-xl border border-danger/30 bg-danger/10 px-4 py-3">
+            <View className="gap-3 rounded-xl border border-danger-a30 bg-danger-a10 px-4 py-3">
               <View>
                 <Text className="mb-1 text-sm font-medium text-danger">Page creation isn't unlocked yet:</Text>
                 {eligibility.reasons.map((reason) => (
@@ -196,7 +196,7 @@ export function CreatePage() {
               </View>
 
               {pageEligibilityRaw ? (
-                <View className="gap-2.5 border-t border-danger/20 pt-3">
+                <View className="gap-2.5 border-t border-danger-a20 pt-3">
                   <EligibilityBar label="Posts (last 30 days)" current={pageEligibilityRaw.posts_30d} required={pageEligibilityRaw.posts_required} />
                   <EligibilityBar
                     label="Distinct posts engaged with (last 30 days)"
@@ -210,7 +210,7 @@ export function CreatePage() {
                 </View>
               ) : null}
 
-              <Text className="text-xs text-danger/80">Keep posting and engaging with others' posts to unlock this.</Text>
+              <Text className="text-xs text-danger-a80">Keep posting and engaging with others' posts to unlock this.</Text>
             </View>
           ) : null}
 

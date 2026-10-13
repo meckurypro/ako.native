@@ -23,7 +23,7 @@ export const FormField = forwardRef<TextInput, FormFieldProps>(function FormFiel
   const { colors } = useTheme();
   const [focused, setFocused] = useState(false);
 
-  const underline = error ? "border-danger" : focused ? "border-accent" : "border-ink-muted/20";
+  const underline = error ? "border-danger" : focused ? "border-accent" : "border-ink-muted-a20";
 
   return (
     <View className="mb-6">

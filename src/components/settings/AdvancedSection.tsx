@@ -47,7 +47,7 @@ export function AdvancedSection({ open, onToggle }: { open: boolean; onToggle: (
             <Text className="text-sm font-medium text-danger">Deactivate account</Text>
           </Pressable>
         ) : (
-          <View className="rounded-xl bg-danger/10 p-4">
+          <View className="rounded-xl bg-danger-a10 p-4">
             <View className="mb-2 flex-row gap-2">
               <Icon as={AlertTriangle} size={18} className="mt-0.5 text-danger" />
               <Text className="min-w-0 flex-1 text-sm text-ink">

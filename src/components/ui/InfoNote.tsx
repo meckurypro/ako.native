@@ -9,7 +9,7 @@ import { Text } from "./Text";
 
 export function InfoNote({ children }: { children: ReactNode }) {
   return (
-    <View className="mb-4 flex-row gap-2.5 rounded-xl bg-accent-soft/60 p-4">
+    <View className="mb-4 flex-row gap-2.5 rounded-xl bg-accent-soft-a60 p-4">
       <View className="mt-0.5 shrink-0">
         <Icon as={Info} size={16} className="text-accent" />
       </View>

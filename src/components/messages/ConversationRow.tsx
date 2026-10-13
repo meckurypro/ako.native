@@ -77,7 +77,7 @@ export function ConversationRow({
       delayLongPress={450}
       accessibilityRole="link"
       accessibilityState={{ selected: selectMode ? selected : undefined }}
-      className="flex-row items-center gap-3 border-b border-border py-3.5 active:bg-surface/60"
+      className="flex-row items-center gap-3 border-b border-border py-3.5 active:bg-surface-a60"
     >
       {selectMode ? (
         <View className={`h-5 w-5 shrink-0 items-center justify-center rounded-full border ${selected ? "border-accent bg-accent" : "border-border"}`}>

@@ -364,7 +364,7 @@ export function CreateProject() {
           </Text>
 
           {eligibility && !eligibility.eligible ? (
-            <View className="mb-4 rounded-xl border border-danger/30 bg-danger/10 px-4 py-3">
+            <View className="mb-4 rounded-xl border border-danger-a30 bg-danger-a10 px-4 py-3">
               <Text className="mb-1 text-sm font-medium text-danger">You don't meet the requirements for {PROJECT_TYPE_LABELS[projectType]} yet:</Text>
               {eligibility.reasons.map((reason) => (
                 <Text key={reason} className="text-xs text-danger">{`• ${reason}`}</Text>

@@ -373,3 +373,15 @@ src/_pending/           audioClip.ts, useLiveKitRoom.ts   (parked for the LiveKi
 ---
 
 *End of handoff. If anything here conflicts with what you observe in the repo, trust the repo and tell the owner.*
+
+## Opacity colours: use `-aNN`, never `/NN`
+
+Tailwind's `bg-ink/10`-style opacity classes compile to `color-mix()` and did not render
+reliably on device (see-through nav/menus/pills, wrong colours in dark mode). Use the
+pre-computed alpha tokens instead: `bg-ink-a10`, `text-white-a80`, `border-danger-a30`,
+`active:bg-border-a40` (`aNN` = alpha in percent). They follow the live theme.
+
+After adding a new `-aNN` class run `npm run sync:alpha` — it regenerates the token block in
+`src/global.css` and `src/theme/alphaTokens.ts`. `node scripts/sync-alpha-tokens.mjs --rewrite`
+also converts any `x-y/NN` classes someone typed by habit.
+

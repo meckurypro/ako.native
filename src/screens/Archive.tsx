@@ -131,7 +131,7 @@ export function Archive() {
         }
         delayLongPress={450}
         accessibilityRole="link"
-        className="flex-row items-center gap-3 border-b border-border py-3.5 active:bg-surface/60"
+        className="flex-row items-center gap-3 border-b border-border py-3.5 active:bg-surface-a60"
       >
         {selectMode ? (
           <View className={`h-5 w-5 shrink-0 items-center justify-center rounded-full border ${isSelected ? "border-accent bg-accent" : "border-border"}`}>
@@ -248,7 +248,7 @@ export function Archive() {
                             key={post.id}
                             onPress={() => setPreviewPost(post)}
                             accessibilityRole="button"
-                            className={`flex-row items-start justify-between gap-3 py-2.5 ${i > 0 ? "border-t border-border/60" : ""}`}
+                            className={`flex-row items-start justify-between gap-3 py-2.5 ${i > 0 ? "border-t border-border-a60" : ""}`}
                           >
                             <View className="min-w-0 flex-1 flex-row items-center gap-1.5">
                               {isRepost ? <Icon as={Repeat2} size={13} className="shrink-0 text-ink-muted" /> : null}

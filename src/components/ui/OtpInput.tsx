@@ -62,7 +62,7 @@ export function OtpInput({ length = 8, onComplete, error }: OtpInputProps) {
             {focusedIndex === i && !error ? (
               <View
                 pointerEvents="none"
-                className="absolute -inset-[2px] rounded-[10px] border-2 border-accent/40"
+                className="absolute -inset-[2px] rounded-[10px] border-2 border-accent-a40"
               />
             ) : null}
             <TextInput

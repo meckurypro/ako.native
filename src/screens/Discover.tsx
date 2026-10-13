@@ -137,7 +137,7 @@ export function Discover() {
                               key={interest.id}
                               onPress={() => router.navigate({ pathname: "/feed", params: { interest: interest.id } })}
                               accessibilityRole="button"
-                              className="rounded-full border border-border bg-surface px-3.5 py-2 active:border-accent/50"
+                              className="rounded-full border border-border bg-surface px-3.5 py-2 active:border-accent-a50"
                             >
                               <Text className="text-sm text-ink">{interest.name}</Text>
                             </Pressable>

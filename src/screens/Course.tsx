@@ -260,7 +260,7 @@ export function Course() {
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }}
       >
         {isOwner && (
-          <View className="mb-4 flex-row items-center justify-between rounded-xl bg-accent-soft/60 p-3">
+          <View className="mb-4 flex-row items-center justify-between rounded-xl bg-accent-soft-a60 p-3">
             {project.published_at ? (
               <View className="flex-row items-center gap-1.5">
                 <Icon as={CheckCircle2} size={14} className="text-accent" />
@@ -496,7 +496,7 @@ export function Course() {
                         );
                       }
                       return (
-                        <View key={l.id} className={`flex-row items-center gap-2 rounded-lg border-l-2 py-1.5 pl-2 ${isSelected ? "border-accent bg-accent-soft/40" : "border-border"}`}>
+                        <View key={l.id} className={`flex-row items-center gap-2 rounded-lg border-l-2 py-1.5 pl-2 ${isSelected ? "border-accent bg-accent-soft-a40" : "border-border"}`}>
                           <Pressable
                             onPress={() => hasAccess && markComplete({ lessonId: l.id, completed: !complete })}
                             disabled={!hasAccess}

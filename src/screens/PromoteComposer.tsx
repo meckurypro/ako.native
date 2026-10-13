@@ -284,7 +284,7 @@ export function PromoteComposer() {
                       disabled={terminatePromotion.isPending}
                       onPress={() => setConfirmTerminate(true)}
                       accessibilityRole="button"
-                      className={`flex-row items-center gap-1.5 rounded-lg bg-danger/10 px-3 py-1.5 ${terminatePromotion.isPending ? "opacity-50" : ""}`}
+                      className={`flex-row items-center gap-1.5 rounded-lg bg-danger-a10 px-3 py-1.5 ${terminatePromotion.isPending ? "opacity-50" : ""}`}
                     >
                       <Icon as={XCircle} size={14} className="text-danger" />
                       <Text className="text-sm font-medium text-danger">{terminatePromotion.isPending ? "Ending…" : "End campaign"}</Text>
@@ -383,7 +383,7 @@ export function PromoteComposer() {
               </Text>
 
               {error ? (
-                <Text accessibilityRole="alert" className="mb-4 rounded-xl bg-danger/10 p-3 text-sm text-danger">
+                <Text accessibilityRole="alert" className="mb-4 rounded-xl bg-danger-a10 p-3 text-sm text-danger">
                   {error}
                 </Text>
               ) : null}

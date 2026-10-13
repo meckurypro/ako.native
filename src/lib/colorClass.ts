@@ -1,7 +1,7 @@
 // src/lib/colorClass.ts
 // A few places can't take a className: SVG fills, RN navigation chrome, a
 // filled lucide icon… They need a raw colour. This resolves the app's own
-// Tailwind colour classes (`text-danger`, `text-accent/60`, `text-white`…)
+// Tailwind colour classes (`text-danger`, `text-accent-a60`, `text-white`…)
 // against the live palette so call sites can keep the same class strings the
 // web code uses and still follow dark mode / page mode.
 import { overlay, type Palette } from "@/theme/palettes";
@@ -58,21 +58,24 @@ function withOpacity(hex: string, opacityPercent: number): string {
 }
 
 /**
- * Find the first `text-<token>[/opacity]` in a className and return its colour,
- * e.g. "text-danger" → "#A64B3F", "text-white/80" → "#FFFFFFCC".
+ * Find the first `text-<token>[-a<NN>]` in a className and return its colour,
+ * e.g. "text-danger" → "#A64B3F", "text-white-a80" → "#FFFFFFCC".
+ * (The legacy `/NN` and `/[0.NN]` forms still resolve, but app code uses `-aNN`
+ * — see scripts/sync-alpha-tokens.mjs.)
  * Returns undefined when no colour class is present.
  */
 export function textColorFromClassName(className: string | undefined, palette: Palette): string | undefined {
   if (!className) return undefined;
   const tokens = paletteTokens(palette);
   for (const cls of className.split(/\s+/)) {
-    const m = /^text-([a-z-]+)(?:\/(?:\[(\d*\.?\d+)\]|(\d+)))?$/.exec(cls);
+    const m = /^text-([a-z-]+?)(?:-a(\d+)|\/(?:\[(\d*\.?\d+)\]|(\d+)))?$/.exec(cls);
     if (!m) continue;
     const base = tokens[m[1]];
     if (!base) continue;
-    const bracket = m[2] !== undefined ? parseFloat(m[2]) * 100 : undefined; // text-ink/[0.07] → 7
-    const plain = m[3] !== undefined ? parseInt(m[3], 10) : undefined; // text-white/80 → 80
-    const opacity = bracket ?? plain;
+    const token = m[2] !== undefined ? parseInt(m[2], 10) : undefined; // text-white-a80 → 80
+    const bracket = m[3] !== undefined ? parseFloat(m[3]) * 100 : undefined; // text-ink/[0.07] → 7
+    const plain = m[4] !== undefined ? parseInt(m[4], 10) : undefined; // text-white-a80 → 80
+    const opacity = token ?? bracket ?? plain;
     return opacity === undefined ? base : withOpacity(base, opacity);
   }
   return undefined;

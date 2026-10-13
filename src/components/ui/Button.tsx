@@ -25,7 +25,7 @@ const TEXT_SIZES = { md: "text-base", sm: "text-sm" } as const;
 // bg + pressed-state background per variant
 const VARIANTS = {
   primary: { box: "bg-accent active:bg-accent-hover", text: "text-canvas" },
-  secondary: { box: "bg-accent-soft active:bg-accent-soft/70", text: "text-accent" },
+  secondary: { box: "bg-accent-soft active:bg-accent-soft-a70", text: "text-accent" },
   ghost: { box: "bg-transparent", text: "text-ink-muted" },
 } as const;
 

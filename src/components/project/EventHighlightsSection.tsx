@@ -60,7 +60,7 @@ function HighlightTile({ highlight, isOwner, onDelete, deletePending }: { highli
           disabled={deletePending}
           accessibilityRole="button"
           accessibilityLabel="Remove highlight"
-          className={`absolute right-1.5 top-1.5 rounded-full bg-canvas/80 p-1.5 ${deletePending ? "opacity-50" : ""}`}
+          className={`absolute right-1.5 top-1.5 rounded-full bg-canvas-a80 p-1.5 ${deletePending ? "opacity-50" : ""}`}
         >
           <Icon as={Trash2} size={13} className="text-danger" />
         </Pressable>

@@ -143,7 +143,7 @@ export function InterestPicker() {
       <Pressable
         onPress={() => inputRef.current?.focus()}
         className={`min-h-[52px] flex-row flex-wrap items-center gap-1.5 rounded-2xl border bg-surface px-3 py-2 ${
-          isFocused ? "border-accent/60" : "border-border"
+          isFocused ? "border-accent-a60" : "border-border"
         }`}
       >
         <Icon as={Search} size={16} className="ml-1 shrink-0 text-ink-muted" />
@@ -156,7 +156,7 @@ export function InterestPicker() {
               accessibilityRole="button"
               accessibilityLabel={`Remove ${interest.name}`}
               hitSlop={8}
-              className="rounded-full p-0.5 active:bg-canvas/20"
+              className="rounded-full p-0.5 active:bg-canvas-a20"
             >
               <Icon as={X} size={11} className="text-canvas" />
             </Pressable>

@@ -74,21 +74,21 @@ export function VoiceRecordingBar({
         <View className="flex-row items-center gap-3">
           <Text className="shrink-0 text-base text-ink">{formatVoiceDuration(elapsedMs / 1000)}</Text>
           {paused && onPreview ? (
-            <Pressable onPress={onPreview} accessibilityRole="button" accessibilityLabel="Play back recording" hitSlop={6} className="h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink-muted/15">
+            <Pressable onPress={onPreview} accessibilityRole="button" accessibilityLabel="Play back recording" hitSlop={6} className="h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink-muted-a15">
               <Icon as={Play} size={14} fill="#8A8A8A" className="text-ink-muted" />
             </Pressable>
           ) : null}
-          <VoiceWaveform levels={liveLevels} filledColor="bg-ink-muted" mutedColor="bg-ink-muted/40" heightClass="h-8" />
+          <VoiceWaveform levels={liveLevels} filledColor="bg-ink-muted" mutedColor="bg-ink-muted-a40" heightClass="h-8" />
         </View>
         <View className="mt-5 flex-row items-center gap-3">
-          <Pressable onPress={onCancel} accessibilityRole="button" accessibilityLabel="Delete recording" className="h-14 w-14 shrink-0 items-center justify-center rounded-full bg-danger/15">
+          <Pressable onPress={onCancel} accessibilityRole="button" accessibilityLabel="Delete recording" className="h-14 w-14 shrink-0 items-center justify-center rounded-full bg-danger-a15">
             <Icon as={Trash2} size={24} className="text-danger" />
           </Pressable>
           <Pressable
             onPress={onTogglePause}
             accessibilityRole="button"
             accessibilityLabel={paused ? "Resume recording" : "Pause recording"}
-            className="h-14 min-w-0 flex-1 flex-row items-center justify-center gap-3 rounded-full bg-ink-muted/15 active:bg-ink-muted/25"
+            className="h-14 min-w-0 flex-1 flex-row items-center justify-center gap-3 rounded-full bg-ink-muted-a15 active:bg-ink-muted-a25"
           >
             <Icon as={paused ? Mic : Pause} size={22} className="text-ink" />
             <Text className="text-base font-medium text-ink">{paused ? "Resume" : "Pause"}</Text>
@@ -105,11 +105,11 @@ export function VoiceRecordingBar({
     // Original layout (Rooms): discard · waveform · pause/resume · stop-to-preview.
     return (
       <View className="flex-row items-center gap-2 px-4 py-3">
-        <Pressable onPress={onCancel} accessibilityRole="button" accessibilityLabel="Discard recording" className="h-9 w-9 shrink-0 items-center justify-center rounded-full bg-danger/10">
+        <Pressable onPress={onCancel} accessibilityRole="button" accessibilityLabel="Discard recording" className="h-9 w-9 shrink-0 items-center justify-center rounded-full bg-danger-a10">
           <Icon as={Trash2} size={18} className="text-danger" />
         </Pressable>
         <View className="min-w-0 flex-1 flex-row items-center gap-2">
-          <VoiceWaveform levels={liveLevels} filledColor="bg-accent" mutedColor="bg-ink-muted/25" heightClass="h-5" />
+          <VoiceWaveform levels={liveLevels} filledColor="bg-accent" mutedColor="bg-ink-muted-a25" heightClass="h-5" />
           <Text className="shrink-0 text-[13px] text-ink-muted">{formatVoiceDuration(elapsedMs / 1000)}</Text>
         </View>
         <Pressable

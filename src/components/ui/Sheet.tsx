@@ -142,7 +142,7 @@ export function Sheet({
 
   const grabber = (
     <View className="items-center pb-1 pt-2.5" accessibilityElementsHidden importantForAccessibility="no">
-      <View className="h-1 w-9 rounded-full bg-ink-muted/30" />
+      <View className="h-1 w-9 rounded-full bg-ink-muted-a30" />
     </View>
   );
   const handleVisible = showHandle || dragZone === "handle";

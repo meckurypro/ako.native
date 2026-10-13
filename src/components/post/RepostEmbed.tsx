@@ -32,7 +32,7 @@ export function RepostEmbed({ source }: { source: RepostSource | null | undefine
     <Pressable
       onPress={() => router.push(`/post/${source.id}` as Href)}
       accessibilityRole="link"
-      className="mt-3 rounded-xl border border-border bg-surface px-3.5 py-3 active:bg-canvas/50"
+      className="mt-3 rounded-xl border border-border bg-surface px-3.5 py-3 active:bg-canvas-a50"
     >
       <View className="flex-row items-center gap-2">
         <Avatar src={source.author.avatar_url} name={source.author.display_name} size="sm" />
