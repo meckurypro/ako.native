@@ -324,8 +324,8 @@ function MessageBubbleImpl({
                 <View>
                   <Text className={`text-sm leading-[20px] ${textColor}`}>
                     {searchQuery ? highlightMatches(m.content, searchQuery, isMine) : m.content}
-                    {/* Reserves room at the end of the last line for the timestamp pinned bottom-right. */}
-                    <Text className="text-[11px] opacity-0">{`\u00A0\u00A0\u00A0\u00A0${timeStr}${isMine ? "\u00A0\u00A0\u00A0\u00A0\u00A0" : ""}`}</Text>
+                    {/* Reserves room at the end of the last line for the timestamp pinned bottom-right. Nested <Text> ignores opacity on Android, so the spacer is hidden via a transparent color instead. */}
+                    <Text className="text-[11px]" style={{ color: "transparent" }} accessibilityElementsHidden importantForAccessibility="no">{`\u00A0\u00A0\u00A0\u00A0${timeStr}${isMine ? "\u00A0\u00A0\u00A0\u00A0\u00A0" : ""}`}</Text>
                   </Text>
                   <View pointerEvents="none" className="absolute bottom-0 right-0 flex-row items-center gap-1">
                     <Text className={`text-[11px] leading-none ${footerColor}`}>{timeStr}</Text>
