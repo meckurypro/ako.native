@@ -5,7 +5,7 @@ import { Trash2 } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, View, useWindowDimensions } from "react-native";
 
-import { OverlayPanel } from "@/components/ui/OverlayPanel";
+import { PopoverPanel } from "@/components/ui/OverlayPanel";
 import { Portal } from "@/components/ui/Portal";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
@@ -54,8 +54,8 @@ export function ReactionOptionsPopover({ target, quickEmojis, onReplace, onOpenF
         style={{ position: "absolute", top, left, opacity: size ? 1 : 0 }}
         onLayout={(e) => setSize({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })}
       >
-        <OverlayPanel className="rounded-2xl py-2">
-          <View className="flex-row items-center gap-1 border-b border-overlay-border px-2 pb-2">
+        <PopoverPanel className="rounded-2xl py-2">
+          <View className="flex-row items-center gap-1 border-b border-border px-2 pb-2">
             {[target.emoji, ...others].map((emoji, i) => (
               <Pressable
                 key={emoji}
@@ -66,7 +66,7 @@ export function ReactionOptionsPopover({ target, quickEmojis, onReplace, onOpenF
                 }}
                 accessibilityRole="button"
                 accessibilityLabel={i === 0 ? `Remove your reaction ${emoji}` : `React with ${emoji}`}
-                className={`h-9 w-9 items-center justify-center rounded-full ${i === 0 ? "border-2 border-overlay-accent" : ""}`}
+                className={`h-9 w-9 items-center justify-center rounded-full ${i === 0 ? "border-2 border-accent" : ""}`}
               >
                 <Text className="text-xl leading-[26px]">{emoji}</Text>
               </Pressable>
@@ -80,7 +80,7 @@ export function ReactionOptionsPopover({ target, quickEmojis, onReplace, onOpenF
               accessibilityLabel="More emoji"
               className="h-9 w-9 items-center justify-center rounded-full"
             >
-              <Text className="text-lg text-overlay-ink-muted">+</Text>
+              <Text className="text-lg text-ink-muted">+</Text>
             </Pressable>
           </View>
           <Pressable
@@ -91,10 +91,10 @@ export function ReactionOptionsPopover({ target, quickEmojis, onReplace, onOpenF
             accessibilityRole="button"
             className="flex-row items-center gap-2 px-4 pt-2"
           >
-            <Icon as={Trash2} size={15} className="text-overlay-danger" />
-            <Text className="text-sm text-overlay-danger">Tap to replace or remove</Text>
+            <Icon as={Trash2} size={15} className="text-danger" />
+            <Text className="text-sm text-danger">Tap to replace or remove</Text>
           </Pressable>
-        </OverlayPanel>
+        </PopoverPanel>
       </View>
     </Portal>
   );

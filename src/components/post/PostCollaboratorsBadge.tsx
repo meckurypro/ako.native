@@ -7,7 +7,7 @@ import { useRef, useState } from "react";
 import { Pressable, View, useWindowDimensions } from "react-native";
 
 import { Avatar } from "@/components/ui/Avatar";
-import { OverlayPanel } from "@/components/ui/OverlayPanel";
+import { PopoverPanel } from "@/components/ui/OverlayPanel";
 import { Portal } from "@/components/ui/Portal";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
@@ -51,8 +51,8 @@ export function PostCollaboratorsBadge({ target, targetId }: { target: Collabora
         <Portal zIndex={50}>
           <Pressable className="absolute inset-0" onPress={() => setPos(null)} accessibilityLabel="Close" />
           <View style={{ position: "absolute", top: pos.top, left: pos.left, width: PANEL_WIDTH }}>
-            <OverlayPanel className="rounded-xl py-2">
-              <Text className="px-3 pb-1.5 text-xs font-semibold uppercase tracking-wide text-overlay-ink-muted">Posted with</Text>
+            <PopoverPanel tone="canvas" className="rounded-xl py-2">
+              <Text className="px-3 pb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-muted">Posted with</Text>
               {accepted.map((c) => (
                 <Pressable
                   key={c.user.id}
@@ -60,15 +60,15 @@ export function PostCollaboratorsBadge({ target, targetId }: { target: Collabora
                     setPos(null);
                     router.push(`/profile/${c.user.username}` as Href);
                   }}
-                  className="flex-row items-center gap-2.5 px-3 py-2 active:bg-overlay-surface-raised"
+                  className="flex-row items-center gap-2.5 px-3 py-2 active:bg-surface"
                 >
                   <Avatar src={c.user.avatar_url} name={c.user.display_name} size="sm" />
-                  <Text numberOfLines={1} className="flex-1 text-sm text-overlay-ink">
+                  <Text numberOfLines={1} className="flex-1 text-sm text-ink">
                     {c.user.display_name}
                   </Text>
                 </Pressable>
               ))}
-            </OverlayPanel>
+            </PopoverPanel>
           </View>
         </Portal>
       ) : null}

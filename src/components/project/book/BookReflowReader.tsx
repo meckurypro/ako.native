@@ -205,7 +205,7 @@ export function BookReflowReader({ projectId, title, chapters, userId }: BookRef
       </ScrollView>
 
       {settingsOpen && (
-        <SheetFrame title="Reading settings" onClose={() => setSettingsOpen(false)}>
+        <SheetFrame title="Reading settings" scrim="ink" onClose={() => setSettingsOpen(false)}>
           <View className="px-5 pb-6 pt-4">
             <Text className="mb-2 text-xs font-medium text-ink-muted">Theme</Text>
             <View className="mb-5 flex-row gap-2">

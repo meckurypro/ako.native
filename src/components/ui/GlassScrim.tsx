@@ -9,14 +9,14 @@ import { useTheme } from "@/theme/ThemeProvider";
 import { scrimColor, type ScrimTone } from "./OverlayPanel";
 import { useOverlayBlurTarget } from "./Portal";
 
-export function GlassScrim({ tone = "canvas" }: { tone?: ScrimTone }) {
+export function GlassScrim({ tone = "canvas", intensity = OVERLAY_BLUR_INTENSITY }: { tone?: ScrimTone; intensity?: number }) {
   const { colors, resolvedTheme } = useTheme();
   const blurTarget = useOverlayBlurTarget();
   return (
     <>
       <BlurView
         pointerEvents="none"
-        intensity={OVERLAY_BLUR_INTENSITY}
+        intensity={intensity}
         tint={resolvedTheme === "dark" ? "dark" : "light"}
         blurTarget={blurTarget ?? undefined}
         blurMethod="dimezisBlurView"

@@ -4,11 +4,10 @@
 // fade in sequence around a circle while the whole ring gently "breathes".
 import { useIsMutating } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet } from "react-native";
 import Animated, {
   Easing,
   FadeIn,
-  FadeOut,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -17,7 +16,10 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
+import { LOADING_BLUR_INTENSITY } from "@/theme/blur";
 import { useTheme } from "@/theme/ThemeProvider";
+import { GlassScrim } from "./GlassScrim";
+import { Portal } from "./Portal";
 
 const DOT_COUNT = 8;
 const RING_RADIUS = 15;
@@ -82,22 +84,25 @@ export function LoadingOverlay() {
 
   if (blockingCount === 0) return null;
 
+  // A Portal layer above GLASS_ABOVE_Z so GlassScrim can really blur the app beneath (web: z-[999],
+  // bg-canvas/35 + backdrop-blur-sm). The layer fades out via the Portal host.
   return (
-    <Animated.View
-      entering={FadeIn.duration(180)}
-      exiting={FadeOut.duration(120)}
-      accessibilityRole="progressbar"
-      accessibilityLabel="Saving"
-      style={[StyleSheet.absoluteFill, { zIndex: 999, alignItems: "center", justifyContent: "center" }]}
-      // Swallow touches so nothing underneath can be triggered mid-save.
-      pointerEvents="auto"
-    >
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.canvas, opacity: 0.55 }]} />
-      <Animated.View style={[{ width: 34, height: 34 }, ringStyle]}>
-        {Array.from({ length: DOT_COUNT }).map((_, i) => (
-          <Dot key={i} index={i} color={colors.accent} />
-        ))}
+    <Portal zIndex={999}>
+      <Animated.View
+        entering={FadeIn.duration(180)}
+        accessibilityRole="progressbar"
+        accessibilityLabel="Saving"
+        style={[StyleSheet.absoluteFill, { alignItems: "center", justifyContent: "center" }]}
+        // Swallow touches so nothing underneath can be triggered mid-save.
+        pointerEvents="auto"
+      >
+        <GlassScrim tone="canvasFaint" intensity={LOADING_BLUR_INTENSITY} />
+        <Animated.View style={[{ width: 34, height: 34 }, ringStyle]}>
+          {Array.from({ length: DOT_COUNT }).map((_, i) => (
+            <Dot key={i} index={i} color={colors.accent} />
+          ))}
+        </Animated.View>
       </Animated.View>
-    </Animated.View>
+    </Portal>
   );
 }

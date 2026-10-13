@@ -41,7 +41,7 @@ export function ProfileShareScreen({ name, handle, avatarUrl, url, onClose }: Pr
   }
 
   return (
-    <Portal zIndex={75}>
+    <Portal zIndex={65}>
       <View className="flex-1 bg-canvas">
         <View className="flex-row items-center px-4 pb-2" style={{ paddingTop: insets.top + 12 }}>
           <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Back" hitSlop={12} className="-ml-2 p-2">

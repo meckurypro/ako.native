@@ -5,7 +5,7 @@ import { Check } from "lucide-react-native";
 import { useRef, useState } from "react";
 import { Pressable, View, useWindowDimensions } from "react-native";
 
-import { OverlayPanel } from "@/components/ui/OverlayPanel";
+import { PopoverPanel } from "@/components/ui/OverlayPanel";
 import { Portal } from "@/components/ui/Portal";
 import { Icon } from "@/components/ui/styled";
 import { useBackDismiss } from "@/hooks/useBackDismiss";
@@ -68,17 +68,17 @@ export function HeadingColorPicker({ value, onChange }: HeadingColorPickerProps)
         <Portal zIndex={50}>
           <Pressable className="absolute inset-0" onPress={() => setPos(null)} accessibilityLabel="Close" />
           <View style={{ position: "absolute", top: pos.top, left: pos.left, width: PANEL_WIDTH }}>
-            <OverlayPanel className="rounded-2xl" style={{ padding: PADDING }}>
+            <PopoverPanel className="rounded-2xl" darkGlass style={{ padding: PADDING }}>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: GAP }}>
                 {/* "Default" clears the pick — same dashed ring as the unset button. */}
                 <Pressable
                   onPress={() => pick(null)}
                   accessibilityRole="button"
                   accessibilityLabel="Default heading color"
-                  className="items-center justify-center rounded-full border-2 border-dashed border-overlay-ink-muted-a60"
+                  className="items-center justify-center rounded-full border-2 border-dashed border-ink-muted-a40"
                   style={{ width: SWATCH, height: SWATCH }}
                 >
-                  {value === null ? <Icon as={Check} size={16} className="text-overlay-ink-muted" /> : null}
+                  {value === null ? <Icon as={Check} size={16} className="text-ink-muted" /> : null}
                 </Pressable>
 
                 {HEADING_COLORS.map((c) => (
@@ -100,7 +100,7 @@ export function HeadingColorPicker({ value, onChange }: HeadingColorPickerProps)
                   </Pressable>
                 ))}
               </View>
-            </OverlayPanel>
+            </PopoverPanel>
           </View>
         </Portal>
       ) : null}
