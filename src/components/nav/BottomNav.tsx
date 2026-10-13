@@ -96,10 +96,30 @@ export function BottomNav() {
     <Animated.View
       pointerEvents="box-none"
       onLayout={(e) => setNavHeight(e.nativeEvent.layout.height)}
-      className="absolute inset-x-0 bottom-0 z-40 rounded-t-[28px] border-t border-border bg-surface/95 px-2 pt-3"
+      // Everything is inline style on purpose. The previous className version
+      // (bg-surface/95 …) resolved to NO background on device — opacity
+      // modifiers on the runtime theme variables don't take — so the bar was
+      // see-through and content ghosted behind the labels. Values mirror web:
+      // px-2 pt-3 pb-[safe+12], rounded-t-[28px], border-t border-border,
+      // shadow 0 -1 3 @ 6%.
       style={[
         {
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 40,
+          paddingHorizontal: 8,
+          paddingTop: 12,
           paddingBottom: insets.bottom + 12,
+          borderTopLeftRadius: 28,
+          borderTopRightRadius: 28,
+          borderTopWidth: 1,
+          borderColor: colors.border,
+          // Web is bg-surface/80 + backdrop-blur-md. RN has no backdrop blur
+          // without a native module, so a bit more opaque keeps the frosted
+          // look instead of letting un-blurred content bleed through.
+          backgroundColor: `${colors.surface}F0`,
           shadowColor: `rgb(${colors.shadowInkRgb})`,
           shadowOffset: { width: 0, height: -1 },
           shadowOpacity: 0.06,
@@ -124,7 +144,10 @@ export function BottomNav() {
                 haptics.selection();
                 router.replace(NAV_PATH[key] as Href);
               }}
-              className="w-14 items-center gap-1"
+              // flex-1 (not w-14): each tab gets an equal fifth of the bar, so
+              // the icon centres land exactly where web's justify-around puts
+              // them, but "Messages" has room instead of wrapping to "Message/s".
+              style={{ flex: 1, minWidth: 56, alignItems: "center", gap: 4 }}
             >
               <View>
                 <Icon size={24} strokeWidth={active ? 2 : 1.75} color={color} fill={active ? color : "none"} />
@@ -134,7 +157,7 @@ export function BottomNav() {
                   </View>
                 ) : null}
               </View>
-              <Text className="text-[11px] font-medium" style={{ color }}>
+              <Text numberOfLines={1} maxFontSizeMultiplier={1} className="text-[11px] font-medium" style={{ color }}>
                 {label}
               </Text>
             </Pressable>
