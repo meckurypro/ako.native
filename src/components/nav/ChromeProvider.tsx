@@ -14,10 +14,11 @@ import {
   useContext,
   useMemo,
   useRef,
+  type RefObject,
   useState,
   type ReactNode,
 } from "react";
-import type { NativeScrollEvent, NativeSyntheticEvent } from "react-native";
+import type { NativeScrollEvent, NativeSyntheticEvent, View } from "react-native";
 import { useSharedValue, type SharedValue } from "react-native-reanimated";
 
 interface ChromeContextValue {
@@ -26,6 +27,8 @@ interface ChromeContextValue {
   /** Measured nav height including safe-area padding (0 until laid out). */
   navHeight: number;
   setNavHeight: (h: number) => void;
+  /** Android needs the content the bar blurs wrapped in a BlurTargetView; this is its ref. */
+  blurTarget: RefObject<View | null>;
   /** Measured height of the auto-hiding top bar of the focused screen (0 when none). */
   topBarHeight: number;
   setTopBarHeight: (h: number) => void;
@@ -37,9 +40,10 @@ export function ChromeProvider({ children }: { children: ReactNode }) {
   const hidden = useSharedValue(0);
   const [navHeight, setNavHeight] = useState(0);
   const [topBarHeight, setTopBarHeight] = useState(0);
+  const blurTarget = useRef<View | null>(null);
   const value = useMemo(
-    () => ({ hidden, navHeight, setNavHeight, topBarHeight, setTopBarHeight }),
-    [hidden, navHeight, topBarHeight]
+    () => ({ hidden, navHeight, setNavHeight, blurTarget, topBarHeight, setTopBarHeight }),
+    [hidden, navHeight, blurTarget, topBarHeight]
   );
   return <ChromeContext.Provider value={value}>{children}</ChromeContext.Provider>;
 }

@@ -3,10 +3,11 @@
 // Rendered once by the (app) layout and shown only where routes.ts says so.
 // Active state mirrors web: Messages stays active across /messages/* and
 // /page-inbox/*; Profile is active on your own profile or your active Page.
+import { BlurView } from "expo-blur";
 import { LibraryBig, MessageCircle, Search, User } from "lucide-react-native";
 import { router, useGlobalSearchParams, usePathname, type Href } from "expo-router";
 import type { ComponentType } from "react";
-import { Pressable, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import Animated, { useAnimatedStyle, withTiming, Easing } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
@@ -55,7 +56,8 @@ export function BottomNav() {
   const params = useGlobalSearchParams<{ username?: string }>();
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
-  const { hidden, setNavHeight } = useChrome();
+  const { hidden, setNavHeight, blurTarget } = useChrome();
+  const { resolvedTheme } = useTheme();
 
   const { user, profile } = useAuth();
   const { data: identity } = useActiveIdentity();
@@ -96,12 +98,9 @@ export function BottomNav() {
     <Animated.View
       pointerEvents="box-none"
       onLayout={(e) => setNavHeight(e.nativeEvent.layout.height)}
-      // Everything is inline style on purpose. The previous className version
-      // (bg-surface/95 …) resolved to NO background on device — opacity
-      // modifiers on the runtime theme variables don't take — so the bar was
-      // see-through and content ghosted behind the labels. Values mirror web:
-      // px-2 pt-3 pb-[safe+12], rounded-t-[28px], border-t border-border,
-      // shadow 0 -1 3 @ 6%.
+      // Inline style on purpose: className backgrounds (bg-surface/95) rendered as
+      // nothing on device. Web: fixed bottom-0, rounded-t-[28px], border-t,
+      // shadow 0 -1 3 @ 6%, bg-surface/80 + backdrop-blur-md.
       style={[
         {
           position: "absolute",
@@ -109,60 +108,74 @@ export function BottomNav() {
           right: 0,
           bottom: 0,
           zIndex: 40,
-          paddingHorizontal: 8,
-          paddingTop: 12,
-          paddingBottom: insets.bottom + 12,
           borderTopLeftRadius: 28,
           borderTopRightRadius: 28,
-          borderTopWidth: 1,
-          borderColor: colors.border,
-          // Web is bg-surface/80 + backdrop-blur-md. RN has no backdrop blur
-          // without a native module, so a bit more opaque keeps the frosted
-          // look instead of letting un-blurred content bleed through.
-          backgroundColor: `${colors.surface}F0`,
           shadowColor: `rgb(${colors.shadowInkRgb})`,
           shadowOffset: { width: 0, height: -1 },
           shadowOpacity: 0.06,
           shadowRadius: 3,
-          elevation: 8,
         },
         barStyle,
       ]}
     >
-      <View className="flex-row items-center justify-around">
-        {ITEMS.map(({ key, label, Icon }) => {
-          const active = isActive(key);
-          const color = active ? colors.accent : colors.inkMuted;
-          return (
-            <Pressable
-              key={key}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: active }}
-              accessibilityLabel={label}
-              onPress={() => {
-                if (active && key !== "messages") return;
-                haptics.selection();
-                router.replace(NAV_PATH[key] as Href);
-              }}
-              // flex-1 (not w-14): each tab gets an equal fifth of the bar, so
-              // the icon centres land exactly where web's justify-around puts
-              // them, but "Messages" has room instead of wrapping to "Message/s".
-              style={{ flex: 1, minWidth: 56, alignItems: "center", gap: 4 }}
-            >
-              <View>
-                <Icon size={24} strokeWidth={active ? 2 : 1.75} color={color} fill={active ? color : "none"} />
-                {key === "messages" && unreadCount > 0 ? (
-                  <View className="absolute -right-1 -top-1 h-4 w-4 items-center justify-center rounded-full bg-danger">
-                    <Text className="text-[10px] font-medium text-canvas">{unreadCount > 9 ? "9+" : unreadCount}</Text>
+      {/* Clip layer: rounds the glass and carries the border-t. */}
+      <View
+        style={{
+          borderTopLeftRadius: 28,
+          borderTopRightRadius: 28,
+          borderTopWidth: 1,
+          borderColor: colors.border,
+          overflow: "hidden",
+        }}
+      >
+        {/* backdrop-blur-md (12px): intensity 50 ≈ 12px on Android (÷4 reduction). */}
+        <BlurView
+          intensity={50}
+          tint={resolvedTheme === "dark" ? "dark" : "light"}
+          blurTarget={blurTarget}
+          blurMethod="dimezisBlurView"
+          style={StyleSheet.absoluteFill}
+        />
+        {/* bg-surface/80 over the blur */}
+        <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: `${colors.surface}CC` }]} />
+
+        <View style={{ paddingHorizontal: 8, paddingTop: 12, paddingBottom: insets.bottom + 12 }}>
+          <View className="flex-row items-center justify-around">
+            {ITEMS.map(({ key, label, Icon }) => {
+              const active = isActive(key);
+              const color = active ? colors.accent : colors.inkMuted;
+              return (
+                <Pressable
+                  key={key}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={label}
+                  onPress={() => {
+                    if (active && key !== "messages") return;
+                    haptics.selection();
+                    router.replace(NAV_PATH[key] as Href);
+                  }}
+                  // flex-1 (not w-14): each tab gets an equal fifth of the bar, so
+                  // the icon centres land exactly where web's justify-around puts
+                  // them, but "Messages" has room instead of wrapping to "Message/s".
+                  style={{ flex: 1, minWidth: 56, alignItems: "center", gap: 4 }}
+                >
+                  <View>
+                    <Icon size={24} strokeWidth={active ? 2 : 1.75} color={color} fill={active ? color : "none"} />
+                    {key === "messages" && unreadCount > 0 ? (
+                      <View className="absolute -right-1 -top-1 h-4 w-4 items-center justify-center rounded-full bg-danger">
+                        <Text className="text-[10px] font-medium text-canvas">{unreadCount > 9 ? "9+" : unreadCount}</Text>
+                      </View>
+                    ) : null}
                   </View>
-                ) : null}
-              </View>
-              <Text numberOfLines={1} maxFontSizeMultiplier={1} className="text-[11px] font-medium" style={{ color }}>
-                {label}
-              </Text>
-            </Pressable>
-          );
-        })}
+                  <Text numberOfLines={1} maxFontSizeMultiplier={1} className="text-[11px] font-medium" style={{ color }}>
+                    {label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
       </View>
     </Animated.View>
   );
