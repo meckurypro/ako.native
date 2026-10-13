@@ -28,9 +28,11 @@ interface PostsProjectsHubProps {
   projects: Project[] | undefined;
   projectsLoading: boolean;
   projectsEmpty: string;
+  onRefreshPosts?: () => Promise<unknown> | void;
+  onRefreshProjects?: () => Promise<unknown> | void;
 }
 
-export function PostsProjectsHub({ title, posts, postsLoading, postsEmpty, projects, projectsLoading, projectsEmpty }: PostsProjectsHubProps) {
+export function PostsProjectsHub({ title, posts, postsLoading, postsEmpty, projects, projectsLoading, projectsEmpty, onRefreshPosts, onRefreshProjects }: PostsProjectsHubProps) {
   const [tab, setTab] = useTabState<Tab>(TABS, "posts");
   const activeIndex = TABS.indexOf(tab);
   const progress = useSharedValue(activeIndex);
@@ -76,11 +78,12 @@ export function PostsProjectsHub({ title, posts, postsLoading, postsEmpty, proje
             key="posts"
             posts={postList}
             isLoading={postsLoading}
+            onRefresh={onRefreshPosts}
             underTopBar={false}
             renderPost={(post, { visible }) => <PostCard post={post} active={activeIndex === 0} visible={visible && activeIndex === 0} />}
             emptyState={!postsLoading && postList.length === 0 ? <Text className="px-4 py-10 text-center text-sm text-ink-muted">{postsEmpty}</Text> : null}
           />
-          <ProjectList key="projects" projects={projects} isLoading={projectsLoading} emptyMessage={projectsEmpty} />
+          <ProjectList key="projects" projects={projects} isLoading={projectsLoading} emptyMessage={projectsEmpty} onRefresh={onRefreshProjects} />
         </SwipeableTabs>
       </View>
     </View>

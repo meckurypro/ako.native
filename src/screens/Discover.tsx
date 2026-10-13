@@ -21,6 +21,7 @@ import { Text } from "@/components/ui/Text";
 import { useActiveIdentity } from "@/hooks/usePages";
 import { useCategories } from "@/hooks/useCategories";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { usePageSuggestedPeople } from "@/hooks/usePageDiscover";
 import { useSuggestedPages, useSuggestedPeople } from "@/hooks/useSearch";
 import { haptics } from "@/lib/haptics";
@@ -42,19 +43,22 @@ export function Discover() {
   const bottomInset = useBottomNavInset();
   const onScroll = useChromeScroll();
 
-  const { data: categories, isLoading: categoriesLoading } = useCategories();
+  const { data: categories, isLoading: categoriesLoading, refetch: refetchCategories } = useCategories();
   const { data: identity } = useActiveIdentity();
   const activePageId = identity?.mode === "page" ? identity.page.id : undefined;
   const personalSuggestions = useSuggestedPeople();
   const pageSuggestions = usePageSuggestedPeople(activePageId);
-  const { data: suggestedPeople, isLoading: suggestedLoading } = activePageId ? pageSuggestions : personalSuggestions;
-  const { data: suggestedPages, isLoading: suggestedPagesLoading } = useSuggestedPages();
+  const { data: suggestedPeople, isLoading: suggestedLoading, refetch: refetchPeople } = activePageId ? pageSuggestions : personalSuggestions;
+  const { data: suggestedPages, isLoading: suggestedPagesLoading, refetch: refetchPages } = useSuggestedPages();
+  // Only the suggestion query in use is refetched; the other one is disabled and refetch() would still hit the network.
+  const { refreshControl } = usePullToRefresh([refetchCategories, refetchPeople, refetchPages], topInset + 16);
 
   const isSearching = isSearchable(query);
 
   return (
     <View className="flex-1 bg-canvas">
       <ScrollView
+        refreshControl={refreshControl}
         onScroll={onScroll}
         scrollEventThrottle={16}
         keyboardShouldPersistTaps="handled"

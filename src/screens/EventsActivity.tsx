@@ -11,6 +11,7 @@ import { useChromeScroll } from "@/components/nav/ChromeProvider";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { Text } from "@/components/ui/Text";
 import { useActivity, type ActivityItem } from "@/hooks/useActivity";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 
 const ROUTE_FOR: Record<ActivityItem["kind"], (item: ActivityItem) => string> = {
   event: (item) => `/projects/${item.projectId}/ticket`,
@@ -35,7 +36,8 @@ function ActivityRow({ item }: { item: ActivityItem }) {
 export function EventsActivity() {
   const bottomInset = useBottomNavInset();
   const onScroll = useChromeScroll();
-  const { data: items, isLoading } = useActivity();
+  const { data: items, isLoading, refetch } = useActivity();
+  const { refreshControl } = usePullToRefresh(refetch);
   const list = items ?? [];
   const now = Date.now();
   const upcoming = list.filter((i) => !i.when || new Date(i.when).getTime() >= now);
@@ -49,7 +51,7 @@ export function EventsActivity() {
       ) : list.length === 0 ? (
         <EmptyNotice icon={CalendarClock} message="Events, meetings, and rooms you've joined will show up here." />
       ) : (
-        <ScrollView onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset }}>
+        <ScrollView refreshControl={refreshControl} onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset }}>
           <View className="mb-6">
             <Text className="mb-2 text-sm font-medium text-ink-muted">Upcoming</Text>
             <View className="gap-2">

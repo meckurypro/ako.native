@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { useBottomNavInset } from "@/components/nav/BottomNav";
 import { useChromeScroll } from "@/components/nav/ChromeProvider";
 import { Text } from "@/components/ui/Text";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import type { Project } from "@/hooks/useProjects";
 import { ProjectCard } from "./ProjectCard";
 
@@ -14,11 +15,14 @@ interface ProjectListProps {
   isLoading: boolean;
   emptyMessage: string;
   header?: ReactNode;
+  /** Pull-to-refresh. Omit and the list has no refresh control. */
+  onRefresh?: () => Promise<unknown> | void;
 }
 
-export function ProjectList({ projects, isLoading, emptyMessage, header }: ProjectListProps) {
+export function ProjectList({ projects, isLoading, emptyMessage, header, onRefresh }: ProjectListProps) {
   const bottomInset = useBottomNavInset();
   const onScroll = useChromeScroll();
+  const { refreshControl } = usePullToRefresh(() => onRefresh?.());
 
   if (isLoading) return <Text className="py-10 text-center text-ink-muted">Loading…</Text>;
   if (!projects || projects.length === 0) return <Text className="px-4 py-10 text-center text-sm text-ink-muted">{emptyMessage}</Text>;
@@ -26,6 +30,7 @@ export function ProjectList({ projects, isLoading, emptyMessage, header }: Proje
   return (
     <FlashList
       data={projects}
+      refreshControl={onRefresh ? refreshControl : undefined}
       keyExtractor={(p) => p.id}
       renderItem={({ item }) => <ProjectCard project={item} />}
       onScroll={onScroll}

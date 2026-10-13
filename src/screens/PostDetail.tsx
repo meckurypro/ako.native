@@ -3,7 +3,7 @@
 //   /post/:id                  → comments sheet opens automatically
 //   /post/:id?view=post        → just the post (reached from a repost badge); comments start closed
 //   /post/:id?comment=<id>     → comments open, that comment's ancestors expanded, scrolled to and flashed
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react-native";
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
@@ -19,6 +19,7 @@ import { Text } from "@/components/ui/Text";
 import { UnavailableNotice } from "@/components/ui/UnavailableNotice";
 import { useAuth } from "@/hooks/useAuth";
 import { useMarkPostSeen } from "@/hooks/useMarkPostSeen";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useSmartBack } from "@/hooks/useSmartBack";
 import { supabase } from "@/lib/supabase";
 import { PAGE_SELECT } from "@/lib/postSelects";
@@ -61,7 +62,9 @@ export function PostDetail() {
   const bottomInset = useBottomNavInset();
   const onScroll = useChromeScroll();
   const { user } = useAuth();
-  const { data: post, isLoading: postLoading } = usePost(postId);
+  const queryClient = useQueryClient();
+  const { data: post, isLoading: postLoading, refetch: refetchPost } = usePost(postId);
+  const { refreshControl } = usePullToRefresh([refetchPost, () => queryClient.invalidateQueries({ queryKey: ["comments", postId] })], insets.top + 16);
 
   const highlightId = comment ?? null;
   const viewOnly = view === "post";
@@ -78,6 +81,7 @@ export function PostDetail() {
   return (
     <View className="flex-1 bg-canvas">
       <ScrollView
+        refreshControl={refreshControl}
         onScroll={onScroll}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}

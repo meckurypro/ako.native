@@ -75,6 +75,7 @@ import {
   useTypePortfolioCategories,
 } from "@/hooks/usePortfolio";
 import { useUserPostsWithArchived } from "@/hooks/usePosts";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useIsBlocked, useIsMuted, useRemoveFollower, useToggleBlock, useToggleMute } from "@/hooks/usePrivacy";
 import { useIsFollowedByUser, useIsFollowingAsActiveIdentity, useProfileByUsername, useToggleFollowAsActiveIdentity } from "@/hooks/useProfile";
 import { useRecordProfileVisit } from "@/hooks/useProfileVisits";
@@ -149,7 +150,7 @@ export function ProfilePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const { data: profile, isLoading } = useProfileByUsername(username ?? "");
+  const { data: profile, isLoading, refetch: refetchProfile } = useProfileByUsername(username ?? "");
 
   const isFollowingQuery = useIsFollowingAsActiveIdentity(profile?.id ?? "");
   const isFollowedByUserQuery = useIsFollowedByUser(profile?.id ?? "");
@@ -177,12 +178,12 @@ export function ProfilePage() {
   const isPrivateLocked = !!profile?.is_private && !showOwnerView && !isFollowing;
 
   const accountId = isPrivateLocked ? undefined : profile?.id;
-  const { data: projects } = useUserProjects(isPrivateLocked ? "" : profile?.id ?? "", showOwnerView);
-  const { data: posts } = useUserPostsWithArchived(isPrivateLocked ? "" : profile?.id ?? "", false);
-  const { data: portfolioCategories } = usePortfolioCategories(accountId);
-  const { data: categorizedProjectIds } = useCategorizedProjectIds(accountId);
-  const { data: typeCategories } = useTypePortfolioCategories(accountId);
-  const { data: collaboratorMedia } = useCollaboratorMediaProjects(accountId);
+  const { data: projects, refetch: refetchProjects } = useUserProjects(isPrivateLocked ? "" : profile?.id ?? "", showOwnerView);
+  const { data: posts, refetch: refetchPosts } = useUserPostsWithArchived(isPrivateLocked ? "" : profile?.id ?? "", false);
+  const { data: portfolioCategories, refetch: refetchPortfolio } = usePortfolioCategories(accountId);
+  const { data: categorizedProjectIds, refetch: refetchCategorizedIds } = useCategorizedProjectIds(accountId);
+  const { data: typeCategories, refetch: refetchTypeCategories } = useTypePortfolioCategories(accountId);
+  const { data: collaboratorMedia, refetch: refetchCollaboratorMedia } = useCollaboratorMediaProjects(accountId);
 
   const visibleProjects = projects?.filter((p) => p.status !== "archived");
 
@@ -217,11 +218,29 @@ export function ProfilePage() {
   // Active tab → which data it needs (hooks stay unconditional; inactive ones get undefined and idle).
   const activeCategory = activeDef && !["posts", "media", "projects"].includes(activeDef.id) && !activeDef.id.startsWith("type-") ? activeDef.label : undefined;
   const activeType = activeDef?.id.startsWith("type-") ? (activeDef.id.slice("type-".length) as ProjectType) : undefined;
-  const { data: categoryProjects, isLoading: categoryLoading } = usePortfolioCategoryProjects(accountId, activeCategory);
-  const { data: categoryGigs } = usePortfolioCategoryGigs(accountId, activeCategory);
-  const { data: typeProjects, isLoading: typeLoading } = useTypeCategoryProjects(accountId, activeType);
+  const { data: categoryProjects, isLoading: categoryLoading, refetch: refetchCategoryProjects } = usePortfolioCategoryProjects(accountId, activeCategory);
+  const { data: categoryGigs, refetch: refetchCategoryGigs } = usePortfolioCategoryGigs(accountId, activeCategory);
+  const { data: typeProjects, isLoading: typeLoading, refetch: refetchTypeProjects } = useTypeCategoryProjects(accountId, activeType);
 
   useRecordProfileVisit(profile?.id);
+
+  // refetch() ignores `enabled`, so a locked/private profile refetches only the profile; the rest are disabled for it.
+  // The same goes for the active-tab queries, which idle (undefined key arg) unless their tab is showing.
+  const { refreshControl } = usePullToRefresh(
+    isPrivateLocked
+      ? [refetchProfile]
+      : [
+          refetchProfile,
+          refetchProjects,
+          refetchPosts,
+          refetchPortfolio,
+          refetchCategorizedIds,
+          refetchTypeCategories,
+          refetchCollaboratorMedia,
+          ...(activeCategory ? [refetchCategoryProjects, refetchCategoryGigs] : []),
+          ...(activeType ? [refetchTypeProjects] : []),
+        ]
+  );
 
   const rows = useMemo<Row[]>(() => {
     const base: Row[] = [{ kind: "header" }];
@@ -583,6 +602,7 @@ export function ProfilePage() {
         <FlashList
           ref={listRef}
           data={rows}
+          refreshControl={refreshControl}
           keyExtractor={(r) => (r.kind === "header" || r.kind === "tabs" ? r.kind : r.id)}
           getItemType={(r) => r.kind}
           renderItem={renderRow}

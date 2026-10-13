@@ -20,6 +20,7 @@ import { Text } from "@/components/ui/Text";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useFeatureFlag } from "@/hooks/useFeatureFlags";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import {
   useArchiveBadgeCount,
   useBulkUpdateConversationState,
@@ -44,7 +45,8 @@ export function ConversationList() {
   const bottomInset = useBottomNavInset();
   const chromeScroll = useChromeScroll();
 
-  const { data: conversations, isLoading } = useConversations();
+  const { data: conversations, isLoading, refetch: refetchConversations } = useConversations();
+  const { refreshControl } = usePullToRefresh(refetchConversations);
   const authorIds = conversations?.map((c) => c.other_participant.id) ?? [];
   const { data: unseenPosts } = useUnseenPosts(authorIds);
   const archiveBadgeCount = useArchiveBadgeCount();
@@ -226,6 +228,7 @@ export function ConversationList() {
       ) : (
         <FlashList
           data={items}
+          refreshControl={refreshControl}
           keyExtractor={(i) => (i.kind === "section" ? `section-${i.label}` : i.conversation.id)}
           getItemType={(i) => i.kind}
           extraData={{ selectMode, selectedIds, unseenPosts }}

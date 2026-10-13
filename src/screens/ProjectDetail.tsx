@@ -37,6 +37,7 @@ import { useAffiliateProgram } from "@/hooks/useAffiliates";
 import { useAuth } from "@/hooks/useAuth";
 import { formatCountdown, useCountdown } from "@/hooks/useCountdown";
 import { useMarkProjectSeen } from "@/hooks/useMarkProjectSeen";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useSmartBack } from "@/hooks/useSmartBack";
 import { useEventDetails, useGigDetails, useGigSamples, useGigsFeaturingProject, useMeetingDetails } from "@/hooks/useProjectTypeDetails";
 import { PROJECT_TYPE_LABELS, useProjectDetail, useSimilarProjects } from "@/hooks/useProjects";
@@ -53,17 +54,33 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
   const onScroll = useChromeScroll();
   const { user } = useAuth();
 
-  const { data: project, isLoading } = useProjectDetail(projectId);
-  const { data: similar } = useSimilarProjects(project);
-  const { data: eventDetails } = useEventDetails(project?.project_type === "event" ? projectId : undefined);
-  const { data: meetingDetails } = useMeetingDetails(project?.project_type === "meeting" ? projectId : undefined);
-  const { data: gigDetails } = useGigDetails(project?.project_type === "gig" ? projectId : undefined);
-  const { data: gigSamples } = useGigSamples(project?.project_type === "gig" ? projectId : undefined);
-  const { data: featuringGigs } = useGigsFeaturingProject(project && project.project_type !== "gig" ? projectId : undefined);
+  const { data: project, isLoading, refetch: refetchProject } = useProjectDetail(projectId);
+  const { data: similar, refetch: refetchSimilar } = useSimilarProjects(project);
+  const { data: eventDetails, refetch: refetchEvent } = useEventDetails(project?.project_type === "event" ? projectId : undefined);
+  const { data: meetingDetails, refetch: refetchMeeting } = useMeetingDetails(project?.project_type === "meeting" ? projectId : undefined);
+  const { data: gigDetails, refetch: refetchGig } = useGigDetails(project?.project_type === "gig" ? projectId : undefined);
+  const { data: gigSamples, refetch: refetchGigSamples } = useGigSamples(project?.project_type === "gig" ? projectId : undefined);
+  const { data: featuringGigs, refetch: refetchFeaturingGigs } = useGigsFeaturingProject(project && project.project_type !== "gig" ? projectId : undefined);
   const isOwner = !!user && !!project && project.owner.id === user.id;
   const eventCountdownMs = useCountdown(project?.project_type === "event" ? eventDetails?.event_date : undefined);
 
-  const { data: affiliateProgram } = useAffiliateProgram(project && project.project_type !== "pitch" ? project.id : undefined);
+  const { data: affiliateProgram, refetch: refetchAffiliate } = useAffiliateProgram(project && project.project_type !== "pitch" ? project.id : undefined);
+
+  // refetch() ignores `enabled`, so only refetch the queries this project type actually loads.
+  const type = project?.project_type;
+  const { refreshControl } = usePullToRefresh(
+    !project
+      ? [refetchProject]
+      : [
+          refetchProject,
+          refetchSimilar,
+          ...(type === "event" ? [refetchEvent] : []),
+          ...(type === "meeting" ? [refetchMeeting] : []),
+          ...(type === "gig" ? [refetchGig, refetchGigSamples] : [refetchFeaturingGigs]),
+          ...(type !== "pitch" ? [refetchAffiliate] : []),
+        ],
+    insets.top + 16
+  );
   const [shareSheetOpen, setShareSheetOpen] = useState(false);
   const canBecomeAffiliate = !!user && !!project && !isOwner && !!affiliateProgram?.enabled && project.price_usd > 0;
   const shareUrl = project ? getProjectUrl(project) : undefined;
@@ -73,6 +90,7 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
   return (
     <View className="flex-1 bg-canvas">
       <ScrollView
+        refreshControl={refreshControl}
         onScroll={onScroll}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}

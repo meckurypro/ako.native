@@ -10,6 +10,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { Text } from "@/components/ui/Text";
 import { usePageConversations, type PageConversationSummary } from "@/hooks/usePageInbox";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useActiveIdentity } from "@/hooks/usePages";
 import { messagePreview } from "@/lib/chatMedia";
 
@@ -49,7 +50,8 @@ export function PageInbox() {
   const onScroll = useChromeScroll();
   const { data: identity } = useActiveIdentity();
   const pageId = identity?.mode === "page" ? identity.page.id : undefined;
-  const { data: conversations, isLoading } = usePageConversations(pageId);
+  const { data: conversations, isLoading, refetch } = usePageConversations(pageId);
+  const { refreshControl } = usePullToRefresh(refetch);
 
   return (
     <View className="flex-1 bg-canvas">
@@ -61,6 +63,7 @@ export function PageInbox() {
       ) : (
         <FlatList
           data={conversations}
+          refreshControl={refreshControl}
           keyExtractor={(c) => c.id}
           onScroll={onScroll}
           scrollEventThrottle={16}

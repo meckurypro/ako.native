@@ -31,6 +31,7 @@ import {
 } from "@/hooks/useMessaging";
 import { useUserPostsWithArchived } from "@/hooks/usePosts";
 import { useUserProjects } from "@/hooks/useProjects";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { haptics } from "@/lib/haptics";
 import { MessagePreviewLine } from "@/components/messages/MessagePreviewLine";
 import { isPlainReshare, isQuote, type PostWithAuthor } from "@/types/database";
@@ -63,7 +64,7 @@ export function Archive() {
   const bottomInset = useBottomNavInset();
   const onScroll = useChromeScroll();
 
-  const { data: archived, isLoading } = useArchivedConversations();
+  const { data: archived, isLoading, refetch: refetchArchived } = useArchivedConversations();
   const markSeen = useMarkArchiveSeen();
   const updateConversationState = useUpdateConversationState();
   const bulkUpdateConversationState = useBulkUpdateConversationState();
@@ -71,9 +72,10 @@ export function Archive() {
   const requests = archived?.filter((c) => c.is_request) ?? [];
   const archivedMessages = archived?.filter((c) => !c.is_request) ?? [];
 
-  const { data: allPosts } = useUserPostsWithArchived(user?.id ?? "", true, { includePagePosts: true });
+  const { data: allPosts, refetch: refetchPosts } = useUserPostsWithArchived(user?.id ?? "", true, { includePagePosts: true });
   const archivedPosts = allPosts?.filter((p) => p.is_archived) ?? [];
-  const { data: allProjects } = useUserProjects(user?.id ?? "", true, { includePageProjects: true });
+  const { data: allProjects, refetch: refetchProjects } = useUserProjects(user?.id ?? "", true, { includePageProjects: true });
+  const { refreshControl } = usePullToRefresh([refetchArchived, refetchPosts, refetchProjects]);
   const archivedProjects = allProjects?.filter((p) => p.status === "archived") ?? [];
 
   const [openSection, setOpenSection] = useState<Section | null>(null);
@@ -221,7 +223,7 @@ export function Archive() {
     <View className="flex-1 bg-canvas">
       {header}
 
-      <ScrollView onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset }}>
+      <ScrollView refreshControl={refreshControl} onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset }}>
         <View className="w-full max-w-xl self-center">
           {isLoading ? (
             <Text className="py-10 text-center text-ink-muted">Loading…</Text>

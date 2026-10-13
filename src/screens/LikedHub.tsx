@@ -6,8 +6,8 @@ import type { Project } from "@/hooks/useProjects";
 import type { PostWithAuthor } from "@/types/database";
 
 export function LikedHub() {
-  const { data: posts, isLoading: postsLoading } = useLikedPosts();
-  const { data: projects, isLoading: projectsLoading } = useLikedProjects();
+  const { data: posts, isLoading: postsLoading, refetch: refetchPosts } = useLikedPosts();
+  const { data: projects, isLoading: projectsLoading, refetch: refetchProjects } = useLikedProjects();
 
   return (
     <PostsProjectsHub
@@ -18,6 +18,8 @@ export function LikedHub() {
       projects={projects as Project[] | undefined}
       projectsLoading={projectsLoading}
       projectsEmpty="Projects you like will show up here."
+      onRefreshPosts={refetchPosts}
+      onRefreshProjects={refetchProjects}
     />
   );
 }

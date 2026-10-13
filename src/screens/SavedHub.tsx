@@ -5,8 +5,8 @@ import { useBookmarkedPosts } from "@/hooks/useBookmarks";
 import { useSavedProjects } from "@/hooks/useSavedProjects";
 
 export function SavedHub() {
-  const { data: posts, isLoading: postsLoading } = useBookmarkedPosts();
-  const { data: projects, isLoading: projectsLoading } = useSavedProjects();
+  const { data: posts, isLoading: postsLoading, refetch: refetchPosts } = useBookmarkedPosts();
+  const { data: projects, isLoading: projectsLoading, refetch: refetchProjects } = useSavedProjects();
 
   return (
     <PostsProjectsHub
@@ -17,6 +17,8 @@ export function SavedHub() {
       projects={projects}
       projectsLoading={projectsLoading}
       projectsEmpty="Nothing saved yet. Tap the bookmark icon on a project to keep it here."
+      onRefreshPosts={refetchPosts}
+      onRefreshProjects={refetchProjects}
     />
   );
 }

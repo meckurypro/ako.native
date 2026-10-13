@@ -13,11 +13,13 @@ import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useToast } from "@/components/ui/Toast";
 import { useDeleteDraftOrScheduledPost, useMyDraftPosts } from "@/hooks/usePosts";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 
 export function DraftPosts() {
   const insets = useSafeAreaInsets();
   const toast = useToast();
-  const { data: drafts, isLoading } = useMyDraftPosts();
+  const { data: drafts, isLoading, refetch } = useMyDraftPosts();
+  const { refreshControl } = usePullToRefresh(refetch);
   const deleteDraft = useDeleteDraftOrScheduledPost();
   const [pendingDiscard, setPendingDiscard] = useState<string | null>(null);
 
@@ -38,6 +40,7 @@ export function DraftPosts() {
       ) : (
         <FlatList
           data={drafts}
+          refreshControl={refreshControl}
           keyExtractor={(d) => d.id}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: insets.bottom + 24, gap: 12 }}

@@ -11,6 +11,7 @@ import { useBottomNavInset } from "@/components/nav/BottomNav";
 import { useChromeScroll } from "@/components/nav/ChromeProvider";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { Text } from "@/components/ui/Text";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useViewHistory, type HistoryItem } from "@/hooks/useViewHistory";
 
 function HistoryRow({ item }: { item: HistoryItem }) {
@@ -36,7 +37,8 @@ function HistoryRow({ item }: { item: HistoryItem }) {
 export function HistoryActivity() {
   const bottomInset = useBottomNavInset();
   const onScroll = useChromeScroll();
-  const { data: items, isLoading } = useViewHistory();
+  const { data: items, isLoading, refetch } = useViewHistory();
+  const { refreshControl } = usePullToRefresh(refetch);
 
   return (
     <View className="flex-1 bg-canvas">
@@ -48,6 +50,7 @@ export function HistoryActivity() {
       ) : (
         <FlashList
           data={items}
+          refreshControl={refreshControl}
           keyExtractor={(item) => `${item.kind}-${item.post?.id ?? item.project?.id}-${item.viewedAt}`}
           renderItem={({ item }) => <HistoryRow item={item} />}
           onScroll={onScroll}
