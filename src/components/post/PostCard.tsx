@@ -433,7 +433,7 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
 
           <View className="min-w-0 flex-1 gap-0.5">
             {/* Name row — never wraps; the watermark sits flush at this row's right edge. */}
-            <View className="flex-row items-center gap-1.5">
+            <View className="h-5 flex-row items-center gap-1.5" style={{ height: 20, maxHeight: 20 }}>
               <View className="min-w-0 flex-1 flex-row items-center gap-1.5">
                 <Text
                   numberOfLines={1}
@@ -465,7 +465,7 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
                 {postedAsPage.tagline?.trim() || `@${postedAsPage.username}`}
               </Text>
             ) : post.author.roles.length > 0 ? (
-              <RoleTags roles={post.author.roles} className="text-[13px] leading-[18px] text-ink-muted" />
+              <RoleTags roles={post.author.roles} className="text-[13px] leading-[18px] text-ink-muted" numberOfLines={1} />
             ) : null}
 
             <View className="flex-row items-center gap-1">
