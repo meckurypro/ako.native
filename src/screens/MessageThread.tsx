@@ -922,7 +922,9 @@ export function MessageThread() {
 
           {recordingOverlayActive ? (
             <View
-              className="absolute inset-0 bg-canvas"
+              // Locked recording is a taller two-row panel that grows upward over the chat (WhatsApp);
+              // every other state exactly covers the composer.
+              className={phase === "recording" && voiceRecorder.locked ? "absolute inset-x-0 bottom-0" : "absolute inset-0 bg-canvas"}
               // While merely HOLDING the mic the finger is on the button underneath, so the overlay must not
               // intercept; once locked or in preview its own buttons need touches.
               pointerEvents={phase === "preview" || voiceRecorder.locked ? "auto" : "none"}

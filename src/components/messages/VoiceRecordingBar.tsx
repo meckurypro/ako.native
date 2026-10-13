@@ -1,8 +1,8 @@
 // src/components/messages/VoiceRecordingBar.tsx
 // Shown over the composer while recording, WhatsApp-style.
-//   Holding: pulsing dot + timer · "‹ Slide to cancel" (shimmers, follows your finger) · the mic
-//            swells and follows your finger · a lock capsule above it fills as you slide up.
-//   Locked:  trash · live waveform + timer · pause/resume · send.
+//   Holding: one pill with pulsing dot + timer · "‹ Slide to cancel" (breathes, follows your finger) ·
+//            a big mic that follows your finger · a tall lock capsule standing above it fills as you slide up.
+//   Locked:  a panel — row 1: timer + live waveform; row 2: trash · big "Pause" pill · send.
 //            (Without `onSend` — the Rooms composer — it keeps the original pause/stop layout.)
 import { ChevronLeft, ChevronUp, Lock, Mic, Pause, Play, Send, Square, Trash2 } from "lucide-react-native";
 import { useEffect } from "react";
@@ -70,32 +70,33 @@ export function VoiceRecordingBar({
 }: VoiceRecordingBarProps) {
   if (locked && onSend) {
     return (
-      <View className="flex-row items-center gap-2 px-3 py-3">
-        <Pressable onPress={onCancel} accessibilityRole="button" accessibilityLabel="Delete recording" hitSlop={6} className="h-10 w-10 shrink-0 items-center justify-center rounded-full">
-          <Icon as={Trash2} size={22} className="text-ink-muted" />
-        </Pressable>
-        <View className="min-w-0 flex-1 flex-row items-center gap-2.5 rounded-3xl border border-border bg-surface px-3 py-2">
-          <PulseDot still={paused} />
-          <Text className="shrink-0 text-sm text-ink">{formatVoiceDuration(elapsedMs / 1000)}</Text>
-          <VoiceWaveform levels={liveLevels} filledColor="bg-accent" mutedColor="bg-ink-muted/25" heightClass="h-5" />
+      <View className="rounded-t-3xl border-t border-border bg-surface px-4 pb-4 pt-5">
+        <View className="flex-row items-center gap-3">
+          <Text className="shrink-0 text-base text-ink">{formatVoiceDuration(elapsedMs / 1000)}</Text>
+          {paused && onPreview ? (
+            <Pressable onPress={onPreview} accessibilityRole="button" accessibilityLabel="Play back recording" hitSlop={6} className="h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink-muted/15">
+              <Icon as={Play} size={14} fill="#8A8A8A" className="text-ink-muted" />
+            </Pressable>
+          ) : null}
+          <VoiceWaveform levels={liveLevels} filledColor="bg-ink-muted" mutedColor="bg-ink-muted/40" heightClass="h-8" />
         </View>
-        {paused && onPreview ? (
-          <Pressable onPress={onPreview} accessibilityRole="button" accessibilityLabel="Play back recording" hitSlop={6} className="h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface">
-            <Icon as={Play} size={18} fill="#2B2B2B" className="text-ink" />
+        <View className="mt-5 flex-row items-center gap-3">
+          <Pressable onPress={onCancel} accessibilityRole="button" accessibilityLabel="Delete recording" className="h-14 w-14 shrink-0 items-center justify-center rounded-full bg-danger/15">
+            <Icon as={Trash2} size={24} className="text-danger" />
           </Pressable>
-        ) : null}
-        <Pressable
-          onPress={onTogglePause}
-          accessibilityRole="button"
-          accessibilityLabel={paused ? "Resume recording" : "Pause recording"}
-          hitSlop={6}
-          className="h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-danger"
-        >
-          <Icon as={paused ? Mic : Pause} size={18} className="text-danger" />
-        </Pressable>
-        <Pressable onPress={onSend} accessibilityRole="button" accessibilityLabel="Send voice message" className="h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent active:bg-accent-hover">
-          <Icon as={Send} size={20} color="#FFFFFF" />
-        </Pressable>
+          <Pressable
+            onPress={onTogglePause}
+            accessibilityRole="button"
+            accessibilityLabel={paused ? "Resume recording" : "Pause recording"}
+            className="h-14 min-w-0 flex-1 flex-row items-center justify-center gap-3 rounded-full bg-ink-muted/15 active:bg-ink-muted/25"
+          >
+            <Icon as={paused ? Mic : Pause} size={22} className="text-ink" />
+            <Text className="text-base font-medium text-ink">{paused ? "Resume" : "Pause"}</Text>
+          </Pressable>
+          <Pressable onPress={onSend} accessibilityRole="button" accessibilityLabel="Send voice message" className="h-14 w-14 shrink-0 items-center justify-center rounded-full bg-ink active:opacity-80">
+            <Icon as={Send} size={24} className="text-canvas" />
+          </Pressable>
+        </View>
       </View>
     );
   }
@@ -130,46 +131,51 @@ export function VoiceRecordingBar({
   const cancelProgress = Math.min(1, Math.abs(drag.x) / cancelThresholdPx);
   const lockProgress = Math.min(1, drag.y / lockThresholdPx);
   const willCancel = cancelProgress > 0.7;
+  const dx = Math.max(-cancelThresholdPx, drag.x);
+  const dy = Math.min(lockThresholdPx, Math.max(0, drag.y));
 
   return (
-    <View className="flex-row items-center gap-3 px-4 py-3">
-      {/* Lock capsule — fills and tints as the finger slides up toward it. */}
+    <View className="px-3 py-3">
+      {/* One pill: dot + timer on the left, "Slide to cancel" in the middle; the mic overlaps its right end. */}
+      <View className="h-12 flex-row items-center gap-3 rounded-full bg-surface pl-4 pr-16">
+        <PulseDot />
+        <Text className="shrink-0 text-base text-ink-muted">{formatVoiceDuration(elapsedMs / 1000)}</Text>
+        <View className="min-w-0 flex-1 items-center">
+          <Breathing>
+            <View className="flex-row items-center gap-1" style={{ transform: [{ translateX: dx }], opacity: 1 - cancelProgress * 0.85 }}>
+              <Icon as={ChevronLeft} size={16} className={willCancel ? "text-danger" : "text-ink-muted"} />
+              <Text className={`text-base ${willCancel ? "text-danger" : "text-ink-muted"}`}>Slide to cancel</Text>
+            </View>
+          </Breathing>
+        </View>
+      </View>
+
+      {/* Tall lock capsule standing on the mic — it tints as the finger slides up into it. */}
       <View
         pointerEvents="none"
-        className={`absolute items-center gap-1 rounded-full border px-2.5 py-2.5 ${lockProgress >= 1 ? "border-accent bg-accent-soft" : "border-border bg-surface"}`}
-        style={{ right: 17, bottom: 58, opacity: 0.55 + lockProgress * 0.45, transform: [{ translateY: -lockProgress * 10 }, { scale: 1 + lockProgress * 0.1 }] }}
+        className={`absolute w-12 items-center gap-3 rounded-full border pt-4 ${lockProgress >= 1 ? "border-accent bg-accent-soft" : "border-border bg-surface"}`}
+        style={{ right: 12, bottom: 30, height: 112, opacity: 0.7 + lockProgress * 0.3, transform: [{ translateY: -lockProgress * 12 }] }}
       >
-        <Icon as={Lock} size={16} className={lockProgress >= 1 ? "text-accent" : "text-ink-muted"} />
-        <Icon as={ChevronUp} size={14} className="text-ink-muted" />
+        <Icon as={Lock} size={20} className={lockProgress >= 1 ? "text-accent" : "text-ink"} />
+        <Icon as={ChevronUp} size={16} className="text-ink-muted" />
       </View>
 
-      <PulseDot />
-      <Text className="shrink-0 text-base text-ink">{formatVoiceDuration(elapsedMs / 1000)}</Text>
-
-      <View className="min-w-0 flex-1 items-end pr-12">
-        <Breathing>
-          <View className="flex-row items-center gap-0.5" style={{ transform: [{ translateX: Math.max(-cancelThresholdPx, drag.x) }], opacity: 1 - cancelProgress * 0.85 }}>
-            <Icon as={ChevronLeft} size={16} className={willCancel ? "text-danger" : "text-ink-muted"} />
-            <Text className={`text-sm ${willCancel ? "text-danger" : "text-ink-muted"}`}>Slide to cancel</Text>
-          </View>
-        </Breathing>
-      </View>
-
-      {/* The mic swells under the finger and follows it, like WhatsApp's. */}
+      {/* The big mic swells under the finger and follows it. */}
       <View
         pointerEvents="none"
-        className={`absolute h-11 w-11 items-center justify-center rounded-full ${willCancel ? "bg-danger" : "bg-accent"}`}
+        className={`absolute h-12 w-12 items-center justify-center rounded-full ${willCancel ? "bg-danger" : "bg-ink"}`}
         style={{
           right: 12,
-          transform: [{ translateX: Math.max(-cancelThresholdPx, drag.x) }, { translateY: -Math.min(lockThresholdPx, Math.max(0, drag.y)) }, { scale: 1.3 }],
+          bottom: 12,
+          transform: [{ translateX: dx }, { translateY: -dy }, { scale: 1.5 }],
           shadowColor: "#000",
-          shadowOpacity: 0.18,
+          shadowOpacity: 0.2,
           shadowRadius: 6,
           shadowOffset: { width: 0, height: 2 },
           elevation: 4,
         }}
       >
-        <Icon as={Mic} size={20} color="#FFFFFF" />
+        <Icon as={Mic} size={22} className={willCancel ? "text-white" : "text-canvas"} />
       </View>
     </View>
   );
