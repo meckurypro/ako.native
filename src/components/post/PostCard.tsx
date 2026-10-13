@@ -82,6 +82,9 @@ import { StanceComposer } from "./StanceComposer";
 import { TagPeopleSheet } from "./TagPeopleSheet";
 import { TaggedProjectEmbed, type TaggedProjectSummary } from "./TaggedProjectEmbed";
 
+// Android adds invisible top/bottom padding to every Text line; web has none. It is a *style* in RN 0.86, not a prop.
+const NO_FONT_PADDING = { includeFontPadding: false } as const;
+
 const DOUBLE_TAP_WINDOW_MS = 300;
 const ICON = 24;
 
@@ -437,7 +440,7 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
               <View className="min-w-0 flex-1 flex-row items-center gap-1.5">
                 <Text
                   numberOfLines={1}
-                  includeFontPadding={false}
+                  style={NO_FONT_PADDING}
                   onPress={openIdentity}
                   accessibilityRole="link"
                   className="min-w-0 shrink font-simple text-[17px] font-semibold leading-5 text-ink"
@@ -462,7 +465,7 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
 
             {/* Roles (person) or tagline (page) */}
             {postedAsPage ? (
-              <Text numberOfLines={1} includeFontPadding={false} className="text-[13px] leading-[18px] text-ink-muted">
+              <Text numberOfLines={1} style={NO_FONT_PADDING} className="text-[13px] leading-[18px] text-ink-muted">
                 {postedAsPage.tagline?.trim() || `@${postedAsPage.username}`}
               </Text>
             ) : post.author.roles.length > 0 ? (
@@ -470,7 +473,7 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
             ) : null}
 
             <View className="flex-row items-center gap-1">
-              <Text includeFontPadding={false} className="text-xs leading-[18px] text-ink-muted">
+              <Text style={NO_FONT_PADDING} className="text-xs leading-[18px] text-ink-muted">
                 {timeAgo(post.created_at)}
                 {post.edited_at ? " · edited" : ""}
               </Text>
