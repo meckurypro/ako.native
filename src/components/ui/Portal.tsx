@@ -24,8 +24,10 @@ import {
   useRef,
   useState,
   type ReactNode,
+  type RefObject,
 } from "react";
-import { StyleSheet } from "react-native";
+import { BlurTargetView } from "expo-blur";
+import { StyleSheet, View } from "react-native";
 import Animated, { FadeOut } from "react-native-reanimated";
 
 interface Entry {
@@ -41,9 +43,21 @@ interface PortalApi {
 
 const PortalContext = createContext<PortalApi | null>(null);
 
+/**
+ * Android only blurs what sits inside a BlurTargetView. PortalHost wraps the app and every layer
+ * below GLASS_ABOVE_Z in one, so a glass scrim (see GlassScrim) on a layer at/above it can frost
+ * the sheets and screens beneath. (A BlurView can't be inside its own target, hence the split.)
+ */
+export const GLASS_ABOVE_Z = 70;
+const BlurTargetContext = createContext<RefObject<View | null> | null>(null);
+export function useOverlayBlurTarget() {
+  return useContext(BlurTargetContext);
+}
+
 export function PortalHost({ children }: { children: ReactNode }) {
   const [entries, setEntries] = useState<Record<string, Entry>>({});
   const counter = useRef(0);
+  const blurTarget = useRef<View | null>(null);
 
   const api = useMemo<PortalApi>(
     () => ({
@@ -66,22 +80,28 @@ export function PortalHost({ children }: { children: ReactNode }) {
   );
 
   const layers = Object.entries(entries).sort(([, a], [, b]) => a.zIndex - b.zIndex || a.order - b.order);
+  const renderLayer = ([key, entry]: [string, Entry]) => (
+    // box-none: the layer itself is transparent to touches; only the
+    // portalled content (backdrop, panel…) captures them.
+    <Animated.View
+      key={key}
+      pointerEvents="box-none"
+      exiting={FadeOut.duration(120)}
+      style={[StyleSheet.absoluteFill, { zIndex: entry.zIndex }]}
+    >
+      {entry.node}
+    </Animated.View>
+  );
 
   return (
     <PortalContext.Provider value={api}>
-      {children}
-      {layers.map(([key, entry]) => (
-        // box-none: the layer itself is transparent to touches; only the
-        // portalled content (backdrop, panel…) captures them.
-        <Animated.View
-          key={key}
-          pointerEvents="box-none"
-          exiting={FadeOut.duration(120)}
-          style={[StyleSheet.absoluteFill, { zIndex: entry.zIndex }]}
-        >
-          {entry.node}
-        </Animated.View>
-      ))}
+      <BlurTargetContext.Provider value={blurTarget}>
+        <BlurTargetView ref={blurTarget} style={{ flex: 1 }}>
+          {children}
+          {layers.filter(([, e]) => e.zIndex < GLASS_ABOVE_Z).map(renderLayer)}
+        </BlurTargetView>
+        {layers.filter(([, e]) => e.zIndex >= GLASS_ABOVE_Z).map(renderLayer)}
+      </BlurTargetContext.Provider>
     </PortalContext.Provider>
   );
 }

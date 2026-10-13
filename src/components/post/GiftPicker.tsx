@@ -3,8 +3,7 @@
 // Gift art ships inside the app (lib/giftAssets); the "sent" step plays a small
 // pop + rising-glyph moment.
 import { useEffect, useMemo, useState } from "react";
-import { BlurView } from "expo-blur";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Pressable, View } from "react-native";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -16,7 +15,8 @@ import { router } from "expo-router";
 
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
-import { Portal } from "@/components/ui/Portal";
+import { GlassScrim } from "@/components/ui/GlassScrim";
+import { GLASS_ABOVE_Z, Portal } from "@/components/ui/Portal";
 import { useSheet } from "@/components/ui/Sheet";
 import { SheetFrame } from "@/components/ui/SheetFrame";
 import { Image } from "@/components/ui/styled";
@@ -27,7 +27,6 @@ import { useSendGift, useSendMediaGift } from "@/hooks/useGifting";
 import { useGiftTypes, useTopGiftTypeIds, useWallet } from "@/hooks/useWallet";
 import { giftIconSource } from "@/lib/giftAssets";
 import { haptics } from "@/lib/haptics";
-import { useTheme } from "@/theme/ThemeProvider";
 import type { GiftType } from "@/types/database";
 
 interface GiftPickerProps {
@@ -87,27 +86,16 @@ function SentBurst({ gift }: { gift: GiftType }) {
 
 /** Full-screen "insufficient balance" notice that sits above the sheet. Tap anywhere to dismiss. */
 function InsufficientNotice({ gift, onDismiss, onOpenWallet }: { gift: GiftType; onDismiss: () => void; onOpenWallet: () => void }) {
-  const { colors, resolvedTheme } = useTheme();
   return (
-    <Portal zIndex={70}>
+    <Portal zIndex={GLASS_ABOVE_Z}>
       <Pressable
         onPress={onDismiss}
         accessibilityRole="alert"
         className="flex-1 items-center justify-center gap-4 px-10"
-        // Web: bg-canvas/70 + backdrop-blur-overlay (1.2px). The /70 class resolves to NO
-        // background on device (see OverlayPanel), so tint inline. The blur is a BlurView
-        // at the matching low intensity (iOS: real blur; Android: tint only, since the
-        // sheet lives in the portal outside the blur target).
-        style={{ backgroundColor: "transparent" }}
+        // Web: bg-canvas/70 + backdrop-blur-overlay. GlassScrim = real blur + the tint, drawn
+        // inline (the /70 class resolves to NO background on device).
       >
-        <BlurView
-          pointerEvents="none"
-          intensity={5}
-          tint={resolvedTheme === "dark" ? "dark" : "light"}
-          blurMethod="none"
-          style={StyleSheet.absoluteFill}
-        />
-        <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: `${colors.canvas}B3` }]} />
+        <GlassScrim />
         <GiftIcon gift={gift} size={176} glyphClass="text-8xl" />
         <Text className="max-w-xs text-center text-base font-medium text-ink">
           {`Insufficient balance to gift ${article(gift.name)} ${gift.name}. Please fund your `}

@@ -7,7 +7,7 @@ import { BlurView } from "expo-blur";
 import { LibraryBig, MessageCircle, Search, User } from "lucide-react-native";
 import { router, useGlobalSearchParams, usePathname, type Href } from "expo-router";
 import type { ComponentType } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Platform, Pressable, StyleSheet, View } from "react-native";
 import Animated, { useAnimatedStyle, withTiming, Easing } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
@@ -18,6 +18,7 @@ import { useUnreadConversationCount } from "@/hooks/useMessaging";
 import { usePageInboxUnreadCount } from "@/hooks/usePageInbox";
 import { useActiveIdentity } from "@/hooks/usePages";
 import { haptics } from "@/lib/haptics";
+import { NAV_BLUR_INTENSITY } from "@/theme/blur";
 import { useTheme } from "@/theme/ThemeProvider";
 import { useChrome } from "./ChromeProvider";
 import { NAV_PATH, showsBottomNav, type NavKey } from "./routes";
@@ -133,8 +134,12 @@ export function BottomNav() {
             material on iOS instead of "light"/"dark", which whiten/darken the glass
             on top of the bg-surface/80 fill below. */}
         <BlurView
-          intensity={50}
-          tint={resolvedTheme === "dark" ? "systemUltraThinMaterialDark" : "systemUltraThinMaterialLight"}
+          intensity={NAV_BLUR_INTENSITY}
+          tint={
+            Platform.OS === "ios"
+              ? resolvedTheme === "dark" ? "systemUltraThinMaterialDark" : "systemUltraThinMaterialLight"
+              : resolvedTheme === "dark" ? "dark" : "light"
+          }
           blurTarget={blurTarget}
           blurMethod="dimezisBlurView"
           style={StyleSheet.absoluteFill}
