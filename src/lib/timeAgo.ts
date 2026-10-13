@@ -1,16 +1,21 @@
 // src/lib/timeAgo.ts
-// "just now" / "5m ago" / "3h ago" / "2d ago" / "3w ago" / "2m ago" (months) / "1y ago".
-// Days switch to weeks above 14, months above 31, years above 366.
+// "just now" / "5 minutes ago" / "1 hour ago" / "2 days ago" / "1 week ago" /
+// "5 months ago" / "6 years ago". Units are spelled out and pluralised.
+// Days become weeks at 7, weeks become months at 30 days, months become years at 365 days.
+function unit(n: number, word: string): string {
+  return `${n} ${word}${n === 1 ? "" : "s"} ago`;
+}
+
 export function timeAgo(dateString: string): string {
   const seconds = Math.floor((Date.now() - new Date(dateString).getTime()) / 1000);
   if (seconds < 60) return "just now";
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 60) return unit(minutes, "minute");
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return unit(hours, "hour");
   const days = Math.floor(hours / 24);
-  if (days > 366) return `${Math.floor(days / 365)}y ago`;
-  if (days > 31) return `${Math.floor(days / 30)}m ago`;
-  if (days > 14) return `${Math.floor(days / 7)}w ago`;
-  return `${days}d ago`;
+  if (days < 7) return unit(days, "day");
+  if (days < 30) return unit(Math.floor(days / 7), "week");
+  if (days < 365) return unit(Math.floor(days / 30), "month");
+  return unit(Math.floor(days / 365), "year");
 }
