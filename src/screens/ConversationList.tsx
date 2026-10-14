@@ -1,7 +1,7 @@
 // src/screens/ConversationList.tsx
 // The inbox: Archive entry, search, Pinned section, then chats by recency.
 // Long-press a chat for actions, or enter select mode to archive/delete in bulk.
-import { Archive, CheckSquare, ChevronRight, Search, Trash2, X } from "lucide-react-native";
+import { Archive, CheckSquare, ChevronRight, MessageCircle, Search, Trash2, X } from "lucide-react-native";
 import { router, type Href } from "expo-router";
 import { FlashList } from "@shopify/flash-list";
 import { useMemo, useState } from "react";
@@ -130,7 +130,7 @@ export function ConversationList() {
   if (!messagingEnabled) {
     return (
       <View className="flex-1 bg-canvas">
-        <ScreenHeader title="Chats" bar />
+        <ScreenHeader title="Chats" bar back={false} icon={MessageCircle} />
         <Text className="px-4 pt-10 text-center text-sm text-ink-muted">Messaging is temporarily unavailable. Check back later.</Text>
       </View>
     );
@@ -161,6 +161,8 @@ export function ConversationList() {
       <ScreenHeader
         title="Chats"
         bar
+        back={false}
+        icon={MessageCircle}
         right={
           conversations && conversations.length > 0 ? (
             <Pressable onPress={() => setSelectMode(true)} accessibilityRole="button" accessibilityLabel="Select chats" hitSlop={10}>

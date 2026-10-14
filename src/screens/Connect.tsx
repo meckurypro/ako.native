@@ -3,7 +3,7 @@
 // "Events & meetings" / "Affiliates" Activity rows and the Messages tab
 // (messages now sit behind the floating chat button).
 import { router, type Href } from "expo-router";
-import { CalendarClock, Image as ImageIcon, TrendingUp } from "lucide-react-native";
+import { CalendarClock, Image as ImageIcon, TrendingUp, Users } from "lucide-react-native";
 import { Pressable, ScrollView, View } from "react-native";
 
 import { EmptyNotice } from "@/components/activity/EmptyNotice";
@@ -69,7 +69,7 @@ export function Connect() {
 
   return (
     <View className="flex-1 bg-canvas">
-      <ScreenHeader title="Connect" />
+      <ScreenHeader title="Connect" back={false} icon={Users} />
 
       <View accessibilityRole="tablist" className="mx-4 mb-2 flex-row border-b border-border">
         {TABS.map((t) => (

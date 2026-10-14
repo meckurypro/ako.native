@@ -54,7 +54,7 @@ export function LibraryActivity() {
 
   return (
     <View className="flex-1 bg-canvas">
-      <ScreenHeader title="Library" />
+      <ScreenHeader title="Library" back={false} icon={LibraryBig} />
 
       <View accessibilityRole="tablist" className="mx-4 mb-2 flex-row border-b border-border">
         {TABS.map((t) => (

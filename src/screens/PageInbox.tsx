@@ -1,6 +1,7 @@
 // src/screens/PageInbox.tsx
 // The active Page's inbox: conversations people have started with the page.
 import { router, type Href } from "expo-router";
+import { MessageCircle } from "lucide-react-native";
 import { FlatList, Pressable, View } from "react-native";
 
 import { useBottomNavInset } from "@/components/nav/BottomNav";
@@ -55,7 +56,7 @@ export function PageInbox() {
 
   return (
     <View className="flex-1 bg-canvas">
-      <ScreenHeader title={identity?.mode === "page" ? `${identity.page.name}'s Chats` : "Chats"} bar />
+      <ScreenHeader title={identity?.mode === "page" ? `${identity.page.name}'s Chats` : "Chats"} bar back={false} icon={MessageCircle} />
       {isLoading ? (
         <Text className="py-10 text-center text-ink-muted">Loading…</Text>
       ) : !conversations || conversations.length === 0 ? (
