@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { UpdatePrompt } from "@/components/UpdatePrompt";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 import { PortalHost } from "@/components/ui/Portal";
@@ -91,6 +92,7 @@ function Shell() {
         <PortalHost>
           <GlobalEffects />
           <ThemedStack />
+          <UpdatePrompt />
         </PortalHost>
       </ToastProvider>
     </ErrorBoundary>
