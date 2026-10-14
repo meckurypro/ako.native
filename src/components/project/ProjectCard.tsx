@@ -71,6 +71,7 @@ import {
 } from "@/hooks/useProjects";
 import { useIsProjectSaved, useToggleSavedProject } from "@/hooks/useSavedProjects";
 import { APP_URL } from "@/lib/config";
+import { ctaFill } from "@/lib/contrast";
 import { renderFormattedText } from "@/lib/formatText";
 import { resolveFunctionErrorMessage } from "@/lib/functionErrors";
 import { useTheme } from "@/theme/ThemeProvider";
@@ -820,8 +821,8 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, shareUrl, visible
                       onPress={detailCta.onPress}
                       disabled={detailCta.disabled}
                       accessibilityRole="button"
-                      className={`h-12 flex-row items-center justify-center gap-2 rounded-2xl bg-accent active:scale-[0.98] ${detailCta.disabled ? "opacity-50" : ""}`}
-                      style={{ flex: 9, elevation: 3 }}
+                      className={`h-12 flex-row items-center justify-center gap-2 rounded-2xl active:scale-[0.98] ${detailCta.disabled ? "opacity-50" : ""}`}
+                      style={{ flex: 9, elevation: 3, backgroundColor: ctaFill(colors.accent) }}
                     >
                       {detailCta.icon ? <Icon as={detailCta.icon} size={18} className="text-white" /> : null}
                       <Text className="text-base font-semibold text-white">{detailCta.label}</Text>
