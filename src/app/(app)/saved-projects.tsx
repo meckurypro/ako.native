@@ -1,7 +1,7 @@
 // src/app/(app)/saved-projects.tsx
-// Saved projects folded into Activity → Saved (Projects tab).
+// Saved projects live in Library → Saved.
 import { Redirect, type Href } from "expo-router";
 
 export default function RedirectRoute() {
-  return <Redirect href={"/activity/saved?tab=projects" as Href} />;
+  return <Redirect href={"/library?tab=saved" as Href} />;
 }

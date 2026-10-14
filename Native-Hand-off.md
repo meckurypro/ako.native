@@ -111,7 +111,7 @@
 - **Activity hub** `screens/Activity.tsx` (+ draft/scheduled count badges) and sub-pages: **Saved** & **Liked** (shared `PostsProjectsHub`: swipeable Posts|Projects tabs with indicator), **Drafts**, **Scheduled** (Resume → Compose with `draftId`/`scheduledId`), **History**, **Events & meetings**.
 - **Library** (`LibraryActivity`), **Gigs** (`MyGigs`), **Affiliate links** (`MyAffiliateLinks`, mounted at both `/activity/affiliates` and `/wallet/affiliate-links`).
 - **Settings** (one hub, six→seven sections, one open at a time): Profile (photo, display name, live username availability, bio w/ mentions, website, job/hobby tags), Account & security (password), Privacy (private account, hide lists, blocked/muted), **Notifications**, Appearance, Sound, Advanced (deactivate). Supports `?section=`.
-- **Redirects** (match web): `/bookmarks`→`/activity/saved`; `/saved-projects`→`/activity/saved?tab=projects`; `/activity/library`→`/library`; `/settings/advanced|appearance`→`/settings?section=…`. `/settings/profile` = Settings.
+- **Redirects** (match web): `/bookmarks`→`/activity/saved`; `/saved-projects`→`/library?tab=saved`; `/activity/library`→`/library`; `/settings/advanced|appearance`→`/settings?section=…`. `/settings/profile` = Settings.
 
 ### 3.4 Step 11 — notifications & push (done in code, **unverified on device**)
 
