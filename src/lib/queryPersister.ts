@@ -21,10 +21,26 @@ export const PERSISTED_QUERY_ROOTS: ReadonlySet<string> = new Set([
   // which JSON can't round-trip.
   "my-reaction",
   "is-bookmarked",
+  // What a cold OFFLINE start needs in order to show anything but empty screens: the first page of each feed, and the
+  // profile rows that carry the avatars. Pictures themselves live in lib/imageStore.ts.
+  "feed-posts", // first page only (see shouldPersistQuery)
+  "my-profile",
+  "own-profile",
+  "profile",
 ]);
 
+/** Roots that are bulky: dropped first when a snapshot is over budget, so small, important ones are never lost. */
+const BULKY_ROOTS: ReadonlySet<string> = new Set(["feed-posts", "profile"]);
+
+/** How long a persisted query may stay in the in-memory cache unobserved. Must be >= the persister's maxAge. */
+export const PERSISTED_GC_MS = 7 * 24 * 60 * 60 * 1000;
+
 export function shouldPersistQuery(query: Pick<Query, "queryKey" | "state">): boolean {
-  return query.state.status === "success" && PERSISTED_QUERY_ROOTS.has(String(query.queryKey[0]));
+  const root = String(query.queryKey[0]);
+  if (query.state.status !== "success" || !PERSISTED_QUERY_ROOTS.has(root)) return false;
+  // Feeds are keyed [..., page]: later pages are deep-scroll state, not worth the disk — and they're stale on arrival.
+  if (root === "feed-posts") return query.queryKey[query.queryKey.length - 1] === 0;
+  return true;
 }
 
 /**
@@ -42,7 +58,7 @@ export function shouldPersistMutation(mutation: Pick<Mutation, "options" | "stat
 
 const CACHE_KEY = "react-query";
 const WRITE_THROTTLE_MS = 2000;
-const MAX_BYTES = 2 * 1024 * 1024; // a runaway cache must not bloat the DB
+const MAX_BYTES = 4 * 1024 * 1024; // a runaway cache must not bloat the DB
 
 export interface FlushablePersister extends Persister {
   /** Write any pending snapshot now (call when the app is about to background). */
@@ -60,8 +76,17 @@ export function createSqlitePersister(namespace: string): FlushablePersister {
     const snapshot = pending;
     pending = null;
     if (!snapshot) return;
-    const json = JSON.stringify(snapshot);
-    if (json.length > MAX_BYTES) return;
+    let json = JSON.stringify(snapshot);
+    if (json.length > MAX_BYTES) {
+      // Over budget: shed the bulky lists and keep the rest (small queries + queued offline writes) rather than
+      // skipping the whole write, which would silently stop persisting anything at all.
+      const slim: PersistedClient = {
+        ...snapshot,
+        clientState: { ...snapshot.clientState, queries: snapshot.clientState.queries.filter((q) => !BULKY_ROOTS.has(String(q.queryKey[0]))) },
+      };
+      json = JSON.stringify(slim);
+      if (json.length > MAX_BYTES) return;
+    }
     await secureKvSet(namespace, CACHE_KEY, json).catch(() => {});
   };
 

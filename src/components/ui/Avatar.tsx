@@ -1,7 +1,8 @@
 // src/components/ui/Avatar.tsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { View } from "react-native";
 
+import { useIsOnline } from "../../hooks/useIsOnline";
 import { Image } from "./styled";
 import { Text } from "./Text";
 
@@ -25,6 +26,13 @@ const TEXT = {
 
 export function Avatar({ src, name, size = "md" }: AvatarProps) {
   const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const online = useIsOnline();
+  // A failed load is not permanent: a new picture, or the network coming back, earns another try.
+  useEffect(() => {
+    setFailed(false);
+    setLoaded(false);
+  }, [src, online]);
   const px = PX[size];
   const box = { width: px, height: px, borderRadius: px / 2, flexShrink: 0, overflow: "hidden" } as const;
   const initials = name
@@ -35,16 +43,20 @@ export function Avatar({ src, name, size = "md" }: AvatarProps) {
     .toUpperCase();
 
   if (src && !failed) {
+    // Initials sit underneath until the picture is on screen (it may come from the device store, or be downloading),
+    // so an avatar is never an empty circle.
     return (
-      <View style={box}>
+      <View style={box} className="bg-accent-soft items-center justify-center">
+        {!loaded && <Text className={`${TEXT[size]} font-medium text-accent`}>{initials}</Text>}
         <Image
           source={{ uri: src }}
           accessibilityLabel={name}
           contentFit="cover"
           transition={120}
           recyclingKey={src}
+          onLoad={() => setLoaded(true)}
           onError={() => setFailed(true)}
-          style={{ width: px, height: px }}
+          style={{ position: "absolute", width: px, height: px }}
         />
       </View>
     );

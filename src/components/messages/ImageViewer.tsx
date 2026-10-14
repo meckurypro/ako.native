@@ -115,7 +115,7 @@ function ZoomPage({ item, width, height, onToggleChrome, onZoomChange }: { item:
           </View>
         ) : url ? (
           <Animated.View style={[{ width, height }, style]}>
-            <Image source={{ uri: url }} contentFit="contain" style={{ width, height }} transition={150} cachePolicy="disk" />
+            <Image source={{ uri: url, cacheKey: item.path ? `chat-media/${item.path}` : undefined }} contentFit="contain" style={{ width, height }} transition={150} cachePolicy="memory-disk" />
           </Animated.View>
         ) : (
           <ActivityIndicator color="#FFFFFF" />

@@ -87,7 +87,7 @@ function Tile({
           <Text className="text-[11px] text-ink-muted">Photo unavailable</Text>
         </View>
       ) : url ? (
-        <Image source={{ uri: url }} contentFit="cover" style={{ width, height }} transition={150} cachePolicy="disk" recyclingKey={item.path ?? item.url} />
+        <Image source={{ uri: url, cacheKey: item.path ? `chat-media/${item.path}` : undefined }} contentFit="cover" style={{ width, height }} transition={150} cachePolicy="memory-disk" recyclingKey={item.path ?? item.url} />
       ) : null}
       {gated ? (
         <View pointerEvents="box-none" className="absolute inset-0 items-center justify-center">
