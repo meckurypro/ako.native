@@ -57,8 +57,8 @@ const PROFILE: NavItem = { key: "profile", label: "Profile", Icon: wrap(User) };
 const FULL_ITEMS: NavItem[] = [FEED, DISCOVER, LIBRARY, CONNECT, PROFILE];
 const RESTRICTED_ITEMS: NavItem[] = [DISCOVER, LIBRARY, CONNECT, PROFILE];
 
-const FAB_SIZE = 56;
-const FAB_GAP = 16;
+export const FAB_SIZE = 56;
+export const FAB_GAP = 16;
 
 /** Solid chat bubble with a "+" knocked out of it; the square top-left corner is the bubble's tail. */
 function ChatPlusIcon({ size, bubble, knockout }: { size: number; bubble: string; knockout: string }) {

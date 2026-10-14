@@ -223,7 +223,7 @@ export function Archive() {
     <View className="flex-1 bg-canvas">
       {header}
 
-      <ScrollView refreshControl={refreshControl} onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset }}>
+      <ScrollView ref={onScroll.listRef} refreshControl={refreshControl} onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset }}>
         <View className="w-full max-w-xl self-center">
           {isLoading ? (
             <Text className="py-10 text-center text-ink-muted">Loading…</Text>

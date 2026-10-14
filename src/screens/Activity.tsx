@@ -41,7 +41,7 @@ export function Activity() {
   return (
     <View className="flex-1 bg-canvas">
       <ScreenHeader title="Activity" />
-      <ScrollView refreshControl={refreshControl} onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset }}>
+      <ScrollView ref={onScroll.listRef} refreshControl={refreshControl} onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset }}>
         {ROWS.map(({ to, icon, label, description, countFrom }) => {
           const count = countFor(countFrom);
           return (

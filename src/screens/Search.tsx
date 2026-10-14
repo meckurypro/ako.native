@@ -34,6 +34,7 @@ export function Search() {
       </View>
 
       <ScrollView
+        ref={onScroll.listRef}
         onScroll={onScroll}
         scrollEventThrottle={16}
         keyboardShouldPersistTaps="handled"

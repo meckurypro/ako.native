@@ -10,7 +10,6 @@
 //
 import {
   Activity as ActivityIcon,
-  ArrowUp,
   Bell,
   BellOff,
   Briefcase,
@@ -39,7 +38,7 @@ import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import Animated, { Easing, FadeIn, FadeOut, useAnimatedStyle, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useBottomNavInset } from "@/components/nav/BottomNav";
+import { FAB_GAP, FAB_SIZE, useBottomNavInset } from "@/components/nav/BottomNav";
 import { useChromeScroll } from "@/components/nav/ChromeProvider";
 import { PostCard } from "@/components/post/PostCard";
 import { ProjectMiniCard } from "@/components/post/ProjectMiniCard";
@@ -85,7 +84,6 @@ import { APP_URL } from "@/lib/config";
 import { haptics } from "@/lib/haptics";
 import { useTheme } from "@/theme/ThemeProvider";
 
-const SCROLL_TOP_THRESHOLD = 480;
 const MAX_EQUAL_TABS = 4;
 const TYPE_CATEGORY_TYPES = new Set<ProjectType>(["book", "course", "event", "room", "file"]);
 
@@ -124,10 +122,11 @@ export function ProfilePage() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const bottomInset = useBottomNavInset();
-  const chromeScroll = useChromeScroll();
   const toast = useToast();
   const startConversation = useStartConversation();
   const listRef = useRef<FlashListRef<Row>>(null);
+  // Shares listRef with the app-wide scroll-to-top arrow (see ChromeProvider / ScrollToTopButton).
+  const chromeScroll = useChromeScroll(listRef);
 
   const [ownerMenuOpen, setOwnerMenuOpen] = useState(false);
   const ownerMenuButtonRef = useRef<View>(null);
@@ -307,7 +306,6 @@ export function ProfilePage() {
   }
 
   // ── scroll state ──
-  const [showScrollTop, setShowScrollTop] = useState(false);
   const headerHeightRef = useRef(0);
   const scrollYRef = useRef(0);
   const onScroll = useCallback(
@@ -315,10 +313,6 @@ export function ProfilePage() {
       chromeScroll(e);
       const y = e.nativeEvent.contentOffset.y;
       scrollYRef.current = y;
-      setShowScrollTop((prev) => {
-        const next = y > SCROLL_TOP_THRESHOLD;
-        return prev === next ? prev : next;
-      });
     },
     [chromeScroll]
   );
@@ -626,7 +620,7 @@ export function ProfilePage() {
       </SwipeToSwitch>
 
       {/* Floating actions, above the bottom nav. */}
-      <View pointerEvents="box-none" className="absolute right-4 items-end gap-3" style={{ bottom: bottomInset - 8 }}>
+      <View pointerEvents="box-none" className="absolute right-4 items-end gap-3" style={{ bottom: bottomInset + FAB_SIZE + FAB_GAP + 4 }}>
         {fromFeedPostId ? (
           <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(120)}>
             <Pressable
@@ -638,19 +632,6 @@ export function ProfilePage() {
             >
               <Icon as={Undo2} size={16} className="text-canvas" />
               <Text className="text-sm font-medium text-canvas">Back to post</Text>
-            </Pressable>
-          </Animated.View>
-        ) : null}
-        {showScrollTop ? (
-          <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(120)}>
-            <Pressable
-              onPress={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })}
-              accessibilityRole="button"
-              accessibilityLabel="Scroll to top"
-              className="h-11 w-11 items-center justify-center rounded-full border border-border bg-canvas"
-              style={{ elevation: 6 }}
-            >
-              <Icon as={ArrowUp} size={18} className="text-ink" />
             </Pressable>
           </Animated.View>
         ) : null}

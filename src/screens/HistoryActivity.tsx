@@ -53,6 +53,7 @@ export function HistoryActivity() {
           refreshControl={refreshControl}
           keyExtractor={(item) => `${item.kind}-${item.post?.id ?? item.project?.id}-${item.viewedAt}`}
           renderItem={({ item }) => <HistoryRow item={item} />}
+          ref={onScroll.listRef}
           onScroll={onScroll}
           scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}

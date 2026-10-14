@@ -65,7 +65,7 @@ export function Connect() {
   const past = kindItems.filter((i) => i.when && new Date(i.when).getTime() < now);
   const affiliates = relationships ?? [];
 
-  const scrollProps = { refreshControl, onScroll, scrollEventThrottle: 16, showsVerticalScrollIndicator: false, contentContainerStyle: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset } } as const;
+  const scrollProps = { ref: onScroll.listRef, refreshControl, onScroll, scrollEventThrottle: 16, showsVerticalScrollIndicator: false, contentContainerStyle: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset } } as const;
 
   return (
     <View className="flex-1 bg-canvas">

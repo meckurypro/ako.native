@@ -61,6 +61,7 @@ function FullDiscover() {
     <View className="flex-1 bg-canvas">
       <ScrollView
         refreshControl={refreshControl}
+        ref={onScroll.listRef}
         onScroll={onScroll}
         scrollEventThrottle={16}
         keyboardShouldPersistTaps="handled"

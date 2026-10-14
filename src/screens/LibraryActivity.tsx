@@ -81,7 +81,7 @@ export function LibraryActivity() {
       ) : rows.length === 0 ? (
         <EmptyNotice icon={LibraryBig} message={meta.empty} />
       ) : (
-        <ScrollView onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset }}>
+        <ScrollView ref={onScroll.listRef} onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset }}>
           <View className="gap-2">
             {rows.map((item) => (
               <LibraryRow key={item.projectId} item={item} />

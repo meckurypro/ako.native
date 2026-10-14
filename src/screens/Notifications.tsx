@@ -253,6 +253,7 @@ export function Notifications() {
           keyExtractor={(n) => n.id}
           renderItem={({ item }) => <NotificationRow n={item} onPress={activate} />}
           extraData={notifications}
+          ref={onScroll.listRef}
           onScroll={onScroll}
           scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}

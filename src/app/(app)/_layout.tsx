@@ -10,6 +10,7 @@ import { View } from "react-native";
 import { AuthGate } from "@/components/nav/AuthGate";
 import { BottomNav } from "@/components/nav/BottomNav";
 import { ChromeProvider, useChrome } from "@/components/nav/ChromeProvider";
+import { ScrollToTopButton } from "@/components/nav/ScrollToTopButton";
 import { usePersistedQueries } from "@/hooks/usePersistedQueries";
 import { usePushLifecycle } from "@/hooks/usePushLifecycle";
 import { useTheme } from "@/theme/ThemeProvider";
@@ -37,6 +38,7 @@ function Shell() {
           <Stack.Screen name="create" options={{ presentation: "transparentModal", animation: "fade", contentStyle: { backgroundColor: "transparent" } }} />
         </Stack>
       </BlurTargetView>
+      <ScrollToTopButton />
       <BottomNav />
     </View>
   );

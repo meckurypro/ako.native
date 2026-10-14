@@ -94,6 +94,7 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
     <View className="flex-1 bg-canvas">
       <ScrollView
         refreshControl={refreshControl}
+        ref={onScroll.listRef}
         onScroll={onScroll}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}

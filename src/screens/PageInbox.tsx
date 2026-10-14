@@ -66,6 +66,7 @@ export function PageInbox() {
           data={conversations}
           refreshControl={refreshControl}
           keyExtractor={(c) => c.id}
+          ref={onScroll.listRef}
           onScroll={onScroll}
           scrollEventThrottle={16}
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset }}

@@ -65,6 +65,15 @@ function PostListInner<T extends PostListItem>(
   const topInset = useTopBarInset();
   const bottomInset = useBottomNavInset();
   const onScroll = useChromeScroll();
+  // Keep the caller's forwarded ref AND hand the list to the scroll-to-top arrow.
+  const setListRef = useCallback(
+    (node: FlashListRef<T> | null) => {
+      onScroll.listRef.current = node;
+      if (typeof ref === "function") ref(node);
+      else if (ref) ref.current = node;
+    },
+    [ref, onScroll.listRef]
+  );
   const [refreshing, setRefreshing] = useState(false);
   const [visibleIds, setVisibleIds] = useState<ReadonlySet<string>>(new Set());
   const loadingMoreRef = useRef(false);
@@ -113,7 +122,7 @@ function PostListInner<T extends PostListItem>(
 
   return (
     <FlashList
-      ref={ref}
+      ref={setListRef}
       data={posts}
       keyExtractor={(p) => p.id}
       renderItem={({ item }) => renderPost(item, { visible: visibleIds.has(item.id) })}

@@ -37,6 +37,7 @@ export function FollowRequests() {
         <FlatList
           data={requests}
           keyExtractor={(r) => r.id}
+          ref={onScroll.listRef}
           onScroll={onScroll}
           scrollEventThrottle={16}
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset }}

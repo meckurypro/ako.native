@@ -33,6 +33,7 @@ export function ProjectList({ projects, isLoading, emptyMessage, header, onRefre
       refreshControl={onRefresh ? refreshControl : undefined}
       keyExtractor={(p) => p.id}
       renderItem={({ item }) => <ProjectCard project={item} />}
+      ref={onScroll.listRef}
       onScroll={onScroll}
       scrollEventThrottle={16}
       showsVerticalScrollIndicator={false}

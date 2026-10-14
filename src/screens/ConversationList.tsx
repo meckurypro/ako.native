@@ -234,6 +234,7 @@ export function ConversationList() {
           keyExtractor={(i) => (i.kind === "section" ? `section-${i.label}` : i.conversation.id)}
           getItemType={(i) => i.kind}
           extraData={{ selectMode, selectedIds, unseenPosts }}
+          ref={chromeScroll.listRef}
           onScroll={chromeScroll}
           scrollEventThrottle={16}
           keyboardShouldPersistTaps="handled"

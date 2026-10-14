@@ -364,6 +364,7 @@ export function PagePage() {
           keyExtractor={(r) => (r.kind === "header" || r.kind === "tabs" ? r.kind : r.id)}
           getItemType={(r) => r.kind}
           stickyHeaderIndices={[1]}
+          ref={chromeScroll.listRef}
           onScroll={chromeScroll}
           scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}
