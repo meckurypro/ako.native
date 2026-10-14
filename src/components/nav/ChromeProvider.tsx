@@ -15,7 +15,6 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useRef,
   type MutableRefObject,
@@ -37,14 +36,35 @@ interface ChromeContextValue {
   /** Measured height of the auto-hiding top bar of the focused screen (0 when none). */
   topBarHeight: number;
   setTopBarHeight: (h: number) => void;
-  /** True once the focused screen is scrolled past SCROLL_TOP_THRESHOLD (drives the scroll-to-top arrow). */
+  /** True once the visible list is scrolled past SCROLL_TOP_THRESHOLD (drives the scroll-to-top arrow). */
   showScrollTop: boolean;
-  setShowScrollTop: (v: boolean) => void;
-  /** Scroll action registered by the focused screen's list (null when it registered none). */
+  /** Scrolls the list the arrow currently refers to (null when nothing is scrolled far enough). */
   scrollToTopRef: MutableRefObject<(() => void) | null>;
+  /** Lists (one per useChromeScroll call) on the focused screen; internal bookkeeping for the arrow. */
+  scrollRegistry: MutableRefObject<Set<ScrollInstance>>;
+  /** Which SwipeableTabs pane is on screen (null = screen has no tab panes). */
+  setActivePane: (pane: number | null) => void;
+  /** Recomputes showScrollTop + scrollToTopRef from the registry and the active pane. */
+  publishScrollTop: () => void;
+}
+
+/**
+ * One scrollable list. A screen can mount several at once (the Feed keeps For You / Top / Following alive side by
+ * side), so the arrow must follow the one that is actually on screen — never "whichever registered last".
+ */
+export interface ScrollInstance {
+  /** Index of the SwipeableTabs pane this list lives in, or null when it isn't inside one. */
+  pane: number | null;
+  /** Last known scroll offset. */
+  y: number;
+  /** Scrolls this list to the top. */
+  action: () => void;
 }
 
 const ChromeContext = createContext<ChromeContextValue | null>(null);
+
+/** Index of the SwipeableTabs pane the caller renders in (null outside tabs). Provided by SwipeableTabs. */
+export const PaneIndexContext = createContext<number | null>(null);
 
 export function ChromeProvider({ children }: { children: ReactNode }) {
   const hidden = useSharedValue(0);
@@ -52,12 +72,43 @@ export function ChromeProvider({ children }: { children: ReactNode }) {
   const [topBarHeight, setTopBarHeight] = useState(0);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const scrollToTopRef = useRef<(() => void) | null>(null);
+  const scrollRegistry = useRef<Set<ScrollInstance>>(new Set());
+  const activePane = useRef<number | null>(null);
   const blurTarget = useRef<View | null>(null);
+
+  const publishScrollTop = useCallback(() => {
+    // Only lists on screen count: ones outside any tab pane, or in the pane currently shown.
+    let best: ScrollInstance | null = null;
+    for (const inst of scrollRegistry.current) {
+      if (inst.pane !== null && inst.pane !== activePane.current) continue;
+      if (!best || inst.y > best.y) best = inst;
+    }
+    const show = !!best && best.y > SCROLL_TOP_THRESHOLD;
+    scrollToTopRef.current = show && best ? best.action : null;
+    setShowScrollTop(show);
+  }, []);
+
+  const setActivePane = useCallback(
+    (pane: number | null) => {
+      activePane.current = pane;
+      publishScrollTop();
+    },
+    [publishScrollTop]
+  );
+
   const value = useMemo(
-    () => ({ hidden, navHeight, setNavHeight, blurTarget, topBarHeight, setTopBarHeight, showScrollTop, setShowScrollTop, scrollToTopRef }),
-    [hidden, navHeight, blurTarget, topBarHeight, showScrollTop]
+    () => ({
+      hidden, navHeight, setNavHeight, blurTarget, topBarHeight, setTopBarHeight,
+      showScrollTop, scrollToTopRef, scrollRegistry, setActivePane, publishScrollTop,
+    }),
+    [hidden, navHeight, blurTarget, topBarHeight, showScrollTop, setActivePane, publishScrollTop]
   );
   return <ChromeContext.Provider value={value}>{children}</ChromeContext.Provider>;
+}
+
+/** Like useChrome but returns null outside a ChromeProvider (for shared UI that may render anywhere). */
+export function useOptionalChrome(): ChromeContextValue | null {
+  return useContext(ChromeContext);
 }
 
 export function useChrome(): ChromeContextValue {
@@ -99,33 +150,36 @@ export function useChromeScroll(
   externalRef?: MutableRefObject<any> | RefObject<any>,
   threshold = 6
 ): ChromeScrollHandler {
-  const { hidden, setShowScrollTop, scrollToTopRef } = useChrome();
+  const { hidden, scrollRegistry, publishScrollTop } = useChrome();
+  const pane = useContext(PaneIndexContext);
   const lastY = useRef(0);
-  const shownRef = useRef(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const ownRef = useRef<any>(null);
   const listRef = (externalRef ?? ownRef) as MutableRefObject<unknown>;
 
-  // A newly focused screen always starts with the nav showing and the arrow hidden;
-  // while focused it owns the scroll-to-top action.
+  // This list's entry in the arrow's registry. Created once; `pane` is refreshed every render.
+  const instance = useRef<ScrollInstance>({
+    pane,
+    y: 0,
+    action: () => scrollToTop(listRef.current as ScrollTarget | null),
+  });
+  instance.current.pane = pane;
+
+  // While its screen is focused the list is a candidate for the arrow; a newly focused screen starts with the
+  // nav showing. The offset is kept across blur/focus (a screen popped back to keeps its scroll position).
   useFocusEffect(
     useCallback(() => {
       hidden.value = 0;
       lastY.current = 0;
-      shownRef.current = false;
-      setShowScrollTop(false);
-      const action = () => scrollToTop(listRef.current as ScrollTarget | null);
-      scrollToTopRef.current = action;
+      const inst = instance.current;
+      scrollRegistry.current.add(inst);
+      publishScrollTop();
       return () => {
-        if (scrollToTopRef.current === action) scrollToTopRef.current = null;
-        shownRef.current = false;
-        setShowScrollTop(false);
+        scrollRegistry.current.delete(inst);
+        publishScrollTop();
       };
-    }, [hidden, setShowScrollTop, scrollToTopRef, listRef])
+    }, [hidden, scrollRegistry, publishScrollTop])
   );
-
-  // Safety net if the screen unmounts without a blur.
-  useEffect(() => () => setShowScrollTop(false), [setShowScrollTop]);
 
   const handler = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -136,13 +190,10 @@ export function useChromeScroll(
       else if (delta < -threshold) hidden.value = 0;
       lastY.current = y;
 
-      const show = y > SCROLL_TOP_THRESHOLD;
-      if (show !== shownRef.current) {
-        shownRef.current = show;
-        setShowScrollTop(show);
-      }
+      instance.current.y = y;
+      publishScrollTop(); // setState bails out when nothing changed, so this is cheap per scroll event
     },
-    [hidden, threshold, setShowScrollTop]
+    [hidden, threshold, publishScrollTop]
   );
 
   return useMemo(() => Object.assign(handler, { listRef: listRef as ChromeScrollHandler["listRef"] }), [handler, listRef]);

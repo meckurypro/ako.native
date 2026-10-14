@@ -40,6 +40,8 @@ import Animated, {
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 
+import { PaneIndexContext, useOptionalChrome } from "@/components/nav/ChromeProvider";
+
 const COMMIT_RATIO = 0.33;
 const COMMIT_VELOCITY = 0.5; // px/ms
 const EDGE_RESISTANCE = 2.5;
@@ -88,6 +90,14 @@ export function SwipeableTabs({ index, onIndexChange, onProgress, progress, chil
       return next.size === prev.size ? prev : next;
     });
   }, [index, count]);
+
+  // Tell the scroll-to-top arrow which pane is on screen, so it follows that pane's list (not a hidden neighbour).
+  const chrome = useOptionalChrome();
+  const setActivePane = chrome?.setActivePane;
+  useEffect(() => {
+    setActivePane?.(index);
+    return () => setActivePane?.(null);
+  }, [index, setActivePane]);
 
   const [paneWidth, setPaneWidth] = useState(0);
   const width = useSharedValue(0);
@@ -175,7 +185,7 @@ export function SwipeableTabs({ index, onIndexChange, onProgress, progress, chil
           <Animated.View style={[{ flex: 1, flexDirection: "row", width: Math.max(1, count * paneWidth) }, trackStyle]}>
             {children.map((child, i) => (
               <View key={i} style={{ width: paneWidth || undefined, flex: paneWidth ? undefined : 1 }}>
-                {visited.has(i) ? child : null}
+                <PaneIndexContext.Provider value={i}>{visited.has(i) ? child : null}</PaneIndexContext.Provider>
               </View>
             ))}
           </Animated.View>
