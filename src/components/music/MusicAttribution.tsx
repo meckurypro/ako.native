@@ -16,21 +16,21 @@ import { useMusicCatalogueEntry, useRecordMusicUsageEvent } from "@/hooks/useMus
 import { duckAudioBus, unduckAudioBus } from "@/lib/audioBus";
 import { announceMusicPlaying, clearMusicPlaying } from "@/lib/feedAudioPlayback";
 import { fadeInAndPlay, fadeOutAndPause, fadeVolumeTo } from "@/lib/mediaFade";
+import { MusicDiscoverySheet } from "./MusicDiscoverySheet";
 
 interface MusicAttributionProps {
   catalogueId: string;
   postId: string;
   /** True while the post is on screen (≥60% visible). Defaults to true outside lists. */
   active?: boolean;
-  /** Opens the discovery sheet (wired in the Projects/Music step). */
-  onOpenDiscovery?: (catalogueId: string) => void;
 }
 
-export function MusicAttribution({ catalogueId, postId, active = true, onOpenDiscovery }: MusicAttributionProps) {
+export function MusicAttribution({ catalogueId, postId, active = true }: MusicAttributionProps) {
   const { data: entry } = useMusicCatalogueEntry(catalogueId);
   const recordUsage = useRecordMusicUsageEvent();
   const player = useAudioPlayer(entry?.clip_url ?? null);
   const [muted, setMuted] = useState(false);
+  const [discoveryOpen, setDiscoveryOpen] = useState(false);
   const [appActive, setAppActive] = useState(AppState.currentState === "active");
   const hasRecordedPlayRef = useRef(false);
   const ducked = useRef(false);
@@ -103,7 +103,7 @@ export function MusicAttribution({ catalogueId, postId, active = true, onOpenDis
       <Pressable
         onPress={() => {
           recordUsage.mutate({ catalogueId: entry.id, eventType: "attribution_tap", postId });
-          onOpenDiscovery?.(entry.id);
+          setDiscoveryOpen(true);
         }}
         accessibilityRole="button"
         className="min-w-0 flex-1 flex-row items-center gap-1.5"
@@ -120,6 +120,8 @@ export function MusicAttribution({ catalogueId, postId, active = true, onOpenDis
       <Pressable onPress={toggleMute} hitSlop={10} accessibilityRole="button" accessibilityLabel={muted ? "Unmute" : "Mute"} className="shrink-0">
         <Icon as={muted ? VolumeX : Volume2} size={20} className="text-ink-muted" />
       </Pressable>
+
+      {discoveryOpen ? <MusicDiscoverySheet catalogueId={entry.id} onClose={() => setDiscoveryOpen(false)} /> : null}
     </View>
   );
 }

@@ -199,7 +199,7 @@ Added copy for notification types the web leaves blank: `comment` ("commented on
 
 ### 5.2 Step 9 leftovers (besides the two placeholders above)
 
-- **Music:** `AddMusicSheet`, discovery sheet, `PublishMusicButton` (+ on `ProjectDetail`), clip selector. Compose currently only *shows* already-attached music. Parked code: `src/_pending/audioClip.ts` (clip trimming). Backend: `publish-music` / `unpublish-music`.
+- **Music — ported, UNTESTED on device:** `components/music/` has `AddMusicSheet` (Compose, gated by the `music_in_posts_enabled` flag), `MusicDiscoverySheet` (opened from `MusicAttribution`), `PublishMusicButton`/`PublishMusicSheet`/`ClipSelector`/`ContributorPicker` (owner-only, on `ProjectDetail` for media projects). Clip decode + WAV encode is `lib/audioClip.ts`, which uses the **new native dependency `react-native-audio-api`** (lazy-loaded; needs a fresh dev/EAS build, and Expo Go can't run it). The `publish-music` edge function source is not in either repo — its contract was inferred from web's `PublishMusicSheet` (uploads a mono WAV to the music-catalogue bucket, sends `clip_file_path` + start/duration). Verify a real publish end to end.
 - **In-Room video call:** `components/room/RoomCallView.tsx` is a **placeholder** ("Video calls aren't available in the app yet…"). Its props are the contract; the real LiveKit component replaces it 1:1. Parked: `src/_pending/useLiveKitRoom.ts`.
 - **Room assignments:** only **text** submissions. Audio/video/image submissions aren't wired on web either.
 
@@ -245,7 +245,7 @@ QA/performance pass; EAS builds; app icon/splash check; store release; **univers
 
 **P1 — build without waiting** (still no decision needed):
 1. **Verify the persisted query keys** (see §8, "assumed"). Cheap, and it decides whether the offline cache actually does anything.
-2. **Music** (`AddMusicSheet`, discovery sheet, `PublishMusicButton`, clip selector, ProjectDetail button) — port from web, read `publish-music` source first.
+2. **Music** — UI ported (see §5.2); remaining work is device testing + confirming the `publish-music` contract and the `react-native-audio-api` build.
 3. Re-create and commit the node unit tests under `scripts/` so they survive.
 4. Seed-data plan for device testing of Course/Book/Room/Ticket (tables are empty).
 
@@ -367,7 +367,7 @@ src/lib/                notificationChannels, notificationHandler, notificationR
                         calendar (edited), queryClient (edited), supabase (edited), accountSessions (edited)
 src/theme/mono.ts
 assets/notifications/   ako_message.wav, ako_activity.wav, notification-icon.png
-src/_pending/           audioClip.ts, useLiveKitRoom.ts   (parked for the LiveKit/music steps)
+src/_pending/           useLiveKitRoom.ts   (parked for the LiveKit step)
 ```
 
 ---

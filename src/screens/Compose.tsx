@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { AddMusicSheet } from "@/components/music/AddMusicSheet";
 import { HeadingColorPicker } from "@/components/post/HeadingColorPicker";
 import { MentionTextarea } from "@/components/post/MentionTextarea";
 import { MAX_TOPICS, TopicPicker } from "@/components/post/TopicPicker";
@@ -22,6 +23,7 @@ import { Icon, Image } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { TextLink } from "@/components/ui/TextLink";
 import { useToast } from "@/components/ui/Toast";
+import { useFeatureFlag } from "@/hooks/useFeatureFlags";
 import { useActiveIdentity } from "@/hooks/usePages";
 import { useCreatePost, useDeleteDraftOrScheduledPost } from "@/hooks/usePosts";
 import { useMyProfile } from "@/hooks/useProfile";
@@ -30,6 +32,7 @@ import { isVideoUrl, useUploadPostMedia } from "@/hooks/useUploadPostMedia";
 import { fromImagePickerAsset } from "@/lib/localFile";
 import { supabase } from "@/lib/supabase";
 import { CONTENT_LIMIT, contentCounterClass } from "@/lib/textLimits";
+import type { MusicSearchResult } from "@/types/music";
 import { useTheme } from "@/theme/ThemeProvider";
 
 const HEADING_LIMIT = 50;
@@ -60,9 +63,14 @@ export function Compose() {
     params.taggedProjectId ? { id: params.taggedProjectId, title: params.taggedProjectTitle ?? "Project" } : null
   );
   const [showProjectPicker, setShowProjectPicker] = useState(false);
-  // Music can arrive from the music-discovery flow ("use this song"); picking one from here
-  // arrives with the Projects/Music build step.
+  // Optional soundtrack — either picked via AddMusicSheet in this session (attachedMusic has full
+  // display info), or arriving from the discovery sheet's "Use in my post" (id only).
+  const [attachedMusic, setAttachedMusic] = useState<MusicSearchResult | null>(null);
   const [musicCatalogueId, setMusicCatalogueId] = useState<string | null>(params.attachMusicCatalogueId ?? null);
+  // Only gates the entry point for attaching NEW music — a post that already has music keeps its chip
+  // (so it can be removed) even if the flag flips off mid-session.
+  const musicInPostsEnabled = useFeatureFlag("music_in_posts_enabled");
+  const [addMusicOpen, setAddMusicOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [scheduleValue, setScheduleValue] = useState<Date | null>(null);
@@ -321,18 +329,45 @@ export function Compose() {
 
           {uploadError ? <Text className="mt-2 text-sm text-danger">{uploadError}</Text> : null}
 
-          {musicCatalogueId ? (
-            <View className="mt-6 flex-row items-center justify-between rounded-xl bg-accent-soft px-3 py-2">
-              <View className="min-w-0 flex-1 flex-row items-center gap-1.5">
-                <Icon as={MusicIcon} size={14} className="shrink-0 text-accent" />
-                <Text numberOfLines={1} className="text-sm text-accent">
-                  Music attached
-                </Text>
-              </View>
-              <Pressable onPress={() => setMusicCatalogueId(null)} accessibilityRole="button" accessibilityLabel="Remove music" hitSlop={8} className="p-1">
-                <Icon as={X} size={14} className="text-ink-muted" />
-              </Pressable>
+          {musicInPostsEnabled || musicCatalogueId ? (
+            <View className="mt-6">
+              {musicCatalogueId ? (
+                <View className="flex-row items-center justify-between rounded-xl bg-accent-soft px-3 py-2">
+                  <Text numberOfLines={1} className="min-w-0 flex-1 text-sm text-accent">
+                    ♫ {attachedMusic?.title ?? "Music attached"}
+                    {attachedMusic ? <Text className="text-ink-muted">{` · ${attachedMusic.primary_artist_name}`}</Text> : null}
+                  </Text>
+                  <Pressable
+                    onPress={() => {
+                      setMusicCatalogueId(null);
+                      setAttachedMusic(null);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Remove music"
+                    hitSlop={8}
+                    className="p-1"
+                  >
+                    <Icon as={X} size={14} className="text-ink-muted" />
+                  </Pressable>
+                </View>
+              ) : (
+                <Pressable onPress={() => setAddMusicOpen(true)} accessibilityRole="button" className="flex-row items-center gap-2">
+                  <Icon as={MusicIcon} size={16} className="text-ink-muted" />
+                  <Text className="text-sm font-medium text-ink-muted">Add music</Text>
+                </Pressable>
+              )}
             </View>
+          ) : null}
+
+          {addMusicOpen ? (
+            <AddMusicSheet
+              onSelect={(song) => {
+                setMusicCatalogueId(song.id);
+                setAttachedMusic(song);
+                setAddMusicOpen(false);
+              }}
+              onClose={() => setAddMusicOpen(false)}
+            />
           ) : null}
 
           <View className="mt-6">

@@ -26,6 +26,7 @@ import { AffiliateShareSheet } from "@/components/project/AffiliateShareSheet";
 import { EventHighlightsSection } from "@/components/project/EventHighlightsSection";
 import { GigFaqSection, GigReviewsSection } from "@/components/project/GigSections";
 import { ProjectCard } from "@/components/project/ProjectCard";
+import { PublishMusicButton } from "@/components/music/PublishMusicButton";
 import { ProjectFaqSection } from "@/components/project/ProjectFaqSection";
 import { ProjectRail } from "@/components/project/ProjectRail";
 import { Avatar } from "@/components/ui/Avatar";
@@ -243,6 +244,8 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
               {project.project_type === "event" ? <EventHighlightsSection projectId={project.id} isOwner={isOwner} /> : null}
 
               <ProjectFaqSection projectId={project.id} projectType={project.project_type} isOwner={isOwner} />
+
+              {project.project_type === "media" && isOwner ? <PublishMusicButton projectId={project.id} /> : null}
 
               {project.topics.length > 0 ? (
                 <View className="mb-4 mt-4 flex-row flex-wrap gap-2">
