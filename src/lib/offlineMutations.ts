@@ -12,7 +12,7 @@
 //      one after a crash or a retry is always safe.
 //   5. Because functions can't be persisted, the mutationFn + onSuccess live HERE as mutation defaults, registered
 //      at startup, so a mutation restored from SQLite after an app kill can run with no component mounted.
-import type { QueryClient } from "@tanstack/react-query";
+import { notifyManager, type QueryClient } from "@tanstack/react-query";
 
 import type { ReactionType } from "../types/database";
 import { adjustCountInCaches, COMMENT_QUERY_ROOTS, POST_QUERY_ROOTS, PROJECT_QUERY_ROOTS } from "./optimisticCache";
@@ -104,17 +104,24 @@ async function sendReaction(i: ReactionIntent): Promise<void> {
 function onReactionConfirmed(qc: QueryClient, i: ReactionIntent) {
   const key = myReactionKey(i);
   const wasActive = !!qc.getQueryData(key); // what the cache (and so the screen) considered the server state
-  qc.setQueryData(key, i.active ? { id: "confirmed" } : null);
-
   const field = COUNT_FIELD[i.type];
   const delta = (i.active ? 1 : 0) - (wasActive ? 1 : 0);
-  if (!field || delta === 0) return;
-  adjustCountInCaches(qc, {
-    roots: i.targetType === "post" ? POST_QUERY_ROOTS : PROJECT_QUERY_ROOTS,
-    id: i.targetId,
-    field,
-    delta,
-    queuedAt: i.queuedAt,
+
+  // ONE notification flush for every cache write below. The screen shows `row.like_count + overlayDelta`, where the
+  // overlay delta depends on the my-reaction cache (serverActive) while the pending intent is still applied. If the
+  // my-reaction write and the count patch reached React in separate flushes, there would be a frame where the
+  // overlay has already "absorbed" the +1 (serverActive flipped) but the row still has the OLD count — the number
+  // visibly dips back and then jumps again (n+1 → n → n+1). Batched, both land in the same commit.
+  notifyManager.batch(() => {
+    qc.setQueryData(key, i.active ? { id: "confirmed" } : null);
+    if (!field || delta === 0) return;
+    adjustCountInCaches(qc, {
+      roots: i.targetType === "post" ? POST_QUERY_ROOTS : PROJECT_QUERY_ROOTS,
+      id: i.targetId,
+      field,
+      delta,
+      queuedAt: i.queuedAt,
+    });
   });
 }
 
@@ -162,16 +169,19 @@ function onCommentReactionConfirmed(qc: QueryClient, i: CommentReactionIntent) {
   const before = maps.map(([, m]) => m?.get(i.commentId)).find(Boolean) ?? { liked: false, disliked: false };
   const after = applyCommentIntent(before, i.type, i.active);
 
-  for (const [queryKey, map] of maps) {
-    if (!map) continue;
-    const next = new Map(map);
-    next.set(i.commentId, after);
-    qc.setQueryData(queryKey, next);
-  }
+  // Single flush for the reaction-state write and both count patches — same reason as onReactionConfirmed.
+  notifyManager.batch(() => {
+    for (const [queryKey, map] of maps) {
+      if (!map) continue;
+      const next = new Map(map);
+      next.set(i.commentId, after);
+      qc.setQueryData(queryKey, next);
+    }
 
-  const common = { roots: COMMENT_QUERY_ROOTS, id: i.commentId, queuedAt: i.queuedAt };
-  adjustCountInCaches(qc, { ...common, field: "like_count", delta: (after.liked ? 1 : 0) - (before.liked ? 1 : 0) });
-  adjustCountInCaches(qc, { ...common, field: "dislike_count", delta: (after.disliked ? 1 : 0) - (before.disliked ? 1 : 0) });
+    const common = { roots: COMMENT_QUERY_ROOTS, id: i.commentId, queuedAt: i.queuedAt };
+    adjustCountInCaches(qc, { ...common, field: "like_count", delta: (after.liked ? 1 : 0) - (before.liked ? 1 : 0) });
+    adjustCountInCaches(qc, { ...common, field: "dislike_count", delta: (after.disliked ? 1 : 0) - (before.disliked ? 1 : 0) });
+  });
 }
 
 // ─── bookmarks ───────────────────────────────────────────────────────────────
