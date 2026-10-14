@@ -26,8 +26,6 @@
       },
       "blockedPermissions": [
         "android.permission.READ_CALENDAR",
-        "android.permission.WRITE_CALENDAR",
-        "android.permission.READ_CALENDAR",
         "android.permission.WRITE_CALENDAR"
       ],
       "permissions": [
@@ -110,9 +108,10 @@
       "typedRoutes": true
     },
     "runtimeVersion": {
-      "policy": "fingerprint"
+      "policy": "appVersion"
     },
     "updates": {
+      "url": "https://u.expo.dev/ebe5d175-1ab8-47d2-85c8-099e5eea4575",
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 0
     },
