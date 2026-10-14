@@ -1168,6 +1168,9 @@ export function useSimilarProjects(
       moreFromCreator: Project[];
       moreOfType: Project[];
       moreOnTopic: Project[];
+      // "Similar contents": other creators' projects — topic matches first,
+      // then same-type — de-duplicated, never the viewed project or its owner.
+      similarContent: Project[];
     }> => {
       const topicIds = (project!.topics ?? []).map((t) => t.id);
 
@@ -1193,7 +1196,7 @@ export function useSimilarProjects(
           .neq("id", project!.id)
           .neq("owner_id", project!.owner_id) // avoid duplicating the "more from creator" list
           .order("created_at", { ascending: false })
-          .limit(6),
+          .limit(10),
         topicIds.length > 0
           ? supabase
               .from("project_topics")
@@ -1217,13 +1220,23 @@ export function useSimilarProjects(
           .in("id", topicProjectIds)
           .eq("status", "active")
           .eq("is_private", false)
+          .neq("owner_id", project!.owner_id) // other creators only
           .order("created_at", { ascending: false })
-          .limit(6);
+          .limit(10);
         if (error) throw error;
         moreOnTopic = data;
       }
 
-      return { moreFromCreator: creatorRes.data, moreOfType: typeRes.data, moreOnTopic };
+      const seen = new Set<string>([project!.id]);
+      const similarContent: Project[] = [];
+      for (const p of [...moreOnTopic, ...typeRes.data]) {
+        if (seen.has(p.id) || p.owner_id === project!.owner_id) continue;
+        seen.add(p.id);
+        similarContent.push(p);
+        if (similarContent.length >= 12) break;
+      }
+
+      return { moreFromCreator: creatorRes.data, moreOfType: typeRes.data, moreOnTopic, similarContent };
     },
     enabled: !!project,
   });

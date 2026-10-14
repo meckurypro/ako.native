@@ -148,7 +148,9 @@ export function ProjectFaqSection({ projectId, projectType, isOwner }: { project
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const eligible = projectTypeSupportsFaq(projectType);
-  if (!eligible && (!faqs || faqs.length === 0)) return null;
+  const hasFaqs = !!faqs && faqs.length > 0;
+  // Nothing saved → nothing shown to visitors: no "FAQ" heading, no empty state.
+  if (!hasFaqs && !(isOwner && eligible)) return null;
 
   async function handleDelete(id: string) {
     setDeletingId(id);
@@ -161,8 +163,8 @@ export function ProjectFaqSection({ projectId, projectType, isOwner }: { project
 
   return (
     <View className="mt-6">
-      <View className="mb-3 flex-row items-center justify-between">
-        <Text className="font-display text-base text-ink">FAQ</Text>
+      <View className={`mb-3 flex-row items-center ${hasFaqs ? "justify-between" : "justify-end"}`}>
+        {hasFaqs ? <Text className="font-display text-base text-ink">FAQ</Text> : null}
         {isOwner && eligible ? (
           <View className="flex-row items-center gap-4">
             {(faqs?.length ?? 0) === 0 ? (
@@ -179,9 +181,7 @@ export function ProjectFaqSection({ projectId, projectType, isOwner }: { project
         ) : null}
       </View>
 
-      {!faqs || faqs.length === 0 ? (
-        isOwner ? <Text className="text-sm text-ink-muted">No FAQ yet — add your own, or use the starter questions above to get going quickly.</Text> : null
-      ) : (
+      {!hasFaqs ? null : (
         <View className="gap-2">
           {faqs.map((faq) =>
             isOwner ? (

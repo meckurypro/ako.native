@@ -132,7 +132,7 @@ interface ProjectCardProps {
 
 function ProjectCardImpl({ project, isOwnerView, isDetailView, shareUrl, visible = true }: ProjectCardProps) {
   const { user } = useAuth();
-  const { colors } = useTheme();
+  const { colors, resolvedTheme } = useTheme();
   const toast = useToast();
   const isOwner = isOwnerView ?? user?.id === project.owner_id;
   const isArchivedFrozen = isOwner && project.status === "archived";
@@ -404,6 +404,93 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, shareUrl, visible
 
   const typeRouteBtn = !INLINE_TYPES.includes(project.project_type) && !isMedia && !isBook && hasAccess && TYPE_ROUTE[project.project_type];
 
+  // ---- Detail-view action bar (ProjectDetail only) ----------------------------------------------
+  // One primary CTA fills ~90% of the row; a single "···" takes the rest. Save, Share and every
+  // secondary action live ONLY in that menu (the old tray repeated them in two places).
+  type DetailCta = { label: string; icon?: LucideIcon; onPress: () => void; disabled?: boolean };
+  const priceLabel = `$${effectivePrice.toFixed(2)}`;
+  const bookUpload = isBook && bookDetails?.content_source === "upload";
+  const bookReadsInApp = bookUpload && !!bookDetails?.allow_read_in_app;
+  const bookCanDownload = bookUpload && !!bookDetails?.allow_download;
+  const gigBookable = project.project_type === "gig" && !isOwner && !isFree && !hasPurchased;
+  const openBookReader = () => {
+    if (!requireUser()) return;
+    logFreeAccessIfNeeded("stream");
+    router.push(`/projects/${project.id}/read` as Href);
+  };
+  const downloadBook = () => void openSigned(getBookDownload, { projectId: project.id, kind: "book", action: "download" }, "Couldn't access file.");
+
+  let detailCta: DetailCta | null = null;
+  if (isPitch) {
+    if (!isOwner) detailCta = { label: "Support", icon: Heart, onPress: () => setSupportSheetOpen(true) };
+  } else if (project.project_type === "gig") {
+    if (!isOwner) {
+      detailCta = gigBookable
+        ? { label: bookGig.isPending ? "Booking…" : `Book for ${priceLabel}`, onPress: () => void handleBookGig(), disabled: bookGig.isPending }
+        : { label: startConversation.isPending ? "Opening…" : "Message", icon: MessageCircle, onPress: () => void handleMessage(), disabled: startConversation.isPending };
+    }
+  } else if (isRoom) {
+    detailCta = hasAccess
+      ? { label: "Enter cohort", icon: Users, onPress: handleJoinRoom }
+      : { label: purchaseProject.isPending ? "Joining…" : isFree ? "Join cohort" : `Join for ${priceLabel}`, icon: Users, onPress: handleJoinRoom, disabled: purchaseProject.isPending };
+  } else if (!hasAccess) {
+    if (!isCourseUnpublished && !isBookDraftUnpublished) {
+      detailCta = {
+        label: purchaseProject.isPending
+          ? "Purchasing…"
+          : project.project_type === "event"
+            ? `Buy ticket ${priceLabel}`
+            : project.project_type === "url"
+              ? `Get access for ${priceLabel}`
+              : `Buy for ${priceLabel}`,
+        onPress: () => void handleBuy(),
+        disabled: purchaseProject.isPending,
+      };
+    }
+  } else if (project.project_type === "file") {
+    detailCta = {
+      label: getFileDownload.isPending ? "Preparing…" : "Download",
+      icon: Download,
+      onPress: () => void openSigned(getFileDownload, { projectId: project.id, kind: "file" }, "Couldn't access file."),
+      disabled: getFileDownload.isPending,
+    };
+  } else if (project.project_type === "url") {
+    detailCta = { label: "Open link", icon: LinkIcon, onPress: () => openExternal(project.external_url) };
+  } else if (isBook) {
+    if (bookDetails?.content_source === "link") detailCta = { label: "Open link", icon: LinkIcon, onPress: () => openExternal(bookDetails.external_url) };
+    else if (bookReadsInApp) detailCta = { label: "Read", icon: BookText, onPress: openBookReader };
+    else if (bookCanDownload) detailCta = { label: getBookDownload.isPending ? "Preparing…" : "Download", icon: Download, onPress: downloadBook, disabled: getBookDownload.isPending };
+    else if (bookDetails?.content_source === "authored") {
+      detailCta = { label: isOwner && !project.published_at ? "Continue building" : "Read", icon: BookOpen, onPress: () => router.push(`/books/${project.id}` as Href) };
+    }
+  } else if (isMedia) {
+    const audioUrl = mediaDetails?.has_audio ? mediaDetails.audio_url : null;
+    const videoUrl = mediaDetails?.has_video ? mediaDetails.video_url : null;
+    if (audioUrl) detailCta = { label: "Listen", icon: Music, onPress: () => openExternal(audioUrl) };
+    else if (videoUrl) detailCta = { label: "Watch", icon: Video, onPress: () => openExternal(videoUrl) };
+    else if (!isOwner) detailCta = { label: "Gift", icon: GiftIcon, onPress: () => setShowGiftPicker(true) };
+  } else if (typeRouteBtn) {
+    detailCta = {
+      label: project.project_type === "event" && isOwner ? "Scan tickets" : (TYPE_ACTION_LABEL[project.project_type] ?? "Open"),
+      icon: TypeIcon ?? LinkIcon,
+      onPress: () => router.push((project.project_type === "event" && isOwner ? `/projects/${project.id}/checkin` : TYPE_ROUTE[project.project_type]!(project.id)) as Href),
+    };
+  }
+
+  const menuIcon = (as: LucideIcon) => <Icon as={as} size={22} className="text-overlay-ink" />;
+  const visitorMenuItems: (DropdownMenuItem | "divider")[] = [
+    { key: "save", label: isSaved ? "Saved" : "Save", icon: menuIcon(Bookmark), onSelect: () => { if (requireUser()) toggleSaved.mutate(isSaved); } },
+    { key: "share", label: "Share", icon: menuIcon(Redo2), onSelect: handleShare },
+    ...(isMedia ? [{ key: "gift", label: "Gift", icon: menuIcon(GiftIcon), onSelect: () => setShowGiftPicker(true) } satisfies DropdownMenuItem] : []),
+    ...(gigBookable ? [{ key: "message", label: "Message", icon: menuIcon(MessageCircle), onSelect: () => void handleMessage() } satisfies DropdownMenuItem] : []),
+    ...(project.project_type === "url" && hasAccess && project.external_url
+      ? [{ key: "copy-link", label: "Copy link", icon: menuIcon(Copy), onSelect: () => void copyText(project.external_url!, () => flash(setLinkCopied)) } satisfies DropdownMenuItem]
+      : []),
+    ...(hasAccess && bookReadsInApp && bookCanDownload ? [{ key: "download", label: "Download", icon: menuIcon(Download), onSelect: downloadBook } satisfies DropdownMenuItem] : []),
+  ];
+  const detailMenuItems = isOwner ? ownerMenuItems : visitorMenuItems;
+  const isDark = resolvedTheme === "dark";
+
   return (
     <View
       className="relative mb-4 overflow-hidden rounded-[28px] border border-border-a60 bg-surface"
@@ -451,7 +538,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, shareUrl, visible
         </View>
       ) : null}
 
-      {isOwner ? (
+      {isOwner && !isDetailView ? (
         <View className="absolute right-3 top-3">
           <View ref={menuButtonRef} collapsable={false}>
             <Pressable
@@ -534,7 +621,9 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, shareUrl, visible
             {/* Media: the playable preview is the card's thumbnail; this holds the "full thing" links and the private image. */}
             {isMedia && mediaDetails ? (
               <View className="mt-3 gap-3">
-                {mediaDetails.has_audio && mediaDetails.has_video
+                {isDetailView
+                  ? null
+                  : mediaDetails.has_audio && mediaDetails.has_video
                   ? hasAccess && mediaDetails.audio_url
                     ? <LinkAction icon={Music} label="Listen to the full song" onPress={() => openExternal(mediaDetails.audio_url)} />
                     : null
@@ -576,7 +665,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, shareUrl, visible
             ) : null}
 
             {/* Book: three content sources, three different actions. */}
-            {isBook && bookDetails && hasAccess ? (
+            {!isDetailView && isBook && bookDetails && hasAccess ? (
               <View className="mt-3 gap-3">
                 {bookDetails.content_source === "link" ? (
                   <LinkAction icon={LinkIcon} label="Open link" onPress={() => openExternal(bookDetails.external_url)} />
@@ -613,12 +702,13 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, shareUrl, visible
                 ) : null}
               </View>
             ) : null}
-            {isBook && bookDetails && !hasAccess && !isOwner ? (
+            {!isDetailView && isBook && bookDetails && !hasAccess && !isOwner ? (
               <View className="mt-3">
                 <LockedNote />
               </View>
             ) : null}
 
+            {!isDetailView ? (
             <View className="mt-3 flex-row items-center gap-2">
               {project.project_type === "file" ? (
                 hasAccess ? (
@@ -706,6 +796,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, shareUrl, visible
                 </Pressable>
               ) : null}
             </View>
+            ) : null}
 
             {/* ProjectDetail renders its own identical button right after the card, so skip it there. */}
             {canBecomeAffiliate && !isDetailView ? (
@@ -719,17 +810,54 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, shareUrl, visible
               </Pressable>
             ) : null}
 
-            <View className="mt-1 border-t border-border-a60 pt-3">
-              <ReactionTray
-                leftActions={[]}
-                middleActions={middleActions}
-                rightActions={rightActions}
-                onOpenMore={isArchivedFrozen || middleActions.length === 0 ? undefined : () => setShowMoreActions(true)}
-                disabled={isArchivedFrozen}
-              />
-            </View>
+            {isDetailView ? (
+              <>
+                {/* Primary CTA (~90%) + one "···" (~10%, 48px min tap target). Light: green button, white "···" with
+                    green icon. Dark: green button, dark "···" with white icon. */}
+                <View className={`mt-4 flex-row items-stretch gap-2 ${detailCta ? "" : "justify-end"}`}>
+                  {detailCta ? (
+                    <Pressable
+                      onPress={detailCta.onPress}
+                      disabled={detailCta.disabled}
+                      accessibilityRole="button"
+                      className={`h-12 flex-row items-center justify-center gap-2 rounded-2xl bg-accent active:scale-[0.98] ${detailCta.disabled ? "opacity-50" : ""}`}
+                      style={{ flex: 9, elevation: 3 }}
+                    >
+                      {detailCta.icon ? <Icon as={detailCta.icon} size={18} className="text-white" /> : null}
+                      <Text className="text-base font-semibold text-white">{detailCta.label}</Text>
+                    </Pressable>
+                  ) : null}
+                  <View ref={menuButtonRef} collapsable={false} style={detailCta ? { flex: 1, minWidth: 48 } : { width: 48 }}>
+                    <Pressable
+                      onPress={() => setMenuOpen(true)}
+                      accessibilityRole="button"
+                      accessibilityLabel="More options"
+                      className="h-12 items-center justify-center rounded-2xl border active:scale-[0.96]"
+                      style={{
+                        backgroundColor: isDark ? colors.canvas : "#FFFFFF",
+                        borderColor: isDark ? colors.border : `${colors.accent}40`,
+                      }}
+                    >
+                      <MoreHorizontal size={22} color={isDark ? colors.ink : colors.accent} />
+                    </Pressable>
+                  </View>
+                </View>
+                {(isCourseUnpublished || isBookDraftUnpublished) && isOwner ? <Text className="mt-2 text-sm text-ink-muted">Not published yet</Text> : null}
+                {menuOpen ? <DropdownMenu anchorRef={menuButtonRef} onClose={() => setMenuOpen(false)} width={224} items={detailMenuItems} /> : null}
+              </>
+            ) : (
+              <View className="mt-1 border-t border-border-a60 pt-3">
+                <ReactionTray
+                  leftActions={[]}
+                  middleActions={middleActions}
+                  rightActions={rightActions}
+                  onOpenMore={isArchivedFrozen || middleActions.length === 0 ? undefined : () => setShowMoreActions(true)}
+                  disabled={isArchivedFrozen}
+                />
+              </View>
+            )}
 
-            {showMoreActions && !isArchivedFrozen && middleActions.length > 0 ? <ReactionMoreSheet actions={middleActions} onClose={() => setShowMoreActions(false)} /> : null}
+            {!isDetailView && showMoreActions && !isArchivedFrozen && middleActions.length > 0 ? <ReactionMoreSheet actions={middleActions} onClose={() => setShowMoreActions(false)} /> : null}
 
             {showGiftPicker ? (
               <GiftPicker

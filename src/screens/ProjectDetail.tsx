@@ -42,7 +42,7 @@ import { useMarkProjectSeen } from "@/hooks/useMarkProjectSeen";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useSmartBack } from "@/hooks/useSmartBack";
 import { useEventDetails, useGigDetails, useGigSamples, useGigsFeaturingProject, useMeetingDetails } from "@/hooks/useProjectTypeDetails";
-import { PROJECT_TYPE_LABELS, useProjectDetail, useSimilarProjects } from "@/hooks/useProjects";
+import { useProjectDetail, useSimilarProjects } from "@/hooks/useProjects";
 import { addToCalendar } from "@/lib/calendar";
 import { pageModeLabel } from "@/lib/pageRoles";
 import { getProjectUrl } from "@/lib/projectLinks";
@@ -293,8 +293,7 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
               </Pressable>
 
               <ProjectRail title={`More from ${project.posted_as_page ? project.posted_as_page.name : project.owner.display_name}`} projects={similar?.moreFromCreator ?? []} />
-              <ProjectRail title="Similar topics" projects={similar?.moreOnTopic ?? []} />
-              <ProjectRail title={`More ${PROJECT_TYPE_LABELS[project.project_type]}s`} projects={similar?.moreOfType ?? []} />
+              <ProjectRail title="Similar contents" projects={similar?.similarContent ?? []} />
             </>
           )}
         </View>
