@@ -436,14 +436,17 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
 
           <View className="min-w-0 flex-1 gap-0.5">
             {/* Name row — never wraps; the watermark sits flush at this row's right edge. */}
-            <View className="h-5 flex-row items-center gap-1.5" style={{ height: 20, maxHeight: 20 }}>
+            <View className="flex-row items-center gap-1.5" style={{ height: 20 }}>
               <View className="min-w-0 flex-1 flex-row items-center gap-1.5">
+                {/* Size, line height and colour are inline (not utility classes) so the name can never
+                    resolve to an unstyled/invisible run; flexShrink lets long names truncate before the badges. */}
                 <Text
                   numberOfLines={1}
-                  style={NO_FONT_PADDING}
+                  ellipsizeMode="tail"
                   onPress={openIdentity}
                   accessibilityRole="link"
-                  className="min-w-0 shrink font-simple text-[17px] font-semibold leading-5 text-ink"
+                  className="font-simple font-semibold"
+                  style={{ flexShrink: 1, fontSize: 17, lineHeight: 20, color: colors.ink }}
                 >
                   {identityName}
                 </Text>
