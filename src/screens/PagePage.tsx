@@ -1,6 +1,6 @@
 // src/screens/PagePage.tsx
 // A Page (Organisation / Brand / Product): identity, follow, team strip,
-// subsidiaries, and Posts / Projects tabs. One scrolling list, like the profile.
+// subsidiaries, and a Projects tab (pages list projects only — never posts). One scrolling list, like the profile.
 import {
   ArrowLeftRight,
   Building2,
@@ -21,7 +21,6 @@ import { FlashList } from "@shopify/flash-list";
 
 import { useBottomNavInset } from "@/components/nav/BottomNav";
 import { useChromeScroll } from "@/components/nav/ChromeProvider";
-import { PostCard } from "@/components/post/PostCard";
 import { ProjectCardList } from "@/components/project/ProjectCardList";
 import { Avatar } from "@/components/ui/Avatar";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -48,7 +47,6 @@ import {
   useSwitchActiveMode,
   useTogglePageFollow,
 } from "@/hooks/usePages";
-import { usePagePosts } from "@/hooks/usePosts";
 import { useMyProfile } from "@/hooks/useProfile";
 import { usePageProjects } from "@/hooks/useProjects";
 import { useTabState } from "@/hooks/useTabState";
@@ -56,9 +54,9 @@ import { APP_URL } from "@/lib/config";
 import { haptics } from "@/lib/haptics";
 import { pageModeLabel } from "@/lib/pageRoles";
 
-type Row = { kind: "header" } | { kind: "tabs" } | { kind: "post"; id: string; post: any } | { kind: "projects"; id: string } | { kind: "message"; id: string; text: string };
+type Row = { kind: "header" } | { kind: "tabs" } | { kind: "projects"; id: string } | { kind: "message"; id: string; text: string };
 
-const TABS = ["posts", "projects"] as const;
+const TABS = ["projects"] as const;
 
 function getWebsiteHref(url: string): string {
   return /^https?:\/\//i.test(url) ? url : `https://${url}`;
@@ -99,9 +97,8 @@ export function PagePage() {
   const { data: me } = useMyProfile();
   const { data: page, isLoading } = usePageByUsername(username ?? "");
   const { data: members } = usePageMembers(page?.id ?? "");
-  const { data: posts } = usePagePosts(page?.id ?? "");
   const { data: projects, isLoading: projectsLoading } = usePageProjects(page?.id);
-  const [activeTab, setActiveTab] = useTabState<(typeof TABS)[number]>(TABS, "posts");
+  const [activeTab, setActiveTab] = useTabState<(typeof TABS)[number]>(TABS, "projects");
   const activeIndex = TABS.indexOf(activeTab);
   const { data: myPages } = useMyPages();
   const { data: identity } = useActiveIdentity();
@@ -148,10 +145,7 @@ export function PagePage() {
 
   const rows = useMemo<Row[]>(() => {
     const out: Row[] = [{ kind: "header" }, { kind: "tabs" }];
-    if (activeTab === "posts") {
-      if (!posts || posts.length === 0) out.push({ kind: "message", id: "no-posts", text: `${page?.name ?? "This page"} hasn't posted anything yet.` });
-      else for (const post of posts as any[]) out.push({ kind: "post", id: post.id, post });
-    } else if (projectsLoading) {
+    if (projectsLoading) {
       out.push({ kind: "message", id: "loading", text: "Loading…" });
     } else if (!projects || projects.length === 0) {
       out.push({
@@ -163,7 +157,7 @@ export function PagePage() {
       out.push({ kind: "projects", id: "projects" });
     }
     return out;
-  }, [activeTab, posts, projects, projectsLoading, isMember, page?.name]);
+  }, [projects, projectsLoading, isMember, page?.name]);
 
   if (isLoading) {
     return (
@@ -345,7 +339,7 @@ export function PagePage() {
           className={`-mb-px border-b-2 py-3 ${activeTab === t ? "border-accent" : "border-transparent"}`}
         >
           <Text className={`text-sm font-medium ${activeTab === t ? "text-accent" : "text-ink-muted"}`}>
-            {t === "posts" ? "Posts" : "Projects"}
+            Projects
             {t === "projects" && projects && projects.length > 0 ? <Text className="text-xs font-normal text-ink-muted">{`  ${projects.length}`}</Text> : null}
           </Text>
         </Pressable>
@@ -371,12 +365,6 @@ export function PagePage() {
                 return header;
               case "tabs":
                 return tabs;
-              case "post":
-                return (
-                  <View className="px-5 pt-4">
-                    <PostCard post={item.post} />
-                  </View>
-                );
               case "projects":
                 return (
                   <View className="p-4">

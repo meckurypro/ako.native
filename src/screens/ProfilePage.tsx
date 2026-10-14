@@ -1,6 +1,6 @@
 // src/screens/ProfilePage.tsx
 // A person's profile: toolbar · identity block · stats · sticky tab bar · the
-// active tab's content (Posts, portfolio categories, Media, Projects…).
+// active tab's content (portfolio categories, Media, Projects…). Projects only — posts are never listed on a profile.
 //
 // Native structure: ONE vertical list. The header and the tab bar are the first
 // two rows (the tab bar is a sticky header, so it pins under the status bar
@@ -41,7 +41,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useBottomNavInset } from "@/components/nav/BottomNav";
 import { useChromeScroll } from "@/components/nav/ChromeProvider";
-import { PostCard } from "@/components/post/PostCard";
 import { ProjectMiniCard } from "@/components/post/ProjectMiniCard";
 import { ProjectCardList } from "@/components/project/ProjectCardList";
 import { AccountSwitcher } from "@/components/account/AccountSwitcher";
@@ -74,7 +73,6 @@ import {
   useTypeCategoryProjects,
   useTypePortfolioCategories,
 } from "@/hooks/usePortfolio";
-import { useUserPostsWithArchived } from "@/hooks/usePosts";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useIsBlocked, useIsMuted, useRemoveFollower, useToggleBlock, useToggleMute } from "@/hooks/usePrivacy";
 import { useIsFollowedByUser, useIsFollowingAsActiveIdentity, useProfileByUsername, useToggleFollowAsActiveIdentity } from "@/hooks/useProfile";
@@ -108,7 +106,6 @@ function categoryToTabId(category: string): string {
 type Row =
   | { kind: "header" }
   | { kind: "tabs" }
-  | { kind: "post"; id: string; post: any }
   | { kind: "grid"; id: string; projects: Project[] }
   | { kind: "gigs"; id: string; gigs: Project[] }
   | { kind: "message"; id: string; text: string };
@@ -179,7 +176,6 @@ export function ProfilePage() {
 
   const accountId = isPrivateLocked ? undefined : profile?.id;
   const { data: projects, refetch: refetchProjects } = useUserProjects(isPrivateLocked ? "" : profile?.id ?? "", showOwnerView);
-  const { data: posts, refetch: refetchPosts } = useUserPostsWithArchived(isPrivateLocked ? "" : profile?.id ?? "", false);
   const { data: portfolioCategories, refetch: refetchPortfolio } = usePortfolioCategories(accountId);
   const { data: categorizedProjectIds, refetch: refetchCategorizedIds } = useCategorizedProjectIds(accountId);
   const { data: typeCategories, refetch: refetchTypeCategories } = useTypePortfolioCategories(accountId);
@@ -204,19 +200,19 @@ export function ProfilePage() {
   });
 
   const tabDefs: { id: string; label: string }[] = [
-    { id: "posts", label: "Posts" },
     ...(portfolioCategories ?? []).map((c) => ({ id: categoryToTabId(c.category), label: c.category })),
     ...(typeCategories ?? []).map((c) => ({ id: `type-${c.project_type}`, label: c.category })),
     ...(mediaProjects.length > 0 ? [{ id: "media", label: "Media" }] : []),
     ...(fallbackProjects && fallbackProjects.length > 0 ? [{ id: "projects", label: "Projects" }] : []),
   ];
   const tabIds = tabDefs.map((t) => t.id);
-  const [activeTab, setActiveTab] = useTabState<string>(tabIds, "posts");
+  // Default is whichever tab comes first; a stale ?tab=posts link just falls back to it.
+  const [activeTab, setActiveTab] = useTabState<string>(tabIds, tabIds[0] ?? "projects");
   const activeIndex = Math.max(tabIds.indexOf(activeTab), 0);
   const activeDef = tabDefs[activeIndex];
 
   // Active tab → which data it needs (hooks stay unconditional; inactive ones get undefined and idle).
-  const activeCategory = activeDef && !["posts", "media", "projects"].includes(activeDef.id) && !activeDef.id.startsWith("type-") ? activeDef.label : undefined;
+  const activeCategory = activeDef && !["media", "projects"].includes(activeDef.id) && !activeDef.id.startsWith("type-") ? activeDef.label : undefined;
   const activeType = activeDef?.id.startsWith("type-") ? (activeDef.id.slice("type-".length) as ProjectType) : undefined;
   const { data: categoryProjects, isLoading: categoryLoading, refetch: refetchCategoryProjects } = usePortfolioCategoryProjects(accountId, activeCategory);
   const { data: categoryGigs, refetch: refetchCategoryGigs } = usePortfolioCategoryGigs(accountId, activeCategory);
@@ -232,7 +228,6 @@ export function ProfilePage() {
       : [
           refetchProfile,
           refetchProjects,
-          refetchPosts,
           refetchPortfolio,
           refetchCategorizedIds,
           refetchTypeCategories,
@@ -247,13 +242,15 @@ export function ProfilePage() {
     if (isBlocked) return [...base, { kind: "message", id: "blocked", text: "You've blocked this account. Unblock to see their content." }];
     if (isPrivateLocked) return base;
 
-    const out: Row[] = [...base, { kind: "tabs" }];
-    const id = activeDef?.id ?? "posts";
+    // No projects at all → no tab bar, just the empty message.
+    if (tabDefs.length === 0) {
+      return [...base, { kind: "message", id: "no-projects", text: showOwnerView ? "No projects yet — publish your first one." : "No projects yet." }];
+    }
 
-    if (id === "posts") {
-      if (!posts || posts.length === 0) out.push({ kind: "message", id: "no-posts", text: "No posts yet." });
-      else for (const post of posts as any[]) out.push({ kind: "post", id: post.id, post });
-    } else if (id === "media") {
+    const out: Row[] = [...base, { kind: "tabs" }];
+    const id = activeDef.id;
+
+    if (id === "media") {
       out.push({ kind: "grid", id: "media", projects: mediaProjects });
     } else if (id === "projects") {
       if (fallbackProjects && fallbackProjects.length > 0) out.push({ kind: "grid", id: "projects", projects: fallbackProjects });
@@ -271,7 +268,7 @@ export function ProfilePage() {
       }
     }
     return out;
-  }, [isBlocked, isPrivateLocked, activeDef?.id, posts, mediaProjects, fallbackProjects, typeProjects, typeLoading, categoryProjects, categoryGigs, categoryLoading, showOwnerView]);
+  }, [isBlocked, isPrivateLocked, tabDefs.length, activeDef?.id, mediaProjects, fallbackProjects, typeProjects, typeLoading, categoryProjects, categoryGigs, categoryLoading, showOwnerView]);
 
   // ── actions ──
   function startUnfollow() {
@@ -548,7 +545,7 @@ export function ProfilePage() {
               <Icon as={Lock} size={22} className="text-accent" />
             </View>
             <Text className="font-medium text-ink">This account is private</Text>
-            <Text className="mt-1 max-w-xs text-center text-sm text-ink-muted">Follow {firstName || "this account"} to see their posts and projects.</Text>
+            <Text className="mt-1 max-w-xs text-center text-sm text-ink-muted">Follow {firstName || "this account"} to see their projects.</Text>
           </View>
         ) : null}
       </View>
@@ -561,12 +558,6 @@ export function ProfilePage() {
         return renderHeader();
       case "tabs":
         return renderTabs();
-      case "post":
-        return (
-          <View className="px-5 pt-4">
-            <PostCard post={item.post} isOwnerView={showOwnerView} />
-          </View>
-        );
       case "grid":
         return (
           <View className="px-4 pt-4">

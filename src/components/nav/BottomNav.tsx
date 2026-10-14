@@ -1,5 +1,5 @@
 // src/components/nav/BottomNav.tsx
-// The persistent bottom tab bar: Feed · Discover · Library · Messages · Profile.
+// The persistent bottom tab bar: Library · Feed · Discover · Messages · Profile.
 // Rendered once by the (app) layout and shown only where routes.ts says so.
 // Active state mirrors web: Messages stays active across /messages/* and
 // /page-inbox/*; Profile is active on your own profile or your active Page.
@@ -46,9 +46,9 @@ const wrap =
   (p: IconProps) => <Lucide {...p} />;
 
 const ITEMS: { key: NavKey; label: string; Icon: (p: IconProps) => React.JSX.Element }[] = [
+  { key: "library", label: "Library", Icon: wrap(LibraryBig) },
   { key: "feed", label: "Feed", Icon: FeedIcon },
   { key: "topics", label: "Discover", Icon: wrap(Search) },
-  { key: "library", label: "Library", Icon: wrap(LibraryBig) },
   { key: "messages", label: "Messages", Icon: wrap(MessageCircle) },
   { key: "profile", label: "Profile", Icon: wrap(User) },
 ];

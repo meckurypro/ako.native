@@ -22,6 +22,11 @@ import { ProjectMiniGrid } from "./ProjectMiniCard";
 const TABS = ["all", "people", "pages", "posts", "projects"] as const;
 export type SearchTab = (typeof TABS)[number];
 
+// Discover is about pages and projects only — no accounts, no posts. The
+// standalone Search screen keeps the full set.
+const DISCOVER_TABS = ["all", "pages", "projects"] as const;
+export type SearchScope = "all" | "discover";
+
 const TAB_LABELS: Record<SearchTab, string> = {
   all: "All",
   people: "People",
@@ -39,8 +44,8 @@ export function isSearchable(query: string): boolean {
   return query.trim().length >= MIN_QUERY_LENGTH;
 }
 
-export function useSearchTab() {
-  return useTabState<SearchTab>(TABS, "all");
+export function useSearchTab(scope: SearchScope = "all") {
+  return useTabState<SearchTab>(scope === "discover" ? DISCOVER_TABS : TABS, "all");
 }
 
 function SkeletonRows({ count = 3 }: { count?: number }) {
@@ -95,15 +100,30 @@ function Section({ title, onSeeAll, showSeeAll, children }: { title: string; onS
   );
 }
 
-export function SearchResults({ query, isPending = false }: { query: string; isPending?: boolean }) {
+export function SearchResults({
+  query,
+  isPending = false,
+  scope = "all",
+}: {
+  query: string;
+  isPending?: boolean;
+  /** "discover" searches pages and projects only. */
+  scope?: SearchScope;
+}) {
   const { user } = useAuth();
-  const [tab, setTab] = useSearchTab();
+  const [tab, setTab] = useSearchTab(scope);
+  const visibleTabs = scope === "discover" ? DISCOVER_TABS : TABS;
+  const showPeople = scope === "all";
+  const showPosts = scope === "all";
 
-  // All four run for every tab so "All" can preview them and switching tabs is instant.
-  const people = useSearchPeople(query);
+  // Every in-scope source runs for every tab so "All" can preview them and
+  // switching tabs is instant. An empty query makes a hook's own `enabled`
+  // guard skip the request, so a scoped-out source is never fetched at all.
+  const people = useSearchPeople(showPeople ? query : "");
   const pages = useSearchPages(query);
-  const posts = useSearchPosts(query);
+  const posts = useSearchPosts(showPosts ? query : "");
   const projects = useSearchProjects(query);
+  const sources = [...(showPeople ? [people] : []), pages, ...(showPosts ? [posts] : []), projects];
 
   const onVisit = (profileId: string) => recordSearchVisit(user?.id, profileId);
   const loading = (q: { isLoading: boolean }) => q.isLoading || isPending;
@@ -162,8 +182,8 @@ export function SearchResults({ query, isPending = false }: { query: string; isP
     return <ProjectMiniGrid projects={rows} />;
   }
 
-  const settled = !isPending && ![people, pages, posts, projects].some((q) => q.isLoading);
-  const allEmpty = settled && [people, pages, posts, projects].every((q) => !q.isError && (q.data ?? []).length === 0);
+  const settled = !isPending && !sources.some((q) => q.isLoading);
+  const allEmpty = settled && sources.every((q) => !q.isError && (q.data ?? []).length === 0);
 
   return (
     <View>
@@ -174,7 +194,7 @@ export function SearchResults({ query, isPending = false }: { query: string; isP
         className="mb-4 border-b border-border"
         contentContainerClassName="gap-5"
       >
-        {TABS.map((t) => (
+        {visibleTabs.map((t) => (
           <Pressable
             key={t}
             onPress={() => setTab(t)}
@@ -198,7 +218,7 @@ export function SearchResults({ query, isPending = false }: { query: string; isP
             <EmptyState label={`No results for “${query.trim()}”`} hint="Check the spelling or try a shorter search." />
           ) : (
             <>
-              {loading(people) || (people.data?.length ?? 0) > 0 || people.isError ? (
+              {showPeople && (loading(people) || (people.data?.length ?? 0) > 0 || people.isError) ? (
                 <Section title="People" showSeeAll={(people.data?.length ?? 0) > PREVIEW_COUNT} onSeeAll={() => setTab("people")}>
                   {renderPeople(PREVIEW_COUNT)}
                 </Section>
@@ -213,7 +233,7 @@ export function SearchResults({ query, isPending = false }: { query: string; isP
                   {renderProjects(PREVIEW_COUNT)}
                 </Section>
               ) : null}
-              {loading(posts) || (posts.data?.length ?? 0) > 0 || posts.isError ? (
+              {showPosts && (loading(posts) || (posts.data?.length ?? 0) > 0 || posts.isError) ? (
                 <Section title="Posts" showSeeAll={(posts.data?.length ?? 0) > PREVIEW_COUNT} onSeeAll={() => setTab("posts")}>
                   {renderPosts(PREVIEW_COUNT)}
                 </Section>

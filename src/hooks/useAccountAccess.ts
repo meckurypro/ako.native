@@ -100,8 +100,12 @@ export function useIsRestricted(): boolean {
   return data?.restricted ?? false;
 }
 
-/** Where a restricted user lands instead of the Feed. */
-export const RESTRICTED_HOME = "/topics";
+/**
+ * Where a restricted user lands instead of the Feed — after login, after
+ * onboarding, and when they hit a full-access-only route. Library is the
+ * consumer-only home (it holds what they've bought/saved).
+ */
+export const RESTRICTED_HOME = "/library";
 
 /** Logout from the Under Review screen — same signOut used by Settings. */
 export function useSignOut() {

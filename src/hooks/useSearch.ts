@@ -321,3 +321,28 @@ export function useSuggestedPages() {
     staleTime: 5 * 60 * 1000,
   });
 }
+
+/**
+ * "Projects to explore" for the empty Discover state — the most-liked, then
+ * newest, active public projects. Same visibility rules as useSearchProjects:
+ * RLS alone would also return private ones, and a private project must never
+ * be discoverable.
+ */
+export function useSuggestedProjects() {
+  return useQuery({
+    queryKey: ["suggested-projects"],
+    queryFn: async (): Promise<Project[]> => {
+      const { data, error } = await supabase
+        .from("projects")
+        .select("*")
+        .eq("status", "active")
+        .eq("is_private", false)
+        .order("like_count", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(12);
+      if (error) throw error;
+      return (data ?? []) as Project[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
