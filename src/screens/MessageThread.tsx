@@ -36,7 +36,7 @@ import Animated, { FadeIn, FadeOut, useAnimatedKeyboard, useAnimatedStyle } from
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
 
-import { AttachSheet } from "@/components/messages/AttachSheet";
+import { AttachMenu, type AttachAnchor } from "@/components/messages/AttachMenu";
 import { DeleteMessageSheet } from "@/components/messages/DeleteMessageSheet";
 import { EmojiPickerSheet, removeLastGrapheme } from "@/components/messages/EmojiPickerSheet";
 import { ForwardMessageSheet } from "@/components/messages/ForwardMessageSheet";
@@ -243,6 +243,16 @@ export function MessageThread() {
   const [inputHeight, setInputHeight] = useState(0);
   const [infoBanner, setInfoBanner] = useState<string | null>(null);
   const [attachOpen, setAttachOpen] = useState(false);
+  const [attachAnchor, setAttachAnchor] = useState<AttachAnchor | null>(null);
+  const composerRef = useRef<View>(null);
+  // Web toggles the menu; it floats above the composer's top-left, so measure that first.
+  const toggleAttach = () => {
+    if (attachOpen) return setAttachOpen(false);
+    composerRef.current?.measureInWindow((x, y) => {
+      setAttachAnchor({ x, y });
+      setAttachOpen(true);
+    });
+  };
   const [mediaDraft, setMediaDraft] = useState<{ kind: MediaKind; files: LocalFile[] } | null>(null);
   useBackDismiss(() => setAttachOpen(false), attachOpen);
   useBackDismiss(() => setEmojiPickerTarget(null), emojiPickerTarget?.mode === "input");
@@ -841,7 +851,7 @@ export function MessageThread() {
           <Text className="text-center text-sm text-ink-muted">You're no longer part of this chat.</Text>
         </Animated.View>
       ) : (
-        <Animated.View style={composerSafeStyle} className="relative border-t border-border bg-canvas">
+        <Animated.View ref={composerRef} style={composerSafeStyle} className="relative border-t border-border bg-canvas">
           {replyTarget && phase === "idle" ? (
             <View className="flex-row items-start gap-2 px-4 pt-2.5">
               <View className="min-w-0 flex-1 border-l-2 border-accent py-0.5 pl-2">
@@ -891,7 +901,7 @@ export function MessageThread() {
                 style={{ fontFamily: "Inter_400Regular", maxHeight: 120, height: Math.min(Math.max(inputHeight + 20, 42), 120) }}
               />
 
-              <Pressable onPress={() => setAttachOpen(true)} accessibilityRole="button" accessibilityLabel="Attach" hitSlop={6} className="shrink-0 px-2 pb-[11px]">
+              <Pressable onPress={toggleAttach} accessibilityRole="button" accessibilityLabel="Attach" accessibilityState={{ expanded: attachOpen }} hitSlop={6} className="shrink-0 px-2 pb-[11px]">
                 <Icon as={Paperclip} size={22} className="text-ink-muted" />
               </Pressable>
               {!content.trim() ? (
@@ -983,8 +993,9 @@ export function MessageThread() {
         </Animated.View>
       )}
 
-      {attachOpen ? (
-        <AttachSheet
+      {attachOpen && attachAnchor ? (
+        <AttachMenu
+          anchor={attachAnchor}
           onClose={() => setAttachOpen(false)}
           onGallery={() => void openPicker("gallery")}
           onCamera={() => void openPicker("camera")}

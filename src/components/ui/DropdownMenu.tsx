@@ -18,7 +18,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { runAfterDismiss, useBackDismiss } from "@/hooks/useBackDismiss";
 import { overlay, paletteToCssVars } from "@/theme/palettes";
 import { useTheme } from "@/theme/ThemeProvider";
-import { OverlayPanel, SCRIM_STYLE } from "./OverlayPanel";
+import { GlassScrim } from "./GlassScrim";
+import { OverlayPanel, SCRIM_BOX } from "./OverlayPanel";
 import { Portal } from "./Portal";
 import { Text } from "./Text";
 
@@ -113,7 +114,8 @@ export function DropdownMenu({ anchorRef, items, onClose, width = 224, bottomIns
 
   return (
     <Portal zIndex={zIndex}>
-      <Animated.View entering={FadeIn.duration(150)} exiting={FadeOut.duration(100)} style={SCRIM_STYLE}>
+      <Animated.View entering={FadeIn.duration(150)} exiting={FadeOut.duration(100)} style={SCRIM_BOX}>
+        <GlassScrim tone="black" />
         <Pressable className="flex-1" onPress={onClose} accessibilityLabel="Close menu" accessibilityRole="button" />
       </Animated.View>
 

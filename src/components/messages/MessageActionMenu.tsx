@@ -12,7 +12,7 @@ import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { DropdownMenu, type DropdownMenuItem } from "@/components/ui/DropdownMenu";
-import { scrimColor } from "@/components/ui/OverlayPanel";
+import { GlassScrim } from "@/components/ui/GlassScrim";
 import { Portal } from "@/components/ui/Portal";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
@@ -114,7 +114,8 @@ export function MessageActionMenu({
 
   return (
     <Portal zIndex={60}>
-      <Animated.View entering={FadeIn.duration(120)} exiting={FadeOut.duration(100)} className="absolute inset-0" style={{ backgroundColor: scrimColor("canvas", colors) }}>
+      <Animated.View entering={FadeIn.duration(120)} exiting={FadeOut.duration(100)} className="absolute inset-0">
+        <GlassScrim tone="canvas" />
         <Pressable className="flex-1" onPress={onClose} accessibilityRole="button" accessibilityLabel="Close" />
       </Animated.View>
 

@@ -54,10 +54,36 @@ export function useOverlayBlurTarget() {
   return useContext(BlurTargetContext);
 }
 
+/**
+ * Second, inner target wrapping ONLY the screens. The lowest sheet/modal (below GLASS_ABOVE_Z) can't
+ * target the big one above — it lives inside it, and a BlurView can't blur its own ancestor — so it
+ * blurs the screens through this one instead. The nesting is fixed (it never changes with which
+ * layers are open), so opening/closing overlays never remounts the screens.
+ */
+const ScreenBlurTargetContext = createContext<RefObject<View | null> | null>(null);
+export function useScreenBlurTarget() {
+  return useContext(ScreenBlurTargetContext);
+}
+
+/**
+ * What a layer's scrim may blur (read by GlassScrim):
+ *  - "glass":  z >= GLASS_ABOVE_Z — blurs everything beneath, other overlays included (big target).
+ *  - "screen": the lowest open overlay — blurs the screens (inner target).
+ *  - "stacked": an overlay opened over another overlay. Android can't blur the layer beneath without
+ *    putting the BlurView inside its own target, so it gets the tint only (the web's 1.2px blur is
+ *    barely visible there anyway). iOS blurs everything, no target needed.
+ */
+export type LayerBlurRole = "glass" | "screen" | "stacked";
+const LayerBlurRoleContext = createContext<LayerBlurRole | null>(null);
+export function useLayerBlurRole() {
+  return useContext(LayerBlurRoleContext);
+}
+
 export function PortalHost({ children }: { children: ReactNode }) {
   const [entries, setEntries] = useState<Record<string, Entry>>({});
   const counter = useRef(0);
   const blurTarget = useRef<View | null>(null);
+  const screenTarget = useRef<View | null>(null);
 
   const api = useMemo<PortalApi>(
     () => ({
@@ -80,26 +106,34 @@ export function PortalHost({ children }: { children: ReactNode }) {
   );
 
   const layers = Object.entries(entries).sort(([, a], [, b]) => a.zIndex - b.zIndex || a.order - b.order);
-  const renderLayer = ([key, entry]: [string, Entry]) => (
-    // box-none: the layer itself is transparent to touches; only the
-    // portalled content (backdrop, panel…) captures them.
-    <Animated.View
-      key={key}
-      pointerEvents="box-none"
-      exiting={FadeOut.duration(120)}
-      style={[StyleSheet.absoluteFill, { zIndex: entry.zIndex }]}
-    >
-      {entry.node}
-    </Animated.View>
-  );
+  const baseKey = layers.length > 0 ? layers[0][0] : null;
+  const renderLayer = ([key, entry]: [string, Entry]) => {
+    const role: LayerBlurRole = entry.zIndex >= GLASS_ABOVE_Z ? "glass" : key === baseKey ? "screen" : "stacked";
+    return (
+      // box-none: the layer itself is transparent to touches; only the
+      // portalled content (backdrop, panel…) captures them.
+      <Animated.View
+        key={key}
+        pointerEvents="box-none"
+        exiting={FadeOut.duration(120)}
+        style={[StyleSheet.absoluteFill, { zIndex: entry.zIndex }]}
+      >
+        <LayerBlurRoleContext.Provider value={role}>{entry.node}</LayerBlurRoleContext.Provider>
+      </Animated.View>
+    );
+  };
 
   return (
     <PortalContext.Provider value={api}>
       <BlurTargetContext.Provider value={blurTarget}>
-        <BlurTargetView ref={blurTarget} style={{ flex: 1 }}>
-          {children}
-          {layers.filter(([, e]) => e.zIndex < GLASS_ABOVE_Z).map(renderLayer)}
-        </BlurTargetView>
+        <ScreenBlurTargetContext.Provider value={screenTarget}>
+          <BlurTargetView ref={blurTarget} style={{ flex: 1 }}>
+            <BlurTargetView ref={screenTarget} style={{ flex: 1 }}>
+              {children}
+            </BlurTargetView>
+            {layers.filter(([, e]) => e.zIndex < GLASS_ABOVE_Z).map(renderLayer)}
+          </BlurTargetView>
+        </ScreenBlurTargetContext.Provider>
         {layers.filter(([, e]) => e.zIndex >= GLASS_ABOVE_Z).map(renderLayer)}
       </BlurTargetContext.Provider>
     </PortalContext.Provider>

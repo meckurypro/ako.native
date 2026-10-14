@@ -31,8 +31,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
 
 import { useBackDismiss } from "@/hooks/useBackDismiss";
-import { useTheme } from "@/theme/ThemeProvider";
-import { scrimColor, type ScrimTone } from "./OverlayPanel";
+import { GlassScrim } from "./GlassScrim";
+import type { ScrimTone } from "./OverlayPanel";
 import { Portal } from "./Portal";
 
 interface SheetContextValue {
@@ -89,7 +89,6 @@ export function Sheet({
   scrim = "canvas",
   accessibilityLabel,
 }: SheetProps) {
-  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { height: windowH } = useWindowDimensions();
 
@@ -183,7 +182,8 @@ export function Sheet({
           accessibilityViewIsModal
           accessibilityLabel={accessibilityLabel}
         >
-          <Animated.View className="absolute inset-0" style={[{ backgroundColor: scrimColor(scrim, colors) }, scrimStyle]}>
+          <Animated.View className="absolute inset-0" style={scrimStyle}>
+            <GlassScrim tone={scrim} />
             <Pressable className="flex-1" onPress={close} accessibilityRole="button" accessibilityLabel="Close" />
           </Animated.View>
 

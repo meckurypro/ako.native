@@ -34,6 +34,8 @@ export function OverlayPanel({ style, className = "", ...rest }: ViewProps & { c
 }
 
 /** Dim scrim behind overlays (web: bg-black/40; its 1.2px blur is imperceptible, so it's skipped). Inline style — the bg-black/40 class didn't render. */
+/** Just the full-bleed box of SCRIM_STYLE, for scrims whose tint is drawn by <GlassScrim>. */
+export const SCRIM_BOX = { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 } as const;
 export const SCRIM_STYLE = { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.4)" } as const;
 
 /**
@@ -44,11 +46,13 @@ export const SCRIM_STYLE = { position: "absolute", top: 0, left: 0, right: 0, bo
  *   ink      web: bg-ink/40     (project sheets)
  * Web also adds a 1.2px backdrop blur, which is imperceptible and skipped here.
  */
-export type ScrimTone = "canvas" | "canvasLight" | "canvasFaint" | "ink";
+export type ScrimTone = "canvas" | "canvasLight" | "canvasFaint" | "ink" | "black";
 // canvasFaint = web LoadingOverlay: bg-canvas/35
-const SCRIM_ALPHA: Record<ScrimTone, string> = { canvas: "B3", canvasLight: "80", canvasFaint: "59", ink: "66" };
+// black = web Modal / DropdownMenu: bg-black/40
+const SCRIM_ALPHA: Record<ScrimTone, string> = { canvas: "B3", canvasLight: "80", canvasFaint: "59", ink: "66", black: "66" };
 export function scrimColor(tone: ScrimTone, colors: { canvas: string; ink: string }): string {
-  return `${tone === "ink" ? colors.ink : colors.canvas}${SCRIM_ALPHA[tone]}`;
+  const base = tone === "ink" ? colors.ink : tone === "black" ? "#000000" : colors.canvas;
+  return `${base}${SCRIM_ALPHA[tone]}`;
 }
 
 /**

@@ -8,8 +8,8 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView } from "react-nat
 import Animated, { FadeIn, FadeOut, ZoomIn } from "react-native-reanimated";
 
 import { useBackDismiss } from "@/hooks/useBackDismiss";
-import { useTheme } from "@/theme/ThemeProvider";
-import { OverlayPanel, SCRIM_STYLE, scrimColor } from "./OverlayPanel";
+import { GlassScrim } from "./GlassScrim";
+import { OverlayPanel, SCRIM_BOX } from "./OverlayPanel";
 import { Portal } from "./Portal";
 
 interface ModalProps {
@@ -40,7 +40,6 @@ export function Modal({
   zIndex = 60,
   scrim = "black",
 }: ModalProps) {
-  const { colors } = useTheme();
   useBackDismiss(onClose);
 
   return (
@@ -52,7 +51,8 @@ export function Modal({
         accessibilityRole={role === "alertdialog" ? "alert" : undefined}
         accessibilityLabel={ariaLabel}
       >
-        <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(120)} style={scrim === "canvas" ? { ...SCRIM_STYLE, backgroundColor: scrimColor("canvas", colors) } : SCRIM_STYLE}>
+        <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(120)} style={SCRIM_BOX}>
+          <GlassScrim tone={scrim === "canvas" ? "canvas" : "black"} />
           <Pressable className="flex-1" onPress={onClose} accessibilityLabel="Close" accessibilityRole="button" />
         </Animated.View>
 
