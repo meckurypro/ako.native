@@ -1,7 +1,7 @@
 // src/screens/Activity.tsx
-// The Activity hub: one row per personal log (saved, liked, drafts, scheduled, history, events, affiliates).
+// The Activity hub: one row per personal log (saved, liked, drafts, scheduled, history).
 import { router, type Href } from "expo-router";
-import { Bookmark, CalendarClock, ChevronRight, FileEdit, Heart, History, Send, TrendingUp, type LucideIcon } from "lucide-react-native";
+import { Bookmark, ChevronRight, FileEdit, Heart, History, Send, type LucideIcon } from "lucide-react-native";
 import { Pressable, ScrollView, View } from "react-native";
 
 import { useBottomNavInset } from "@/components/nav/BottomNav";
@@ -26,8 +26,6 @@ const ROWS: ActivityRow[] = [
   { to: "/activity/drafts", icon: FileEdit, label: "Drafts", description: "Posts you started but haven't shared yet", countFrom: "drafts" },
   { to: "/activity/scheduled", icon: Send, label: "Scheduled", description: "Posts queued to publish automatically", countFrom: "scheduled" },
   { to: "/activity/history", icon: History, label: "History", description: "Posts and projects you've viewed" },
-  { to: "/activity/events", icon: CalendarClock, label: "Events & meetings", description: "Tickets, meetings, and rooms you're part of" },
-  { to: "/activity/affiliates", icon: TrendingUp, label: "Affiliates", description: "Projects you've forked to earn a commission on" },
 ];
 
 export function Activity() {

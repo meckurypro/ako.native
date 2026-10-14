@@ -1,6 +1,7 @@
 // src/app/(app)/activity/affiliates.tsx
-import { MyAffiliateLinks } from "@/screens/MyAffiliateLinks";
+// Affiliates moved to the Connect tab.
+import { Redirect, type Href } from "expo-router";
 
-export default function MyAffiliateLinksRoute() {
-  return <MyAffiliateLinks />;
+export default function AffiliatesRedirectRoute() {
+  return <Redirect href={"/connect?tab=affiliates" as Href} />;
 }

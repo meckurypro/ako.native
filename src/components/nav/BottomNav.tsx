@@ -1,10 +1,12 @@
 // src/components/nav/BottomNav.tsx
-// The persistent bottom tab bar: Library · Feed · Discover · Messages · Profile.
+// The persistent bottom tab bar. Unrestricted: Feed · Discover · Library · Connect · Profile.
+// Restricted (no Feed): Library · Discover · Connect · Profile. Messages has no tab — it is the
+// floating chat button above the bar (ChatFab).
 // Rendered once by the (app) layout and shown only where routes.ts says so.
-// Active state mirrors web: Messages stays active across /messages/* and
-// /page-inbox/*; Profile is active on your own profile or your active Page.
+// Profile is active on your own profile or your active Page. The chat button hides while you are
+// already inside messaging (/messages/*, /page-inbox/*, /inbox).
 import { BlurView } from "expo-blur";
-import { LibraryBig, MessageCircle, Search, User } from "lucide-react-native";
+import { LibraryBig, Search, User, Users } from "lucide-react-native";
 import { router, useGlobalSearchParams, usePathname, type Href } from "expo-router";
 import type { ComponentType } from "react";
 import { Platform, Pressable, StyleSheet, View } from "react-native";
@@ -45,20 +47,35 @@ const wrap =
   (Lucide: ComponentType<{ size?: number; strokeWidth?: number; color?: string; fill?: string }>) =>
   (p: IconProps) => <Lucide {...p} />;
 
-const ITEMS: { key: NavKey; label: string; Icon: (p: IconProps) => React.JSX.Element }[] = [
-  { key: "library", label: "Library", Icon: wrap(LibraryBig) },
-  { key: "feed", label: "Feed", Icon: FeedIcon },
-  { key: "topics", label: "Discover", Icon: wrap(Search) },
-  { key: "messages", label: "Messages", Icon: wrap(MessageCircle) },
-  { key: "profile", label: "Profile", Icon: wrap(User) },
-];
+type NavItem = { key: NavKey; label: string; Icon: (p: IconProps) => React.JSX.Element };
+const FEED: NavItem = { key: "feed", label: "Feed", Icon: FeedIcon };
+const DISCOVER: NavItem = { key: "topics", label: "Discover", Icon: wrap(Search) };
+const LIBRARY: NavItem = { key: "library", label: "Library", Icon: wrap(LibraryBig) };
+const CONNECT: NavItem = { key: "connect", label: "Connect", Icon: wrap(Users) };
+const PROFILE: NavItem = { key: "profile", label: "Profile", Icon: wrap(User) };
+
+const FULL_ITEMS: NavItem[] = [FEED, DISCOVER, LIBRARY, CONNECT, PROFILE];
+const RESTRICTED_ITEMS: NavItem[] = [LIBRARY, DISCOVER, CONNECT, PROFILE];
+
+const FAB_SIZE = 56;
+const FAB_GAP = 16;
+
+/** Solid chat bubble with a "+" knocked out of it; the square top-left corner is the bubble's tail. */
+function ChatPlusIcon({ size, bubble, knockout }: { size: number; bubble: string; knockout: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M2.5 3.5H18a3.5 3.5 0 0 1 3.5 3.5v8a3.5 3.5 0 0 1-3.5 3.5H6A3.5 3.5 0 0 1 2.5 15V3.5Z" fill={bubble} />
+      <Path d="M12 7.5v7M8.5 11h7" stroke={knockout} strokeWidth={1.9} strokeLinecap="round" />
+    </Svg>
+  );
+}
 
 export function BottomNav() {
   const pathname = usePathname();
   const params = useGlobalSearchParams<{ username?: string }>();
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
-  const { hidden, setNavHeight, blurTarget } = useChrome();
+  const { hidden, navHeight, setNavHeight, blurTarget } = useChrome();
   const { resolvedTheme } = useTheme();
 
   const { user, profile } = useAuth();
@@ -76,6 +93,12 @@ export function BottomNav() {
     opacity: withTiming(1 - hidden.value, { duration: 300 }),
   }));
 
+  // Slides/fades with the bar, but travels far enough to clear the screen edge from its raised position.
+  const fabStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: withTiming(hidden.value * (FAB_SIZE + FAB_GAP + 220), { duration: 300, easing: Easing.out(Easing.cubic) }) }],
+    opacity: withTiming(1 - hidden.value, { duration: 300 }),
+  }));
+
   if (!user || !visible) return null;
 
   const username = typeof params.username === "string" ? params.username : undefined;
@@ -90,6 +113,8 @@ export function BottomNav() {
         return pathname === "/topics";
       case "library":
         return pathname === "/library";
+      case "connect":
+        return pathname === "/connect";
       case "messages":
         return pathname.startsWith("/messages") || pathname.startsWith("/page-inbox") || pathname === "/inbox";
       case "profile":
@@ -97,7 +122,50 @@ export function BottomNav() {
     }
   };
 
+  const navList = restricted ? RESTRICTED_ITEMS : FULL_ITEMS;
+  const showChatFab = !isActive("messages");
+
   return (
+    <>
+    {/* Floating chat button. A sibling of the bar (not a child) so it stays tappable on Android, which
+        ignores touches on children that sit outside their parent's bounds. */}
+    {showChatFab ? (
+      <Animated.View
+        pointerEvents="box-none"
+        style={[{ position: "absolute", right: 16, bottom: navHeight + FAB_GAP, zIndex: 40 }, fabStyle]}
+      >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={unreadCount > 0 ? `Messages, ${unreadCount} unread` : "Messages"}
+          onPress={() => {
+            haptics.selection();
+            router.replace(NAV_PATH.messages as Href);
+          }}
+          style={({ pressed }) => ({
+            width: FAB_SIZE,
+            height: FAB_SIZE,
+            borderRadius: 18,
+            backgroundColor: colors.ink,
+            alignItems: "center",
+            justifyContent: "center",
+            transform: [{ scale: pressed ? 0.95 : 1 }],
+            shadowColor: `rgb(${colors.shadowInkRgb})`,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.25,
+            shadowRadius: 14,
+            elevation: 6,
+          })}
+        >
+          <ChatPlusIcon size={26} bubble={colors.canvas} knockout={colors.ink} />
+          {unreadCount > 0 ? (
+            <View className="absolute -right-1.5 -top-1.5 h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1">
+              <Text className="text-[10px] font-medium text-canvas">{unreadCount > 9 ? "9+" : unreadCount}</Text>
+            </View>
+          ) : null}
+        </Pressable>
+      </Animated.View>
+    ) : null}
+
     <Animated.View
       pointerEvents="box-none"
       onLayout={(e) => setNavHeight(e.nativeEvent.layout.height)}
@@ -151,7 +219,7 @@ export function BottomNav() {
 
         <View style={{ paddingHorizontal: 8, paddingTop: 12, paddingBottom: insets.bottom + 12 }}>
           <View className="flex-row items-center justify-around">
-            {ITEMS.filter((item) => !(restricted && item.key === "feed")).map(({ key, label, Icon }) => {
+            {navList.map(({ key, label, Icon }) => {
               const active = isActive(key);
               const color = active ? colors.accent : colors.inkMuted;
               return (
@@ -161,22 +229,15 @@ export function BottomNav() {
                   accessibilityState={{ selected: active }}
                   accessibilityLabel={label}
                   onPress={() => {
-                    if (active && key !== "messages") return;
+                    if (active) return;
                     haptics.selection();
                     router.replace(NAV_PATH[key] as Href);
                   }}
-                  // flex-1 (not w-14): each tab gets an equal fifth of the bar, so
-                  // the icon centres land exactly where web's justify-around puts
-                  // them, but "Messages" has room instead of wrapping to "Message/s".
+                  // flex-1 (not w-14): each tab gets an equal share of the bar, matching web's justify-around.
                   style={{ flex: 1, minWidth: 56, alignItems: "center", gap: 4 }}
                 >
                   <View>
                     <Icon size={24} strokeWidth={active ? 2 : 1.75} color={color} fill={active ? color : "none"} />
-                    {key === "messages" && unreadCount > 0 ? (
-                      <View className="absolute -right-1 -top-1 h-4 w-4 items-center justify-center rounded-full bg-danger">
-                        <Text className="text-[10px] font-medium text-canvas">{unreadCount > 9 ? "9+" : unreadCount}</Text>
-                      </View>
-                    ) : null}
                   </View>
                   <Text numberOfLines={1} maxFontSizeMultiplier={1} className="text-[11px] font-medium" style={{ color }}>
                     {label}
@@ -188,6 +249,7 @@ export function BottomNav() {
         </View>
       </View>
     </Animated.View>
+    </>
   );
 }
 

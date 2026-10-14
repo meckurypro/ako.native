@@ -20,12 +20,13 @@ const SHOWS_BOTTOM_NAV: RegExp[] = [
   /^\/wallet$/,
   /^\/gigs$/,
   /^\/library$/,
+  /^\/connect$/,
   /^\/inbox$/,
   /^\/messages$/,
   /^\/messages\/archive$/,
   /^\/page-inbox$/,
   /^\/activity$/,
-  /^\/activity\/(saved|liked|history|library|events)$/,
+  /^\/activity\/(saved|liked|history|library)$/,
 ];
 
 // "/projects/new" and "/projects/:id" look alike; "new" is the create flow.
@@ -38,12 +39,13 @@ export function showsBottomNav(pathname: string): boolean {
   return SHOWS_BOTTOM_NAV.some((r) => r.test(pathname));
 }
 
-export type NavKey = "feed" | "topics" | "library" | "messages" | "profile";
+export type NavKey = "feed" | "topics" | "library" | "connect" | "messages" | "profile";
 
 export const NAV_PATH: Record<NavKey, string> = {
   feed: "/feed",
   topics: "/topics",
   library: "/library",
+  connect: "/connect", // Events · Meetings · Rooms · Affiliates
   messages: "/inbox", // redirect route: /messages or /page-inbox depending on identity
   profile: "/me", // redirect route: own profile or the active Page
 };

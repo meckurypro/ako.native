@@ -27,7 +27,7 @@ function MiniStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function AffiliateLinkRow({ relationship }: { relationship: AffiliateRelationshipWithProject }) {
+export function AffiliateLinkRow({ relationship }: { relationship: AffiliateRelationshipWithProject }) {
   const { data: dashboard } = useAffiliateDashboard(relationship.status === "active" ? relationship.id : undefined);
   const project = relationship.project;
   if (!project) return null;

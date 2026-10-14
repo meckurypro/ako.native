@@ -380,8 +380,12 @@ export function ProfilePage() {
               },
             ] satisfies DropdownMenuItem[])
           : []),
-        { key: "gigs", label: "Your Gigs", icon: <Icon as={Briefcase} size={22} className="text-overlay-ink" />, onSelect: () => router.push("/gigs") },
-        { key: "page", label: "Page", icon: <Icon as={Building2} size={22} className="text-overlay-ink" />, onSelect: () => router.push("/pages") },
+        ...(restricted
+          ? []
+          : ([
+              { key: "gigs", label: "Your Gigs", icon: <Icon as={Briefcase} size={22} className="text-overlay-ink" />, onSelect: () => router.push("/gigs") },
+              { key: "page", label: "Page", icon: <Icon as={Building2} size={22} className="text-overlay-ink" />, onSelect: () => router.push("/pages") },
+            ] satisfies DropdownMenuItem[])),
         { key: "wallet", label: "Wallet", icon: <Icon as={Wallet} size={22} className="text-overlay-ink" />, onSelect: () => router.push("/wallet") },
         { key: "view-as-visitor", label: "View as visitor", icon: <Icon as={Eye} size={22} className="text-overlay-ink" />, onSelect: () => setPreviewingAsVisitor(true) },
         { key: "settings", label: "Settings", icon: <Icon as={Settings} size={22} className="text-overlay-ink" />, onSelect: () => router.push("/settings/profile") },
