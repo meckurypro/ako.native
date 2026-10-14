@@ -1,7 +1,8 @@
 // src/components/messages/VoiceMessageBubble.tsx
-// Voice note inside a chat bubble: play/pause, tap-to-seek waveform, elapsed
-// time, tap-to-cycle playback speed (1x/1.5x/2x), view-once handling, and
-// resume-where-you-left-off. Only one voice note plays at a time, and UI
+// Voice note inside a chat bubble, laid out like WhatsApp: a plain play triangle, a blue scrub dot riding a
+// fine waveform you can tap or drag to scrub, duration under the dot and time + ticks at the far end, and the
+// sender's photo on the opposite side with a small mic (received: [play][wave][photo]; sent: [photo][play][wave]).
+// Also tap-to-cycle playback speed (1x/1.5x/2x), view-once handling, and resume-where-you-left-off. Only one voice note plays at a time, and UI
 // sounds duck underneath it. Audio is signed on demand when only a storage
 // path is available.
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
@@ -10,11 +11,13 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { Pressable, View } from "react-native";
 
 import { Avatar } from "@/components/ui/Avatar";
+import { useTheme } from "@/theme/ThemeProvider";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { VoiceWaveform } from "@/components/ui/VoiceWaveform";
 import { useDuckWhile } from "@/hooks/useDuckWhile";
 import { getSignedAudioUrl } from "@/lib/signedAudioUrl";
+import { enterVoicePlaybackMode, leaveVoicePlaybackMode } from "@/lib/voiceAudioSession";
 import { flatPeaks } from "@/lib/waveform";
 import { formatVoiceDuration } from "@/lib/voiceNotes";
 import {
@@ -83,6 +86,16 @@ export function VoiceMessageBubble({
     };
   }, [url, path]);
 
+  const { colors } = useTheme();
+  const [scrub, setScrub] = useState<number | null>(null);
+  // Playback must be audible on silent/vibrate (see lib/voiceAudioSession.ts) — held only while playing.
+  const inPlaybackMode = useRef(false);
+  const releasePlaybackMode = useCallback(() => {
+    if (!inPlaybackMode.current) return;
+    inPlaybackMode.current = false;
+    leaveVoicePlaybackMode();
+  }, []);
+
   const player = useAudioPlayer(resolvedUrl ?? null, { updateInterval: 100 });
   const status = useAudioPlayerStatus(player);
   const playing = status.playing;
@@ -99,8 +112,9 @@ export function VoiceMessageBubble({
     } catch {
       /* released */
     }
+    releasePlaybackMode();
     clearPlaying(pause);
-  }, [player, stableKey]);
+  }, [player, stableKey, releasePlaybackMode]);
 
   // Resume where the user left off when this note scrolls back into use.
   const restored = useRef(false);
@@ -120,6 +134,7 @@ export function VoiceMessageBubble({
     clearRememberedPosition(stableKey);
     setHasStarted(false);
     void player.seekTo(0).catch(() => {});
+    releasePlaybackMode();
     clearPlaying(pause);
     if (enforceViewOnce) onOpened?.();
   }, [status.didJustFinish]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -135,6 +150,7 @@ export function VoiceMessageBubble({
       } catch {
         /* released */
       }
+      releasePlaybackMode();
       clearPlaying(pause);
     },
     [] // eslint-disable-line react-hooks/exhaustive-deps
@@ -147,17 +163,24 @@ export function VoiceMessageBubble({
       return;
     }
     announcePlaying(pause);
-    try {
-      player.setPlaybackRate(speed);
-      player.play();
-      setHasStarted(true);
-      if (!played) {
-        markPlayed(stableKey);
-        setPlayed(true);
-      }
-    } catch {
-      /* released */
+    setHasStarted(true);
+    if (!played) {
+      markPlayed(stableKey);
+      setPlayed(true);
     }
+    // Switch the audio session to media playback FIRST (silent-mode safe), then start.
+    const ready = inPlaybackMode.current ? Promise.resolve() : enterVoicePlaybackMode();
+    inPlaybackMode.current = true;
+    void ready.then(() => {
+      try {
+        player.muted = false;
+        player.volume = 1;
+        player.setPlaybackRate(speed);
+        player.play();
+      } catch {
+        /* released */
+      }
+    });
   }
 
   function seek(ratio: number) {
@@ -179,9 +202,15 @@ export function VoiceMessageBubble({
   }
 
   const barLevels = peaks?.length ? peaks : flatPeaks();
-  const mutedColor = isMine ? "bg-white-a35" : "bg-ink-muted-a25";
-  const filledColor = isMine ? "bg-white" : "bg-accent";
+  // Received waveforms are neutral grey-blue like WhatsApp; sent ones sit on the accent bubble in white.
+  const filledColor = isMine ? "bg-white-a70" : "bg-ink-muted";
+  const mutedColor = isMine ? "bg-white-a35" : "bg-ink-muted-a40";
   const showSpeed = playing || (hasStarted && elapsed > 0);
+  const shownProgress = scrub ?? progress;
+  const shownElapsed = scrub !== null ? scrub * total : elapsed;
+  const iconColor = isMine ? "#FFFFFFCC" : colors.inkMuted;
+  // Received + not yet listened → accent mic; once played it turns blue (WhatsApp's green → blue).
+  const micColor = isMine ? iconColor : played ? colors.tickBlue : colors.accent;
 
   if (spent) {
     return (
@@ -192,55 +221,68 @@ export function VoiceMessageBubble({
     );
   }
 
-  // Received + not yet listened → accent mic; once played it turns blue (WhatsApp's green → blue).
-  const badgeBg = isMine ? "bg-white" : played ? "bg-tick-blue" : "bg-accent";
+  // The photo slot: while a note plays, the speed chip takes its place (as in WhatsApp).
+  const photoSlot = showSpeed ? (
+    <Pressable
+      onPress={cycleSpeed}
+      accessibilityRole="button"
+      accessibilityLabel={`Playback speed, currently ${speed}x. Tap to change.`}
+      hitSlop={6}
+      className={`h-12 w-12 shrink-0 items-center justify-center rounded-full ${isMine ? "bg-white-a25" : "bg-accent-a12"}`}
+    >
+      <Text className={`text-sm font-bold ${isMine ? "text-white" : "text-accent"}`}>{speed}x</Text>
+    </Pressable>
+  ) : senderAvatarUrl !== undefined ? (
+    <View className="shrink-0">
+      <Avatar src={senderAvatarUrl} name={senderName ?? "?"} size="vn" />
+      {/* The mic hangs off the photo's lower inner corner, outside the circle, like WhatsApp. */}
+      <View pointerEvents="none" className={`absolute -bottom-1 ${isMine ? "-right-2.5" : "-left-2.5"}`}>
+        <Icon as={Mic} size={19} color={micColor} strokeWidth={2.4} />
+      </View>
+    </View>
+  ) : null;
 
   return (
-    <View className="min-w-[230px] flex-row items-center gap-2 py-0.5">
-      {/* Leading slot: while a note is playing, the speed chip takes the avatar's place (as in WhatsApp). */}
-      {showSpeed ? (
-        <Pressable
-          onPress={cycleSpeed}
-          accessibilityRole="button"
-          accessibilityLabel={`Playback speed, currently ${speed}x. Tap to change.`}
-          hitSlop={6}
-          className={`h-10 w-10 shrink-0 items-center justify-center rounded-full ${isMine ? "bg-white-a25" : "bg-accent-a12"}`}
-        >
-          <Text className={`text-xs font-bold ${isMine ? "text-white" : "text-accent"}`}>{speed}x</Text>
-        </Pressable>
-      ) : senderAvatarUrl !== undefined ? (
-        <View className="shrink-0">
-          <Avatar src={senderAvatarUrl} name={senderName ?? "?"} size="sm" />
-          <View className={`absolute -bottom-0.5 -right-0.5 h-4 w-4 items-center justify-center rounded-full ${badgeBg}`}>
-            <Icon as={Mic} size={9} className={isMine ? "text-accent" : "text-white"} />
-          </View>
-        </View>
-      ) : null}
+    <View className="w-[264px] max-w-full flex-row items-center gap-2 py-1">
+      {isMine ? photoSlot : null}
 
       <Pressable
         onPress={toggle}
         disabled={!resolvedUrl}
+        hitSlop={8}
         accessibilityRole="button"
         accessibilityLabel={playing ? "Pause voice message" : "Play voice message"}
-        className={`h-9 w-9 shrink-0 items-center justify-center rounded-full ${isMine ? "bg-white" : "bg-accent"} ${!resolvedUrl ? "opacity-50" : ""}`}
+        className={`h-10 w-8 shrink-0 items-center justify-center ${!resolvedUrl ? "opacity-40" : ""}`}
       >
-        <Icon as={playing ? Pause : Play} size={15} fill={isMine ? "#3D5A45" : "#FFFFFF"} className={isMine ? "text-accent" : "text-white"} />
+        <Icon as={playing ? Pause : Play} size={30} color={iconColor} fill={iconColor} />
       </Pressable>
 
       <View className="min-w-0 flex-1">
-        <VoiceWaveform levels={barLevels} progress={progress} filledColor={filledColor} mutedColor={mutedColor} onSeek={seek} thumbColor={filledColor} />
-        <View className="mt-0.5 flex-row items-center justify-between gap-2">
+        <VoiceWaveform
+          levels={barLevels}
+          progress={shownProgress}
+          filledColor={filledColor}
+          mutedColor={mutedColor}
+          thumbColor="bg-tick-blue"
+          onSeek={seek}
+          onScrub={setScrub}
+        />
+        <View className="-mt-1 flex-row items-center justify-between gap-2">
           <View className="flex-row items-center gap-1">
             {viewOnce ? (
               <View className={`h-3.5 w-3.5 items-center justify-center rounded-full ${isMine ? "bg-white-a25" : "bg-accent-a15"}`} accessibilityLabel="View once">
                 <Text className={`text-[9px] font-bold ${isMine ? "text-white" : "text-accent"}`}>1</Text>
               </View>
             ) : null}
-            <Text className={`text-[11px] opacity-80 ${isMine ? "text-white" : "text-ink"}`}>{formatVoiceDuration(showSpeed || elapsed > 0 ? elapsed : durationSec)}</Text>
+            <Text className={`text-[12px] ${isMine ? "text-white-a70" : "text-ink-muted"}`}>
+              {formatVoiceDuration(showSpeed || shownElapsed > 0 ? shownElapsed : durationSec)}
+            </Text>
           </View>
           {footer}
         </View>
       </View>
+
+      {!isMine ? photoSlot : null}
     </View>
   );
 }

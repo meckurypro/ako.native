@@ -2,13 +2,14 @@
 // After you release the mic: listen back, optionally mark view-once, then send or discard.
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { Pause, Play, Send, Trash2 } from "lucide-react-native";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pressable, View } from "react-native";
 
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { VoiceWaveform } from "@/components/ui/VoiceWaveform";
 import { useDuckWhile } from "@/hooks/useDuckWhile";
+import { enterVoicePlaybackMode, leaveVoicePlaybackMode } from "@/lib/voiceAudioSession";
 import { formatVoiceDuration } from "@/lib/voiceNotes";
 import { flatPeaks } from "@/lib/waveform";
 
@@ -27,21 +28,50 @@ export function VoicePreviewBar({ url, durationSec, peaks, sending, viewOnce, on
   const player = useAudioPlayer(url, { updateInterval: 100 });
   const status = useAudioPlayerStatus(player);
   const total = status.duration > 0 ? status.duration : durationSec;
-  const progress = total > 0 ? Math.min(1, status.currentTime / total) : 0;
+  const [scrub, setScrub] = useState<number | null>(null);
+  const progress = scrub ?? (total > 0 ? Math.min(1, status.currentTime / total) : 0);
+  const shownTime = scrub !== null ? scrub * total : status.currentTime;
+  const inPlaybackMode = useRef(false);
 
   useDuckWhile(status.playing);
 
+  const release = () => {
+    if (!inPlaybackMode.current) return;
+    inPlaybackMode.current = false;
+    leaveVoicePlaybackMode();
+  };
+
   useEffect(() => {
-    if (status.didJustFinish) void player.seekTo(0).catch(() => {});
-  }, [status.didJustFinish, player]);
+    if (status.didJustFinish) {
+      void player.seekTo(0).catch(() => {});
+      release();
+    }
+  }, [status.didJustFinish, player]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => release, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function toggle() {
     try {
-      if (status.playing) player.pause();
-      else player.play();
+      if (status.playing) {
+        player.pause();
+        release();
+        return;
+      }
     } catch {
       /* released */
     }
+    // Audible on silent/vibrate, like WhatsApp (see lib/voiceAudioSession.ts).
+    const ready = inPlaybackMode.current ? Promise.resolve() : enterVoicePlaybackMode();
+    inPlaybackMode.current = true;
+    void ready.then(() => {
+      try {
+        player.muted = false;
+        player.volume = 1;
+        player.play();
+      } catch {
+        /* released */
+      }
+    });
   }
 
   return (
@@ -69,9 +99,11 @@ export function VoicePreviewBar({ url, durationSec, peaks, sending, viewOnce, on
           progress={progress}
           filledColor="bg-accent"
           mutedColor="bg-ink-muted-a25"
-          onSeek={peaks.length ? (r) => void player.seekTo(r * total).catch(() => {}) : undefined}
+          thumbColor="bg-tick-blue"
+          onSeek={(r) => void player.seekTo(r * total).catch(() => {})}
+          onScrub={setScrub}
         />
-        <Text className="shrink-0 text-[11px] text-ink-muted">{formatVoiceDuration(status.playing || status.currentTime > 0 ? status.currentTime : durationSec)}</Text>
+        <Text className="shrink-0 text-[11px] text-ink-muted">{formatVoiceDuration(status.playing || shownTime > 0 ? shownTime : durationSec)}</Text>
         {onToggleViewOnce ? (
           <Pressable
             onPress={onToggleViewOnce}

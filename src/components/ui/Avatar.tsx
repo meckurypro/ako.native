@@ -8,16 +8,17 @@ import { Text } from "./Text";
 interface AvatarProps {
   src?: string | null;
   name: string;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "sm" | "md" | "vn" | "lg" | "xl";
 }
 
 // Pixel sizes (w-8 / w-10 / w-16 / w-20). Applied as inline style so the avatar
 // can never stretch with its row, whatever the image's intrinsic size is.
-const PX = { sm: 32, md: 40, xl: 64, lg: 80 } as const;
+const PX = { sm: 32, md: 40, vn: 48, xl: 64, lg: 80 } as const;
 
 const TEXT = {
   sm: "text-xs",
   md: "text-sm",
+  vn: "text-base",
   xl: "text-xl",
   lg: "text-2xl",
 } as const;
