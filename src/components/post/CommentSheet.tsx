@@ -18,7 +18,7 @@ import { Text } from "@/components/ui/Text";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useCommentAncestors, useCommentReplies, useRootComments, type CommentWithAuthor } from "@/hooks/useComments";
-import { useMyCommentReactions, useToggleCommentReaction, type CommentReactionState } from "@/hooks/useReactions";
+import { useMyCommentReactions, useToggleCommentReaction, type CommentCountDeltas, type CommentReactionState } from "@/hooks/useReactions";
 import { useReportReasons, useSubmitReport } from "@/hooks/useReports";
 import { APP_URL } from "@/lib/config";
 import { formatCompactCount } from "@/lib/formatStats";
@@ -48,6 +48,8 @@ interface CommentSheetCtx {
   expandedIds: Set<string>;
   toggleExpand: (id: string) => void;
   reactions: Map<string, CommentReactionState> | undefined;
+  /** Unconfirmed taps (queued/offline included) to add to each comment's stored counts. */
+  reactionDeltas: CommentCountDeltas;
   onToggleReaction: ToggleReaction;
   onIdsLoaded: (ids: string[]) => void;
   onShare: (comment: CommentWithAuthor) => void;
@@ -81,6 +83,9 @@ function CommentThread({ comment, depth }: { comment: CommentWithAuthor; depth: 
   const reactionState = ctx.reactions?.get(comment.id);
   const isLiked = !!reactionState?.liked;
   const isDisliked = !!reactionState?.disliked;
+  const delta = ctx.reactionDeltas.get(comment.id);
+  const likeCount = Math.max(0, comment.like_count + (delta?.like ?? 0));
+  const dislikeCount = Math.max(0, comment.dislike_count + (delta?.dislike ?? 0));
   const isMine = !!ctx.currentUserId && comment.author.id === ctx.currentUserId;
 
   // Deep-linked comment: scroll it into view once laid out, and flash it.
@@ -167,7 +172,7 @@ function CommentThread({ comment, depth }: { comment: CommentWithAuthor; depth: 
               className="-ml-1.5 flex-row items-center gap-1.5 p-1.5"
             >
               <LikeHeart active={isLiked} size={18} className="text-danger" />
-              {comment.like_count > 0 ? <Text className="text-sm text-danger">{comment.like_count}</Text> : null}
+              {likeCount > 0 ? <Text className="text-sm text-danger">{likeCount}</Text> : null}
             </Pressable>
             <Pressable
               onPress={() => ctx.onToggleReaction({ commentId: comment.id, type: "dislike", currentlyActive: isDisliked })}
@@ -176,8 +181,8 @@ function CommentThread({ comment, depth }: { comment: CommentWithAuthor; depth: 
               className="flex-row items-center gap-1.5 p-1.5"
             >
               <ThumbsDown size={18} color={isDisliked ? colors.danger : colors.inkMuted} fill={isDisliked ? colors.danger : "none"} />
-              {comment.dislike_count > 0 ? (
-                <Text className={`text-sm ${isDisliked ? "text-danger" : "text-ink-muted"}`}>{comment.dislike_count}</Text>
+              {dislikeCount > 0 ? (
+                <Text className={`text-sm ${isDisliked ? "text-danger" : "text-ink-muted"}`}>{dislikeCount}</Text>
               ) : null}
             </Pressable>
 
@@ -359,7 +364,7 @@ export function CommentSheet({
     if (rootList.length > 0) registerIds(rootList.map((r) => r.id));
   }, [rootList]);
 
-  const { data: reactions } = useMyCommentReactions(postId, knownIds);
+  const { data: reactions, deltas: reactionDeltas } = useMyCommentReactions(postId, knownIds);
   const toggleReaction = useToggleCommentReaction(postId, knownIds.length);
 
   const totalCount = commentCount ?? rootList.length;
@@ -390,6 +395,7 @@ export function CommentSheet({
     expandedIds,
     toggleExpand,
     reactions,
+    reactionDeltas,
     onToggleReaction: toggleReaction.mutate,
     onIdsLoaded: registerIds,
     onShare: (c) => void handleShare(c),

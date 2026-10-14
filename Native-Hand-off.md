@@ -205,7 +205,7 @@ Added copy for notification types the web leaves blank: `comment` ("commented on
 
 ### 5.3 Step 14 (extras)
 
-- **Offline writes** — nothing queues a message/post sent offline (React Query pauses mutations while offline but they're lost on app kill). Needs an outbox (persisted mutations + idempotency + optimistic-item handling).
+- **Offline writes** — *partly done:* likes/dislikes/shares (posts & projects), comment likes/dislikes and bookmarks are offline-first intents that persist across an app kill (see `docs/OFFLINE_FIRST.md`). **Still not queued:** sending a message, creating a post/comment, follow, and everything else — those need a client-generated idempotency key and optimistic temp rows first.
 - **Wider offline reads** — message threads and feed are *not* cached (threads hold optimistic temp items that must not be replayed). Extending `PERSISTED_QUERY_ROOTS` needs that handled first.
 - **Biometrics** (`expo-local-authentication` is installed; the iOS Face ID string is the generic default — set a real one).
 - **On-device AI** — plan in the web repo's `AKO_NATIVE_AI_IMPLEMENTATION.md` (only relevant here).
@@ -395,3 +395,13 @@ fenced), plus a small Markdown subset (`#`, `-`, `1.`, `>`, `**bold**`, `` `code
 (`LessonRenderer`, `LessonReader`, `CourseHero`, `ProgressBar`). `screens/Course.tsx` has two views: the outline
 (hero + collapsible modules with per-module progress) and the focused lesson reader. Text lessons no longer
 auto-complete after 4 s; learners tap **Complete & continue**. Video lessons still complete when the video ends.
+
+## Offline-first mutations (likes, comment likes, bookmarks)
+
+Full write-up and the checklist for converting more writes: **`docs/OFFLINE_FIRST.md`**. In short: taps enqueue an
+idempotent *intent*; screens render `server state + pending overlay` (`useReactionOverlay`, `useMyCommentReactions`,
+`useIsBookmarked`); `mutationFn`/`onSuccess` live in `lib/offlineMutations.ts` as mutation defaults (registered in
+`lib/queryClient.ts`) so a queued write persisted to SQLite can replay after an app kill. Counters are patched with
+`lib/optimisticCache.ts`. Tests: `node scripts/test-optimistic.mjs`. **Never add a mutation to
+`OFFLINE_MUTATION_ROOTS` unless replaying it twice is harmless.** Unverified on a device (queue → kill → relaunch offline →
+reconnect is the first thing to try).

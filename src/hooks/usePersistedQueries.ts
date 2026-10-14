@@ -7,7 +7,7 @@ import Constants from "expo-constants";
 import { useEffect, useState } from "react";
 import { AppState } from "react-native";
 
-import { createSqlitePersister, shouldPersistQuery } from "../lib/queryPersister";
+import { createSqlitePersister, shouldPersistMutation, shouldPersistQuery } from "../lib/queryPersister";
 import { resumeSecureCache } from "../lib/secureDb";
 import { useAuth } from "./useAuth";
 
@@ -37,7 +37,24 @@ export function usePersistedQueries(): boolean {
         /* a bad cache is just a cold start */
       }
       if (cancelled) return;
-      unsubscribe = persistQueryClientSubscribe({ queryClient, persister, buster: BUSTER, dehydrateOptions: { shouldDehydrateQuery: shouldPersistQuery } });
+      unsubscribe = persistQueryClientSubscribe({
+        queryClient,
+        persister,
+        buster: BUSTER,
+        dehydrateOptions: { shouldDehydrateQuery: shouldPersistQuery, shouldDehydrateMutation: shouldPersistMutation },
+      });
+      // Registered AFTER the persister's own subscription, so its (throttled) snapshot already holds the new mutation
+      // when this runs: write it straight to disk. A like queued offline must survive an app kill within the next 2 s.
+      const stopMutationWatch = queryClient.getMutationCache().subscribe((event) => {
+        if (event.type === "updated" && event.mutation.state.isPaused && shouldPersistMutation(event.mutation)) void persister.flush();
+      });
+      const baseUnsubscribe = unsubscribe;
+      unsubscribe = () => {
+        stopMutationWatch();
+        baseUnsubscribe();
+      };
+      // Replay whatever was queued when the app last died (still waits for connectivity via onlineManager).
+      void queryClient.resumePausedMutations();
       setReadyFor(user.id);
     })();
     const timeout = setTimeout(() => setReadyFor((cur) => cur ?? user.id), RESTORE_TIMEOUT_MS);

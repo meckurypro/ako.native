@@ -2,8 +2,9 @@
 // Persists an ALLOW-LISTED slice of the React Query cache into the encrypted SQLite store so those lists open
 // instantly (and offline) next launch, then refresh from Supabase. Everything not listed stays in memory only.
 import type { PersistedClient, Persister } from "@tanstack/react-query-persist-client";
-import type { Query } from "@tanstack/react-query";
+import type { Mutation, Query } from "@tanstack/react-query";
 
+import { OFFLINE_MUTATION_ROOTS } from "./offlineMutations";
 import { secureKvDelete, secureKvGet, secureKvSet } from "./secureDb";
 
 /**
@@ -11,10 +12,32 @@ import { secureKvDelete, secureKvGet, secureKvSet } from "./secureDb";
  * optimistic, not-yet-sent items that must never be replayed), wallet/financial data, and anything
  * one-time. Add a root here only after checking it is safe to show stale and re-hydrate cold.
  */
-export const PERSISTED_QUERY_ROOTS: ReadonlySet<string> = new Set(["notifications", "page-notifications", "conversations", "archived-conversations"]);
+export const PERSISTED_QUERY_ROOTS: ReadonlySet<string> = new Set([
+  "notifications",
+  "page-notifications",
+  "conversations",
+  "archived-conversations",
+  // Per-viewer booleans (heart / bookmark state): tiny, and safe to show stale. NOT "my-comment-reactions" — it holds a Map,
+  // which JSON can't round-trip.
+  "my-reaction",
+  "is-bookmarked",
+]);
 
 export function shouldPersistQuery(query: Pick<Query, "queryKey" | "state">): boolean {
   return query.state.status === "success" && PERSISTED_QUERY_ROOTS.has(String(query.queryKey[0]));
+}
+
+/**
+ * Queued writes that must survive an app kill: only paused (offline / waiting-in-scope) mutations whose key root is
+ * allow-listed in OFFLINE_MUTATION_ROOTS. Every one of those is an idempotent intent, so replay is always safe.
+ * Never add a mutation here unless replaying it twice is harmless (e.g. NOT "send message" without an idempotency key).
+ */
+export function shouldPersistMutation(mutation: Pick<Mutation, "options" | "state">): boolean {
+  return (
+    mutation.state.status === "pending" &&
+    mutation.state.isPaused &&
+    OFFLINE_MUTATION_ROOTS.has(String(mutation.options.mutationKey?.[0]))
+  );
 }
 
 const CACHE_KEY = "react-query";

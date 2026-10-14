@@ -60,7 +60,7 @@ import {
   useSetPostArchived,
 } from "@/hooks/usePosts";
 import { recordProfileVisitFromPost } from "@/hooks/useProfileVisits";
-import { useMyReaction, useToggleReaction } from "@/hooks/useReactions";
+import { useMyReaction, useReactionOverlay, useToggleReaction } from "@/hooks/useReactions";
 import { APP_URL } from "@/lib/config";
 import { formatCompactCount, formatPostDate, formatPostTime } from "@/lib/formatStats";
 import { timeAgo } from "@/lib/timeAgo";
@@ -166,8 +166,13 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
   const toggleLike = useToggleReaction(post.id, "post", "like");
   const toggleDislike = useToggleReaction(post.id, "post", "dislike");
   const toggleShare = useToggleReaction(post.id, "post", "share");
-  const isLiked = !!likeQuery.data;
-  const isDisliked = !!dislikeQuery.data;
+  // Render server state + any unconfirmed tap (queued/offline included) so hearts and counts move instantly.
+  const likeView = useReactionOverlay(post.id, "post", "like", !!likeQuery.data);
+  const dislikeView = useReactionOverlay(post.id, "post", "dislike", !!dislikeQuery.data);
+  const isLiked = likeView.active;
+  const isDisliked = dislikeView.active;
+  const likeCount = Math.max(0, post.like_count + likeView.countDelta);
+  const dislikeCount = Math.max(0, post.dislike_count + dislikeView.countDelta);
 
   const deletePost = useDeletePost();
   const setArchived = useSetPostArchived();
@@ -190,7 +195,7 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
   function handleContentPress() {
     const now = Date.now();
     // A quick second tap likes the post (the first already navigated — same as web).
-    if (now - lastTapRef.current < DOUBLE_TAP_WINDOW_MS && !isLiked && !toggleLike.isPending) {
+    if (now - lastTapRef.current < DOUBLE_TAP_WINDOW_MS && !isLiked) {
       toggleLike.mutate(false);
     }
     lastTapRef.current = now;
@@ -264,7 +269,7 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
       key: "dislike",
       label: isDisliked ? "Disliked" : "Dislike",
       icon: mk(ThumbsDown, { fill: isDisliked ? ink : "none" }),
-      count: post.dislike_count > 0 ? post.dislike_count : null,
+      count: dislikeCount > 0 ? dislikeCount : null,
       onAction: () => toggleDislike.mutate(isDisliked),
     },
     gift: {
@@ -315,11 +320,8 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
       key: "like",
       label: isLiked ? "Liked" : "Like",
       icon: <LikeHeart active={isLiked} size={ICON} className="text-danger" />,
-      count: post.like_count > 0 ? post.like_count : null,
-      onClick: () => {
-        if (toggleLike.isPending) return;
-        toggleLike.mutate(isLiked);
-      },
+      count: likeCount > 0 ? likeCount : null,
+      onClick: () => toggleLike.mutate(isLiked),
     },
   ];
 

@@ -3,6 +3,8 @@ import { focusManager, onlineManager, QueryClient } from "@tanstack/react-query"
 import NetInfo from "@react-native-community/netinfo";
 import { AppState, Platform } from "react-native";
 
+import { registerOfflineMutations } from "./offlineMutations";
+
 // Same defaults as the web app (App.tsx): one retry, and no refetch on focus
 // by default. On native, "focus" means the app returning to the foreground —
 // individual queries can opt back in with refetchOnWindowFocus.
@@ -14,6 +16,10 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+// Reaction / comment-reaction / bookmark mutations are defined as defaults (mutationFn + onSuccess), so a mutation
+// restored from SQLite after an app kill can run with no component mounted. Must happen before cache restore.
+registerOfflineMutations(queryClient);
 
 // Wire React Query's focus manager to the app lifecycle (RN has no window focus).
 if (Platform.OS !== "web") {
