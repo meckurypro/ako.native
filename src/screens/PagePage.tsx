@@ -38,6 +38,7 @@ import {
   useActiveIdentity,
   useDeletePage,
   useIsFollowingPage,
+  useMyPagePermissions,
   useMyPages,
   usePageById,
   usePageByUsername,
@@ -118,6 +119,13 @@ export function PagePage() {
   const isAdmin = !!myMembership?.is_admin;
   const { data: pageOwnerId } = useResolvePageOwner(page?.id ?? "", isAdmin);
   const isOwnerOfPage = isAdmin && !!user && pageOwnerId === user.id;
+  // Admins can always edit; other members only if an admin granted "edit page details".
+  const { data: myPagePerms } = useMyPagePermissions(page?.id);
+  const canEditPage = isAdmin || !!myPagePerms?.permissions.edit_page;
+  // Following is something a PERSON does to a page. Never offered to the page's own
+  // team (you'd be following yourself), and never while acting as a page — pages
+  // don't follow pages.
+  const canFollowPage = !isMember && identity?.mode !== "page";
   const activeMembers = (members ?? []).filter((m) => m.status === "active");
 
   const isActiveHere = identity?.mode === "page" && identity.page.id === page?.id;
@@ -198,11 +206,11 @@ export function PagePage() {
           } satisfies DropdownMenuItem,
         ]
       : []),
+    ...(canEditPage
+      ? [{ key: "edit", label: "Edit page", icon: <Icon as={Pencil} size={22} className="text-overlay-ink" />, onSelect: () => router.push(`/page/${page.username}/edit` as Href) } satisfies DropdownMenuItem]
+      : []),
     ...(isAdmin
-      ? [
-          { key: "edit", label: "Edit page", icon: <Icon as={Pencil} size={22} className="text-overlay-ink" />, onSelect: () => router.push(`/page/${page.username}/edit` as Href) } satisfies DropdownMenuItem,
-          { key: "team", label: "Manage team", icon: <Icon as={UserCog} size={22} className="text-overlay-ink" />, onSelect: () => router.push(`/page/${page.username}/team` as Href) } satisfies DropdownMenuItem,
-        ]
+      ? [{ key: "team", label: "Manage team", icon: <Icon as={UserCog} size={22} className="text-overlay-ink" />, onSelect: () => router.push(`/page/${page.username}/team` as Href) } satisfies DropdownMenuItem]
       : []),
     ...(isAdmin && subsidiariesEnabled && !restricted
       ? [{ key: "subsidiary", label: "Add Subsidiary", icon: <Icon as={Building2} size={22} className="text-overlay-ink" />, onSelect: () => router.push(`/pages/new?parent=${page.id}` as Href) } satisfies DropdownMenuItem]
@@ -286,18 +294,20 @@ export function PagePage() {
           </Pressable>
         </View>
 
-        <Pressable
-          onPress={() => {
-            if (!user) return router.push(`/login?redirect=/page/${page.username}` as Href);
-            haptics.selection();
-            toggleFollow.mutate(isFollowing);
-          }}
-          disabled={toggleFollow.isPending}
-          accessibilityRole="button"
-          className={`mt-4 w-full items-center rounded-xl py-2.5 ${isFollowing ? "bg-surface" : "bg-accent"} ${toggleFollow.isPending ? "opacity-60" : ""}`}
-        >
-          <Text className={`text-sm font-medium ${isFollowing ? "text-ink" : "text-canvas"}`}>{isFollowing ? "Following" : "Follow"}</Text>
-        </Pressable>
+        {canFollowPage ? (
+          <Pressable
+            onPress={() => {
+              if (!user) return router.push(`/login?redirect=/page/${page.username}` as Href);
+              haptics.selection();
+              toggleFollow.mutate(isFollowing);
+            }}
+            disabled={toggleFollow.isPending}
+            accessibilityRole="button"
+            className={`mt-4 w-full items-center rounded-xl py-2.5 ${isFollowing ? "bg-surface" : "bg-accent"} ${toggleFollow.isPending ? "opacity-60" : ""}`}
+          >
+            <Text className={`text-sm font-medium ${isFollowing ? "text-ink" : "text-canvas"}`}>{isFollowing ? "Following" : "Follow"}</Text>
+          </Pressable>
+        ) : null}
 
         {activeMembers.length > 0 ? (
           <View className="mt-5">

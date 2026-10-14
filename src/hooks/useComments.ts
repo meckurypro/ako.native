@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { resolveFunctionErrorMessage } from "../lib/functionErrors";
+import { useActiveIdentity, useActivePagePermissions } from "./usePages";
 import type { Comment, Stance } from "../types/database";
 
 export interface CommentWithAuthor extends Comment {
@@ -107,13 +108,22 @@ interface CreateCommentInput {
 
 export function useCreateComment(postId: string) {
   const queryClient = useQueryClient();
+  const { data: identity } = useActiveIdentity();
+  const pagePerms = useActivePagePermissions();
 
   return useMutation({
     meta: { blocking: true },
     mutationFn: async (input: CreateCommentInput) => {
-      const { data, error } = await supabase.functions.invoke("create-comment", {
-        body: input,
-      });
+      // Acting as a page, a comment is the PAGE's — never the team member's
+      // own. (Before this, page mode quietly posted comments as the person.)
+      const actingPage = identity?.mode === "page" ? identity.page : null;
+      if (actingPage && !pagePerms.can("comment")) {
+        throw new Error(`You don't have permission to comment as ${actingPage.name}.`);
+      }
+
+      const { data, error } = actingPage
+        ? await supabase.functions.invoke("create-page-comment", { body: { ...input, page_id: actingPage.id } })
+        : await supabase.functions.invoke("create-comment", { body: input });
 
       // See resolveFunctionErrorMessage (src/lib/functionErrors.ts) —
       // without this, a moderation rejection's actual message (e.g. the

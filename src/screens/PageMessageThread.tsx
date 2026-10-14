@@ -14,6 +14,7 @@ import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useFeatureFlag } from "@/hooks/useFeatureFlags";
+import { useActivePagePermissions } from "@/hooks/usePages";
 import { useMarkPageThreadRead, usePageThread, useSendPageMessage } from "@/hooks/usePageInbox";
 import { useActiveConversationPush } from "@/hooks/useActiveConversationPush";
 import { dayKeyFor, formatMessageDayLabel } from "@/lib/messageTime";
@@ -33,6 +34,9 @@ export function PageMessageThread() {
   const sendMessage = useSendPageMessage(conversationId);
   const markRead = useMarkPageThreadRead(conversationId);
   const messagingEnabled = useFeatureFlag("page_messaging_enabled");
+  // Replying as the page needs the "reply to messages" permission.
+  const pagePerms = useActivePagePermissions();
+  const canReply = pagePerms.loading || pagePerms.can("reply_messages");
   const [draft, setDraft] = useState("");
 
   useEffect(() => {
@@ -51,7 +55,7 @@ export function PageMessageThread() {
   }, [messages]);
 
   function handleSend() {
-    if (!messagingEnabled) return;
+    if (!messagingEnabled || !canReply) return;
     const content = draft.trim();
     if (!content) return;
     sendMessage.mutate(content);
@@ -102,27 +106,28 @@ export function PageMessageThread() {
       </View>
 
       <Animated.View style={composerStyle} className="border-t border-border bg-canvas px-4 pt-3">
+        {messagingEnabled && !canReply ? <Text className="mb-2 text-center text-xs text-ink-muted">You don't have permission to reply as this page.</Text> : null}
         {!messagingEnabled ? <Text className="mb-2 text-center text-xs text-ink-muted">Page messaging is temporarily disabled.</Text> : null}
         <View className="flex-row items-center gap-2">
           <TextInput
             value={draft}
             onChangeText={setDraft}
             onSubmitEditing={handleSend}
-            editable={messagingEnabled}
+            editable={messagingEnabled && canReply}
             returnKeyType="send"
             placeholder="Message as your page…"
             placeholderTextColor={colors.inkMuted}
             selectionColor={colors.accent}
             cursorColor={colors.accent}
-            className={`min-w-0 flex-1 rounded-full border border-border bg-surface px-4 py-2.5 text-sm text-ink ${!messagingEnabled ? "opacity-50" : ""}`}
+            className={`min-w-0 flex-1 rounded-full border border-border bg-surface px-4 py-2.5 text-sm text-ink ${!messagingEnabled || !canReply ? "opacity-50" : ""}`}
             style={{ fontFamily: "Inter_400Regular" }}
           />
           <Pressable
             onPress={handleSend}
-            disabled={!messagingEnabled || !draft.trim() || sendMessage.isPending}
+            disabled={!messagingEnabled || !canReply || !draft.trim() || sendMessage.isPending}
             accessibilityRole="button"
             accessibilityLabel="Send"
-            className={`h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent ${!messagingEnabled || !draft.trim() || sendMessage.isPending ? "opacity-40" : ""}`}
+            className={`h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent ${!messagingEnabled || !canReply || !draft.trim() || sendMessage.isPending ? "opacity-40" : ""}`}
           >
             <Icon as={Send} size={16} className="text-canvas" />
           </Pressable>

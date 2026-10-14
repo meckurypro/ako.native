@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "./useAuth";
+import { useTheme } from "../theme/ThemeProvider";
 import {
   listSavedAccounts,
   removeSavedAccount as removeSavedAccountFromStorage,
@@ -82,6 +83,7 @@ function isTerminalAuthError(message: string): boolean {
  */
 export function useSwitchAccount() {
   const queryClient = useQueryClient();
+  const { setPageMode } = useTheme();
 
   return useMutation({
     mutationFn: async (account: SavedAccount) => {
@@ -134,6 +136,9 @@ export function useSwitchAccount() {
       }
     },
     onSuccess: () => {
+      // The new account starts in its own palette — never the previous
+      // account's page colours.
+      setPageMode(false);
       queryClient.clear();
     },
   });
@@ -162,6 +167,7 @@ interface AddAccountInput {
  */
 export function useAddAccount() {
   const queryClient = useQueryClient();
+  const { setPageMode } = useTheme();
 
   return useMutation({
     mutationFn: async ({ email, password }: AddAccountInput) => {
@@ -224,6 +230,9 @@ export function useAddAccount() {
       return newProfile;
     },
     onSuccess: () => {
+      // The new account starts in its own palette — never the previous
+      // account's page colours.
+      setPageMode(false);
       queryClient.clear();
     },
   });

@@ -34,7 +34,8 @@ import { Text } from "@/components/ui/Text";
 import { TextLink } from "@/components/ui/TextLink";
 import { useToast } from "@/components/ui/Toast";
 import { useFeatureFlag } from "@/hooks/useFeatureFlags";
-import { useActiveIdentity } from "@/hooks/usePages";
+import { PageActionBlocked } from "@/components/page/PageActionBlocked";
+import { useActiveIdentity, useActivePagePermissions } from "@/hooks/usePages";
 import { useMyProfile } from "@/hooks/useProfile";
 import {
   PROJECT_TYPE_HINTS,
@@ -77,6 +78,7 @@ export function CreateProject() {
   const { data: identity } = useActiveIdentity();
   const { data: me } = useMyProfile();
   const postingAsPage = identity?.mode === "page" ? identity.page : null;
+  const pagePerms = useActivePagePermissions();
 
   const { data: typeSettings } = useActiveProjectTypes();
   const { data: accessRules } = useProjectTypeAccessRules();
@@ -292,6 +294,10 @@ export function CreateProject() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't create project.");
     }
+  }
+
+  if (postingAsPage && !pagePerms.loading && !pagePerms.can("create_projects")) {
+    return <PageActionBlocked pageName={postingAsPage.name} action="create projects" />;
   }
 
   if (!projectsEnabled) {

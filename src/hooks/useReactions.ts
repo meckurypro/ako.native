@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "./useAuth";
 import { useSound } from "./useSound";
-import { useActiveIdentity } from "./usePages";
+import { useActiveIdentity, useActivePagePermissions } from "./usePages";
 import { PROFILE_ROLES_SELECT, toProfileRoles } from "../lib/profileRoles";
 import { DEBUG_DISABLE_PER_CARD_QUERIES } from "../lib/debugFlags";
 import type { ReactionType } from "../types/database";
@@ -110,6 +110,7 @@ export function useToggleReaction(targetId: string, targetType: "post" | "projec
   const { user } = useAuth();
   const { data: identity } = useActiveIdentity();
   const actingAsPageId = identity?.mode === "page" ? identity.page.id : null;
+  const pagePerms = useActivePagePermissions();
   const queryClient = useQueryClient();
   const column = COLUMN_FOR[targetType];
   const queryKey = ["my-reaction", targetType, targetId, type, user?.id, actingAsPageId];
@@ -118,6 +119,9 @@ export function useToggleReaction(targetId: string, targetType: "post" | "projec
   return useMutation({
     mutationFn: async (currentlyActive: boolean) => {
       if (!user) throw new Error("Not signed in");
+      if (!currentlyActive && actingAsPageId && !pagePerms.can("comment")) {
+        throw new Error("You don't have permission to react as this page.");
+      }
 
       if (currentlyActive) {
         let query = supabase
@@ -280,6 +284,7 @@ export function useToggleCommentReaction(postId: string, knownCommentCount: numb
   const { user } = useAuth();
   const { data: identity } = useActiveIdentity();
   const actingAsPageId = identity?.mode === "page" ? identity.page.id : null;
+  const pagePerms = useActivePagePermissions();
   const queryClient = useQueryClient();
   const queryKey = commentReactionsQueryKey(postId, user?.id, actingAsPageId, knownCommentCount);
   const { play } = useSound();
@@ -287,6 +292,9 @@ export function useToggleCommentReaction(postId: string, knownCommentCount: numb
   return useMutation({
     mutationFn: async ({ commentId, type, currentlyActive }: ToggleCommentReactionInput) => {
       if (!user) throw new Error("Not signed in");
+      if (!currentlyActive && actingAsPageId && !pagePerms.can("comment")) {
+        throw new Error("You don't have permission to react as this page.");
+      }
 
       if (currentlyActive) {
         let query = supabase

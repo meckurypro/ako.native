@@ -1,7 +1,7 @@
 // src/screens/PageTeam.tsx
 // Manage a Page's team (admins only): invite people with a role, cancel pending
 // invites, promote / demote admins, remove members.
-import { Check, Search, ShieldCheck, X } from "lucide-react-native";
+import { Check, ChevronDown, Search, ShieldCheck, X } from "lucide-react-native";
 import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
@@ -14,10 +14,12 @@ import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
-import { useInvitePageMember, usePageByUsername, usePageMembers, usePageRoleLabelSuggestions, useRemovePageMember, useUpdatePageMemberRole } from "@/hooks/usePages";
+import { PagePermissionsEditor } from "@/components/page/PagePermissionsEditor";
+import { useInvitePageMember, usePageByUsername, usePageMembers, usePageRoleLabelSuggestions, useRemovePageMember, useSetPageMemberPermissions, useUpdatePageMemberRole } from "@/hooks/usePages";
+import { LEGACY_MEMBER_PERMISSIONS, resolvePagePermissions, samePermissions, type PagePermissions } from "@/lib/pagePermissions";
 import { useSearchPeople } from "@/hooks/useSearch";
 import { useTheme } from "@/theme/ThemeProvider";
-import type { ProfileWithRoles } from "@/types/database";
+import type { PageMemberWithProfile, ProfileWithRoles } from "@/types/database";
 
 function Person({ src, name, children }: { src: string | null; name: string; children: React.ReactNode }) {
   return (
@@ -27,6 +29,62 @@ function Person({ src, name, children }: { src: string | null; name: string; chi
     </View>
   );
 }
+
+// One team member's permissions, collapsed by default. Admins can't be restricted
+// (they have everything by definition) — demote them first.
+function MemberPermissions({ pageId, member }: { pageId: string; member: PageMemberWithProfile }) {
+  const toast = useToast();
+  const setPermissions = useSetPageMemberPermissions();
+  const saved = resolvePagePermissions(member.is_admin, member.permissions);
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState<PagePermissions>(saved);
+
+  if (member.is_admin) return null;
+  const dirty = !samePermissions(draft, saved);
+
+  return (
+    <View className="px-4 pb-4">
+      <Pressable
+        onPress={() => {
+          setDraft(saved);
+          setOpen((v) => !v);
+        }}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        hitSlop={6}
+        className="flex-row items-center gap-1 self-start"
+      >
+        <Text className="text-xs text-accent">Permissions</Text>
+        <Icon as={ChevronDown} size={13} className="text-accent" />
+      </Pressable>
+      {open ? (
+        <View className="mt-3 gap-3">
+          <PagePermissionsEditor value={draft} onChange={setDraft} disabled={setPermissions.isPending} />
+          <Button
+            onPress={() =>
+              setPermissions.mutate(
+                { page_id: pageId, user_id: member.user_id, permissions: draft },
+                {
+                  onSuccess: () => {
+                    toast(`${member.profile.display_name}'s permissions updated.`, { variant: "success" });
+                    setOpen(false);
+                  },
+                  onError: () => toast("Couldn't update permissions.", { variant: "error" }),
+                }
+              )
+            }
+            loading={setPermissions.isPending}
+            disabled={!dirty}
+            className="py-2"
+          >
+            Save permissions
+          </Button>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 
 export function PageTeam() {
   const { username } = useLocalSearchParams<{ username: string }>();
@@ -46,6 +104,8 @@ export function PageTeam() {
   const [inviteRole, setInviteRole] = useState("");
   const [showRoleSuggestions, setShowRoleSuggestions] = useState(false);
   const [inviteAsAdmin, setInviteAsAdmin] = useState(false);
+  // What a non-admin invitee may do as the page — the admin decides here.
+  const [invitePermissions, setInvitePermissions] = useState<PagePermissions>({ ...LEGACY_MEMBER_PERMISSIONS });
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -64,11 +124,12 @@ export function PageTeam() {
     if (!page || !selectedUser || !inviteRole.trim()) return;
     setSubmitting(true);
     try {
-      await invite.mutateAsync({ page_id: page.id, user_id: selectedUser.id, role_label: inviteRole.trim(), is_admin: inviteAsAdmin });
+      await invite.mutateAsync({ page_id: page.id, user_id: selectedUser.id, role_label: inviteRole.trim(), is_admin: inviteAsAdmin, permissions: invitePermissions });
       setSelectedUser(null);
       setInviteRole("");
       setShowRoleSuggestions(false);
       setInviteAsAdmin(false);
+      setInvitePermissions({ ...LEGACY_MEMBER_PERMISSIONS });
       toast("Invite sent.", { variant: "success" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't send that invite.");
@@ -223,8 +284,17 @@ export function PageTeam() {
               <View className={`h-5 w-5 items-center justify-center rounded border ${inviteAsAdmin ? "border-accent bg-accent" : "border-border bg-canvas"}`}>
                 {inviteAsAdmin ? <Icon as={Check} size={13} strokeWidth={3} className="text-canvas" /> : null}
               </View>
-              <Text className="flex-1 text-sm text-ink">Make them an admin (can post as {page.name} and manage the team)</Text>
+              <Text className="flex-1 text-sm text-ink">Make them an admin (full access to {page.name}, including managing the team)</Text>
             </Pressable>
+
+            {inviteAsAdmin ? (
+              <Text className="text-xs text-ink-muted">Admins can do everything on the page.</Text>
+            ) : (
+              <View className="gap-3 rounded-xl bg-canvas p-3">
+                <Text className="text-xs font-medium uppercase tracking-wide text-ink-muted">What they can do as {page.name}</Text>
+                <PagePermissionsEditor value={invitePermissions} onChange={setInvitePermissions} />
+              </View>
+            )}
 
             {error ? <Text className="text-sm text-danger">{error}</Text> : null}
 
@@ -313,6 +383,7 @@ export function PageTeam() {
                     </View>
                   ) : null}
                 </Person>
+                {m.user_id !== user?.id ? <MemberPermissions pageId={page.id} member={m} /> : null}
               </View>
             ))}
           </View>

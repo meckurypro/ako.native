@@ -34,7 +34,9 @@ interface ThemeContextValue {
   setTheme: (theme: ThemeSetting) => void;
   /** True while acting as a Page (orange palette). */
   pageMode: boolean;
-  setPageMode: (isPage: boolean) => void;
+  /** Who the page palette belongs to — it must never be shown to anyone else. */
+  pageModeOwner: string | null;
+  setPageMode: (isPage: boolean, userId?: string | null) => void;
   /** Raw color values for places className can't reach (SVG, navigation, status bar). */
   colors: Palette;
   /** Always true — settings load synchronously. Kept so the splash gate stays trivial. */
@@ -53,12 +55,17 @@ function readInitialTheme(): ThemeSetting {
   return "system";
 }
 
-function readInitialPageMode(): boolean {
+// The launch hint is "page:<userId>" — tagged with whose it is, so a different
+// account opened next on this device never inherits the previous account's page
+// palette. (A bare legacy "page" has no owner and is dropped once auth resolves —
+// see usePageThemeSync.)
+function readInitialPageHint(): { pageMode: boolean; owner: string | null } {
   try {
-    return localStorage.getItem(MODE_KEY) === "page";
-  } catch {
-    return false;
-  }
+    const raw = localStorage.getItem(MODE_KEY) ?? "";
+    if (raw === "page") return { pageMode: true, owner: null };
+    if (raw.startsWith("page:")) return { pageMode: true, owner: raw.slice(5) || null };
+  } catch {}
+  return { pageMode: false, owner: null };
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
@@ -67,7 +74,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // lib/polyfills.ts) so the very first frame already has the right palette —
   // no flash of light/personal before the saved choice loads.
   const [theme, setThemeState] = useState<ThemeSetting>(readInitialTheme);
-  const [pageMode, setPageModeState] = useState<boolean>(readInitialPageMode);
+  const [initialHint] = useState(readInitialPageHint);
+  const [pageMode, setPageModeState] = useState<boolean>(initialHint.pageMode);
+  const [pageModeOwner, setPageModeOwner] = useState<string | null>(initialHint.owner);
   const ready = true;
 
   const resolvedTheme: ColorScheme =
@@ -85,10 +94,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     } catch {}
   }, []);
 
-  const setPageMode = useCallback((isPage: boolean) => {
+  const setPageMode = useCallback((isPage: boolean, userId?: string | null) => {
     setPageModeState(isPage);
+    setPageModeOwner(isPage ? userId ?? null : null);
     try {
-      localStorage.setItem(MODE_KEY, isPage ? "page" : "personal");
+      localStorage.setItem(MODE_KEY, isPage && userId ? `page:${userId}` : "personal");
     } catch {}
   }, []);
 
@@ -96,8 +106,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const cssVars = useMemo(() => paletteToCssVars(colors), [colors]);
 
   const value = useMemo<ThemeContextValue>(
-    () => ({ theme, resolvedTheme, setTheme, pageMode, setPageMode, colors, ready }),
-    [theme, resolvedTheme, setTheme, pageMode, setPageMode, colors, ready]
+    () => ({ theme, resolvedTheme, setTheme, pageMode, pageModeOwner, setPageMode, colors, ready }),
+    [theme, resolvedTheme, setTheme, pageMode, pageModeOwner, setPageMode, colors, ready]
   );
 
   return (

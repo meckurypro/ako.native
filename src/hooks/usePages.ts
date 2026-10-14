@@ -4,6 +4,13 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "./useAuth";
 import { useTheme } from "../theme/ThemeProvider";
 import { PAGE_AFFILIATION_SELECT, PAGE_WITH_MEMBERSHIP_SELECT, toPageAffiliations } from "../lib/pageRoles";
+import {
+  ALL_PAGE_PERMISSIONS,
+  resolvePagePermissions,
+  samePermissions,
+  type PagePermissionKey,
+  type PagePermissions,
+} from "../lib/pagePermissions";
 import type {
   ActiveIdentity,
   Page,
@@ -203,7 +210,12 @@ export function useSwitchActiveMode() {
     // usePageThemeSync still runs and confirms the same value.
     onSuccess: async (_data, pageId) => {
       await queryClient.invalidateQueries({ queryKey: ["active-identity"] });
-      setPageMode(pageId !== null);
+      setPageMode(pageId !== null, user?.id);
+      // A page and a person are separate identities — nothing cached while
+      // acting as one may be shown (or acted on) while acting as the other,
+      // or as a different page. Everything except the identity itself is
+      // reset so each screen refetches under the new identity.
+      await queryClient.resetQueries({ predicate: (q) => q.queryKey[0] !== "active-identity" });
     },
   });
 }
@@ -466,6 +478,9 @@ interface InviteMemberInput {
   user_id: string;
   role_label: string;
   is_admin?: boolean;
+  // What the invited (non-admin) member may do as the page. Admins always
+  // get everything, so this is ignored for them.
+  permissions?: PagePermissions;
 }
 
 export function useInvitePageMember() {
@@ -479,6 +494,7 @@ export function useInvitePageMember() {
         p_user_id: input.user_id,
         p_role_label: input.role_label,
         p_is_admin: input.is_admin ?? false,
+        ...(input.permissions && !input.is_admin ? { p_permissions: input.permissions } : {}),
       });
       if (error) throw error;
       return data;
@@ -640,6 +656,11 @@ export function useTogglePageFollow(pageId: string) {
     mutationFn: async (currentlyFollowing: boolean) => {
       if (!user) throw new Error("Not signed in");
 
+      // A page never follows a page, and a team member never follows the
+      // page they run (the server enforces both; this just fails fast).
+      const { data: me } = await supabase.from("profiles").select("active_page_id").eq("id", user.id).single();
+      if (me?.active_page_id) throw new Error("Pages can't follow other pages. Switch to your personal account to follow.");
+
       if (currentlyFollowing) {
         const { error } = await supabase
           .from("page_follows")
@@ -658,3 +679,106 @@ export function useTogglePageFollow(pageId: string) {
     },
   });
 }
+
+/**
+ * What the signed-in person may do as ONE page: their membership, whether
+ * they're an admin, and the resolved permission set. Falls back to the
+ * pre-permissions behaviour if the permissions column isn't there yet, so
+ * the UI never locks people out just because of a deploy-order gap — the
+ * server is the real gate either way.
+ */
+export function useMyPagePermissions(pageId: string | undefined) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["my-page-permissions", user?.id, pageId],
+    queryFn: async (): Promise<{ isMember: boolean; isAdmin: boolean; permissions: PagePermissions }> => {
+      let row: { is_admin: boolean; status: string; permissions?: Record<string, boolean> | null } | null = null;
+
+      const withPerms = await supabase
+        .from("page_members")
+        .select("is_admin, status, permissions")
+        .eq("page_id", pageId!)
+        .eq("user_id", user!.id)
+        .maybeSingle();
+
+      if (withPerms.error) {
+        const legacy = await supabase
+          .from("page_members")
+          .select("is_admin, status")
+          .eq("page_id", pageId!)
+          .eq("user_id", user!.id)
+          .maybeSingle();
+        if (legacy.error) throw legacy.error;
+        row = legacy.data;
+      } else {
+        row = withPerms.data as typeof row;
+      }
+
+      if (!row || row.status !== "active") {
+        return { isMember: false, isAdmin: false, permissions: resolvePagePermissions(false, null) };
+      }
+      return {
+        isMember: true,
+        isAdmin: !!row.is_admin,
+        permissions: resolvePagePermissions(!!row.is_admin, row.permissions),
+      };
+    },
+    enabled: !!user && !!pageId,
+  });
+}
+
+/**
+ * Permission check for whichever identity is acting right now. In personal
+ * mode everything is allowed (it's your own account). In page mode, only
+ * what your role on that page grants. `loading` lets callers avoid flashing
+ * a "no access" state before the answer is in.
+ */
+export function useActivePagePermissions() {
+  const { data: identity } = useActiveIdentity();
+  const pageId = identity?.mode === "page" ? identity.page.id : undefined;
+  const { data, isLoading } = useMyPagePermissions(pageId);
+
+  const isPageMode = identity?.mode === "page";
+  const permissions = data?.permissions ?? ALL_PAGE_PERMISSIONS;
+
+  return {
+    isPageMode,
+    page: identity?.mode === "page" ? identity.page : null,
+    loading: isPageMode && isLoading,
+    can: (key: PagePermissionKey) => !isPageMode || (data ? permissions[key] : true),
+  };
+}
+
+/** Admin: replace a non-admin member's permissions. */
+export function useSetPageMemberPermissions() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    meta: { blocking: true },
+    mutationFn: async ({
+      page_id,
+      user_id,
+      permissions,
+    }: {
+      page_id: string;
+      user_id: string;
+      permissions: PagePermissions;
+    }) => {
+      const { error } = await supabase.rpc("set_page_member_permissions", {
+        p_page_id: page_id,
+        p_user_id: user_id,
+        p_permissions: permissions,
+      });
+      if (error) throw error;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["page-members", variables.page_id] });
+      queryClient.invalidateQueries({ queryKey: ["my-page-permissions"] });
+      queryClient.invalidateQueries({ queryKey: ["active-identity", user?.id] });
+    },
+  });
+}
+
+export { samePermissions };

@@ -15,7 +15,7 @@ import { Icon, Image } from "@/components/ui/styled";
 import { SurfaceInput } from "@/components/ui/SurfaceInput";
 import { Text } from "@/components/ui/Text";
 import { useAuth } from "@/hooks/useAuth";
-import { usePageByUsername, usePageMembers, usePageTopics, useUpdatePage } from "@/hooks/usePages";
+import { useMyPagePermissions, usePageByUsername, usePageMembers, usePageTopics, useUpdatePage } from "@/hooks/usePages";
 import { useUploadAvatar } from "@/hooks/useUploadAvatar";
 import { pickSingleImage } from "@/lib/pickImage";
 
@@ -44,6 +44,9 @@ export function EditPage() {
 
   const myMembership = members?.find((m) => m.user_id === user?.id && m.status === "active");
   const isAdmin = !!myMembership?.is_admin;
+  // Admins, or a member an admin granted "edit page details" to.
+  const { data: myPagePerms, isLoading: permsLoading } = useMyPagePermissions(page?.id);
+  const canEdit = isAdmin || !!myPagePerms?.permissions.edit_page;
 
   useEffect(() => {
     if (page && !hydrated) {
@@ -120,12 +123,13 @@ export function EditPage() {
     );
   }
 
-  if (!isAdmin) {
+  if (!canEdit) {
+    if (permsLoading) return null;
     return (
       <View className="flex-1 bg-canvas">
         <ScreenHeader title="" />
         <View className="flex-1 items-center justify-center px-6">
-          <Text className="text-center text-ink-muted">Only a {page.name} admin can edit its details.</Text>
+          <Text className="text-center text-ink-muted">You don't have permission to edit {page.name}'s details.</Text>
         </View>
       </View>
     );

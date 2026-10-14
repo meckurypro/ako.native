@@ -24,7 +24,8 @@ import { Text } from "@/components/ui/Text";
 import { TextLink } from "@/components/ui/TextLink";
 import { useToast } from "@/components/ui/Toast";
 import { useFeatureFlag } from "@/hooks/useFeatureFlags";
-import { useActiveIdentity } from "@/hooks/usePages";
+import { PageActionBlocked } from "@/components/page/PageActionBlocked";
+import { useActiveIdentity, useActivePagePermissions } from "@/hooks/usePages";
 import { useCreatePost, useDeleteDraftOrScheduledPost } from "@/hooks/usePosts";
 import { useMyProfile } from "@/hooks/useProfile";
 import { useSmartBack } from "@/hooks/useSmartBack";
@@ -112,6 +113,7 @@ export function Compose() {
   }, []);
 
   const postingAsPage = identity?.mode === "page" ? identity.page : null;
+  const pagePerms = useActivePagePermissions();
   const canPost = heading.trim().length > 0 || content.trim().length > 0;
   const busy = !canPost || createPost.isPending;
 
@@ -204,6 +206,10 @@ export function Compose() {
     { key: "draft", label: "Save as draft", onSelect: () => void submitPost("draft"), disabled: !canPost },
     { key: "schedule", label: "Schedule…", onSelect: () => setScheduleModalOpen(true), disabled: !canPost },
   ];
+
+  if (postingAsPage && !pagePerms.loading && !pagePerms.can("create_posts")) {
+    return <PageActionBlocked pageName={postingAsPage.name} action="create posts" />;
+  }
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1 bg-canvas">

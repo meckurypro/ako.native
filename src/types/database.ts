@@ -102,6 +102,9 @@ export interface PageMember {
   user_id: string;
   role_label: string;
   is_admin: boolean;
+  // Per-member permissions an admin ticked when inviting (null = legacy row,
+  // resolves to what a plain member could already do). See lib/pagePermissions.
+  permissions?: Partial<Record<string, boolean>> | null;
   status: PageMemberStatus;
   invited_by: string | null;
   invited_at: string;
