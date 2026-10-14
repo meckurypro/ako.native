@@ -385,3 +385,13 @@ After adding a new `-aNN` class run `npm run sync:alpha` — it regenerates the 
 `src/global.css` and `src/theme/alphaTokens.ts`. `node scripts/sync-alpha-tokens.mjs --rewrite`
 also converts any `x-y/NN` classes someone typed by habit.
 
+
+## Course reader (lessons, progress)
+
+`src/lib/lessonFormat.ts` is a **pure** parser (no React) that turns a lesson's `content` into blocks:
+emoji sections (`🎯 GOAL`, `🪜 STEPS`, `🔧 WHEN IT BREAKS` …), numbered/dot/emoji lists, code (indent ≥ 6 or
+fenced), plus a small Markdown subset (`#`, `-`, `1.`, `>`, `**bold**`, `` `code` ``). Web has an identical copy
+(`ako/src/lib/lessonFormat.ts`), so **change both together**. `components/course/*` renders it
+(`LessonRenderer`, `LessonReader`, `CourseHero`, `ProgressBar`). `screens/Course.tsx` has two views: the outline
+(hero + collapsible modules with per-module progress) and the focused lesson reader. Text lessons no longer
+auto-complete after 4 s; learners tap **Complete & continue**. Video lessons still complete when the video ends.

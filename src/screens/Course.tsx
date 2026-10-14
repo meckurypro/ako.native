@@ -10,18 +10,19 @@ import {
   Eye,
   FileText,
   Lock,
-  PartyPopper,
   Pencil,
   PlayCircle,
   Plus,
   Trash2,
 } from "lucide-react-native";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { CourseHero } from "@/components/course/CourseHero";
+import { LessonReader } from "@/components/course/LessonReader";
+import { ProgressBar } from "@/components/course/ProgressBar";
 import { FeedDoorway } from "@/components/project/FeedDoorway";
-import { LessonMedia } from "@/components/project/LessonMedia";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { Icon } from "@/components/ui/styled";
@@ -47,9 +48,8 @@ import {
 import { useFeedDoorway } from "@/hooks/useFeedDoorway";
 import { isProjectFree, useHasPurchased, useProject } from "@/hooks/useProjects";
 import { haptics } from "@/lib/haptics";
+import { buildReaderModel, readMinutes } from "@/lib/lessonFormat";
 import { useTheme } from "@/theme/ThemeProvider";
-
-const AUTO_COMPLETE_MS = 4000;
 
 interface LessonFormValue {
   title: string;
@@ -102,14 +102,14 @@ function LessonForm({
         accessibilityLabel="Video link"
       />
       <TextInput
-        placeholder="Article text / lesson notes (optional)"
+        placeholder={"Lesson text (optional)\nTip: # heading, - list, 1. steps, > note, ``` code ```, **bold**, `code`"}
         placeholderTextColor={colors.inkMuted}
         value={value.content}
         onChangeText={(content) => setValue({ ...value, content })}
         multiline
         textAlignVertical="top"
         className={inputClass}
-        style={[inputStyle, { minHeight: 68 }]}
+        style={[inputStyle, { minHeight: 140 }]}
         accessibilityLabel="Lesson notes"
       />
       <Pressable
@@ -175,12 +175,11 @@ export function Course() {
   const [collapsedModules, setCollapsedModules] = useState<Set<string>>(new Set());
   const [pendingDelete, setPendingDelete] = useState<PendingDelete>(null);
 
-  const flatLessons = useMemo(() => (modules ?? []).flatMap((m) => m.lessons), [modules]);
-  const totalLessons = flatLessons.length;
-  const completedCount = flatLessons.filter((l) => completedIds.has(l.id)).length;
-  const progressPct = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
-  const allComplete = totalLessons > 0 && completedCount === totalLessons;
+  const model = useMemo(() => buildReaderModel(modules ?? [], completedIds), [modules, completedIds]);
+  const { flat: flatLessons, total: totalLessons, done: completedCount, pct: progressPct, allDone: allComplete } = model;
   const courseDoorway = useFeedDoorway("course_complete");
+  // "outline" = hero + module list; "lesson" = focused reader for the selected lesson.
+  const [view, setView] = useState<"outline" | "lesson">("outline");
 
   // Land on the first lesson the learner hasn't finished.
   useEffect(() => {
@@ -189,21 +188,24 @@ export function Course() {
     setSelectedLessonId((firstIncomplete ?? flatLessons[0]).id);
   }, [hasAccess, flatLessons, progressQuery.isLoading, selectedLessonId, completedIds]);
 
+  // Learners see the module they're up to open and the rest folded; owners keep everything open to edit.
+  const collapseInit = useRef(false);
+  useEffect(() => {
+    if (collapseInit.current || !modules || modules.length === 0 || progressQuery.isLoading || !project) return;
+    collapseInit.current = true;
+    if (isOwner) return;
+    const current = model.next ? model.next.module_id : modules[0].id;
+    setCollapsedModules(new Set(modules.filter((m) => m.id !== current).map((m) => m.id)));
+  }, [modules, progressQuery.isLoading, project, isOwner, model.next]);
+
   const selectedLesson = flatLessons.find((l) => l.id === selectedLessonId) ?? null;
   const canOpen = useCallback((lesson: CourseLesson) => hasAccess || lesson.is_free_preview, [hasAccess]);
   const selectedIndex = selectedLesson ? flatLessons.findIndex((l) => l.id === selectedLesson.id) : -1;
   const prevLesson = selectedIndex > 0 ? flatLessons[selectedIndex - 1] : null;
   const nextLesson = selectedIndex >= 0 && selectedIndex < flatLessons.length - 1 ? flatLessons[selectedIndex + 1] : null;
 
-  // Text-only lessons count as done after a short read; lessons with media complete when the media ends.
+  // Lessons complete when the learner taps "Complete & continue" (or, for video, when it ends).
   const markComplete = setLessonComplete.mutate;
-  useEffect(() => {
-    if (!selectedLesson || !hasAccess || selectedLesson.media_url) return;
-    if (completedIds.has(selectedLesson.id)) return;
-    const timer = setTimeout(() => markComplete({ lessonId: selectedLesson.id, completed: true }), AUTO_COMPLETE_MS);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedLesson?.id, hasAccess]);
 
   const fail = useCallback((e: unknown) => toast(e instanceof Error && e.message ? e.message : "Something went wrong.", { variant: "error" }), [toast]);
 
@@ -232,6 +234,7 @@ export function Course() {
     if (!canOpen(lesson)) return;
     haptics.selection();
     setSelectedLessonId(lesson.id);
+    setView("lesson");
   }
 
   function confirmDelete() {
@@ -240,6 +243,53 @@ export function Course() {
     if (!target) return;
     const mutation = target.kind === "module" ? deleteModule : deleteLesson;
     mutation.mutate(target.id, { onError: fail });
+  }
+
+  function resume() {
+    const target = model.next ?? flatLessons[0];
+    if (target) selectLesson(target);
+  }
+
+  function completeAndContinue() {
+    if (!selectedLesson) return;
+    const goNext = () => {
+      if (nextLesson && canOpen(nextLesson)) selectLesson(nextLesson);
+      else setView("outline");
+    };
+    if (!hasAccess) {
+      if (nextLesson && canOpen(nextLesson)) selectLesson(nextLesson);
+      else router.push(`/projects/${projectId}` as Href);
+      return;
+    }
+    if (completedIds.has(selectedLesson.id)) {
+      goNext();
+      return;
+    }
+    const mods = modules ?? [];
+    const mod = mods.find((m) => m.id === selectedLesson.module_id);
+    const moduleDone = !!mod && mod.lessons.every((l) => l.id === selectedLesson.id || completedIds.has(l.id));
+    const courseDone = completedCount + 1 === totalLessons;
+    const moduleNumber = mods.findIndex((m) => m.id === selectedLesson.module_id) + 1;
+    markComplete(
+      { lessonId: selectedLesson.id, completed: true },
+      {
+        onSuccess: () => {
+          if (courseDone) {
+            haptics.success();
+            toast("You finished the course. Well done!", { variant: "success" });
+            setView("outline");
+          } else if (moduleDone) {
+            haptics.success();
+            toast(`Module ${moduleNumber} complete`, { variant: "success" });
+            goNext();
+          } else {
+            haptics.light();
+            goNext();
+          }
+        },
+        onError: fail,
+      }
+    );
   }
 
   if (!project) {
@@ -251,6 +301,39 @@ export function Course() {
   }
 
   const modulesList = modules ?? [];
+  const lessonNumberOf = (lesson: CourseLesson) => {
+    const mi = modulesList.findIndex((m) => m.id === lesson.module_id);
+    const li = mi >= 0 ? modulesList[mi].lessons.findIndex((l) => l.id === lesson.id) : 0;
+    return `${mi + 1}.${li + 1}`;
+  };
+
+  if (view === "lesson" && selectedLesson && canOpen(selectedLesson)) {
+    const mIdx = modulesList.findIndex((m) => m.id === selectedLesson.module_id);
+    return (
+      <LessonReader
+        lesson={selectedLesson}
+        moduleNumber={mIdx + 1}
+        moduleTitle={mIdx >= 0 ? modulesList[mIdx].title : ""}
+        lessonNumber={lessonNumberOf(selectedLesson)}
+        position={selectedIndex + 1}
+        total={totalLessons}
+        pct={progressPct}
+        hasAccess={hasAccess}
+        completed={completedIds.has(selectedLesson.id)}
+        pending={setLessonComplete.isPending}
+        hasPrev={!!prevLesson}
+        hasNext={!!nextLesson}
+        nextLocked={!!nextLesson && !canOpen(nextLesson)}
+        onOutline={() => setView("outline")}
+        onPrev={() => prevLesson && selectLesson(prevLesson)}
+        onPrimary={completeAndContinue}
+        onToggleComplete={() => markComplete({ lessonId: selectedLesson.id, completed: !completedIds.has(selectedLesson.id) }, { onError: fail })}
+        onWatched={() => {
+          if (hasAccess) markComplete({ lessonId: selectedLesson.id, completed: true });
+        }}
+      />
+    );
+  }
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1 bg-canvas">
@@ -285,24 +368,17 @@ export function Course() {
         )}
 
         {hasAccess && totalLessons > 0 && (
-          <View className="mb-4">
-            <View className="mb-1 flex-row items-center justify-between">
-              <Text className="text-xs text-ink-muted">
-                {completedCount}/{totalLessons} lessons complete
-              </Text>
-              <Text className="text-xs text-ink-muted">{progressPct}%</Text>
-            </View>
-            <View className="h-1.5 overflow-hidden rounded-full bg-border">
-              <View className="h-full bg-accent" style={{ width: `${progressPct}%` }} />
-            </View>
-            {allComplete && (
-              <View className="mt-2 flex-row items-center gap-1.5">
-                <Icon as={PartyPopper} size={15} className="text-accent" />
-                <Text className="text-sm font-medium text-accent">Course complete!</Text>
-              </View>
-            )}
+          <>
+            <CourseHero
+              pct={progressPct}
+              done={completedCount}
+              total={totalLessons}
+              minutesLeft={model.minutesLeft}
+              nextTitle={model.next ? `${lessonNumberOf(model.next)}  ${model.next.title}` : null}
+              onContinue={resume}
+            />
             {allComplete && courseDoorway.visible && <FeedDoorway context="course_complete" onEnter={courseDoorway.markEnteredFeed} />}
-          </View>
+          </>
         )}
 
         {!hasAccess && (
@@ -319,70 +395,10 @@ export function Course() {
           </View>
         )}
 
-        {selectedLesson && canOpen(selectedLesson) && (
-          <View className="mb-4 rounded-xl border border-border bg-surface p-3">
-            <View className="mb-2 flex-row items-center justify-between gap-2">
-              <Text className="min-w-0 flex-1 text-sm font-medium text-ink">{selectedLesson.title}</Text>
-              {!hasAccess && selectedLesson.is_free_preview && (
-                <View className="shrink-0 flex-row items-center gap-1">
-                  <Icon as={Eye} size={12} className="text-accent" />
-                  <Text className="text-xs font-medium text-accent">Preview</Text>
-                </View>
-              )}
-            </View>
-
-            {selectedLesson.media_url && (
-              <LessonMedia
-                url={selectedLesson.media_url}
-                onWatched={() => {
-                  if (hasAccess) markComplete({ lessonId: selectedLesson.id, completed: true });
-                }}
-              />
-            )}
-            {selectedLesson.content ? <Text selectable className="mb-2 text-sm text-ink">{selectedLesson.content}</Text> : null}
-            {!selectedLesson.media_url && !selectedLesson.content && <Text className="mb-2 text-sm text-ink-muted">No content yet.</Text>}
-
-            {hasAccess && (
-              <Pressable
-                onPress={() => markComplete({ lessonId: selectedLesson.id, completed: !completedIds.has(selectedLesson.id) })}
-                disabled={setLessonComplete.isPending}
-                accessibilityRole="button"
-                className={`flex-row items-center gap-1.5 self-start ${setLessonComplete.isPending ? "opacity-50" : ""}`}
-              >
-                {completedIds.has(selectedLesson.id) ? (
-                  <>
-                    <Icon as={CheckCircle2} size={16} className="text-accent" />
-                    <Text className="text-sm font-medium text-accent">Completed — mark incomplete</Text>
-                  </>
-                ) : (
-                  <>
-                    <Icon as={Circle} size={16} className="text-ink-muted" />
-                    <Text className="text-sm font-medium text-ink-muted">Mark as complete</Text>
-                  </>
-                )}
-              </Pressable>
-            )}
-
-            <View className="mt-3 flex-row items-center justify-between border-t border-border pt-3">
-              <Pressable onPress={() => prevLesson && selectLesson(prevLesson)} disabled={!prevLesson} accessibilityRole="button" hitSlop={8} className={prevLesson ? "" : "opacity-30"}>
-                <Text className="text-xs font-medium text-ink-muted">← Previous</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => nextLesson && selectLesson(nextLesson)}
-                disabled={!nextLesson || !canOpen(nextLesson)}
-                accessibilityRole="button"
-                hitSlop={8}
-                className={nextLesson && canOpen(nextLesson) ? "" : "opacity-30"}
-              >
-                <Text className={`text-xs font-medium ${nextLesson && canOpen(nextLesson) ? "text-accent" : "text-ink-muted"}`}>Next →</Text>
-              </Pressable>
-            </View>
-          </View>
-        )}
-
         <View className="gap-3">
           {modulesList.map((m, moduleIdx) => {
             const collapsed = collapsedModules.has(m.id);
+            const prog = model.perModule.get(m.id);
             return (
               <View key={m.id} className="rounded-xl border border-border bg-surface p-3">
                 <View className="mb-1.5 flex-row items-center justify-between gap-2">
@@ -426,12 +442,25 @@ export function Course() {
                       </Pressable>
                     </View>
                   ) : (
-                    <Pressable onPress={() => toggleModuleCollapsed(m.id)} accessibilityRole="button" accessibilityState={{ expanded: !collapsed }} className="min-w-0 flex-1 flex-row items-center gap-1.5">
-                      <Icon as={collapsed ? ChevronDown : ChevronUp} size={14} className="text-ink-muted" />
-                      <Text numberOfLines={1} className="shrink text-sm font-medium text-ink">
-                        Section {moduleIdx + 1}: {m.title}
-                      </Text>
-                      <Text className="text-xs text-ink-muted">({m.lessons.length})</Text>
+                    <Pressable onPress={() => toggleModuleCollapsed(m.id)} accessibilityRole="button" accessibilityState={{ expanded: !collapsed }} className="min-w-0 flex-1 flex-row items-center gap-2.5">
+                      <Icon as={collapsed ? ChevronDown : ChevronUp} size={15} className="text-ink-muted" />
+                      <View className="min-w-0 flex-1">
+                        <Text className="text-[10.5px] font-bold uppercase text-ink-muted" style={{ letterSpacing: 0.9 }}>
+                          Module {moduleIdx + 1}
+                        </Text>
+                        <Text numberOfLines={2} className="text-[15px] font-semibold text-ink">
+                          {m.title}
+                        </Text>
+                      </View>
+                      {hasAccess && prog?.complete ? (
+                        <Icon as={CheckCircle2} size={16} className="text-accent" />
+                      ) : hasAccess && prog ? (
+                        <Text className="text-xs text-ink-muted">
+                          {prog.done}/{prog.total}
+                        </Text>
+                      ) : (
+                        <Text className="text-xs text-ink-muted">({m.lessons.length})</Text>
+                      )}
                     </Pressable>
                   )}
 
@@ -466,6 +495,12 @@ export function Course() {
                   )}
                 </View>
 
+                {hasAccess && prog && prog.total > 0 && (
+                  <View className="mb-2 mt-1">
+                    <ProgressBar pct={Math.round((prog.done / prog.total) * 100)} height={4} />
+                  </View>
+                )}
+
                 {!collapsed && (
                   <View className="mb-2 gap-1">
                     {m.lessons.map((l, lessonIdx) => {
@@ -498,7 +533,7 @@ export function Course() {
                         );
                       }
                       return (
-                        <View key={l.id} className={`flex-row items-center gap-2 rounded-lg border-l-2 py-1.5 pl-2 ${isSelected ? "border-accent bg-accent-soft-a40" : "border-border"}`}>
+                        <View key={l.id} className={`flex-row items-center gap-2 rounded-lg border-l-2 py-2.5 pl-2.5 ${isSelected ? "border-accent bg-accent-soft-a40" : "border-border"}`}>
                           <Pressable
                             onPress={() => hasAccess && markComplete({ lessonId: l.id, completed: !complete })}
                             disabled={!hasAccess}
@@ -517,8 +552,9 @@ export function Course() {
                           <Pressable onPress={() => selectLesson(l)} disabled={locked} accessibilityRole="button" accessibilityState={{ disabled: locked, selected: isSelected }} className="min-w-0 flex-1 flex-row items-center gap-1.5">
                             <Icon as={l.media_url ? PlayCircle : FileText} size={13} className="text-ink-muted" />
                             <Text numberOfLines={1} className={`shrink text-sm ${locked ? "text-ink-muted" : "text-ink"}`}>
-                              {lessonIdx + 1}. {l.title}
+                              {moduleIdx + 1}.{lessonIdx + 1}  {l.title}
                             </Text>
+                            <Text className="shrink-0 text-[11px] text-ink-muted">{l.media_url ? "video" : `${readMinutes(l.content)} min`}</Text>
                             {!hasAccess && l.is_free_preview && <Text className="text-[11px] font-medium text-accent">Preview</Text>}
                           </Pressable>
                           {isOwner && (
