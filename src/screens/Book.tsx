@@ -10,6 +10,7 @@ import { BookLockedView } from "@/components/project/book/BookLockedView";
 import { BookReflowReader } from "@/components/project/book/BookReflowReader";
 import { Text } from "@/components/ui/Text";
 import { useAuth } from "@/hooks/useAuth";
+import { useRecordFreeProjectOpen } from "@/hooks/useProjectAccess";
 import { useBookChapters, usePublishBook } from "@/hooks/useBookBuilder";
 import { useIsProjectMember } from "@/hooks/useProjectMembers";
 import { getEffectivePrice, isProjectFree, useHasPurchased, useProject, usePurchaseProject } from "@/hooks/useProjects";
@@ -25,6 +26,7 @@ export function Book() {
   const isMemberQuery = useIsProjectMember(projectId ?? "", project?.is_private ?? false);
   const privacyBlocked = !!project?.is_private && !isOwner && !isMemberQuery.data;
   const hasAccess = !privacyBlocked && (isOwner || isFree || !!hasPurchasedQuery.data);
+  useRecordFreeProjectOpen(project, { isOwner, enabled: !privacyBlocked });
 
   const { data: chapters } = useBookChapters(projectId);
   const publishBook = usePublishBook(projectId ?? "");

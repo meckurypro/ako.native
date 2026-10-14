@@ -28,6 +28,7 @@ import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useRecordFreeProjectOpen } from "@/hooks/useProjectAccess";
 import {
   useAddLesson,
   useAddModule,
@@ -148,6 +149,7 @@ export function Course() {
   const isFree = !!project && isProjectFree(project);
   const hasPurchasedQuery = useHasPurchased(projectId ?? "");
   const hasAccess = isOwner || isFree || !!hasPurchasedQuery.data;
+  useRecordFreeProjectOpen(project, { isOwner });
 
   const { data: modules } = useCourseModules(projectId);
   const progressQuery = useCourseProgress(projectId, user?.id);
