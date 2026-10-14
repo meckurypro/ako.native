@@ -50,7 +50,7 @@ export function usePullToRefresh(refetch: Refetch | Refetch[], offset = 0) {
       if (!hasQueuedWrites) all.push(queryClient.refetchQueries({ type: "active" }));
 
       // allSettled: one failing query must never leave the spinner stuck; the cap covers one that never settles.
-      await Promise.race([Promise.allSettled(all), new Promise((resolve) => (cap = setTimeout(resolve, REFRESH_CAP_MS)))]);
+      await Promise.race([Promise.allSettled(all), new Promise<void>((resolve) => (cap = setTimeout(() => resolve(), REFRESH_CAP_MS)))]);
     } finally {
       if (cap) clearTimeout(cap);
       if (mounted.current) setRefreshing(false);
