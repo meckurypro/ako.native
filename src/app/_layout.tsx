@@ -8,10 +8,12 @@ import { useFonts } from "expo-font";
 import { router, Stack, useGlobalSearchParams } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { AppSplash } from "@/components/AppSplash";
 import { UpdatePrompt } from "@/components/UpdatePrompt";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
@@ -22,7 +24,8 @@ import {
   useClaimPendingAffiliateClick,
   useTrackAffiliateClick,
 } from "@/hooks/useAffiliates";
-import { AuthProvider } from "@/hooks/useAuth";
+import { useAccountAccess } from "@/hooks/useAccountAccess";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { usePageThemeSync } from "@/hooks/usePageThemeSync";
 import { SoundProvider } from "@/hooks/useSound";
 import { queryClient } from "@/lib/queryClient";
@@ -76,26 +79,39 @@ function GlobalEffects() {
 }
 
 function Shell() {
-  const { ready } = useTheme();
+  const { ready, colors } = useTheme();
+  const { user, loading: authLoading } = useAuth();
+  const access = useAccountAccess();
   const [fontsLoaded, fontError] = useFonts(fontAssets);
   const appReady = ready && (fontsLoaded || !!fontError);
+  const [showSplash, setShowSplash] = useState(true);
 
-  useEffect(() => {
-    if (appReady) SplashScreen.hideAsync().catch(() => {});
-  }, [appReady]);
+  // The native splash (background-only) stays up until the first frame of this tree — AppSplash included — has
+  // laid out, so the branded splash is already on screen when it goes. Hiding it any earlier would flash the app.
+  const onLayout = useCallback(() => {
+    SplashScreen.hideAsync().catch(() => {});
+  }, []);
 
   if (!appReady) return null;
+
+  // The branded splash lifts once the session is restored and, for a signed-in user, the account-access check has
+  // answered — so the first thing revealed is the real landing screen, not a spinner.
+  const splashReady = !authLoading && !(!!user && access.isLoading);
+
   return (
-    <ErrorBoundary>
-      <ToastProvider>
-        {/* Toasts paint above everything the host layers (sheets 50, modals 60). */}
-        <PortalHost>
-          <GlobalEffects />
-          <ThemedStack />
-          <UpdatePrompt />
-        </PortalHost>
-      </ToastProvider>
-    </ErrorBoundary>
+    <View onLayout={onLayout} style={{ flex: 1, backgroundColor: colors.canvas }}>
+      <ErrorBoundary>
+        <ToastProvider>
+          {/* Toasts paint above everything the host layers (sheets 50, modals 60). */}
+          <PortalHost>
+            <GlobalEffects />
+            <ThemedStack />
+            <UpdatePrompt />
+          </PortalHost>
+        </ToastProvider>
+      </ErrorBoundary>
+      {showSplash && <AppSplash ready={splashReady} onFinished={() => setShowSplash(false)} />}
+    </View>
   );
 }
 
