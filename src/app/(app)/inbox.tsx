@@ -1,5 +1,5 @@
 // src/app/(app)/inbox.tsx
-// Bottom-nav "Messages": personal conversations, or the Page inbox when acting as a Page.
+// Floating chat button "Chats": personal conversations, or the Page inbox when acting as a Page.
 import { Redirect, type Href } from "expo-router";
 
 import { FullScreenLoading } from "@/components/nav/AuthGate";

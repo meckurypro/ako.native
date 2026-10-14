@@ -554,7 +554,7 @@ export function MessageThread() {
           <Pressable onPress={() => router.replace("/messages")} accessibilityRole="button" accessibilityLabel="Back" hitSlop={12}>
             <Icon as={ArrowLeft} size={22} className="text-ink-muted" />
           </Pressable>
-          <Text className="font-display text-lg text-ink">Messages</Text>
+          <Text className="font-display text-lg text-ink">Chats</Text>
         </View>
         <Text className="px-4 pt-10 text-center text-sm text-ink-muted">Messaging is temporarily unavailable. Check back later.</Text>
       </View>

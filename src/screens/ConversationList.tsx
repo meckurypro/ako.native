@@ -130,7 +130,7 @@ export function ConversationList() {
   if (!messagingEnabled) {
     return (
       <View className="flex-1 bg-canvas">
-        <ScreenHeader title="Messages" bar />
+        <ScreenHeader title="Chats" bar />
         <Text className="px-4 pt-10 text-center text-sm text-ink-muted">Messaging is temporarily unavailable. Check back later.</Text>
       </View>
     );
@@ -159,7 +159,7 @@ export function ConversationList() {
   ) : (
     <View>
       <ScreenHeader
-        title="Messages"
+        title="Chats"
         bar
         right={
           conversations && conversations.length > 0 ? (

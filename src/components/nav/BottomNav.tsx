@@ -136,7 +136,7 @@ export function BottomNav() {
       >
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={unreadCount > 0 ? `Messages, ${unreadCount} unread` : "Messages"}
+          accessibilityLabel={unreadCount > 0 ? `Chats, ${unreadCount} unread` : "Chats"}
           onPress={() => {
             haptics.selection();
             router.replace(NAV_PATH.messages as Href);
@@ -145,7 +145,7 @@ export function BottomNav() {
             width: FAB_SIZE,
             height: FAB_SIZE,
             borderRadius: 18,
-            backgroundColor: colors.ink,
+            backgroundColor: resolvedTheme === "dark" ? colors.ink : colors.accent,
             alignItems: "center",
             justifyContent: "center",
             transform: [{ scale: pressed ? 0.95 : 1 }],
@@ -156,7 +156,7 @@ export function BottomNav() {
             elevation: 6,
           })}
         >
-          <ChatPlusIcon size={26} bubble={colors.canvas} knockout={colors.ink} />
+          <ChatPlusIcon size={26} bubble={resolvedTheme === "dark" ? colors.accent : colors.canvas} knockout={resolvedTheme === "dark" ? colors.ink : colors.accent} />
           {unreadCount > 0 ? (
             <View className="absolute -right-1.5 -top-1.5 h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1">
               <Text className="text-[10px] font-medium text-canvas">{unreadCount > 9 ? "9+" : unreadCount}</Text>

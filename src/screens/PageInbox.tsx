@@ -55,7 +55,7 @@ export function PageInbox() {
 
   return (
     <View className="flex-1 bg-canvas">
-      <ScreenHeader title={identity?.mode === "page" ? `${identity.page.name}'s Messages` : "Messages"} bar />
+      <ScreenHeader title={identity?.mode === "page" ? `${identity.page.name}'s Chats` : "Chats"} bar />
       {isLoading ? (
         <Text className="py-10 text-center text-ink-muted">Loading…</Text>
       ) : !conversations || conversations.length === 0 ? (
