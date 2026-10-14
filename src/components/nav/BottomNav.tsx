@@ -1,6 +1,6 @@
 // src/components/nav/BottomNav.tsx
 // The persistent bottom tab bar. Unrestricted: Feed · Discover · Library · Connect · Profile.
-// Restricted (no Feed): Library · Discover · Connect · Profile. Messages has no tab — it is the
+// Restricted (no Feed): Discover · Library · Connect · Profile. Messages has no tab — it is the
 // floating chat button above the bar (ChatFab).
 // Rendered once by the (app) layout and shown only where routes.ts says so.
 // Profile is active on your own profile or your active Page. The chat button hides while you are
@@ -55,7 +55,7 @@ const CONNECT: NavItem = { key: "connect", label: "Connect", Icon: wrap(Users) }
 const PROFILE: NavItem = { key: "profile", label: "Profile", Icon: wrap(User) };
 
 const FULL_ITEMS: NavItem[] = [FEED, DISCOVER, LIBRARY, CONNECT, PROFILE];
-const RESTRICTED_ITEMS: NavItem[] = [LIBRARY, DISCOVER, CONNECT, PROFILE];
+const RESTRICTED_ITEMS: NavItem[] = [DISCOVER, LIBRARY, CONNECT, PROFILE];
 
 const FAB_SIZE = 56;
 const FAB_GAP = 16;
