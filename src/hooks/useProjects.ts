@@ -1159,7 +1159,7 @@ export function useProjectDetail(projectId: string | undefined) {
  */
 export function useSimilarProjects(
   project:
-    | (Pick<Project, "id" | "owner_id" | "project_type"> & { topics?: { id: string }[] })
+    | (Pick<Project, "id" | "owner_id" | "project_type" | "posted_as_page_id"> & { topics?: { id: string }[] })
     | undefined
 ) {
   return useQuery({
@@ -1174,27 +1174,36 @@ export function useSimilarProjects(
     }> => {
       const topicIds = (project!.topics ?? []).map((t) => t.id);
 
+      // Who "created" a project: the Page it was posted as, otherwise the person. owner_id is ALWAYS the creating
+      // user, even for a Page's project, so matching on owner_id alone put a Page's projects under the person's
+      // "More from…" (and the person's under the Page's). A Page's projects belong to the Page, not to its creator.
+      const ownerId = project!.owner_id;
+      const pageId = project!.posted_as_page_id;
+      const isSameCreator = (p: Pick<Project, "owner_id" | "posted_as_page_id">) =>
+        pageId ? p.posted_as_page_id === pageId : p.owner_id === ownerId && !p.posted_as_page_id;
+
       // is_private = false on every branch here — these rails are
       // discovery surfaces, exactly what a private project must stay
       // out of (see the is_private note on the Project type above).
       const [creatorRes, typeRes, topicLinkRes] = await Promise.all([
-        supabase
-          .from("projects")
-          .select("*")
-          .eq("owner_id", project!.owner_id)
+        (pageId
+          ? supabase.from("projects").select("*").eq("posted_as_page_id", pageId)
+          : supabase.from("projects").select("*").eq("owner_id", ownerId).is("posted_as_page_id", null)
+        )
           .eq("status", "active")
           .eq("is_private", false)
           .neq("id", project!.id)
           .order("created_at", { ascending: false })
           .limit(6),
-        supabase
-          .from("projects")
-          .select("*")
+        // Other creators only — avoids duplicating the "more from creator" list.
+        (pageId
+          ? supabase.from("projects").select("*").or(`posted_as_page_id.is.null,posted_as_page_id.neq.${pageId}`)
+          : supabase.from("projects").select("*").or(`owner_id.neq.${ownerId},posted_as_page_id.not.is.null`)
+        )
           .eq("project_type", project!.project_type)
           .eq("status", "active")
           .eq("is_private", false)
           .neq("id", project!.id)
-          .neq("owner_id", project!.owner_id) // avoid duplicating the "more from creator" list
           .order("created_at", { ascending: false })
           .limit(10),
         topicIds.length > 0
@@ -1214,13 +1223,13 @@ export function useSimilarProjects(
         new Set((topicLinkRes.data ?? []).map((row) => row.project_id))
       );
       if (topicProjectIds.length > 0) {
-        const { data, error } = await supabase
-          .from("projects")
-          .select("*")
-          .in("id", topicProjectIds)
+        // Other creators only (same identity rule as above).
+        const { data, error } = await (pageId
+          ? supabase.from("projects").select("*").in("id", topicProjectIds).or(`posted_as_page_id.is.null,posted_as_page_id.neq.${pageId}`)
+          : supabase.from("projects").select("*").in("id", topicProjectIds).or(`owner_id.neq.${ownerId},posted_as_page_id.not.is.null`)
+        )
           .eq("status", "active")
           .eq("is_private", false)
-          .neq("owner_id", project!.owner_id) // other creators only
           .order("created_at", { ascending: false })
           .limit(10);
         if (error) throw error;
@@ -1230,7 +1239,7 @@ export function useSimilarProjects(
       const seen = new Set<string>([project!.id]);
       const similarContent: Project[] = [];
       for (const p of [...moreOnTopic, ...typeRes.data]) {
-        if (seen.has(p.id) || p.owner_id === project!.owner_id) continue;
+        if (seen.has(p.id) || isSameCreator(p)) continue;
         seen.add(p.id);
         similarContent.push(p);
         if (similarContent.length >= 12) break;

@@ -35,6 +35,9 @@ function Shell() {
     <View style={{ flex: 1 }}>
       <BlurTargetView ref={blurTarget} style={{ flex: 1 }}>
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.canvas } }}>
+          {/* Declared screens sort first, so the first one is what the Stack shows whenever its state is rebuilt
+              (e.g. after the shell remounts). It must be a real page, never the Create sheet. */}
+          <Stack.Screen name="feed" />
           <Stack.Screen name="create" options={{ presentation: "transparentModal", animation: "fade", contentStyle: { backgroundColor: "transparent" } }} />
         </Stack>
       </BlurTargetView>

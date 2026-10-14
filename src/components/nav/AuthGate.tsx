@@ -10,7 +10,7 @@
 //   onboarding incomplete            → resume at the right step
 //   onboarding already complete      → (onboardingOnly) back to /feed
 import { Redirect, type Href } from "expo-router";
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import { ActivityIndicator, Pressable, View } from "react-native";
 
 import { Text } from "@/components/ui/Text";
@@ -42,14 +42,24 @@ export function AuthGate({ children, skipOnboardingCheck = false, onboardingOnly
   const { data: onboarding, isLoading: onboardingLoading } = useOnboardingStatus();
   const { data: access, isLoading: accessLoading, isError: accessError, refetch } = useAccountAccess();
 
+  // Once the app has been shown for this user, keep it mounted through later re-checks. Swapping the children for a
+  // spinner / retry screen unmounts the navigator, which wipes its stack; on remount it starts from its first declared
+  // screen instead of where the person was. That is what reopened the Create sheet on top of the profile after an account
+  // switch or after the network dropped and came back. A different user (account switch) still gets the full-screen load.
+  const shownFor = useRef<string | null>(null);
+  const keepMounted = !!user && shownFor.current === user.id;
+
   const stillResolving =
     loading || (!!user && !skipOnboardingCheck && onboardingLoading) || (!!user && accessLoading) || (!!user && onboardingOnly && onboardingLoading);
 
-  if (stillResolving) return <FullScreenLoading />;
+  if (stillResolving && !keepMounted) return <FullScreenLoading />;
 
-  if (!user) return <Redirect href={"/login" as Href} />;
+  if (!user) {
+    shownFor.current = null;
+    return <Redirect href={"/login" as Href} />;
+  }
 
-  if (accessError) {
+  if (accessError && !keepMounted) {
     return (
       <View className="flex-1 items-center justify-center gap-3 bg-canvas px-6">
         <Text className="max-w-xs text-center text-sm text-ink-muted">
@@ -70,5 +80,6 @@ export function AuthGate({ children, skipOnboardingCheck = false, onboardingOnly
     return <Redirect href={(onboarding.hasInterests ? "/onboarding/people" : "/onboarding/welcome") as Href} />;
   }
 
+  shownFor.current = user.id;
   return <>{children}</>;
 }
