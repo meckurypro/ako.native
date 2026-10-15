@@ -4,6 +4,7 @@
 // under a header that slides away on scroll-down together with the bottom nav.
 import { router, useLocalSearchParams } from "expo-router";
 import { X } from "lucide-react-native";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, View } from "react-native";
 import type { FlashListRef } from "@shopify/flash-list";
@@ -18,9 +19,11 @@ import { Icon } from "@/components/ui/styled";
 import { SwipeableTabs } from "@/components/ui/SwipeableTabs";
 import { Text } from "@/components/ui/Text";
 import { useAccumulatedPages } from "@/hooks/useAccumulatedPages";
-import { usePageFollowingFeed, usePageRankedFeed } from "@/hooks/usePageFeed";
+import { useAuth } from "@/hooks/useAuth";
+import { useFeedRefresh } from "@/hooks/useFeedRefresh";
+import { pageFeedKeys, usePageFollowingFeed, usePageRankedFeed } from "@/hooks/usePageFeed";
 import { useActiveIdentity } from "@/hooks/usePages";
-import { useFeedPosts, useFollowingFeed, usePostById, useTopDiscussionsFeed } from "@/hooks/usePosts";
+import { feedKeys, useFeedPosts, useFollowingFeed, usePostById, useTopDiscussionsFeed } from "@/hooks/usePosts";
 import { useTabState } from "@/hooks/useTabState";
 import { haptics } from "@/lib/haptics";
 import type { PostWithAuthor } from "@/types/database";
@@ -68,6 +71,8 @@ function ForYouTab({
   active: boolean;
 }) {
   const [page, setPage] = useState(0);
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { data: identity } = useActiveIdentity();
   const activePageId = identity?.mode === "page" ? identity.page.id : undefined;
   const isPageMode = !!activePageId && !interestId;
@@ -110,6 +115,16 @@ function ForYouTab({
 
   const noPostsYet = displayed.length === 0 && page === 0 && !isLoading && !waitingForFreshFeed;
 
+  // The post pinned to the top (just published / returned-to) is its own query and replaces its row in the list, so
+  // it must refresh with the feed or it would keep showing old counts.
+  const onRefresh = useFeedRefresh({
+    prefix: isPageMode ? pageFeedKeys.ranked(activePageId) : interestId ? feedKeys.topic(interestId) : feedKeys.ranked(user?.id),
+    page,
+    setPage,
+    refetch,
+    extra: [() => queryClient.refetchQueries({ queryKey: ["post-full"], type: "active" })],
+  });
+
   return (
     <PostList
       ref={listRef}
@@ -120,10 +135,7 @@ function ForYouTab({
       exhausted={exhausted}
       loadingLabel="Loading your feed…"
       onLoadMore={() => setPage((p) => p + 1)}
-      onRefresh={async () => {
-        if (page === 0) await refetch();
-        else setPage(0);
-      }}
+      onRefresh={onRefresh}
       renderPost={(post, { visible }) => (
         <FeedPostRow post={post} isTarget={!!scrollToPostId && post.id === scrollToPostId} active={active} visible={visible && active} />
       )}
@@ -143,6 +155,7 @@ function ForYouTab({
 
 function FollowingTab({ active }: { active: boolean }) {
   const [page, setPage] = useState(0);
+  const { user } = useAuth();
   const { data: identity } = useActiveIdentity();
   const activePageId = identity?.mode === "page" ? identity.page.id : undefined;
   const isPageMode = !!activePageId;
@@ -154,6 +167,8 @@ function FollowingTab({ active }: { active: boolean }) {
 
   useEffect(() => setPage(0), [isPageMode]);
 
+  const onRefresh = useFeedRefresh({ prefix: isPageMode ? pageFeedKeys.following(activePageId) : feedKeys.following(user?.id), page, setPage, refetch });
+
   return (
     <PostList
       posts={posts}
@@ -162,10 +177,7 @@ function FollowingTab({ active }: { active: boolean }) {
       error={error}
       exhausted={exhausted}
       onLoadMore={() => setPage((p) => p + 1)}
-      onRefresh={async () => {
-        if (page === 0) await refetch();
-        else setPage(0);
-      }}
+      onRefresh={onRefresh}
       renderPost={(post, { visible }) => <PostCard post={post} active={active} visible={visible && active} />}
       emptyState={
         posts.length === 0 && page === 0 && !isLoading ? (
@@ -178,8 +190,10 @@ function FollowingTab({ active }: { active: boolean }) {
 
 function TopDiscussionsTab({ active }: { active: boolean }) {
   const [page, setPage] = useState(0);
+  const { user } = useAuth();
   const { data: pagePosts, isLoading, isFetching, error, refetch } = useTopDiscussionsFeed(page);
   const { posts, exhausted } = useAccumulatedPages<PostWithAuthor>(pagePosts as PostWithAuthor[] | undefined, page, "top");
+  const onRefresh = useFeedRefresh({ prefix: feedKeys.top(user?.id), page, setPage, refetch });
 
   return (
     <PostList
@@ -189,10 +203,7 @@ function TopDiscussionsTab({ active }: { active: boolean }) {
       error={error}
       exhausted={exhausted}
       onLoadMore={() => setPage((p) => p + 1)}
-      onRefresh={async () => {
-        if (page === 0) await refetch();
-        else setPage(0);
-      }}
+      onRefresh={onRefresh}
       renderPost={(post, { visible }) => <PostCard post={post} active={active} visible={visible && active} />}
       emptyState={
         posts.length === 0 && page === 0 && !isLoading ? <EmptyState message="Nothing's picked up much discussion in the last week yet." /> : null

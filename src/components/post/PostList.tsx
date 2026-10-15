@@ -5,12 +5,13 @@
 // content padding, and scrolling drives their auto-hide.
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import { forwardRef, useCallback, useRef, useState, type ReactElement, type ReactNode } from "react";
-import { ActivityIndicator, RefreshControl, View, type ViewToken } from "react-native";
+import { ActivityIndicator, View, type ViewToken } from "react-native";
 
 import { useBottomNavInset } from "@/components/nav/BottomNav";
 import { useChromeScroll } from "@/components/nav/ChromeProvider";
 import { useTopBarInset } from "@/components/nav/AutoHideTopBar";
 import { Text } from "@/components/ui/Text";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useTheme } from "@/theme/ThemeProvider";
 
 export interface PostListItem {
@@ -74,23 +75,12 @@ function PostListInner<T extends PostListItem>(
     },
     [ref, onScroll.listRef]
   );
-  const [refreshing, setRefreshing] = useState(false);
   const [visibleIds, setVisibleIds] = useState<ReadonlySet<string>>(new Set());
   const loadingMoreRef = useRef(false);
 
   const handleViewable = useCallback(({ viewableItems }: { viewableItems: ViewToken<T>[] }) => {
     setVisibleIds(new Set(viewableItems.map((v) => v.item?.id).filter((id): id is string => !!id)));
   }, []);
-
-  const handleRefresh = useCallback(async () => {
-    if (!onRefresh) return;
-    setRefreshing(true);
-    try {
-      await onRefresh();
-    } finally {
-      setRefreshing(false);
-    }
-  }, [onRefresh]);
 
   const handleEndReached = useCallback(() => {
     if (!onLoadMore || exhausted || isFetchingMore || loadingMoreRef.current || posts.length === 0) return;
@@ -103,6 +93,11 @@ function PostListInner<T extends PostListItem>(
   }, [onLoadMore, exhausted, isFetchingMore, posts.length]);
 
   const padTop = underTopBar ? topInset + 16 : 16;
+
+  // Same refresh path as every other screen: re-probes connectivity (a stale "offline" flag can't leave the spinner
+  // hanging), caps the spinner, and can't be re-triggered mid-flight. A post feed is self-contained (rows carry their
+  // own counts), so it doesn't also refetch every other query on screen.
+  const { refreshControl } = usePullToRefresh(() => onRefresh?.(), padTop, { refetchActive: false });
 
   if (isLoading && posts.length === 0) {
     return (
@@ -135,11 +130,7 @@ function PostListInner<T extends PostListItem>(
       viewabilityConfig={{ itemVisiblePercentThreshold: 60, minimumViewTime: 250 }}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
-      refreshControl={
-        onRefresh ? (
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.accent} colors={[colors.accent]} progressViewOffset={padTop} />
-        ) : undefined
-      }
+      refreshControl={onRefresh ? refreshControl : undefined}
       contentContainerStyle={{ paddingTop: padTop, paddingHorizontal: 20, paddingBottom: bottomInset }}
       ListHeaderComponent={header ? <>{header}</> : null}
       ListEmptyComponent={<>{emptyState}</>}

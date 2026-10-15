@@ -96,11 +96,22 @@ interface CreatePostInput {
  * a separate call, not baked into the (read-only/STABLE) ranking
  * function itself.
  */
+/**
+ * Query-key prefixes of the paged feeds (the full key is [...prefix, page]). One definition so the screens that
+ * refresh a feed (see lib/refresh.ts → refreshFeedPages) target exactly the queries these hooks create.
+ */
+export const feedKeys = {
+  ranked: (userId: string | undefined) => ["feed-posts", "ranked", userId] as const,
+  topic: (interestId: string | undefined) => ["feed-posts", "topic", interestId] as const,
+  following: (userId: string | undefined) => ["feed-posts", "following", userId] as const,
+  top: (userId: string | undefined) => ["feed-posts", "top", userId] as const,
+};
+
 function useRankedFeed(page: number, enabled: boolean) {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ["feed-posts", "ranked", user?.id, page],
+    queryKey: [...feedKeys.ranked(user?.id), page],
     queryFn: async (): Promise<PostWithAuthor[]> => {
       if (!user) return [];
 
@@ -150,7 +161,7 @@ function useRankedFeed(page: number, enabled: boolean) {
  */
 function useTopicFeed(interestId: string, page: number, enabled: boolean) {
   return useQuery({
-    queryKey: ["feed-posts", "topic", interestId, page],
+    queryKey: [...feedKeys.topic(interestId), page],
     queryFn: async (): Promise<PostWithAuthor[]> => {
       const { data: postIds } = await supabase
         .from("post_topics")
@@ -186,7 +197,7 @@ export function useFollowingFeed(page = 0) {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ["feed-posts", "following", user?.id, page],
+    queryKey: [...feedKeys.following(user?.id), page],
     queryFn: async (): Promise<PostWithAuthor[]> => {
       if (!user) return [];
 
@@ -225,7 +236,7 @@ export function useTopDiscussionsFeed(page = 0) {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ["feed-posts", "top", user?.id, page],
+    queryKey: [...feedKeys.top(user?.id), page],
     queryFn: async (): Promise<PostWithAuthor[]> => {
       if (!user) return [];
 

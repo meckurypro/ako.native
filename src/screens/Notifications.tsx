@@ -32,7 +32,7 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 import { memo, useCallback, useEffect, useState } from "react";
-import { Pressable, RefreshControl, View } from "react-native";
+import { Pressable, View } from "react-native";
 
 import { useBottomNavInset } from "@/components/nav/BottomNav";
 import { useChromeScroll } from "@/components/nav/ChromeProvider";
@@ -44,6 +44,7 @@ import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useMarkAllRead, useMarkNotificationRead, useNotifications, type NotificationWithActor } from "@/hooks/useNotifications";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useMarkAllPageNotificationsRead, useMarkPageNotificationRead, usePageNotifications } from "@/hooks/usePageNotifications";
 import { useActiveIdentity, usePageById } from "@/hooks/usePages";
 import { notificationAction, type NotificationAction } from "@/lib/notificationRoute";
@@ -185,7 +186,10 @@ export function Notifications() {
 
   const personal = useNotifications();
   const page = usePageNotifications(pageId);
-  const { data: notifications, isLoading, refetch, isRefetching } = isPageMode ? page : personal;
+  const { data: notifications, isLoading, refetch } = isPageMode ? page : personal;
+  // Shared pull-to-refresh (re-probes connectivity, capped spinner). Not `isRefetching`: that is also true for background
+  // refetches, which made the spinner flash on its own. The list is self-contained, so no refetch of every other query.
+  const { refreshControl } = usePullToRefresh(refetch, 0, { refetchActive: false });
 
   const markReadPersonal = useMarkNotificationRead();
   const markReadPage = useMarkPageNotificationRead(pageId);
@@ -257,7 +261,7 @@ export function Notifications() {
           onScroll={onScroll}
           scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
+          refreshControl={refreshControl}
           ListHeaderComponent={<PushPermissionCard />}
           ListEmptyComponent={<Text className="py-10 text-center text-sm text-ink-muted">Nothing yet.</Text>}
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset }}

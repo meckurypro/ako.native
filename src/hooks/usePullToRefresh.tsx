@@ -1,27 +1,42 @@
-// Shared pull-to-refresh: drag the page down, every passed refetch runs AND every other query currently on screen
-// is refetched too (cards, FAQs, purchase/saved state, counts…), spinner clears when all settle — or after a cap.
-// Feed / HashtagFeed / Notifications keep their own refresh; everything else uses this.
+// Shared pull-to-refresh: drag the page down, every passed refetch runs — and, unless a list opts out, every other
+// query currently on screen is refetched too (cards, FAQs, purchase/saved state, counts…). The spinner clears when
+// all settle, or after a cap. The logic itself lives in lib/refresh.ts (pure, unit-tested); this is the React wrapper.
+//
+// Used by every pull-to-refresh screen, including PostList (the Feed, hashtag feeds…) and Notifications.
 import NetInfo from "@react-native-community/netinfo";
 import { onlineManager, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RefreshControl } from "react-native";
+
+import { runRefresh, type NetProbeResult } from "@/lib/refresh";
 import { useTheme } from "@/theme/ThemeProvider";
 
 type Refetch = () => Promise<unknown> | unknown;
 
-/** A refresh must never hang the spinner (a refetch that pauses on a flaky connection never settles). */
-const REFRESH_CAP_MS = 12_000;
+export interface PullToRefreshOptions {
+  /**
+   * Also refetch every other active query (default true). Lists that are self-contained — a post feed, whose rows
+   * carry their own counts — pass false so one pull is one request, not one per mounted tab or card.
+   */
+  refetchActive?: boolean;
+}
 
-export function usePullToRefresh(refetch: Refetch | Refetch[], offset = 0) {
+// `refresh()` forces a fresh reachability probe; `fetch()` can answer from stale state. Fall back if it throws.
+const probeNetwork = (): Promise<NetProbeResult | null> => NetInfo.refresh().catch(() => NetInfo.fetch());
+
+export function usePullToRefresh(refetch: Refetch | Refetch[], offset = 0, options: PullToRefreshOptions = {}) {
   const { colors } = useTheme();
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
 
-  // Read through a ref so the control's identity doesn't change when callers pass a fresh array each render.
+  // Read through refs so the control's identity doesn't change when callers pass fresh arrays/closures each render.
   const refetchRef = useRef(refetch);
   refetchRef.current = refetch;
+  const refetchActiveRef = useRef(options.refetchActive ?? true);
+  refetchActiveRef.current = options.refetchActive ?? true;
 
   const mounted = useRef(true);
+  const inFlight = useRef(false);
   useEffect(() => {
     mounted.current = true;
     return () => {
@@ -30,29 +45,14 @@ export function usePullToRefresh(refetch: Refetch | Refetch[], offset = 0) {
   }, []);
 
   const onRefresh = useCallback(async () => {
-    const list = Array.isArray(refetchRef.current) ? refetchRef.current : [refetchRef.current];
+    if (inFlight.current) return; // a second pull while one is running would just cancel and restart the fetches
+    inFlight.current = true;
     setRefreshing(true);
-    let cap: ReturnType<typeof setTimeout> | undefined;
     try {
-      // Re-probe connectivity on every pull. React Query pauses (and never settles) refetches while it believes it is
-      // offline, so a stale "offline" flag made the spinner show with nothing happening. A pull resets it to the truth.
-      const net = await NetInfo.fetch();
-      const online = !!net.isConnected && net.isInternetReachable !== false;
-      onlineManager.setOnline(online);
-      if (!online) return; // genuinely offline: the cached data stays, and queries resync on reconnect
-
-      // The callers only list their screen's main queries; the rest of what's visible (project card state, FAQs,
-      // reviews, counts…) lives in other active queries, so without this the spinner ran but the UI never changed.
-      // Skipped while offline-first writes (likes, saves) are still queued, so a refetch can't overwrite an
-      // optimistic value the server hasn't received yet.
-      const hasQueuedWrites = queryClient.getMutationCache().getAll().some((m) => m.state.isPaused || m.state.status === "pending");
-      const all: Promise<unknown>[] = list.map((fn) => Promise.resolve().then(fn));
-      if (!hasQueuedWrites) all.push(queryClient.refetchQueries({ type: "active" }));
-
-      // allSettled: one failing query must never leave the spinner stuck; the cap covers one that never settles.
-      await Promise.race([Promise.allSettled(all), new Promise<void>((resolve) => (cap = setTimeout(() => resolve(), REFRESH_CAP_MS)))]);
+      const list = Array.isArray(refetchRef.current) ? refetchRef.current : [refetchRef.current];
+      await runRefresh(list, { refetchActive: refetchActiveRef.current }, { queryClient, setOnline: (online) => onlineManager.setOnline(online), probe: probeNetwork });
     } finally {
-      if (cap) clearTimeout(cap);
+      inFlight.current = false;
       if (mounted.current) setRefreshing(false);
     }
   }, [queryClient]);

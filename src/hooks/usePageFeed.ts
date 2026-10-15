@@ -58,9 +58,15 @@ async function fetchByRankedIds(
 
 /** Page-mode "For You" — ranked by the page's own topics (page_interests)
  *  and engagement, not the acting team member's. */
+/** Query-key prefixes of the Page-mode feeds (the full key is [...prefix, page]) — see feedKeys in usePosts.ts. */
+export const pageFeedKeys = {
+  ranked: (pageId: string | undefined) => ["page-feed-posts", "ranked", pageId] as const,
+  following: (pageId: string | undefined) => ["page-feed-posts", "following", pageId] as const,
+};
+
 export function usePageRankedFeed(pageId: string | undefined, page: number) {
   return useQuery({
-    queryKey: ["page-feed-posts", "ranked", pageId, page],
+    queryKey: [...pageFeedKeys.ranked(pageId), page],
     queryFn: () => fetchByRankedIds("get_page_ranked_feed", pageId!, page),
     enabled: !!pageId,
   });
@@ -70,7 +76,7 @@ export function usePageRankedFeed(pageId: string | undefined, page: number) {
  *  (page_follows_target), not the acting team member's own following list. */
 export function usePageFollowingFeed(pageId: string | undefined, page: number) {
   return useQuery({
-    queryKey: ["page-feed-posts", "following", pageId, page],
+    queryKey: [...pageFeedKeys.following(pageId), page],
     queryFn: () => fetchByRankedIds("get_page_following_feed", pageId!, page),
     enabled: !!pageId,
   });
