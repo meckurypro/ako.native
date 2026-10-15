@@ -1,12 +1,13 @@
 // src/components/project/book/BookRichText.tsx
 // Renders an authored chapter's Markdown (see lib/bookFormat.ts) for the reflow
-// reader: headings, paragraphs, **bold**, *italic*, lists, quotes, dividers.
+// reader: headings, paragraphs, **bold**, *italic*, links, lists, quotes, code (with Copy), dividers.
 // Colours and size come from the reader's theme, not the app theme.
 //
 // Optional typography props (family, lineHeight, justify, heavy, ornament) back the
 // reader's Themes & Settings; with none given it renders exactly as before.
-import { Fragment, useMemo, type ReactNode } from "react";
-import { Platform, Text as RNText, View, type StyleProp, type TextStyle } from "react-native";
+import * as Clipboard from "expo-clipboard";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
+import { Linking, Platform, Pressable, Text as RNText, View, type StyleProp, type TextStyle } from "react-native";
 
 import { Text } from "@/components/ui/Text";
 import { parseBook, type BookBlock, type BookInline } from "@/lib/bookFormat";
@@ -19,6 +20,10 @@ interface BookRichTextProps {
   blocks?: BookBlock[];
   ink: string;
   muted: string;
+  /** Link colour (the reader theme's accent). Falls back to the text colour. */
+  accent?: string;
+  /** Called when a link or Copy button is pressed, so the reader can ignore that tap (it would toggle the chrome). */
+  onInteract?: () => void;
   fontSize: number;
   /** "body" = Inter, "display" = Playfair (both bundled), "serif" = the platform serif. Default "body". */
   family?: BookFamily;
@@ -61,7 +66,42 @@ export function Span({ face, kind, style, children, ...rest }: { face: Face; kin
 
 // Nested spans inherit colour / size / line height from their parent, and Text carries
 // family + weight down, so bold-inside-italic resolves to the right font file.
-function renderInline(nodes: BookInline[], keyPrefix: string, face: Face): ReactNode[] {
+type OpenLink = (href: string) => void;
+
+/** A fenced code block with a Copy button: the book is full of commands people paste into a terminal. */
+function CodeBlock({ text, ink, muted, fontSize, paraGap, onInteract }: { text: string; ink: string; muted: string; fontSize: number; paraGap: number; onInteract?: () => void }) {
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    onInteract?.();
+    try {
+      await Clipboard.setStringAsync(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      /* Clipboard unavailable: the text is still selectable. */
+    }
+  }
+  return (
+    <View style={{ marginBottom: paraGap, borderRadius: 10, borderWidth: 1, borderColor: muted, overflow: "hidden" }}>
+      <View style={{ flexDirection: "row", justifyContent: "flex-end", paddingHorizontal: 8, paddingTop: 6 }}>
+        <Pressable
+          onPress={copy}
+          accessibilityRole="button"
+          accessibilityLabel="Copy code"
+          hitSlop={8}
+          style={{ borderRadius: 6, borderWidth: 1, borderColor: muted, paddingHorizontal: 8, paddingVertical: 3 }}
+        >
+          <RNText style={{ color: muted, fontSize: 12 }}>{copied ? "Copied" : "Copy"}</RNText>
+        </Pressable>
+      </View>
+      <RNText selectable style={{ color: ink, fontFamily: MONO, fontSize: fontSize - 2, lineHeight: (fontSize - 2) * 1.5, paddingHorizontal: 12, paddingTop: 6, paddingBottom: 12 }}>
+        {text}
+      </RNText>
+    </View>
+  );
+}
+
+function renderInline(nodes: BookInline[], keyPrefix: string, face: Face, accent: string | undefined, openLink: OpenLink): ReactNode[] {
   return nodes.map((n, i) => {
     const key = `${keyPrefix}-${i}`;
     switch (n.t) {
@@ -70,14 +110,21 @@ function renderInline(nodes: BookInline[], keyPrefix: string, face: Face): React
       case "bold":
         return (
           <Span key={key} face={face} kind="bold">
-            {renderInline(n.c, key, face)}
+            {renderInline(n.c, key, face, accent, openLink)}
           </Span>
         );
       case "italic":
         return (
           <Span key={key} face={face} kind="italic">
-            {renderInline(n.c, key, face)}
+            {renderInline(n.c, key, face, accent, openLink)}
           </Span>
+        );
+      case "link":
+        // The parser only emits http(s) links.
+        return (
+          <RNText key={key} onPress={() => openLink(n.href)} accessibilityRole="link" style={{ color: accent, textDecorationLine: "underline" }}>
+            {renderInline(n.c, key, face, accent, openLink)}
+          </RNText>
         );
       case "code":
         return (
@@ -94,6 +141,8 @@ export function BookRichText({
   blocks: given,
   ink,
   muted,
+  accent,
+  onInteract,
   fontSize,
   family = "body",
   lineHeight: lineMultiple = 1.625,
@@ -106,6 +155,12 @@ export function BookRichText({
   const paraGap = fontSize * 0.9;
   const face: Face = { family, heavy };
   const align: TextStyle = justify ? { textAlign: "justify" } : {};
+  const openLink: OpenLink = (href) => {
+    onInteract?.();
+    Linking.openURL(href).catch(() => {
+      /* No app can open it: nothing useful to show inside a reader. */
+    });
+  };
 
   return (
     <View>
@@ -122,14 +177,14 @@ export function BookRichText({
                 selectable
                 style={{ color: ink, fontSize: size, lineHeight: size * 1.3, marginTop: fontSize * 0.9, marginBottom: fontSize * 0.55 }}
               >
-                {renderInline(b.inline, key, face)}
+                {renderInline(b.inline, key, face, accent, openLink)}
               </Span>
             );
           }
           case "p":
             return (
               <Span key={key} face={face} selectable style={[{ color: ink, fontSize, lineHeight, marginBottom: paraGap }, align]}>
-                {renderInline(b.inline, key, face)}
+                {renderInline(b.inline, key, face, accent, openLink)}
               </Span>
             );
           case "list":
@@ -141,7 +196,7 @@ export function BookRichText({
                       {item.marker}
                     </Span>
                     <Span face={face} selectable style={{ flex: 1, color: ink, fontSize, lineHeight }}>
-                      {renderInline(item.inline, `${key}-${j}`, face)}
+                      {renderInline(item.inline, `${key}-${j}`, face, accent, openLink)}
                     </Span>
                   </View>
                 ))}
@@ -151,17 +206,13 @@ export function BookRichText({
             return (
               <View key={key} style={{ borderLeftWidth: 3, borderLeftColor: muted, paddingLeft: 14, marginBottom: paraGap }}>
                 <Span face={face} kind="italic" selectable style={{ color: muted, fontSize, lineHeight }}>
-                  {renderInline(b.inline, key, face)}
+                  {renderInline(b.inline, key, face, accent, openLink)}
                 </Span>
               </View>
             );
           case "code":
             return (
-              <View key={key} style={{ marginBottom: paraGap, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: muted }}>
-                <RNText selectable style={{ color: ink, fontFamily: MONO, fontSize: fontSize - 2, lineHeight: (fontSize - 2) * 1.5 }}>
-                  {b.text}
-                </RNText>
-              </View>
+              <CodeBlock key={key} text={b.text} ink={ink} muted={muted} fontSize={fontSize} paraGap={paraGap} onInteract={onInteract} />
             );
           case "hr":
             return ornament ? (

@@ -115,6 +115,7 @@ const ChapterBody = memo(function ChapterBody({
   lineHeight,
   family,
   justify,
+  onInteract,
 }: {
   opener: { eyebrow: string | null; title: string; body: BookBlock[] };
   theme: ReaderThemeSpec;
@@ -122,6 +123,7 @@ const ChapterBody = memo(function ChapterBody({
   lineHeight: number;
   family: BookFamily;
   justify: boolean;
+  onInteract: () => void;
 }) {
   const face: Face = { family, heavy: !!theme.heavy };
   return (
@@ -140,7 +142,7 @@ const ChapterBody = memo(function ChapterBody({
         </View>
       </View>
       {opener.body.length > 0 ? (
-        <BookRichText blocks={opener.body} ink={theme.ink} muted={theme.muted} fontSize={fontSize} family={family} lineHeight={lineHeight} justify={justify} heavy={theme.heavy} ornament />
+        <BookRichText blocks={opener.body} ink={theme.ink} muted={theme.muted} accent={theme.accent} onInteract={onInteract} fontSize={fontSize} family={family} lineHeight={lineHeight} justify={justify} heavy={theme.heavy} ornament />
       ) : (
         <Span face={face} style={{ color: theme.muted, fontSize }}>
           Nothing here yet.
@@ -320,6 +322,11 @@ export function BookReflowReader({ projectId, title, chapters, userId, thumbnail
     saveTimer.current = setTimeout(flushSave, SAVE_DEBOUNCE_MS);
   }
 
+  const interactAt = useRef(0);
+  const markInteract = useCallback(() => {
+    interactAt.current = Date.now();
+  }, []);
+
   // A tap is a short touch that barely moved: it toggles the chrome. Scrolls and text-selection drags don't.
   function onTouchStart(e: GestureResponderEvent) {
     touch.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY, t: Date.now() };
@@ -330,12 +337,16 @@ export function BookReflowReader({ projectId, title, chapters, userId, thumbnail
     if (!s) return;
     const moved = Math.hypot(e.nativeEvent.pageX - s.x, e.nativeEvent.pageY - s.y);
     if (moved > 8 || Date.now() - s.t > 280) return;
-    if (menuOpen) {
-      setMenuOpen(false);
-      return;
-    }
-    chromeAnchor.current = lastY.current;
-    setChromeVisible((v) => !v);
+    // A tap on a link or a Copy button also reaches here. Wait a beat, and if one of those just fired, leave the chrome alone.
+    setTimeout(() => {
+      if (Date.now() - interactAt.current < 500) return;
+      if (menuOpen) {
+        setMenuOpen(false);
+        return;
+      }
+      chromeAnchor.current = lastY.current;
+      setChromeVisible((v) => !v);
+    }, 60);
   }
 
   // ---------- navigation ----------
@@ -504,7 +515,7 @@ export function BookReflowReader({ projectId, title, chapters, userId, thumbnail
         contentContainerStyle={{ paddingTop: padTop, paddingBottom: padBottom, paddingHorizontal: PAD_X }}
       >
         <View style={{ width: "100%", maxWidth: MAX_COLUMN, alignSelf: "center" }}>
-          <ChapterBody opener={opener} theme={theme} fontSize={fontSize} lineHeight={lineHeight} family={FAMILY_OF[font]} justify={justify} />
+          <ChapterBody opener={opener} theme={theme} fontSize={fontSize} lineHeight={lineHeight} family={FAMILY_OF[font]} justify={justify} onInteract={markInteract} />
 
           <View style={{ alignItems: "center", gap: 12, marginTop: 56, marginBottom: 8 }}>
             <Ornament color={theme.muted} width={112} />

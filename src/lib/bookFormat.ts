@@ -2,6 +2,7 @@
 // Pure (no React, no platform APIs) parser that turns an authored book chapter's
 // text into display blocks. Chapters are written as plain Markdown:
 //   # / ## / ###  headings        **bold**   *italic*   `code`
+//   [label](https://…) links, and bare https://… URLs (both become tappable links)
 //   - / * / • bullets, 1. numbered (indent = nesting)    > quote    --- divider
 // Blank lines separate paragraphs; single line breaks inside a paragraph are kept.
 //
@@ -16,7 +17,8 @@ export type BookInline =
   | { t: "text"; v: string }
   | { t: "bold"; c: BookInline[] }
   | { t: "italic"; c: BookInline[] }
-  | { t: "code"; v: string };
+  | { t: "code"; v: string }
+  | { t: "link"; href: string; c: BookInline[] };
 
 export interface BookListItem {
   marker: string;
@@ -38,6 +40,27 @@ const isWord = (ch: string | undefined) => ch !== undefined && WORD_CHAR.test(ch
 
 // Longest marker first so "***x***" is bold+italic rather than a stray "*" + bold.
 const MARKERS = ["***", "**", "*"] as const;
+
+// [label](https://…): http(s) only, so a chapter can never smuggle in javascript: or file: links.
+const MD_LINK_RE = /^\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/;
+
+/** End index of the bare URL that starts at `from` (text[from..] begins with http:// or https://). */
+function urlEnd(text: string, from: number): number {
+  let j = from;
+  while (j < text.length && !/[\s<>"`]/.test(text[j])) j++;
+  // Trim punctuation that belongs to the sentence, not the URL; keep a ")" only if the URL opened a "(".
+  while (j > from) {
+    const last = text[j - 1];
+    if (".,;:!?'*".includes(last)) {
+      j--;
+    } else if (last === ")" && text.slice(from, j).split("(").length < text.slice(from, j).split(")").length) {
+      j--;
+    } else {
+      break;
+    }
+  }
+  return j;
+}
 
 /** Index of the closing `marker` for an opener whose content starts at `from`, or -1. */
 function findClose(text: string, from: number, marker: string): number {
@@ -116,6 +139,29 @@ export function parseBookInline(text: string): BookInline[] {
       buf += text.slice(i, i + run);
       i += run;
       continue;
+    }
+
+    // [label](https://…)
+    if (ch === "[") {
+      const m = MD_LINK_RE.exec(text.slice(i));
+      if (m) {
+        flush();
+        out.push({ t: "link", href: m[2], c: parseBookInline(m[1]) });
+        i += m[0].length;
+        continue;
+      }
+    }
+
+    // Bare https://… URL (not glued to the end of a word)
+    if (ch === "h" && !isWord(text[i - 1]) && (text.startsWith("http://", i) || text.startsWith("https://", i))) {
+      const end = urlEnd(text, i);
+      const url = text.slice(i, end);
+      if (url.length > "https://".length) {
+        flush();
+        out.push({ t: "link", href: url, c: [{ t: "text", v: url }] });
+        i = end;
+        continue;
+      }
     }
 
     buf += ch;
