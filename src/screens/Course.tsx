@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAvoider } from "@/components/ui/KeyboardAvoider";
 import { CourseHero } from "@/components/course/CourseHero";
 import { LessonReader } from "@/components/course/LessonReader";
+import { ResumePrompt } from "@/components/ui/ResumePrompt";
 import { ProgressBar } from "@/components/course/ProgressBar";
 import { FeedDoorway } from "@/components/project/FeedDoorway";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -37,6 +38,8 @@ import {
   useAddModule,
   useCourseModules,
   useCourseProgress,
+  useCourseResume,
+  useSaveCourseResume,
   useDeleteLesson,
   useDeleteModule,
   useMoveLesson,
@@ -160,6 +163,13 @@ export function Course() {
   const progressQuery = useCourseProgress(projectId, user?.id);
   const completedIds = useMemo(() => progressQuery.data ?? new Set<string>(), [progressQuery.data]);
   const setLessonComplete = useSetLessonComplete(projectId ?? "", user?.id);
+  // Where the learner stopped (lesson + how far down it / into its video), and the offer to go back there.
+  const resumeQuery = useCourseResume(projectId, user?.id);
+  const saveResume = useSaveCourseResume(projectId ?? "", user?.id);
+  type ResumeAt = { lessonId: string; scrollFraction: number | null; mediaSeconds: number | null };
+  const [resumeOffer, setResumeOffer] = useState<ResumeAt | null>(null);
+  const [resumeAt, setResumeAt] = useState<ResumeAt | null>(null);
+  const offerChecked = useRef(false);
 
   const addModule = useAddModule(projectId ?? "");
   const updateModuleTitle = useUpdateModuleTitle(projectId ?? "");
@@ -192,6 +202,22 @@ export function Course() {
     const firstIncomplete = flatLessons.find((l) => !completedIds.has(l.id));
     setSelectedLessonId((firstIncomplete ?? flatLessons[0]).id);
   }, [hasAccess, flatLessons, progressQuery.isLoading, selectedLessonId, completedIds]);
+
+  // Offer to pick up where they stopped. Runs once, after access, progress and the saved position have all loaded.
+  useEffect(() => {
+    if (offerChecked.current || isOwner || !hasAccess || !user || flatLessons.length === 0) return;
+    if (progressQuery.isLoading || resumeQuery.isLoading) return;
+    offerChecked.current = true;
+    const saved = resumeQuery.data;
+    const lesson = saved?.lesson_id ? flatLessons.find((l) => l.id === saved.lesson_id) : undefined;
+    if (!saved || !lesson) return;
+    const fraction = saved.scroll_fraction ?? 0;
+    const seconds = saved.media_seconds ?? 0;
+    const startedInside = fraction >= 0.02 || seconds >= 5;
+    // Nothing to return to: still at the very start of the first lesson, or a finished lesson they left at its top.
+    if (!startedInside && (lesson.id === flatLessons[0].id || completedIds.has(lesson.id))) return;
+    setResumeOffer({ lessonId: lesson.id, scrollFraction: fraction, mediaSeconds: seconds });
+  }, [isOwner, hasAccess, user, flatLessons, progressQuery.isLoading, resumeQuery.isLoading, resumeQuery.data, completedIds]);
 
   // Learners see the module they're up to open and the rest folded; owners keep everything open to edit.
   const collapseInit = useRef(false);
@@ -238,8 +264,26 @@ export function Course() {
   function selectLesson(lesson: CourseLesson) {
     if (!canOpen(lesson)) return;
     haptics.selection();
+    setResumeAt(null); // a lesson picked by hand opens at its top
     setSelectedLessonId(lesson.id);
     setView("lesson");
+    // This lesson is now the place to come back to, even if they leave before scrolling.
+    if (hasAccess && user && !isOwner) saveResume.mutate({ lessonId: lesson.id, scrollFraction: 0, mediaSeconds: 0 });
+  }
+
+  function continueFromResume() {
+    if (!resumeOffer) return;
+    haptics.selection();
+    setResumeAt(resumeOffer);
+    setSelectedLessonId(resumeOffer.lessonId);
+    setView("lesson");
+    setResumeOffer(null);
+  }
+
+  function startCourseOver() {
+    setResumeOffer(null);
+    // Back to the first lesson. Completed lessons keep their ticks — this only moves the reading position.
+    if (flatLessons[0]) selectLesson(flatLessons[0]);
   }
 
   function confirmDelete() {
@@ -336,6 +380,8 @@ export function Course() {
         onWatched={() => {
           if (hasAccess) markComplete({ lessonId: selectedLesson.id, completed: true });
         }}
+        resumeAt={resumeAt && resumeAt.lessonId === selectedLesson.id ? resumeAt : null}
+        onPosition={hasAccess && user && !isOwner ? (p) => saveResume.mutate(p) : undefined}
       />
     );
   }
@@ -665,6 +711,21 @@ export function Course() {
           onCancel={() => setPendingDelete(null)}
         />
       )}
+
+      {resumeOffer && (() => {
+        const lesson = flatLessons.find((l) => l.id === resumeOffer.lessonId);
+        if (!lesson) return null;
+        const idx = flatLessons.findIndex((l) => l.id === lesson.id);
+        return (
+          <ResumePrompt
+            kind="course"
+            where={`lesson ${lessonNumberOf(lesson)}, “${lesson.title}”`}
+            percent={totalLessons > 0 ? ((idx + (resumeOffer.scrollFraction ?? 0)) / totalLessons) * 100 : null}
+            onContinue={continueFromResume}
+            onStartOver={startCourseOver}
+          />
+        );
+      })()}
     </KeyboardAvoider>
   );
 }

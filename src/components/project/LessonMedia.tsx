@@ -5,7 +5,7 @@
 import { useEvent } from "expo";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { PlayCircle } from "lucide-react-native";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Linking, Pressable, View } from "react-native";
 import { WebView } from "react-native-webview";
 
@@ -25,8 +25,28 @@ export function resolveEmbed(url: string): EmbedKind {
   return { type: "link" };
 }
 
-function DirectVideo({ url, onWatched }: { url: string; onWatched: () => void }) {
+function DirectVideo({ url, onWatched, startAt, onTime }: { url: string; onWatched: () => void; startAt?: number | null; onTime?: (seconds: number) => void }) {
   const player = useVideoPlayer(url);
+  const seeked = useRef(false);
+
+  // Resume: jump to where the learner stopped, once, as soon as the video can play.
+  useEffect(() => {
+    const sub = player.addListener("statusChange", ({ status }) => {
+      if (status !== "readyToPlay" || seeked.current) return;
+      seeked.current = true;
+      if (startAt && startAt > 1) player.currentTime = startAt;
+    });
+    return () => sub.remove();
+  }, [player, startAt]);
+
+  // Report the playback position every few seconds so it can be saved.
+  useEffect(() => {
+    if (!onTime) return;
+    player.timeUpdateEventInterval = 4;
+    const sub = player.addListener("timeUpdate", ({ currentTime }) => onTime(currentTime));
+    return () => sub.remove();
+  }, [player, onTime]);
+
   const { isPlaying } = useEvent(player, "playingChange", { isPlaying: player.playing });
   useDuckWhile(isPlaying);
 
@@ -42,7 +62,19 @@ function DirectVideo({ url, onWatched }: { url: string; onWatched: () => void })
   );
 }
 
-export function LessonMedia({ url, onWatched }: { url: string; onWatched: () => void }) {
+export function LessonMedia({
+  url,
+  onWatched,
+  startAt,
+  onTime,
+}: {
+  url: string;
+  onWatched: () => void;
+  /** Direct video only: second to resume from. (YouTube/Vimeo embeds can't be seeked or read from here.) */
+  startAt?: number | null;
+  /** Direct video only: called every few seconds with the playback position. */
+  onTime?: (seconds: number) => void;
+}) {
   const embed = resolveEmbed(url);
 
   if (embed.type === "youtube" || embed.type === "vimeo") {
@@ -67,7 +99,7 @@ export function LessonMedia({ url, onWatched }: { url: string; onWatched: () => 
     );
   }
 
-  if (embed.type === "video") return <DirectVideo url={url} onWatched={onWatched} />;
+  if (embed.type === "video") return <DirectVideo url={url} onWatched={onWatched} startAt={startAt} onTime={onTime} />;
 
   return (
     <Pressable onPress={() => void Linking.openURL(url)} accessibilityRole="link" className="mb-2 flex-row items-center gap-1.5 self-start">

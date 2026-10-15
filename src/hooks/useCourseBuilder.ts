@@ -306,3 +306,66 @@ export function useSetLessonComplete(projectId: string, userId: string | undefin
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["course-progress", projectId, userId] }),
   });
 }
+
+// ---------------------------------------------------------------
+// Resume point — where the learner stopped. One row per learner per course (course_resume): the lesson, how far
+// down it they had scrolled (fraction 0..1 of the scrollable length) and, for directly hosted video, the
+// playback second. Separate from course_lesson_progress, which only records *completed* lessons.
+// ---------------------------------------------------------------
+
+export interface CourseResume {
+  lesson_id: string | null;
+  scroll_fraction: number | null;
+  media_seconds: number | null;
+}
+
+export function useCourseResume(projectId: string | undefined, userId: string | undefined) {
+  return useQuery({
+    queryKey: ["course-resume", projectId, userId],
+    queryFn: async (): Promise<CourseResume | null> => {
+      const { data, error } = await supabase
+        .from("course_resume")
+        .select("lesson_id, scroll_fraction, media_seconds")
+        .eq("project_id", projectId)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (error) {
+        console.warn("course_resume unavailable", error);
+        return null;
+      }
+      return data ? { lesson_id: data.lesson_id, scroll_fraction: data.scroll_fraction == null ? null : Number(data.scroll_fraction), media_seconds: data.media_seconds == null ? null : Number(data.media_seconds) } : null;
+    },
+    enabled: !!projectId && !!userId,
+    // Only read when the course opens; the saves below write to the cache themselves, so a refetch must not
+    // replace the position the learner is at with an older server copy mid-lesson.
+    staleTime: Infinity,
+  });
+}
+
+export function useSaveCourseResume(projectId: string, userId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (v: { lessonId: string; scrollFraction: number; mediaSeconds?: number | null }) => {
+      if (!userId) return;
+      const { error } = await supabase.from("course_resume").upsert(
+        {
+          project_id: projectId,
+          user_id: userId,
+          lesson_id: v.lessonId,
+          scroll_fraction: Math.min(1, Math.max(0, v.scrollFraction)),
+          media_seconds: v.mediaSeconds == null ? null : Math.max(0, v.mediaSeconds),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id,project_id" }
+      );
+      if (error) throw error;
+    },
+    onMutate: (v) => {
+      queryClient.setQueryData<CourseResume>(["course-resume", projectId, userId], {
+        lesson_id: v.lessonId,
+        scroll_fraction: v.scrollFraction,
+        media_seconds: v.mediaSeconds ?? null,
+      });
+    },
+  });
+}
