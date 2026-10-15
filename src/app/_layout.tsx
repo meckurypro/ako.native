@@ -8,6 +8,7 @@ import { useFonts } from "expo-font";
 import { router, Stack, useGlobalSearchParams } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
+import * as SystemUI from "expo-system-ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -18,6 +19,7 @@ import { UpdatePrompt } from "@/components/UpdatePrompt";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 import { PortalHost } from "@/components/ui/Portal";
+import { SystemNavigationBar } from "@/components/ui/SystemNavigationBar";
 import { ToastProvider } from "@/components/ui/Toast";
 import {
   storePendingAffiliateClick,
@@ -37,9 +39,16 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function ThemedStack() {
   const { colors, resolvedTheme } = useTheme();
+  // The window's own background sits behind every system bar and shows through any gap (keyboard, overscroll,
+  // screen transitions) — keep it on the app canvas so those never flash a different colour.
+  useEffect(() => {
+    SystemUI.setBackgroundColorAsync(colors.canvas).catch(() => {});
+  }, [colors.canvas]);
   return (
     <>
       <StatusBar style={resolvedTheme === "dark" ? "light" : "dark"} />
+      {/* Android system nav bar: transparent (plugin in app.json) with theme-matched buttons. See the component. */}
+      <SystemNavigationBar style={resolvedTheme === "dark" ? "light" : "dark"} />
       <Stack
         screenOptions={{
           headerShown: false,
