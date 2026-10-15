@@ -18,6 +18,7 @@ import { StatusBar } from "expo-status-bar";
 import { ArrowUpToLine, Bookmark, Check, ChevronLeft, ChevronRight, List, RotateCcw, Search, Share as ShareIcon, Type } from "lucide-react-native";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  AppState,
   Pressable,
   ScrollView,
   Share,
@@ -32,6 +33,7 @@ import Animated, { FadeIn, FadeOut, SlideInDown, SlideInUp, SlideOutDown, SlideO
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { FeedDoorway } from "@/components/project/FeedDoorway";
+import { ResumePrompt } from "@/components/ui/ResumePrompt";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { Icon, Image } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
@@ -150,7 +152,7 @@ const ChapterBody = memo(function ChapterBody({
 
 export function BookReflowReader({ projectId, title, chapters, userId, thumbnailUrl, shareUrl }: BookReflowReaderProps) {
   const insets = useSafeAreaInsets();
-  const { data: progress } = useBookProgress(projectId, userId);
+  const { data: progress, isLoading: progressLoading } = useBookProgress(projectId, userId);
   const saveProgress = useSaveBookProgress(projectId, userId);
   const { data: bookmarkData } = useBookBookmarks(projectId, userId);
   const addBookmark = useAddBookBookmark(projectId, userId);
@@ -176,6 +178,8 @@ export function BookReflowReader({ projectId, title, chapters, userId, thumbnail
   const [sheet, setSheet] = useState<SheetName>(null);
   const [contentsTab, setContentsTab] = useState<ContentsTab>("contents");
   const [resumed, setResumed] = useState(false);
+  // Where the reader stopped last time, offered once on reopening: continue there, or start from the beginning.
+  const [resumeOffer, setResumeOffer] = useState<{ chapterId: string; fraction: number } | null>(null);
   const [fraction, setFraction] = useState(0);
   const [dims, setDims] = useState({ vw: 390, vh: 800, contentH: 0 });
   const [scrub, setScrub] = useState<number | null>(null);
@@ -196,18 +200,64 @@ export function BookReflowReader({ projectId, title, chapters, userId, thumbnail
   }, [fontPick]);
   useEffect(() => writeStored(READER_STORAGE.spacing, spacing), [spacing]);
   useEffect(() => writeStored(READER_STORAGE.justify, justify ? "1" : "0"), [justify]);
-  useEffect(() => () => void (saveTimer.current && clearTimeout(saveTimer.current)), []);
 
-  // Resume: reopen the last chapter, at the saved scroll position.
+  // The last position not yet sent. Saves are debounced while scrolling, so leaving the screen or backgrounding the
+  // app (which Android may then kill) must send it straight away, not drop it.
+  const unsaved = useRef<{ chapterId: string; scrollFraction: number } | null>(null);
+  const saveMutate = saveProgress.mutate;
+  const flushSave = useCallback(() => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = null;
+    const pending = unsaved.current;
+    unsaved.current = null;
+    if (pending) saveMutate(pending);
+  }, [saveMutate]);
   useEffect(() => {
-    if (resumed || chapters.length === 0) return;
-    if (progress?.current_chapter_id && chapters.some((c) => c.id === progress.current_chapter_id)) {
-      pendingFraction.current = progress.scroll_fraction ?? null;
-      setChapterId(progress.current_chapter_id);
-      setView("chapter");
-    }
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state !== "active") flushSave();
+    });
+    return () => {
+      sub.remove();
+      flushSave();
+    };
+  }, [flushSave]);
+
+  // Resume: once the saved position has loaded, offer to reopen the last chapter at the saved scroll position.
+  // (Waits for the progress query — resolving before it arrived used to skip resuming altogether.)
+  useEffect(() => {
+    if (resumed || chapters.length === 0 || progressLoading) return;
     setResumed(true);
-  }, [resumed, chapters, progress]);
+    const savedId = progress?.current_chapter_id;
+    const idx = savedId ? chapters.findIndex((c) => c.id === savedId) : -1;
+    if (idx < 0) return;
+    const f = progress?.scroll_fraction ?? 0;
+    // Nothing worth resuming if they only ever opened the very start of the first chapter.
+    if (idx === 0 && f < 0.02) return;
+    setResumeOffer({ chapterId: chapters[idx].id, fraction: f });
+  }, [resumed, chapters, progress, progressLoading]);
+
+  function continueReading() {
+    if (!resumeOffer) return;
+    haptics.selection();
+    setJumpBack(null);
+    pendingFraction.current = resumeOffer.fraction;
+    setChapterId(resumeOffer.chapterId);
+    setView("chapter");
+    setResumeOffer(null);
+  }
+
+  function startOver() {
+    setResumeOffer(null);
+    if (!chapters[0]) return;
+    haptics.selection();
+    setJumpBack(null);
+    pendingFraction.current = null;
+    setChapterId(chapters[0].id);
+    setView("chapter");
+    // The beginning is now the place to come back to.
+    unsaved.current = { chapterId: chapters[0].id, scrollFraction: 0 };
+    flushSave();
+  }
 
   const currentIndex = chapters.findIndex((c) => c.id === chapterId);
   const current = currentIndex >= 0 ? chapters[currentIndex] : null;
@@ -263,9 +313,11 @@ export function BookReflowReader({ projectId, title, chapters, userId, thumbnail
     setFraction((old) => (Math.abs(old - f) > 0.003 || f === 0 || f === 1 ? f : old));
     if (chromeVisible && Math.abs(contentOffset.y - chromeAnchor.current) > 90) setChromeVisible(false);
     if (menuOpen) setMenuOpen(false);
+    // While a saved position is still waiting to be applied the scroller sits at the top: that isn't progress.
+    if (pendingFraction.current != null) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    const id = current.id;
-    saveTimer.current = setTimeout(() => saveProgress.mutate({ chapterId: id, scrollFraction: f }), SAVE_DEBOUNCE_MS);
+    unsaved.current = { chapterId: current.id, scrollFraction: f };
+    saveTimer.current = setTimeout(flushSave, SAVE_DEBOUNCE_MS);
   }
 
   // A tap is a short touch that barely moved: it toggles the chrome. Scrolls and text-selection drags don't.
@@ -291,6 +343,9 @@ export function BookReflowReader({ projectId, title, chapters, userId, thumbnail
     haptics.selection();
     if (remember && current) setJumpBack({ chapterId: current.id, fraction, label: current.title });
     pendingFraction.current = f;
+    // Record the new place straight away, even if they leave before scrolling.
+    unsaved.current = { chapterId: id, scrollFraction: f };
+    flushSave();
     setSheet(null);
     setMenuOpen(false);
     setChromeVisible(false);
@@ -342,6 +397,8 @@ export function BookReflowReader({ projectId, title, chapters, userId, thumbnail
       haptics.selection();
       setJumpBack(null);
       pendingFraction.current = idx === savedIndex ? (progress?.scroll_fraction ?? 0) : 0;
+      unsaved.current = { chapterId: chapters[idx].id, scrollFraction: pendingFraction.current };
+      flushSave();
       setChapterId(chapters[idx].id);
       setView("chapter");
     };
@@ -386,6 +443,20 @@ export function BookReflowReader({ projectId, title, chapters, userId, thumbnail
           })}
           {bookDoorway.visible && <FeedDoorway context="book" onEnter={bookDoorway.markEnteredFeed} />}
         </ScrollView>
+        {resumeOffer
+          ? (() => {
+              const i = chapters.findIndex((c) => c.id === resumeOffer.chapterId);
+              return (
+                <ResumePrompt
+                  kind="book"
+                  where={i >= 0 ? `“${chapters[i].title}”` : "where you stopped"}
+                  percent={i >= 0 ? ((i + resumeOffer.fraction) / chapters.length) * 100 : null}
+                  onContinue={continueReading}
+                  onStartOver={startOver}
+                />
+              );
+            })()
+          : null}
       </View>
     );
   }
