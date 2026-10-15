@@ -37,6 +37,7 @@ import { useBookDetails, useEventDetails, useGigDetails, useGigSamples, useMedia
 import { PROJECT_TYPE_LABELS, useProject, useProjectTopics, useUpdateProject, type ProjectStatus } from "@/hooks/useProjects";
 import { useUploadProjectThumbnail } from "@/hooks/useUploadProjectThumbnail";
 import { isoToLocalInput } from "@/lib/dateInput";
+import { SupportingImagesField } from "@/components/project/SupportingImagesField";
 import { pickSingleImage } from "@/lib/pickImage";
 import { supabase } from "@/lib/supabase";
 import { CONTENT_LIMIT, contentCounterClass } from "@/lib/textLimits";
@@ -79,6 +80,7 @@ export function EditProject() {
   const [isPrivate, setIsPrivate] = useState(false);
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const [thumbnailRatio, setThumbnailRatio] = useState<{ width: number; height: number } | null>(null);
+  const [supportingImageUrls, setSupportingImageUrls] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [topicsHydrated, setTopicsHydrated] = useState(false);
@@ -131,6 +133,7 @@ export function EditProject() {
       setStatus(project.status === "cancelled" ? "archived" : project.status);
       setIsPrivate(project.is_private);
       setThumbnailUrl(project.thumbnail_url);
+      setSupportingImageUrls(project.supporting_image_urls ?? []);
       if (project.thumbnail_width && project.thumbnail_height) setThumbnailRatio({ width: project.thumbnail_width, height: project.thumbnail_height });
       if (project.project_type === "file") setFileFields({ file_path: project.file_path, file_name: null });
       if (project.project_type === "url") setUrlFields({ url: project.external_url ?? "" });
@@ -267,6 +270,8 @@ export function EditProject() {
         thumbnail_url: thumbnailUrl,
         thumbnail_width: thumbnailRatio?.width ?? null,
         thumbnail_height: thumbnailRatio?.height ?? null,
+        // Supporting images hang off the thumbnail — removing it clears them too.
+        supporting_image_urls: thumbnailUrl ? supportingImageUrls : [],
         price_usd: price,
         promo_price_usd: promoPrice,
         status,
@@ -446,6 +451,8 @@ export function EditProject() {
               </View>
             )}
           </Pressable>
+
+          <SupportingImagesField urls={supportingImageUrls} onChange={setSupportingImageUrls} hasThumbnail={!!thumbnailUrl} />
 
           <FormField label="Title" value={title} onChangeText={setTitle} />
 

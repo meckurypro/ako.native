@@ -17,3 +17,19 @@ export async function pickSingleImage(options: { aspect?: [number, number] } = {
   if (result.canceled || result.assets.length === 0) return null;
   return fromImagePickerAsset(result.assets[0]);
 }
+
+// Pick several images at once (supporting images). `limit` caps how many the system
+// picker lets the user choose; we slice again defensively because Android pickers
+// don't all honour it. No crop UI — they're cropped to the thumbnail's shape on display.
+export async function pickImages(options: { limit: number }): Promise<LocalFile[]> {
+  if (options.limit <= 0) return [];
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ["images"],
+    allowsMultipleSelection: true,
+    selectionLimit: options.limit,
+    allowsEditing: false,
+    quality: 1,
+  });
+  if (result.canceled) return [];
+  return result.assets.slice(0, options.limit).map(fromImagePickerAsset);
+}

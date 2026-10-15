@@ -35,6 +35,7 @@ import { TextLink } from "@/components/ui/TextLink";
 import { useToast } from "@/components/ui/Toast";
 import { useFeatureFlag } from "@/hooks/useFeatureFlags";
 import { PageActionBlocked } from "@/components/page/PageActionBlocked";
+import { SupportingImagesField } from "@/components/project/SupportingImagesField";
 import { useActiveIdentity, useActivePagePermissions } from "@/hooks/usePages";
 import { useMyProfile } from "@/hooks/useProfile";
 import {
@@ -72,6 +73,7 @@ export function CreateProject() {
   const [isPrivate, setIsPrivate] = useState(false);
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const [thumbnailRatio, setThumbnailRatio] = useState<{ width: number; height: number } | null>(null);
+  const [supportingImageUrls, setSupportingImageUrls] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   // Fixed at open (switch account mode FIRST, then create) — same rule as composing a post.
@@ -191,6 +193,7 @@ export function CreateProject() {
           thumbnail_url: thumbnailUrl ?? undefined,
           thumbnail_width: thumbnailRatio?.width,
           thumbnail_height: thumbnailRatio?.height,
+          supporting_image_urls: thumbnailUrl ? supportingImageUrls : undefined,
           is_private: isPrivate,
           posted_as_page_id: postingAsPage?.id,
           goal_amount_usd: parseFloat(pitchFields.goal_amount_usd),
@@ -225,6 +228,7 @@ export function CreateProject() {
         thumbnail_url: thumbnailUrl ?? undefined,
         thumbnail_width: thumbnailRatio?.width,
         thumbnail_height: thumbnailRatio?.height,
+        supporting_image_urls: thumbnailUrl ? supportingImageUrls : undefined,
         price_usd: price,
         promo_price_usd: promoPrice,
         is_private: isPrivate,
@@ -336,6 +340,8 @@ export function CreateProject() {
               </View>
             )}
           </Pressable>
+
+          <SupportingImagesField urls={supportingImageUrls} onChange={setSupportingImageUrls} hasThumbnail={!!thumbnailUrl} />
 
           <View className="mb-4 flex-row items-center gap-2">
             <Avatar src={postingAsPage ? postingAsPage.avatar_url : me?.avatar_url} name={postingAsPage ? postingAsPage.name : (me?.display_name ?? "You")} size="sm" />

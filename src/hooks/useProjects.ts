@@ -311,6 +311,9 @@ export interface Project {
   thumbnail_url: string | null;
   thumbnail_width: number | null;
   thumbnail_height: number | null;
+  // Up to 4 extra images (display order), swiped through on the project's own page only
+  // — see src/lib/projectImages.ts. Lists, rails and cards never use these.
+  supporting_image_urls: string[];
   project_type: ProjectType;
   price_usd: number;
   promo_price_usd: number | null;
@@ -569,6 +572,7 @@ interface CreateProjectInput {
   thumbnail_url?: string;
   thumbnail_width?: number;
   thumbnail_height?: number;
+  supporting_image_urls?: string[];
   project_type: ProjectType;
   price_usd: number;
   promo_price_usd?: number | null;
@@ -692,6 +696,7 @@ interface CreatePitchProjectInput {
   thumbnail_url?: string;
   thumbnail_width?: number;
   thumbnail_height?: number;
+  supporting_image_urls?: string[];
   is_private?: boolean;
   posted_as_page_id?: string;
   goal_amount_usd: number;
@@ -710,7 +715,7 @@ export function useCreatePitchProject() {
 
   return useMutation({
     meta: { blocking: true },
-    mutationFn: async ({ topic_ids, ...input }: CreatePitchProjectInput) => {
+    mutationFn: async ({ topic_ids, supporting_image_urls, ...input }: CreatePitchProjectInput) => {
       const { data, error } = await supabase.rpc("create_pitch_project", {
         p_title: input.title,
         p_description: input.description ?? null,
@@ -724,6 +729,16 @@ export function useCreatePitchProject() {
       if (error) throw error;
 
       const pitchProjectId = data as string;
+
+      // The RPC predates supporting images, so they're attached right after — same
+      // "project already exists, surface the failure" stance as the topics below.
+      if (supporting_image_urls && supporting_image_urls.length > 0) {
+        const { error: imagesError } = await supabase
+          .from("projects")
+          .update({ supporting_image_urls })
+          .eq("id", pitchProjectId);
+        if (imagesError) throw imagesError;
+      }
 
       if (topic_ids && topic_ids.length > 0) {
         const rows = topic_ids.map((interest_id) => ({ project_id: pitchProjectId, interest_id }));
@@ -750,6 +765,7 @@ interface UpdateProjectInput {
   thumbnail_url?: string | null;
   thumbnail_width?: number | null;
   thumbnail_height?: number | null;
+  supporting_image_urls?: string[];
   project_type?: ProjectType;
   price_usd?: number;
   promo_price_usd?: number | null;

@@ -72,6 +72,8 @@ import {
 } from "@/hooks/useProjects";
 import { useIsProjectSaved, useToggleSavedProject } from "@/hooks/useSavedProjects";
 import { APP_URL } from "@/lib/config";
+import { projectGalleryImages } from "@/lib/projectImages";
+import { ProjectImageCarousel } from "./ProjectImageCarousel";
 import { ctaFill } from "@/lib/contrast";
 import { renderFormattedText } from "@/lib/formatText";
 import { resolveFunctionErrorMessage } from "@/lib/functionErrors";
@@ -353,6 +355,8 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, shareUrl, visible
   const rightActions: EngagementAction[] =
     middleActions.length > 0 ? [{ key: "more", label: "More", icon: mk(MoreHorizontal), count: null, onClick: () => setShowMoreActions(true) }] : [];
 
+  // Supporting images only exist on the project's own page (swipe the thumbnail). Every list, grid and rail renders isDetailView=false → plain thumbnail.
+  const galleryImages = isDetailView ? projectGalleryImages(project) : [];
   const aspectRatio = project.thumbnail_width && project.thumbnail_height ? project.thumbnail_width / project.thumbnail_height : 16 / 9;
   const TypeIcon = TYPE_ICON[project.project_type];
   const primaryMediaKind: "audio" | "video" | null =
@@ -513,6 +517,8 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, shareUrl, visible
             autoLoadOnMount={!!isDetailView}
             visible={visible}
           />
+        ) : project.thumbnail_url && isDetailView && galleryImages.length > 1 ? (
+          <ProjectImageCarousel images={galleryImages} />
         ) : project.thumbnail_url ? (
           <Pressable
             onPress={() => !isDetailView && router.push(`/projects/${project.id}` as Href)}
