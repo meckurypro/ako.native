@@ -669,7 +669,13 @@ export function BookReflowReader({ projectId, title, chapters, userId, thumbnail
           themeId={themeId}
           onTheme={setThemeId}
           fontSize={fontSize}
-          onFontSize={(n) => setFontSize(clampFontSize(n))}
+          onFontSize={(n) => {
+            const next = clampFontSize(n);
+            if (next === fontSize) return;
+            // Stay on the same sentence while the text reflows (re-applied once the new content height is measured).
+            pendingFraction.current = fraction;
+            setFontSize(next);
+          }}
           font={font}
           onFont={setFontPick}
           spacing={spacing}

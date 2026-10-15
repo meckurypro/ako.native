@@ -3,6 +3,7 @@
 // and Themes & Settings. Colours come from the reader theme (not the app theme) so a sheet
 // always matches the page behind it, which is why these don't use the app's SheetFrame.
 import { AlignJustify, AlignLeft, Bookmark, ChevronRight, Search, Trash2, X } from "lucide-react-native";
+import Slider from "@react-native-community/slider";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
 import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown } from "react-native-reanimated";
@@ -45,6 +46,7 @@ function Sheet({
   onClose,
   children,
   tall,
+  peek,
 }: {
   theme: ReaderThemeSpec;
   title: string;
@@ -52,19 +54,21 @@ function Sheet({
   onClose: () => void;
   children: ReactNode;
   tall?: boolean;
+  /** While true the sheet turns see-through so the page behind it can be read (text-size slider). */
+  peek?: boolean;
 }) {
   const insets = useSafeAreaInsets();
   return (
     <View style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0, zIndex: 50, justifyContent: "flex-end" }} accessibilityViewIsModal>
       <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(140)} style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }}>
-        <Pressable onPress={onClose} accessibilityLabel="Close" style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.38)" }} />
+        <Pressable onPress={onClose} accessibilityLabel="Close" disabled={peek} style={{ flex: 1, backgroundColor: peek ? "transparent" : "rgba(0,0,0,0.38)" }} />
       </Animated.View>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <Animated.View
           entering={SlideInDown.duration(240)}
           exiting={SlideOutDown.duration(180)}
           style={{
-            backgroundColor: theme.sheet,
+            backgroundColor: peek ? "transparent" : theme.sheet,
             borderTopLeftRadius: 28,
             borderTopRightRadius: 28,
             maxHeight: "88%",
@@ -73,7 +77,7 @@ function Sheet({
             overflow: "hidden",
           }}
         >
-          <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 }}>
+          <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8, opacity: peek ? 0 : 1 }} pointerEvents={peek ? "none" : "auto"}>
             <View style={{ flex: 1, paddingRight: 12 }}>
               <Text className="text-[17px] font-semibold" style={{ color: theme.ink }}>
                 {title}
@@ -395,13 +399,17 @@ export function SettingsSheet({
   onClose: () => void;
 }) {
   const [options, setOptions] = useState(false);
+  const [peek, setPeek] = useState(false);
   const chip = chipBg(theme);
+  const fadeStyle = { opacity: peek ? 0 : 1 } as const;
+  const tickCount = Math.round((MAX_FONT_SIZE - MIN_FONT_SIZE) / FONT_STEP) + 1;
 
   return (
     <Sheet
       theme={theme}
       title="Themes & Settings"
       onClose={onClose}
+      peek={peek}
       subtitle={
         <Pressable onPress={() => setOptions((o) => !o)} accessibilityRole="button" accessibilityState={{ expanded: options }} style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}>
           <Text className="text-[13px]" style={{ color: theme.muted }}>
@@ -418,34 +426,59 @@ export function SettingsSheet({
     >
       <ScrollView style={{ flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 20 }} showsVerticalScrollIndicator={false}>
         <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
-          <Pressable
-            onPress={() => {
-              haptics.selection();
-              onFontSize(fontSize - FONT_STEP);
+          {/* Text size. Hold the thumb and the sheet turns see-through so you can watch the page reflow. */}
+          <View
+            style={{
+              flex: 1,
+              height: 48,
+              borderRadius: 12,
+              flexDirection: "row",
+              alignItems: "center",
+              paddingHorizontal: 14,
+              gap: 8,
+              backgroundColor: peek ? theme.sheet : chip,
+              borderWidth: peek ? 1 : 0,
+              borderColor: theme.rule,
+              shadowColor: "#000",
+              shadowOpacity: peek ? 0.28 : 0,
+              shadowRadius: 14,
+              shadowOffset: { width: 0, height: 6 },
+              elevation: peek ? 8 : 0,
             }}
-            disabled={fontSize <= MIN_FONT_SIZE}
-            accessibilityRole="button"
-            accessibilityLabel="Smaller text"
-            style={{ flex: 1, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: chip, opacity: fontSize <= MIN_FONT_SIZE ? 0.35 : 1 }}
           >
-            <Text className="text-sm font-semibold" style={{ color: theme.ink }}>
+            <Text className="text-[13px] font-semibold" style={{ color: theme.ink }}>
               A
             </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => {
-              haptics.selection();
-              onFontSize(fontSize + FONT_STEP);
-            }}
-            disabled={fontSize >= MAX_FONT_SIZE}
-            accessibilityRole="button"
-            accessibilityLabel="Larger text"
-            style={{ flex: 1, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: chip, opacity: fontSize >= MAX_FONT_SIZE ? 0.35 : 1 }}
-          >
-            <Text className="text-[22px] font-semibold" style={{ color: theme.ink }}>
+            <View style={{ flex: 1, justifyContent: "center" }}>
+              <View pointerEvents="none" style={{ position: "absolute", left: 10, right: 10, flexDirection: "row", justifyContent: "space-between" }}>
+                {Array.from({ length: tickCount }).map((_, i) => (
+                  <View key={i} style={{ width: 3, height: 3, borderRadius: 2, backgroundColor: MIN_FONT_SIZE + i * FONT_STEP <= fontSize ? theme.ink : theme.muted, opacity: 0.55 }} />
+                ))}
+              </View>
+              <Slider
+                minimumValue={MIN_FONT_SIZE}
+                maximumValue={MAX_FONT_SIZE}
+                step={FONT_STEP}
+                value={fontSize}
+                onSlidingStart={() => setPeek(true)}
+                onValueChange={(v) => {
+                  if (v === fontSize) return;
+                  haptics.selection();
+                  onFontSize(v);
+                }}
+                onSlidingComplete={() => setPeek(false)}
+                minimumTrackTintColor={theme.ink}
+                maximumTrackTintColor={theme.rule}
+                thumbTintColor={theme.ink}
+                accessibilityLabel="Text size"
+                accessibilityValue={{ min: MIN_FONT_SIZE, max: MAX_FONT_SIZE, now: fontSize, text: `${fontSize} points` }}
+                style={{ height: 40 }}
+              />
+            </View>
+            <Text className="text-[24px] font-semibold" style={{ color: theme.ink }}>
               A
             </Text>
-          </Pressable>
+          </View>
           <Pressable
             onPress={() => {
               haptics.selection();
@@ -454,12 +487,14 @@ export function SettingsSheet({
             accessibilityRole="button"
             accessibilityLabel={justify ? "Left-align text" : "Justify text"}
             accessibilityState={{ selected: justify }}
-            style={{ width: 56, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: justify ? theme.ink : chip }}
+            style={{ width: 56, height: 48, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: justify ? theme.ink : chip, ...fadeStyle }}
+            disabled={peek}
           >
             <Icon as={justify ? AlignJustify : AlignLeft} size={18} color={justify ? theme.bg : theme.ink} />
           </Pressable>
         </View>
 
+        <View style={fadeStyle} pointerEvents={peek ? "none" : "auto"}>
         {options && (
           <View style={{ marginTop: 4, marginBottom: 4 }}>
             <Segmented theme={theme} label="Font" items={FONTS} value={font} onPick={onFont} />
@@ -502,6 +537,7 @@ export function SettingsSheet({
               </Pressable>
             );
           })}
+        </View>
         </View>
       </ScrollView>
     </Sheet>
