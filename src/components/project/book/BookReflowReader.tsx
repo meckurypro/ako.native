@@ -1,6 +1,6 @@
 // src/components/project/book/BookReflowReader.tsx
 // Reader for authored (text) books: table of contents → chapter view with
-// light / sepia / dark themes and adjustable text size. Reading position
+// light / sepia / dark themes (opening in the app's own light/dark) and adjustable text size. Reading position
 // (chapter + scroll fraction) is saved to the server, debounced.
 import Slider from "@react-native-community/slider";
 import { StatusBar } from "expo-status-bar";
@@ -17,26 +17,23 @@ import { Text } from "@/components/ui/Text";
 import { useBackDismiss } from "@/hooks/useBackDismiss";
 import { BOOK_SECTION_INFO, useBookProgress, useSaveBookProgress, type BookChapter } from "@/hooks/useBookBuilder";
 import { useFeedDoorway } from "@/hooks/useFeedDoorway";
+import { useReaderTheme, type ReaderTheme } from "@/hooks/useReaderTheme";
 import { haptics } from "@/lib/haptics";
 import { useTheme } from "@/theme/ThemeProvider";
 
-type ReaderTheme = "light" | "sepia" | "dark";
+import { BookRichText } from "./BookRichText";
+
 const THEMES: ReaderTheme[] = ["light", "sepia", "dark"];
 
 const THEME_BG: Record<ReaderTheme, string> = { light: "#F7F4EF", sepia: "#EFE4CC", dark: "#17140F" };
 const THEME_INK: Record<ReaderTheme, string> = { light: "#1F1D1A", sepia: "#3A2E1F", dark: "#F0EEE8" };
 const THEME_INK_MUTED: Record<ReaderTheme, string> = { light: "#6B6558", sepia: "#7A6444", dark: "#9C978A" };
 
-const THEME_KEY = "ako-reader-theme";
 const SIZE_KEY = "ako-reader-font-size";
 const MIN_SIZE = 13;
 const MAX_SIZE = 28;
 const SAVE_DEBOUNCE_MS = 900;
 
-function readTheme(): ReaderTheme {
-  const stored = localStorage.getItem(THEME_KEY);
-  return stored === "sepia" || stored === "dark" || stored === "light" ? stored : "light";
-}
 function readSize(): number {
   const n = Number(localStorage.getItem(SIZE_KEY));
   return n >= MIN_SIZE && n <= MAX_SIZE ? n : 17;
@@ -58,7 +55,8 @@ export function BookReflowReader({ projectId, title, chapters, userId }: BookRef
 
   const [view, setView] = useState<"toc" | "chapter">("toc");
   const [chapterId, setChapterId] = useState<string | null>(null);
-  const [theme, setTheme] = useState<ReaderTheme>(readTheme);
+  // Opens in the app's light/dark; picking sepia etc. lasts for this reading session (see useReaderTheme).
+  const [theme, setTheme] = useReaderTheme();
   const [fontSize, setFontSize] = useState<number>(readSize);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [resumed, setResumed] = useState(false);
@@ -70,7 +68,6 @@ export function BookReflowReader({ projectId, title, chapters, userId }: BookRef
   // Fraction to jump to once the chapter has laid out (resuming where the reader left off).
   const pendingFraction = useRef<number | null>(null);
 
-  useEffect(() => localStorage.setItem(THEME_KEY, theme), [theme]);
   useEffect(() => localStorage.setItem(SIZE_KEY, String(fontSize)), [fontSize]);
   useEffect(() => () => void (saveTimer.current && clearTimeout(saveTimer.current)), []);
 
@@ -181,9 +178,7 @@ export function BookReflowReader({ projectId, title, chapters, userId }: BookRef
           {current.title}
         </Text>
         {current.content ? (
-          <Text selectable style={{ color: ink, fontSize, lineHeight: fontSize * 1.625 }}>
-            {current.content}
-          </Text>
+          <BookRichText content={current.content} ink={ink} muted={muted} fontSize={fontSize} />
         ) : (
           <Text style={{ color: muted, fontSize }}>Nothing here yet.</Text>
         )}
