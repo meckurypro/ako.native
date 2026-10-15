@@ -1,74 +1,201 @@
 // src/components/project/book/BookReflowReader.tsx
-// Reader for authored (text) books: table of contents → chapter view with
-// light / sepia / dark themes (opening in the app's own light/dark) and adjustable text size. Reading position
-// (chapter + scroll fraction) is saved to the server, debounced.
+//
+// Reader for authored (text) books, modelled on Apple Books:
+//   - Contents screen with a Continue button, then a distraction-free page
+//   - "N pages left in chapter" up top, "185 of 736" + a menu button below
+//   - tap the page to show/hide the top bar and the book scrubber
+//   - menu: Contents · %, Bookmarks, Search Book, Themes & Settings
+//   - return pill after any jump (contents, search, bookmark, scrubber)
+//   - themes: Original / Quiet / Paper / Bold / Calm / Focus, font, spacing, justify
+//
+// Text reflows (it is real text, not a raster page), so "page" means one screenful at
+// the current type size: estimated from text length for chapters you haven't opened and
+// measured for the open one. Reading position (chapter + scroll fraction) is saved to
+// the server, debounced. The theme opens in the app's light/dark and a pick lasts for
+// the session (see useBookReaderTheme); type settings persist.
 import Slider from "@react-native-community/slider";
 import { StatusBar } from "expo-status-bar";
-import { ArrowLeft, ChevronLeft, ChevronRight, Settings2, Sun } from "lucide-react-native";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Pressable, ScrollView, View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { ArrowUpToLine, Bookmark, Check, ChevronLeft, ChevronRight, List, RotateCcw, Search, Share as ShareIcon, Type } from "lucide-react-native";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Pressable,
+  ScrollView,
+  Share,
+  Text as RNText,
+  View,
+  type GestureResponderEvent,
+  type LayoutChangeEvent,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from "react-native";
+import Animated, { FadeIn, FadeOut, SlideInDown, SlideInUp, SlideOutDown, SlideOutUp, ZoomIn, ZoomOut } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { FeedDoorway } from "@/components/project/FeedDoorway";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
-import { SheetFrame } from "@/components/ui/SheetFrame";
-import { Icon } from "@/components/ui/styled";
+import { Icon, Image } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useBackDismiss } from "@/hooks/useBackDismiss";
-import { BOOK_SECTION_INFO, useBookProgress, useSaveBookProgress, type BookChapter } from "@/hooks/useBookBuilder";
+import {
+  BOOK_SECTION_INFO,
+  useAddBookBookmark,
+  useBookBookmarks,
+  useBookProgress,
+  useDeleteBookBookmark,
+  useSaveBookProgress,
+  type BookBookmark,
+  type BookChapter,
+} from "@/hooks/useBookBuilder";
+import { useBookReaderTheme } from "@/hooks/useBookReaderTheme";
 import { useFeedDoorway } from "@/hooks/useFeedDoorway";
-import { useReaderTheme, type ReaderTheme } from "@/hooks/useReaderTheme";
+import { parseBook, type BookBlock } from "@/lib/bookFormat";
+import { chapterPlainText, readingMinutes, snippetAt, splitChapterOpener } from "@/lib/bookReaderText";
+import {
+  DEFAULT_FONT_SIZE,
+  LINE_HEIGHT,
+  READER_STORAGE,
+  READER_THEMES,
+  clampFontSize,
+  coerceFont,
+  coerceSpacing,
+  estimatePages,
+  locate,
+  pagesLeftLabel,
+  resolveOverall,
+  type PageMetrics,
+  type ReaderFontId,
+  type ReaderThemeSpec,
+} from "@/lib/bookReaderTheme";
 import { haptics } from "@/lib/haptics";
-import { useTheme } from "@/theme/ThemeProvider";
 
-import { BookRichText } from "./BookRichText";
+import { BookRichText, Ornament, Span, type BookFamily, type Face } from "./BookRichText";
+import { ContentsSheet, SearchSheet, SettingsSheet, chapterLabel, type ContentsTab } from "./ReaderSheets";
 
-const THEMES: ReaderTheme[] = ["light", "sepia", "dark"];
-
-const THEME_BG: Record<ReaderTheme, string> = { light: "#F7F4EF", sepia: "#EFE4CC", dark: "#17140F" };
-const THEME_INK: Record<ReaderTheme, string> = { light: "#1F1D1A", sepia: "#3A2E1F", dark: "#F0EEE8" };
-const THEME_INK_MUTED: Record<ReaderTheme, string> = { light: "#6B6558", sepia: "#7A6444", dark: "#9C978A" };
-
-const SIZE_KEY = "ako-reader-font-size";
-const MIN_SIZE = 13;
-const MAX_SIZE = 28;
 const SAVE_DEBOUNCE_MS = 900;
+const PAD_X = 24;
+const MAX_COLUMN = 640;
+const FOOTER_H = 58;
+const FAMILY_OF: Record<ReaderFontId, BookFamily> = { serif: "serif", sans: "body", display: "display" };
 
-function readSize(): number {
-  const n = Number(localStorage.getItem(SIZE_KEY));
-  return n >= MIN_SIZE && n <= MAX_SIZE ? n : 17;
+function readStored(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
 }
+function writeStored(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* storage unavailable: the setting just won't persist */
+  }
+}
+
+type SheetName = null | "contents" | "search" | "settings";
 
 interface BookReflowReaderProps {
   projectId: string;
   title: string;
   chapters: BookChapter[];
   userId: string | undefined;
+  thumbnailUrl?: string | null;
+  /** Public link to the book, for the Share button. */
+  shareUrl?: string;
 }
 
-export function BookReflowReader({ projectId, title, chapters, userId }: BookReflowReaderProps) {
+// The page text is the expensive part of the tree; the reader re-renders as the page counter
+// ticks while scrolling, so keep the body out of that.
+const ChapterBody = memo(function ChapterBody({
+  opener,
+  theme,
+  fontSize,
+  lineHeight,
+  family,
+  justify,
+}: {
+  opener: { eyebrow: string | null; title: string; body: BookBlock[] };
+  theme: ReaderThemeSpec;
+  fontSize: number;
+  lineHeight: number;
+  family: BookFamily;
+  justify: boolean;
+}) {
+  const face: Face = { family, heavy: !!theme.heavy };
+  return (
+    <>
+      <View style={{ alignItems: "center", marginTop: 20, marginBottom: 32 }}>
+        {opener.eyebrow ? (
+          <Text className="mb-3 text-xs font-semibold uppercase" style={{ color: theme.muted, letterSpacing: 2.4 }}>
+            {opener.eyebrow}
+          </Text>
+        ) : null}
+        <Span face={face} kind="semibold" selectable style={{ color: theme.ink, fontSize: fontSize * 1.85, lineHeight: fontSize * 1.85 * 1.15, textAlign: "center" }}>
+          {opener.title}
+        </Span>
+        <View style={{ marginTop: 20 }}>
+          <Ornament color={theme.muted} width={112} />
+        </View>
+      </View>
+      {opener.body.length > 0 ? (
+        <BookRichText blocks={opener.body} ink={theme.ink} muted={theme.muted} fontSize={fontSize} family={family} lineHeight={lineHeight} justify={justify} heavy={theme.heavy} ornament />
+      ) : (
+        <Span face={face} style={{ color: theme.muted, fontSize }}>
+          Nothing here yet.
+        </Span>
+      )}
+    </>
+  );
+});
+
+export function BookReflowReader({ projectId, title, chapters, userId, thumbnailUrl, shareUrl }: BookReflowReaderProps) {
   const insets = useSafeAreaInsets();
-  const { colors } = useTheme();
   const { data: progress } = useBookProgress(projectId, userId);
   const saveProgress = useSaveBookProgress(projectId, userId);
+  const { data: bookmarkData } = useBookBookmarks(projectId, userId);
+  const addBookmark = useAddBookBookmark(projectId, userId);
+  const deleteBookmark = useDeleteBookBookmark(projectId, userId);
   const bookDoorway = useFeedDoorway("book");
+  const bookmarks = useMemo(() => bookmarkData ?? [], [bookmarkData]);
 
   const [view, setView] = useState<"toc" | "chapter">("toc");
   const [chapterId, setChapterId] = useState<string | null>(null);
-  // Opens in the app's light/dark; picking sepia etc. lasts for this reading session (see useReaderTheme).
-  const [theme, setTheme] = useReaderTheme();
-  const [fontSize, setFontSize] = useState<number>(readSize);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [themeId, setThemeId] = useBookReaderTheme();
+  const theme = READER_THEMES[themeId];
+  const [fontSize, setFontSize] = useState<number>(() => {
+    const n = Number(readStored(READER_STORAGE.fontSize));
+    return n ? clampFontSize(n) : DEFAULT_FONT_SIZE;
+  });
+  const [fontPick, setFontPick] = useState<string | null>(() => readStored(READER_STORAGE.font));
+  const font = coerceFont(fontPick, themeId);
+  const [spacing, setSpacing] = useState(() => coerceSpacing(readStored(READER_STORAGE.spacing)));
+  const [justify, setJustify] = useState(() => readStored(READER_STORAGE.justify) === "1");
+
+  const [chromeVisible, setChromeVisible] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [sheet, setSheet] = useState<SheetName>(null);
+  const [contentsTab, setContentsTab] = useState<ContentsTab>("contents");
   const [resumed, setResumed] = useState(false);
+  const [fraction, setFraction] = useState(0);
+  const [dims, setDims] = useState({ vw: 390, vh: 800, contentH: 0 });
+  const [scrub, setScrub] = useState<number | null>(null);
+  const [jumpBack, setJumpBack] = useState<{ chapterId: string; fraction: number; label: string } | null>(null);
 
   const scrollRef = useRef<ScrollView>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const viewportH = useRef(0);
-  const contentH = useRef(0);
-  // Fraction to jump to once the chapter has laid out (resuming where the reader left off).
+  const totalH = useRef(0);
+  const lastY = useRef(0);
+  const chromeAnchor = useRef(0);
+  const touch = useRef<{ x: number; y: number; t: number } | null>(null);
   const pendingFraction = useRef<number | null>(null);
 
-  useEffect(() => localStorage.setItem(SIZE_KEY, String(fontSize)), [fontSize]);
+  useEffect(() => writeStored(READER_STORAGE.fontSize, String(fontSize)), [fontSize]);
+  useEffect(() => {
+    if (fontPick) writeStored(READER_STORAGE.font, fontPick);
+  }, [fontPick]);
+  useEffect(() => writeStored(READER_STORAGE.spacing, spacing), [spacing]);
+  useEffect(() => writeStored(READER_STORAGE.justify, justify ? "1" : "0"), [justify]);
   useEffect(() => () => void (saveTimer.current && clearTimeout(saveTimer.current)), []);
 
   // Resume: reopen the last chapter, at the saved scroll position.
@@ -87,158 +214,471 @@ export function BookReflowReader({ projectId, title, chapters, userId }: BookRef
   const prev = currentIndex > 0 ? chapters[currentIndex - 1] : null;
   const next = currentIndex >= 0 && currentIndex < chapters.length - 1 ? chapters[currentIndex + 1] : null;
 
-  // Android back: leave the chapter for the contents list, not the whole book.
-  useBackDismiss(() => setView("toc"), view === "chapter" && !settingsOpen);
+  // Android back unwinds one layer at a time: sheet, then menu, then the chapter.
+  useBackDismiss(() => setView("toc"), view === "chapter" && !sheet && !menuOpen);
+  useBackDismiss(() => setMenuOpen(false), menuOpen && !sheet);
+  useBackDismiss(() => setSheet(null), sheet !== null);
 
-  function openChapter(id: string) {
-    haptics.selection();
-    pendingFraction.current = null;
-    setChapterId(id);
-    setView("chapter");
-    scrollRef.current?.scrollTo({ y: 0, animated: false });
-  }
+  // ---------- page estimates ----------
+  const lineHeight = LINE_HEIGHT[spacing];
+  const plainLengths = useMemo(() => chapters.map((c) => chapterPlainText(c.content).length), [chapters]);
+  const chapterPages = useMemo(() => {
+    const m: PageMetrics = { viewportW: dims.vw, viewportH: dims.vh, fontSize, lineHeight, padX: PAD_X, maxColumn: MAX_COLUMN };
+    const est = plainLengths.map((n) => estimatePages(n, m));
+    if (currentIndex >= 0 && dims.contentH > 0 && dims.vh > 0) est[currentIndex] = Math.max(1, Math.round(dims.contentH / (dims.vh * 0.86)));
+    return est;
+  }, [plainLengths, dims, fontSize, lineHeight, currentIndex]);
+  const startPages = useMemo(() => {
+    let acc = 1;
+    return chapterPages.map((p) => {
+      const at = acc;
+      acc += p;
+      return at;
+    });
+  }, [chapterPages]);
+  const position = useMemo(() => locate(chapterPages, Math.max(0, currentIndex), current ? fraction : 0), [chapterPages, currentIndex, current, fraction]);
 
-  const applyPendingScroll = useCallback(() => {
-    const fraction = pendingFraction.current;
-    if (fraction == null || viewportH.current === 0 || contentH.current === 0) return;
-    const range = contentH.current - viewportH.current;
-    if (range <= 0) return;
+  const opener = useMemo(() => {
+    if (!current) return null;
+    return splitChapterOpener(parseBook(current.content), current.title, current.kind === "chapter" ? null : BOOK_SECTION_INFO[current.kind].label);
+  }, [current]);
+
+  // ---------- scrolling ----------
+  const applyPending = useCallback(() => {
+    const f = pendingFraction.current;
+    if (f == null || viewportH.current === 0 || totalH.current === 0) return;
+    const range = totalH.current - viewportH.current;
+    if (range <= 0 && f > 0) return;
     pendingFraction.current = null;
-    scrollRef.current?.scrollTo({ y: fraction * range, animated: false });
+    scrollRef.current?.scrollTo({ y: f * Math.max(0, range), animated: false });
+    setFraction(Math.min(1, Math.max(0, f)));
   }, []);
 
   function handleScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
     if (!current) return;
     const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
     const range = contentSize.height - layoutMeasurement.height;
-    const fraction = range > 0 ? Math.min(1, Math.max(0, contentOffset.y / range)) : 0;
+    const f = range > 0 ? Math.min(1, Math.max(0, contentOffset.y / range)) : 0;
+    lastY.current = contentOffset.y;
+    setFraction((old) => (Math.abs(old - f) > 0.003 || f === 0 || f === 1 ? f : old));
+    if (chromeVisible && Math.abs(contentOffset.y - chromeAnchor.current) > 90) setChromeVisible(false);
+    if (menuOpen) setMenuOpen(false);
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    const chapterToSave = current.id;
-    saveTimer.current = setTimeout(() => saveProgress.mutate({ chapterId: chapterToSave, scrollFraction: fraction }), SAVE_DEBOUNCE_MS);
+    const id = current.id;
+    saveTimer.current = setTimeout(() => saveProgress.mutate({ chapterId: id, scrollFraction: f }), SAVE_DEBOUNCE_MS);
   }
 
-  if (view === "toc" || !current) {
+  // A tap is a short touch that barely moved: it toggles the chrome. Scrolls and text-selection drags don't.
+  function onTouchStart(e: GestureResponderEvent) {
+    touch.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY, t: Date.now() };
+  }
+  function onTouchEnd(e: GestureResponderEvent) {
+    const s = touch.current;
+    touch.current = null;
+    if (!s) return;
+    const moved = Math.hypot(e.nativeEvent.pageX - s.x, e.nativeEvent.pageY - s.y);
+    if (moved > 8 || Date.now() - s.t > 280) return;
+    if (menuOpen) {
+      setMenuOpen(false);
+      return;
+    }
+    chromeAnchor.current = lastY.current;
+    setChromeVisible((v) => !v);
+  }
+
+  // ---------- navigation ----------
+  function goTo(id: string, f: number, remember = true) {
+    haptics.selection();
+    if (remember && current) setJumpBack({ chapterId: current.id, fraction, label: current.title });
+    pendingFraction.current = f;
+    setSheet(null);
+    setMenuOpen(false);
+    setChromeVisible(false);
+    if (id === chapterId && view === "chapter") applyPending();
+    else {
+      setChapterId(id);
+      setView("chapter");
+    }
+  }
+  function openChapterSequential(id: string) {
+    setJumpBack(null);
+    goTo(id, 0, false);
+  }
+
+  // ---------- bookmarks ----------
+  const bookmarkWindow = dims.contentH > 0 ? Math.max(0.015, (0.6 * dims.vh) / dims.contentH) : 0.03;
+  const marked: BookBookmark | undefined = current ? bookmarks.find((b) => b.chapter_id === current.id && Math.abs(b.scroll_fraction - fraction) < bookmarkWindow) : undefined;
+
+  function toggleBookmark() {
+    if (!current) return;
+    haptics.light();
+    if (marked) deleteBookmark.mutate(marked.id);
+    else addBookmark.mutate({ chapterId: current.id, scrollFraction: fraction, snippet: snippetAt(chapterPlainText(current.content), fraction) });
+  }
+  const pageOfBookmark = (b: BookBookmark) => {
+    const idx = chapters.findIndex((c) => c.id === b.chapter_id);
+    return idx < 0 ? 1 : locate(chapterPages, idx, b.scroll_fraction).page;
+  };
+
+  async function share() {
+    setMenuOpen(false);
+    try {
+      await Share.share(shareUrl ? { message: shareUrl, url: shareUrl, title } : { message: title });
+    } catch {
+      /* dismissed */
+    }
+  }
+
+  // ---------- contents screen ----------
+  if (view === "toc" || !current || !opener) {
+    const savedIndex = progress?.current_chapter_id ? chapters.findIndex((c) => c.id === progress.current_chapter_id) : -1;
+    const m: PageMetrics = { viewportW: dims.vw, viewportH: dims.vh, fontSize, lineHeight, padX: PAD_X, maxColumn: MAX_COLUMN };
+    const pages = plainLengths.map((n) => estimatePages(n, m));
+    const savedOverall = savedIndex >= 0 ? locate(pages, savedIndex, progress?.scroll_fraction ?? 0).overall : 0;
+    const startChapter = savedIndex >= 0 ? chapters[savedIndex] : chapters[0];
+    const totalMinutes = chapters.reduce((a, c) => a + readingMinutes(chapterPlainText(c.content)), 0);
+
+    const openAt = (idx: number) => {
+      haptics.selection();
+      setJumpBack(null);
+      pendingFraction.current = idx === savedIndex ? (progress?.scroll_fraction ?? 0) : 0;
+      setChapterId(chapters[idx].id);
+      setView("chapter");
+    };
+
     return (
       <View className="flex-1 bg-canvas">
         <ScreenHeader title={title} bar />
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: insets.bottom + 24 }} showsVerticalScrollIndicator={false}>
-          <View className="gap-1">
-            {chapters.map((c) => (
-              <Pressable key={c.id} onPress={() => openChapter(c.id)} accessibilityRole="button" className="flex-row items-center justify-between rounded-xl px-3 py-3 active:bg-surface">
-                <View className="min-w-0 flex-1">
-                  <Text className="text-xs uppercase tracking-wide text-ink-muted">{c.kind === "chapter" ? "Chapter" : BOOK_SECTION_INFO[c.kind].label}</Text>
-                  <Text className="text-sm font-medium text-ink">{c.title}</Text>
-                </View>
-                <Icon as={ChevronRight} size={16} className="text-ink-muted" />
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 32 }} showsVerticalScrollIndicator={false}>
+          <View className="items-center gap-3 pb-6 pt-8">
+            {thumbnailUrl ? (
+              <Image source={{ uri: thumbnailUrl }} style={{ width: 144, aspectRatio: 2 / 3, borderRadius: 8 }} contentFit="cover" />
+            ) : (
+              <View className="justify-end rounded-lg bg-surface p-3" style={{ width: 144, aspectRatio: 2 / 3 }}>
+                <Text className="font-display text-base text-ink">{title}</Text>
+              </View>
+            )}
+            <Text className="mt-2 text-center font-display text-xl text-ink">{title}</Text>
+            <Text className="text-xs text-ink-muted">
+              {`${chapters.length} ${chapters.length === 1 ? "section" : "sections"} · about ${totalMinutes} min read${savedOverall > 0 ? ` · ${Math.round(savedOverall * 100)}% read` : ""}`}
+            </Text>
+            {startChapter ? (
+              <Pressable onPress={() => openAt(chapters.indexOf(startChapter))} accessibilityRole="button" className="mt-1 rounded-full bg-accent px-7 py-2.5 active:opacity-80">
+                <Text className="text-sm font-semibold text-canvas">{savedIndex >= 0 ? "Continue reading" : "Start reading"}</Text>
               </Pressable>
-            ))}
-            {bookDoorway.visible && <FeedDoorway context="book" onEnter={bookDoorway.markEnteredFeed} />}
+            ) : null}
           </View>
+
+          {chapters.map((c, i) => {
+            const read = savedIndex >= 0 && i < savedIndex;
+            return (
+              <Pressable key={c.id} onPress={() => openAt(i)} accessibilityRole="button" className={`flex-row items-center gap-3 px-1 py-3.5 active:opacity-60 ${i === 0 ? "" : "border-t border-border"}`}>
+                <View className="min-w-0 flex-1">
+                  <Text className="text-[11px] uppercase tracking-wide text-ink-muted">{chapterLabel(c)}</Text>
+                  <Text numberOfLines={1} className="text-[15px] font-medium text-ink">
+                    {c.title}
+                  </Text>
+                </View>
+                <Text className="text-xs text-ink-muted">{`${readingMinutes(chapterPlainText(c.content))} min`}</Text>
+                {read ? <Icon as={Check} size={15} className="text-accent" /> : <Icon as={ChevronRight} size={15} className="text-ink-muted" />}
+              </Pressable>
+            );
+          })}
+          {bookDoorway.visible && <FeedDoorway context="book" onEnter={bookDoorway.markEnteredFeed} />}
         </ScrollView>
       </View>
     );
   }
 
-  const ink = THEME_INK[theme];
-  const muted = THEME_INK_MUTED[theme];
+  // ---------- page ----------
+  const overallPct = Math.round(position.overall * 100);
+  const padTop = insets.top + 40;
+  const padBottom = insets.bottom + FOOTER_H + 56;
+  const commitScrub = (v: number) => {
+    const target = resolveOverall(chapterPages, v / 1000);
+    setScrub(null);
+    const c = chapters[target.index];
+    if (c) goTo(c.id, target.fraction);
+  };
+  const menuItems = [
+    { label: `Contents · ${overallPct}%`, icon: List, run: () => { setContentsTab("contents"); setSheet("contents"); setMenuOpen(false); } },
+    { label: "Bookmarks", count: bookmarks.length, icon: Bookmark, run: () => { setContentsTab("bookmarks"); setSheet("contents"); setMenuOpen(false); } },
+    { label: "Search Book", icon: Search, run: () => { setSheet("search"); setMenuOpen(false); } },
+    { label: "Themes & Settings", icon: Type, run: () => { setSheet("settings"); setMenuOpen(false); } },
+  ];
 
   return (
-    <View className="flex-1" style={{ backgroundColor: THEME_BG[theme] }}>
-      <StatusBar style={theme === "dark" ? "light" : "dark"} />
-      <View className="flex-row items-center justify-between px-3 pb-3" style={{ paddingTop: insets.top + 12 }}>
-        <Pressable onPress={() => setView("toc")} accessibilityRole="button" accessibilityLabel="Contents" hitSlop={12}>
-          <Icon as={ArrowLeft} size={22} color={ink} />
-        </Pressable>
-        <Text numberOfLines={1} className="max-w-[55%] text-sm font-medium" style={{ color: ink }}>
-          {current.title}
-        </Text>
-        <Pressable onPress={() => setSettingsOpen(true)} accessibilityRole="button" accessibilityLabel="Reading settings" hitSlop={12}>
-          <Icon as={Settings2} size={20} color={ink} />
-        </Pressable>
-      </View>
+    <View style={{ flex: 1, backgroundColor: theme.bg }}>
+      <StatusBar style={theme.dark ? "light" : "dark"} />
 
       <ScrollView
-        ref={scrollRef}
         // Remount per chapter so scroll offset and layout start clean.
         key={current.id}
+        ref={scrollRef}
         onScroll={handleScroll}
-        scrollEventThrottle={64}
+        scrollEventThrottle={32}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
         onLayout={(e: LayoutChangeEvent) => {
           viewportH.current = e.nativeEvent.layout.height;
-          applyPendingScroll();
+          setDims((d) => ({ ...d, vw: e.nativeEvent.layout.width, vh: e.nativeEvent.layout.height }));
+          applyPending();
         }}
         onContentSizeChange={(_w, h) => {
-          contentH.current = h;
-          applyPendingScroll();
+          totalH.current = h;
+          setDims((d) => ({ ...d, contentH: Math.max(0, h - padTop - padBottom) }));
+          applyPending();
         }}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: insets.bottom + 80 }}
+        contentContainerStyle={{ paddingTop: padTop, paddingBottom: padBottom, paddingHorizontal: PAD_X }}
       >
-        <Text className="mb-4 font-semibold" style={{ color: ink, fontSize: fontSize + 8, lineHeight: (fontSize + 8) * 1.3 }}>
-          {current.title}
-        </Text>
-        {current.content ? (
-          <BookRichText content={current.content} ink={ink} muted={muted} fontSize={fontSize} />
-        ) : (
-          <Text style={{ color: muted, fontSize }}>Nothing here yet.</Text>
-        )}
+        <View style={{ width: "100%", maxWidth: MAX_COLUMN, alignSelf: "center" }}>
+          <ChapterBody opener={opener} theme={theme} fontSize={fontSize} lineHeight={lineHeight} family={FAMILY_OF[font]} justify={justify} />
 
-        <View className="mb-6 mt-10 flex-row items-center justify-between">
-          <Pressable onPress={() => prev && openChapter(prev.id)} disabled={!prev} accessibilityRole="button" hitSlop={8} className={`flex-row items-center gap-1 ${prev ? "" : "opacity-30"}`}>
-            <Icon as={ChevronLeft} size={16} color={ink} />
-            <Text className="text-sm font-medium" style={{ color: ink }}>
-              Previous
-            </Text>
-          </Pressable>
-          <Pressable onPress={() => next && openChapter(next.id)} disabled={!next} accessibilityRole="button" hitSlop={8} className={`flex-row items-center gap-1 ${next ? "" : "opacity-30"}`}>
-            <Text className="text-sm font-medium" style={{ color: ink }}>
-              Next
-            </Text>
-            <Icon as={ChevronRight} size={16} color={ink} />
-          </Pressable>
+          <View style={{ alignItems: "center", gap: 12, marginTop: 56, marginBottom: 8 }}>
+            <Ornament color={theme.muted} width={112} />
+            {next ? (
+              <>
+                <Text className="text-[11px] font-semibold uppercase" style={{ color: theme.muted, letterSpacing: 1.6 }}>
+                  {`Next · ${chapterLabel(next)}`}
+                </Text>
+                <Text className="text-center text-[17px] font-semibold" style={{ color: theme.ink }}>
+                  {next.title}
+                </Text>
+                <Pressable onPress={() => openChapterSequential(next.id)} accessibilityRole="button" style={{ flexDirection: "row", alignItems: "center", gap: 4, borderRadius: 999, paddingHorizontal: 20, paddingVertical: 10, backgroundColor: theme.ink }}>
+                  <Text className="text-sm font-semibold" style={{ color: theme.bg }}>
+                    Continue
+                  </Text>
+                  <Icon as={ChevronRight} size={16} color={theme.bg} />
+                </Pressable>
+              </>
+            ) : (
+              <>
+                <Text className="text-[15px] font-semibold" style={{ color: theme.ink }}>
+                  {`You've reached the end of ${title}`}
+                </Text>
+                <Pressable onPress={() => setView("toc")} accessibilityRole="button" style={{ borderRadius: 999, paddingHorizontal: 20, paddingVertical: 10, backgroundColor: theme.ink }}>
+                  <Text className="text-sm font-semibold" style={{ color: theme.bg }}>
+                    Back to contents
+                  </Text>
+                </Pressable>
+              </>
+            )}
+            {prev ? (
+              <Pressable onPress={() => openChapterSequential(prev.id)} accessibilityRole="button" hitSlop={8} style={{ flexDirection: "row", alignItems: "center", marginTop: 8 }}>
+                <Icon as={ChevronLeft} size={14} color={theme.muted} />
+                <Text className="text-[13px]" style={{ color: theme.muted }}>
+                  Previous chapter
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
         </View>
       </ScrollView>
 
-      {settingsOpen && (
-        <SheetFrame title="Reading settings" scrim="ink" onClose={() => setSettingsOpen(false)}>
-          <View className="px-5 pb-6 pt-4">
-            <Text className="mb-2 text-xs font-medium text-ink-muted">Theme</Text>
-            <View className="mb-5 flex-row gap-2">
-              {THEMES.map((t) => (
-                <Pressable
-                  key={t}
-                  onPress={() => {
-                    haptics.selection();
-                    setTheme(t);
-                  }}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: theme === t }}
-                  className={`flex-1 items-center rounded-xl border py-2.5 ${theme === t ? "border-accent bg-accent-soft" : "border-border"}`}
-                  style={theme === t ? undefined : { backgroundColor: THEME_BG[t] }}
-                >
-                  <Text className={`text-sm font-medium capitalize ${theme === t ? "text-ink" : ""}`} style={theme === t ? undefined : { color: THEME_INK_MUTED[t] }}>
-                    {t}
-                  </Text>
+      {/* Status line: always there, like Apple Books */}
+      <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, alignItems: "center", paddingTop: insets.top + 10 }}>
+        <RNText style={{ fontSize: 11, letterSpacing: 0.4, color: theme.muted }}>{pagesLeftLabel(position.pagesLeftInChapter)}</RNText>
+      </View>
+
+      {/* Return pill after a jump */}
+      {jumpBack && !chromeVisible ? (
+        <Animated.View entering={ZoomIn.duration(160)} exiting={ZoomOut.duration(120)} style={{ position: "absolute", left: 16, top: insets.top + 4, maxWidth: "46%" }}>
+          <Pressable
+            onPress={() => {
+              goTo(jumpBack.chapterId, jumpBack.fraction, false);
+              setJumpBack(null);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={`Return to ${jumpBack.label}`}
+            style={{ flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7, backgroundColor: theme.sheet }}
+          >
+            <Icon as={RotateCcw} size={13} color={theme.ink} />
+            <Text className="text-xs font-semibold" style={{ color: theme.ink }}>
+              Return
+            </Text>
+          </Pressable>
+        </Animated.View>
+      ) : null}
+
+      {/* Bookmark ribbon when this spot is saved */}
+      {marked ? (
+        <View pointerEvents="none" style={{ position: "absolute", right: 20, top: insets.top }}>
+          <Icon as={Bookmark} size={24} color={theme.accent} fill={theme.accent} />
+        </View>
+      ) : null}
+
+      {/* Footer: page counter + menu button */}
+      <View pointerEvents="box-none" style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: insets.bottom + FOOTER_H, backgroundColor: `${theme.bg}F2` }}>
+        <View pointerEvents="none" style={{ position: "absolute", left: 0, right: 0, top: 10, alignItems: "center" }}>
+          <RNText style={{ fontSize: 12, color: theme.muted, fontVariant: ["tabular-nums"] }}>{`${position.page} of ${position.totalPages}`}</RNText>
+        </View>
+        <Pressable
+          onPress={() => {
+            haptics.light();
+            setMenuOpen((o) => !o);
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Reader menu"
+          accessibilityState={{ expanded: menuOpen }}
+          style={{ position: "absolute", right: 16, top: 6, width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: theme.sheet }}
+        >
+          <Icon as={List} size={20} color={theme.ink} />
+        </Pressable>
+      </View>
+
+      {/* Scrubber */}
+      {chromeVisible ? (
+        <Animated.View
+          entering={SlideInDown.duration(180)}
+          exiting={SlideOutDown.duration(150)}
+          style={{ position: "absolute", left: 12, right: 12, bottom: insets.bottom + FOOTER_H + 4, borderRadius: 16, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 6, backgroundColor: theme.sheet, borderWidth: 1, borderColor: theme.rule }}
+        >
+          <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+            <Text numberOfLines={1} className="flex-1 pr-3 text-[11px]" style={{ color: theme.muted }}>
+              {current.title}
+            </Text>
+            <Text className="text-[11px]" style={{ color: theme.muted }}>
+              {scrub != null ? `${Math.max(1, Math.round((scrub / 1000) * position.totalPages))} of ${position.totalPages}` : `${overallPct}%`}
+            </Text>
+          </View>
+          <Slider
+            minimumValue={0}
+            maximumValue={1000}
+            value={scrub ?? Math.round(position.overall * 1000)}
+            onValueChange={(v) => setScrub(v)}
+            onSlidingComplete={commitScrub}
+            minimumTrackTintColor={theme.ink}
+            maximumTrackTintColor={theme.rule}
+            thumbTintColor={theme.ink}
+            accessibilityLabel="Position in book"
+          />
+        </Animated.View>
+      ) : null}
+
+      {/* Top bar */}
+      {chromeVisible ? (
+        <Animated.View
+          entering={SlideInUp.duration(180)}
+          exiting={SlideOutUp.duration(150)}
+          style={{ position: "absolute", top: 0, left: 0, right: 0, paddingTop: insets.top, backgroundColor: theme.chrome, borderBottomWidth: 1, borderBottomColor: theme.rule }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 8, paddingVertical: 6 }}>
+            <Pressable onPress={() => setView("toc")} accessibilityRole="button" accessibilityLabel="Back to contents" style={{ height: 40, flexDirection: "row", alignItems: "center", paddingRight: 12 }}>
+              <Icon as={ChevronLeft} size={24} color={theme.ink} />
+              <Text className="text-[15px]" style={{ color: theme.ink }}>
+                Book
+              </Text>
+            </Pressable>
+            <Text numberOfLines={1} className="mx-2 flex-1 text-center text-[13px] font-medium" style={{ color: theme.muted }}>
+              {current.title}
+            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              {[
+                { label: "Search book", icon: Search, run: () => setSheet("search") },
+                { label: "Themes and settings", icon: Type, run: () => setSheet("settings") },
+              ].map((b) => (
+                <Pressable key={b.label} onPress={b.run} accessibilityRole="button" accessibilityLabel={b.label} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
+                  <Icon as={b.icon} size={20} color={theme.ink} />
                 </Pressable>
               ))}
+              <Pressable onPress={toggleBookmark} accessibilityRole="button" accessibilityLabel={marked ? "Remove bookmark" : "Add bookmark"} accessibilityState={{ selected: !!marked }} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
+                <Icon as={Bookmark} size={20} color={marked ? theme.accent : theme.ink} fill={marked ? theme.accent : "none"} />
+              </Pressable>
             </View>
-            <View className="mb-2 flex-row items-center gap-1.5">
-              <Icon as={Sun} size={13} className="text-ink-muted" />
-              <Text className="text-xs font-medium text-ink-muted">Text size</Text>
-            </View>
-            <Slider
-              minimumValue={MIN_SIZE}
-              maximumValue={MAX_SIZE}
-              step={1}
-              value={fontSize}
-              onValueChange={setFontSize}
-              minimumTrackTintColor={colors.accent}
-              thumbTintColor={colors.accent}
-              accessibilityLabel="Text size"
-            />
           </View>
-        </SheetFrame>
-      )}
+        </Animated.View>
+      ) : null}
+
+      {/* Menu popover */}
+      {menuOpen ? (
+        <>
+          <Pressable onPress={() => setMenuOpen(false)} accessibilityLabel="Close menu" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
+          <Animated.View
+            entering={FadeIn.duration(140)}
+            exiting={FadeOut.duration(100)}
+            style={{ position: "absolute", right: 16, bottom: insets.bottom + FOOTER_H + 4, width: 268, borderRadius: 16, overflow: "hidden", backgroundColor: theme.sheet, borderWidth: 1, borderColor: theme.rule }}
+          >
+            {menuItems.map((it, i) => (
+              <Pressable key={it.label} onPress={it.run} accessibilityRole="menuitem" style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 13, borderTopWidth: i === 0 ? 0 : 1, borderTopColor: theme.rule }}>
+                <Text className="text-[15px]" style={{ color: theme.ink }}>
+                  {it.label}
+                </Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  {it.count ? (
+                    <Text className="text-[13px]" style={{ color: theme.muted }}>
+                      {it.count}
+                    </Text>
+                  ) : null}
+                  <Icon as={it.icon} size={17} color={theme.muted} />
+                </View>
+              </Pressable>
+            ))}
+            <View style={{ flexDirection: "row", borderTopWidth: 1, borderTopColor: theme.rule }}>
+              <Pressable onPress={share} accessibilityRole="button" accessibilityLabel="Share" style={{ flex: 1, alignItems: "center", paddingVertical: 13 }}>
+                <Icon as={ShareIcon} size={19} color={theme.ink} />
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  scrollRef.current?.scrollTo({ y: 0, animated: true });
+                  setMenuOpen(false);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Back to start of chapter"
+                style={{ flex: 1, alignItems: "center", paddingVertical: 13, borderLeftWidth: 1, borderRightWidth: 1, borderColor: theme.rule }}
+              >
+                <Icon as={ArrowUpToLine} size={19} color={theme.ink} />
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  toggleBookmark();
+                  setMenuOpen(false);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={marked ? "Remove bookmark" : "Add bookmark"}
+                style={{ flex: 1, alignItems: "center", paddingVertical: 13 }}
+              >
+                <Icon as={Bookmark} size={19} color={marked ? theme.accent : theme.ink} fill={marked ? theme.accent : "none"} />
+              </Pressable>
+            </View>
+          </Animated.View>
+        </>
+      ) : null}
+
+      {/* Sheets */}
+      {sheet === "contents" ? (
+        <ContentsSheet
+          theme={theme}
+          chapters={chapters}
+          currentId={current.id}
+          startPages={startPages}
+          bookmarks={bookmarks}
+          pageOfBookmark={pageOfBookmark}
+          tab={contentsTab}
+          onTab={setContentsTab}
+          onOpenChapter={(id) => goTo(id, 0)}
+          onOpenBookmark={(b) => goTo(b.chapter_id, b.scroll_fraction)}
+          onDeleteBookmark={(id) => deleteBookmark.mutate(id)}
+          onClose={() => setSheet(null)}
+        />
+      ) : null}
+      {sheet === "search" ? <SearchSheet theme={theme} chapters={chapters} onOpenHit={(id, f) => goTo(id, f)} onClose={() => setSheet(null)} /> : null}
+      {sheet === "settings" ? (
+        <SettingsSheet
+          theme={theme}
+          themeId={themeId}
+          onTheme={setThemeId}
+          fontSize={fontSize}
+          onFontSize={(n) => setFontSize(clampFontSize(n))}
+          font={font}
+          onFont={setFontPick}
+          spacing={spacing}
+          onSpacing={setSpacing}
+          justify={justify}
+          onJustify={setJustify}
+          onClose={() => setSheet(null)}
+        />
+      ) : null}
     </View>
   );
 }

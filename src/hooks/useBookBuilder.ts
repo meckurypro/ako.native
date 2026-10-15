@@ -297,3 +297,93 @@ export function useSaveBookProgress(projectId: string, userId: string | undefine
     },
   });
 }
+
+// ---------------------------------------------------------------
+// Bookmarks — a saved spot (chapter + how far down) with a short text
+// snippet so the Bookmarks list reads like Apple Books. Private to the
+// reader (RLS: own rows only). See supabase/ako_book_bookmarks.sql.
+// ---------------------------------------------------------------
+
+export interface BookBookmark {
+  id: string;
+  project_id: string;
+  chapter_id: string;
+  scroll_fraction: number;
+  snippet: string | null;
+  created_at: string;
+}
+
+export function useBookBookmarks(projectId: string | undefined, userId: string | undefined) {
+  return useQuery({
+    queryKey: ["book-bookmarks", projectId, userId],
+    queryFn: async (): Promise<BookBookmark[]> => {
+      const { data, error } = await supabase
+        .from("book_bookmarks")
+        .select("id, project_id, chapter_id, scroll_fraction, snippet, created_at")
+        .eq("project_id", projectId)
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false });
+      if (error) {
+        console.warn("book_bookmarks unavailable — has the migration run yet?", error);
+        return [];
+      }
+      return (data ?? []).map((r) => ({ ...r, scroll_fraction: Number(r.scroll_fraction) })) as BookBookmark[];
+    },
+    enabled: !!projectId && !!userId,
+  });
+}
+
+export function useAddBookBookmark(projectId: string, userId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      chapterId,
+      scrollFraction,
+      snippet,
+    }: {
+      chapterId: string;
+      scrollFraction: number;
+      snippet: string;
+    }) => {
+      if (!userId) throw new Error("Sign in to save bookmarks.");
+      const { data, error } = await supabase
+        .from("book_bookmarks")
+        .insert({
+          project_id: projectId,
+          user_id: userId,
+          chapter_id: chapterId,
+          scroll_fraction: Math.min(1, Math.max(0, scrollFraction)),
+          snippet: snippet.slice(0, 160),
+        })
+        .select("id, project_id, chapter_id, scroll_fraction, snippet, created_at")
+        .single();
+      if (error) throw error;
+      return { ...data, scroll_fraction: Number(data.scroll_fraction) } as BookBookmark;
+    },
+    // Optimistic: the ribbon fills the instant it's tapped; the refetch reconciles ids.
+    onSuccess: (created) => {
+      queryClient.setQueryData<BookBookmark[]>(["book-bookmarks", projectId, userId], (old) => [created, ...(old ?? [])]);
+    },
+  });
+}
+
+export function useDeleteBookBookmark(projectId: string, userId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (bookmarkId: string) => {
+      const { error } = await supabase.from("book_bookmarks").delete().eq("id", bookmarkId);
+      if (error) throw error;
+      return bookmarkId;
+    },
+    onMutate: async (bookmarkId) => {
+      const key = ["book-bookmarks", projectId, userId];
+      await queryClient.cancelQueries({ queryKey: key });
+      const prev = queryClient.getQueryData<BookBookmark[]>(key);
+      queryClient.setQueryData<BookBookmark[]>(key, (old) => (old ?? []).filter((b) => b.id !== bookmarkId));
+      return { prev, key };
+    },
+    onError: (_e, _id, ctx) => {
+      if (ctx) queryClient.setQueryData(ctx.key, ctx.prev);
+    },
+  });
+}

@@ -14,6 +14,7 @@ import { useProjectOwnership } from "@/hooks/useProjectOwnership";
 import { useRecordFreeProjectOpen } from "@/hooks/useProjectAccess";
 import { useBookChapters, usePublishBook } from "@/hooks/useBookBuilder";
 import { useIsProjectMember } from "@/hooks/useProjectMembers";
+import { getProjectUrl } from "@/lib/projectLinks";
 import { getEffectivePrice, isProjectFree, useHasPurchased, useProject, usePurchaseProject } from "@/hooks/useProjects";
 
 export function Book() {
@@ -61,5 +62,14 @@ export function Book() {
     );
   }
 
-  return <BookReflowReader projectId={project.id} title={project.title} chapters={ordered} userId={user?.id} />;
+  return (
+    <BookReflowReader
+      projectId={project.id}
+      title={project.title}
+      chapters={ordered}
+      userId={user?.id}
+      thumbnailUrl={project.thumbnail_url}
+      shareUrl={getProjectUrl(project)}
+    />
+  );
 }
