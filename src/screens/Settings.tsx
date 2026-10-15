@@ -5,9 +5,10 @@
 import { useLocalSearchParams } from "expo-router";
 import { LogOut, ShieldCheck } from "lucide-react-native";
 import { useEffect, useState } from "react";
-import { KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, View } from "react-native";
+import { Linking, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { KeyboardAvoider } from "@/components/ui/KeyboardAvoider";
 import { AdvancedSection } from "@/components/settings/AdvancedSection";
 import { AppearanceSection } from "@/components/settings/AppearanceSection";
 import { NotificationsSection } from "@/components/settings/NotificationsSection";
@@ -65,7 +66,7 @@ export function Settings() {
   }
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1 bg-canvas">
+    <KeyboardAvoider className="flex-1 bg-canvas">
       <ScreenHeader title="Settings" />
       <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: insets.bottom + 40 }}>
         <View className="gap-3">
@@ -91,6 +92,6 @@ export function Settings() {
           <Text className="text-sm text-ink-muted">{signOut.isPending ? "Logging out…" : "Log out"}</Text>
         </Pressable>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAvoider>
   );
 }

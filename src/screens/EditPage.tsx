@@ -3,9 +3,10 @@
 import { Camera } from "lucide-react-native";
 import { router, useLocalSearchParams, type Href } from "expo-router";
 import { useEffect, useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { KeyboardAvoider } from "@/components/ui/KeyboardAvoider";
 import { MentionTextarea } from "@/components/post/MentionTextarea";
 import { MAX_TOPICS, TopicPicker } from "@/components/post/TopicPicker";
 import { Avatar } from "@/components/ui/Avatar";
@@ -136,7 +137,7 @@ export function EditPage() {
   }
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1 bg-canvas">
+    <KeyboardAvoider className="flex-1 bg-canvas">
       <ScreenHeader title="Edit page" />
       <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }}>
         <View className="w-full max-w-md gap-5 self-center">
@@ -195,6 +196,6 @@ export function EditPage() {
           </Button>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAvoider>
   );
 }

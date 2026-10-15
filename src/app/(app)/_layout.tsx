@@ -11,13 +11,22 @@ import { AuthGate } from "@/components/nav/AuthGate";
 import { BottomNav } from "@/components/nav/BottomNav";
 import { ChromeProvider, useChrome } from "@/components/nav/ChromeProvider";
 import { ScrollToTopButton } from "@/components/nav/ScrollToTopButton";
+import { useAuth } from "@/hooks/useAuth";
 import { usePersistedQueries } from "@/hooks/usePersistedQueries";
 import { usePushLifecycle } from "@/hooks/usePushLifecycle";
+import { useRouteMemory } from "@/hooks/useRouteMemory";
 import { useTheme } from "@/theme/ThemeProvider";
 
 /** Push registration, tap routing and badge sync — signed-in only, so it lives inside the AuthGate. */
 function PushLifecycle() {
   usePushLifecycle();
+  return null;
+}
+
+/** Remembers the current screen and restores it after the OS kills the backgrounded app — see useRouteMemory. */
+function RouteMemory() {
+  const { user } = useAuth();
+  useRouteMemory(user?.id);
   return null;
 }
 
@@ -52,6 +61,7 @@ export default function AppLayout() {
     <AuthGate>
       <PersistGate>
         <PushLifecycle />
+        <RouteMemory />
         <ChromeProvider>
           <Shell />
         </ChromeProvider>

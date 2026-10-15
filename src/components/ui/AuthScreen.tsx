@@ -4,17 +4,18 @@
 // it) and tap-outside-to-dismiss, which a native form needs and a web page
 // gets for free.
 import type { ReactNode } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AuthPattern } from "./AuthPattern";
+import { KeyboardAvoider } from "@/components/ui/KeyboardAvoider";
 
 export function AuthScreen({ children }: { children: ReactNode }) {
   const insets = useSafeAreaInsets();
   return (
     <View className="flex-1 overflow-hidden bg-canvas">
       <AuthPattern />
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1">
+      <KeyboardAvoider className="flex-1">
         <ScrollView
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
@@ -29,7 +30,7 @@ export function AuthScreen({ children }: { children: ReactNode }) {
         >
           <View className="w-full max-w-sm self-center">{children}</View>
         </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardAvoider>
     </View>
   );
 }

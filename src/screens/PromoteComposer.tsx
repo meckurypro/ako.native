@@ -7,9 +7,10 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Megaphone, Pause, Play, TimerReset, XCircle } from "lucide-react-native";
 import { router, useLocalSearchParams, type Href } from "expo-router";
 import { useMemo, useState, type ReactNode } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { KeyboardAvoider } from "@/components/ui/KeyboardAvoider";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { FormField } from "@/components/ui/FormField";
@@ -217,7 +218,7 @@ export function PromoteComposer() {
   if (!isOwner) return <Notice message="You can only promote your own posts." />;
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1 bg-canvas">
+    <KeyboardAvoider className="flex-1 bg-canvas">
       <ScrollView
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
@@ -405,6 +406,6 @@ export function PromoteComposer() {
           onCancel={() => setConfirmTerminate(false)}
         />
       ) : null}
-    </KeyboardAvoidingView>
+    </KeyboardAvoider>
   );
 }

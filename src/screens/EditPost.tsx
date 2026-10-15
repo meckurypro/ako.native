@@ -5,9 +5,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Image as ImageIcon, X } from "lucide-react-native";
 import { router, useLocalSearchParams, type Href } from "expo-router";
 import { useEffect, useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
+import { Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { KeyboardAvoider } from "@/components/ui/KeyboardAvoider";
 import { HeadingColorPicker } from "@/components/post/HeadingColorPicker";
 import { MentionTextarea } from "@/components/post/MentionTextarea";
 import { MAX_TOPICS, TopicPicker } from "@/components/post/TopicPicker";
@@ -132,7 +133,7 @@ export function EditPost() {
   const saving = updatePost.isPending;
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1 bg-canvas">
+    <KeyboardAvoider className="flex-1 bg-canvas">
       <ScrollView
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
@@ -227,6 +228,6 @@ export function EditPost() {
           <Text className="text-sm font-medium text-canvas">{saving ? "Saving…" : "Save"}</Text>
         </Pressable>
       </View>
-    </KeyboardAvoidingView>
+    </KeyboardAvoider>
   );
 }

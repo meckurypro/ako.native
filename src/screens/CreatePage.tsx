@@ -4,9 +4,10 @@
 // admin kill switches, mirroring the web flow.
 import { router, useLocalSearchParams, type Href } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
+import { Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { KeyboardAvoider } from "@/components/ui/KeyboardAvoider";
 import { TopicPicker, MAX_TOPICS } from "@/components/post/TopicPicker";
 import { Button } from "@/components/ui/Button";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
@@ -168,7 +169,7 @@ export function CreatePage() {
   }
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1 bg-canvas">
+    <KeyboardAvoider className="flex-1 bg-canvas">
       <ScreenHeader title={title} />
       <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }}>
         <View className="w-full max-w-md gap-5 self-center">
@@ -302,6 +303,6 @@ export function CreatePage() {
           </Button>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAvoider>
   );
 }

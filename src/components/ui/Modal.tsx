@@ -4,11 +4,12 @@
 // (Portal), dims the screen, closes on scrim tap and on Android Back.
 // Pass `bare` when the content brings its own card chrome.
 import type { ReactNode } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView } from "react-native";
+import { Pressable, ScrollView } from "react-native";
 import Animated, { FadeIn, FadeOut, ZoomIn } from "react-native-reanimated";
 
 import { useBackDismiss } from "@/hooks/useBackDismiss";
 import { GlassScrim } from "./GlassScrim";
+import { KeyboardAvoider } from "./KeyboardAvoider";
 import { OverlayPanel, SCRIM_BOX } from "./OverlayPanel";
 import { Portal } from "./Portal";
 
@@ -44,8 +45,7 @@ export function Modal({
 
   return (
     <Portal zIndex={zIndex}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      <KeyboardAvoider
         className={`flex-1 items-center px-6 ${align === "bottom" ? "justify-end pb-4" : "justify-center"}`}
         accessibilityViewIsModal
         accessibilityRole={role === "alertdialog" ? "alert" : undefined}
@@ -75,7 +75,7 @@ export function Modal({
             )}
           </Animated.View>
         </Animated.View>
-      </KeyboardAvoidingView>
+      </KeyboardAvoider>
     </Portal>
   );
 }

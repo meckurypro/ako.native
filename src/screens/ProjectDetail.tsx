@@ -29,6 +29,7 @@ import { ProjectCard } from "@/components/project/ProjectCard";
 import { PublishMusicButton } from "@/components/music/PublishMusicButton";
 import { ProjectFaqSection } from "@/components/project/ProjectFaqSection";
 import { ProjectRail } from "@/components/project/ProjectRail";
+import { KeyboardAvoider } from "@/components/ui/KeyboardAvoider";
 import { Avatar } from "@/components/ui/Avatar";
 import { Icon } from "@/components/ui/styled";
 import { RoleTags } from "@/components/ui/RoleTags";
@@ -94,8 +95,9 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
   useMarkProjectSeen(projectId!, project?.owner?.id);
 
   return (
-    <View className="flex-1 bg-canvas">
+    <KeyboardAvoider className="flex-1 bg-canvas">
       <ScrollView
+        keyboardShouldPersistTaps="handled"
         refreshControl={refreshControl}
         ref={onScroll.listRef}
         onScroll={onScroll}
@@ -305,6 +307,6 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
       {shareSheetOpen && project ? (
         <AffiliateShareSheet projectId={project.id} projectTitle={project.title} shareUrl={shareUrl} onClose={() => setShareSheetOpen(false)} />
       ) : null}
-    </View>
+    </KeyboardAvoider>
   );
 }

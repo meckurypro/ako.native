@@ -7,9 +7,10 @@
 import { Image as ImageIcon } from "lucide-react-native";
 import { router, type Href } from "expo-router";
 import { useEffect, useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { KeyboardAvoider } from "@/components/ui/KeyboardAvoider";
 import { MentionTextarea } from "@/components/post/MentionTextarea";
 import { MAX_TOPICS, TopicPicker } from "@/components/post/TopicPicker";
 import { BookFields, EMPTY_BOOK_FIELDS, type BookFieldsValue } from "@/components/project-types/BookFields";
@@ -319,7 +320,7 @@ export function CreateProject() {
   const aspect = thumbnailRatio ? thumbnailRatio.width / thumbnailRatio.height : 16 / 9;
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1 bg-canvas">
+    <KeyboardAvoider className="flex-1 bg-canvas">
       <ScreenHeader title="New project" />
       <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }}>
         <View className="w-full max-w-md self-center">
@@ -467,6 +468,6 @@ export function CreateProject() {
           </Button>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAvoider>
   );
 }

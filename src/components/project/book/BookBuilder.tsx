@@ -3,9 +3,10 @@
 // sections, inline editor, publish.
 import { ChevronDown, ChevronUp, Image as ImageIcon, Pencil, Plus, Trash2 } from "lucide-react-native";
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
+import { Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { KeyboardAvoider } from "@/components/ui/KeyboardAvoider";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
@@ -124,7 +125,7 @@ export function BookBuilder({ projectId, project, chapters, publishBook }: BookB
   }
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1 bg-canvas">
+    <KeyboardAvoider className="flex-1 bg-canvas">
       <ScreenHeader
         title={project.title}
         bar
@@ -270,6 +271,6 @@ export function BookBuilder({ projectId, project, chapters, publishBook }: BookB
           onCancel={() => setPendingDelete(null)}
         />
       )}
-    </KeyboardAvoidingView>
+    </KeyboardAvoider>
   );
 }

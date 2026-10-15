@@ -16,9 +16,10 @@ import {
   Trash2,
 } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
+import { Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { KeyboardAvoider } from "@/components/ui/KeyboardAvoider";
 import { CourseHero } from "@/components/course/CourseHero";
 import { LessonReader } from "@/components/course/LessonReader";
 import { ProgressBar } from "@/components/course/ProgressBar";
@@ -340,7 +341,7 @@ export function Course() {
   }
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1 bg-canvas">
+    <KeyboardAvoider className="flex-1 bg-canvas">
       <ScreenHeader title={project.title} />
       <ScrollView
         keyboardShouldPersistTaps="handled"
@@ -664,6 +665,6 @@ export function Course() {
           onCancel={() => setPendingDelete(null)}
         />
       )}
-    </KeyboardAvoidingView>
+    </KeyboardAvoider>
   );
 }

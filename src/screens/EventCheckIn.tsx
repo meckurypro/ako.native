@@ -5,9 +5,10 @@ import { CameraView, useCameraPermissions, type BarcodeScanningResult } from "ex
 import { useLocalSearchParams } from "expo-router";
 import { Camera, CheckCircle2, Keyboard as KeyboardIcon, Users, XCircle } from "lucide-react-native";
 import { useCallback, useRef, useState } from "react";
-import { KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
+import { Linking, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { KeyboardAvoider } from "@/components/ui/KeyboardAvoider";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
@@ -81,7 +82,7 @@ export function EventCheckIn() {
   const showCamera = !scannedCode && mode === "camera";
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1 bg-canvas">
+    <KeyboardAvoider className="flex-1 bg-canvas">
       <ScreenHeader title="Scan tickets" />
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
         <Text className="mb-1 text-sm text-ink-muted">{project.title}</Text>
@@ -230,6 +231,6 @@ export function EventCheckIn() {
           </View>
         )}
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAvoider>
   );
 }

@@ -7,7 +7,7 @@
 // Native behaviour on top of that:
 //   • slides up / down, tracks the finger, swipe down (or flick) to dismiss
 //   • Android Back and scrim tap dismiss, always through the slide-out
-//   • keeps content above the keyboard (for sheets with inputs)
+//   • keeps content above the keyboard and shrinks to the room it leaves (sheets with inputs)
 //
 // Render conditionally — `{open && <Sheet … />}` — like every overlay.
 // Children can call `useSheet().close()` to dismiss WITH the animation (use it
@@ -18,11 +18,12 @@
 // For sheets whose content scrolls, pass dragZone="handle" and only the small
 // grabber at the top starts a drag, so the inner list keeps its own scrolling.
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, View, useWindowDimensions } from "react-native";
+import { Pressable, View, useWindowDimensions } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   Easing,
   interpolate,
+  useAnimatedKeyboard,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -61,7 +62,10 @@ interface SheetProps {
   heightRatio?: number;
   /** Corner radius of the top edge. */
   radius?: "2xl" | "3xl";
-  /** Lift above the keyboard — for sheets containing text inputs. */
+  /**
+   * Lift above the keyboard and shrink to the room it leaves. On by default — any sheet can end up
+   * hosting an input (search boxes, amounts, quotes), and a no-op when the keyboard is hidden.
+   */
   avoidKeyboard?: boolean;
   /** Layer tier; default 50 (modals are 60). */
   zIndex?: number;
@@ -84,13 +88,14 @@ export function Sheet({
   maxHeightRatio = 0.9,
   heightRatio,
   radius = "2xl",
-  avoidKeyboard = false,
+  avoidKeyboard = true,
   zIndex = 50,
   scrim = "canvas",
   accessibilityLabel,
 }: SheetProps) {
   const insets = useSafeAreaInsets();
   const { height: windowH } = useWindowDimensions();
+  const keyboard = useAnimatedKeyboard({ isStatusBarTranslucentAndroid: true });
 
   // 0 = fully open, panelH = fully off-screen. Start off-screen and slide in.
   const panelH = useSharedValue(windowH);
@@ -135,6 +140,15 @@ export function Sheet({
   );
 
   const panelStyle = useAnimatedStyle(() => ({ transform: [{ translateY: translateY.value }] }));
+  // The keyboard overlaps the bottom of the window (edge-to-edge): pad the host by its height so the
+  // panel docks on top of it, and cap the panel to what's left so its header can't be pushed off-screen.
+  const hostStyle = useAnimatedStyle(() => ({ paddingBottom: avoidKeyboard ? keyboard.height.value : 0 }));
+  const sizeStyle = useAnimatedStyle(() => {
+    const room = windowH - (avoidKeyboard ? keyboard.height.value : 0) - insets.top - 12;
+    return heightRatio ? { height: Math.min(windowH * heightRatio, room) } : { maxHeight: Math.min(windowH * maxHeightRatio, room) };
+  });
+  // The keyboard already clears the bottom edge, so the safe-area padding is dropped while it is up.
+  const safeBottomStyle = useAnimatedStyle(() => ({ paddingBottom: avoidKeyboard && keyboard.height.value > 0 ? 0 : insets.bottom }));
   const scrimStyle = useAnimatedStyle(() => ({
     opacity: interpolate(translateY.value, [0, Math.max(panelH.value, 1)], [1, 0], "clamp"),
   }));
@@ -155,18 +169,15 @@ export function Sheet({
         if (first) translateY.value = withTiming(0, { duration: SLIDE_MS, easing: EASE });
       }}
       style={[
-        {
-          width: "100%",
-          maxWidth: MAX_WIDTH,
-          ...(heightRatio ? { height: windowH * heightRatio } : { maxHeight: windowH * maxHeightRatio }),
-        },
+        { width: "100%", maxWidth: MAX_WIDTH },
+        sizeStyle,
         panelStyle,
       ]}
       className={`border-t border-border bg-surface ${radius === "3xl" ? "rounded-t-3xl" : "rounded-t-2xl"}`}
     >
       {handleVisible && dragZone === "handle" ? <GestureDetector gesture={pan}>{grabber}</GestureDetector> : null}
       {handleVisible && dragZone === "sheet" ? grabber : null}
-      <View style={{ paddingBottom: insets.bottom, flex: heightRatio ? 1 : undefined, flexShrink: 1 }}>{children}</View>
+      <Animated.View style={[{ flex: heightRatio ? 1 : undefined, flexShrink: 1 }, safeBottomStyle]}>{children}</Animated.View>
     </Animated.View>
   );
 
@@ -175,10 +186,9 @@ export function Sheet({
   return (
     <Portal zIndex={zIndex}>
       <SheetContext.Provider value={ctx}>
-        <KeyboardAvoidingView
-          enabled={avoidKeyboard}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        <Animated.View
           className="flex-1 items-center justify-end"
+          style={hostStyle}
           accessibilityViewIsModal
           accessibilityLabel={accessibilityLabel}
         >
@@ -188,7 +198,7 @@ export function Sheet({
           </Animated.View>
 
           {dragZone === "sheet" ? <GestureDetector gesture={pan}>{panel}</GestureDetector> : panel}
-        </KeyboardAvoidingView>
+        </Animated.View>
       </SheetContext.Provider>
     </Portal>
   );

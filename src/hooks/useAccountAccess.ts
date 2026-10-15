@@ -17,6 +17,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { unregisterPushToken } from "../lib/push";
 import { wipeSecureCache } from "../lib/secureDb";
+import { clearRouteMemory } from "./useRouteMemory";
 import { useAuth } from "./useAuth";
 
 export type AccountStatus = "pending" | "approved" | "declined" | "suspended";
@@ -115,6 +116,7 @@ export function useSignOut() {
       // Detach this device from the account while the session can still satisfy RLS (best-effort, time-boxed).
       await unregisterPushToken();
       await wipeSecureCache(); // cached lists belong to the account that is leaving
+      clearRouteMemory(); // and so does "where I was"
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
     },

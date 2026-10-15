@@ -3,9 +3,10 @@
 // body, and an optional docked footer (the web's `fixed bottom-0` action bar)
 // that rides above the keyboard and respects the bottom safe area.
 import type { ReactNode } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { KeyboardAvoider } from "@/components/ui/KeyboardAvoider";
 import { AuthPattern } from "@/components/ui/AuthPattern";
 
 interface OnboardingScreenProps {
@@ -24,7 +25,7 @@ export function OnboardingScreen({ children, footer, centered = false, maxWidth 
   return (
     <View className="flex-1 overflow-hidden bg-canvas">
       <AuthPattern />
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1">
+      <KeyboardAvoider className="flex-1">
         <ScrollView
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
@@ -45,7 +46,7 @@ export function OnboardingScreen({ children, footer, centered = false, maxWidth 
             <View style={{ width: "100%", maxWidth, alignSelf: "center" }}>{footer}</View>
           </View>
         ) : null}
-      </KeyboardAvoidingView>
+      </KeyboardAvoider>
     </View>
   );
 }

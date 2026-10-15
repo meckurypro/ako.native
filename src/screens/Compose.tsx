@@ -7,9 +7,10 @@ import { Image as ImageIcon, Link2, Music as MusicIcon, MoreHorizontal, X } from
 import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams, type Href } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
+import { Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { KeyboardAvoider } from "@/components/ui/KeyboardAvoider";
 import { AddMusicSheet } from "@/components/music/AddMusicSheet";
 import { HeadingColorPicker } from "@/components/post/HeadingColorPicker";
 import { MentionTextarea } from "@/components/post/MentionTextarea";
@@ -212,7 +213,7 @@ export function Compose() {
   }
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1 bg-canvas">
+    <KeyboardAvoider className="flex-1 bg-canvas">
       <ScrollView
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
@@ -459,6 +460,6 @@ export function Compose() {
           </View>
         </Modal>
       ) : null}
-    </KeyboardAvoidingView>
+    </KeyboardAvoider>
   );
 }
