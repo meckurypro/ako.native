@@ -1,5 +1,6 @@
 // src/hooks/usePushLifecycle.ts
 // Everything push-related that must run while a user is signed in; mounted once in the (app) layout.
+//   • first-run ask  – offer the OS permission prompt once, shortly after the first signed-in session starts
 //   • registration   – mint the Expo token and attach it to the account (only once the OS permission is granted)
 //   • tap routing    – open the right screen when a notification is tapped (background, killed, or tray)
 //   • live refresh   – a push that arrives in the foreground refreshes the matching lists
@@ -12,11 +13,12 @@ import { AppState } from "react-native";
 
 import { notificationAction, parsePushData, type PushTapData } from "../lib/notificationRoute";
 import { getExpoPushToken, registerPushToken } from "../lib/push";
-import { refreshPushPermission, usePushPermission } from "../lib/pushPermissionStore";
+import { askForPushPermission, refreshPushPermission, usePushPermission } from "../lib/pushPermissionStore";
+import { describePushError, setPushStatus } from "../lib/pushStatusStore";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "./useAuth";
-import { useUnreadConversationCount } from "./useMessaging";
-import { enrichNotifications, useUnreadCount, type NotificationWithActor } from "./useNotifications";
+import { useConversations } from "./useMessaging";
+import { enrichNotifications, useNotifications, type NotificationWithActor } from "./useNotifications";
 
 /** Re-register at most this often per (user, token): enough to keep push_tokens.last_seen_at fresh, without an RPC on every resume. */
 const REREGISTER_AFTER_MS = 6 * 60 * 60 * 1000;
@@ -40,13 +42,20 @@ export function usePushRegistration() {
     (async () => {
       try {
         const token = await getExpoPushToken();
-        if (!token || cancelled) return;
+        if (!token) {
+          if (!cancelled) setPushStatus({ tokenPreview: null, registered: false, error: "No push token on this device (emulators can't receive pushes)." });
+          return;
+        }
+        if (cancelled) return;
         const key = `${user.id}:${token}`;
         const last = lastRegistered.get(key);
         if (last && Date.now() - last < REREGISTER_AFTER_MS) return;
         await registerPushToken(token);
         lastRegistered.set(key, Date.now());
+        if (!cancelled) setPushStatus({ tokenPreview: `${token.slice(0, 22)}…`, registered: true, error: null });
       } catch (e) {
+        // On a release/preview APK nobody sees the console — surface it in Settings → Notifications.
+        if (!cancelled) setPushStatus({ registered: false, error: describePushError(e) });
         if (__DEV__) console.warn("[push] token registration failed", e);
       }
     })();
@@ -54,6 +63,29 @@ export function usePushRegistration() {
       cancelled = true;
     };
   }, [user?.id, status]);
+}
+
+const ASKED_KEY = "ako-push-first-ask-done";
+const FIRST_ASK_DELAY_MS = 2500;
+
+/**
+ * Notification permission used to be asked ONLY from a dismissible card on the Notifications screen, so most
+ * people never granted it and never got a push. Ask once, a moment after the first signed-in session starts
+ * (not at cold-launch, not before sign-in). Later asks stay with the card / Settings.
+ */
+export function useFirstRunPushAsk() {
+  const { user } = useAuth();
+  const { status, canAskAgain, loaded } = usePushPermission();
+
+  useEffect(() => {
+    if (!user || !loaded || status !== "undetermined" || !canAskAgain) return;
+    if (localStorage.getItem(ASKED_KEY)) return;
+    const timer = setTimeout(() => {
+      localStorage.setItem(ASKED_KEY, "1");
+      void askForPushPermission();
+    }, FIRST_ASK_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [user?.id, loaded, status, canAskAgain]);
 }
 
 async function openFromPush(data: NonNullable<PushTapData>): Promise<void> {
@@ -136,17 +168,23 @@ export function useForegroundPushRefresh() {
 
 export function useBadgeSync() {
   const { status } = usePushPermission();
-  const unreadNotifications = useUnreadCount();
-  const unreadConversations = useUnreadConversationCount();
-  const total = unreadNotifications + unreadConversations;
+  const notifications = useNotifications();
+  const conversations = useConversations();
+
+  // Don't touch the badge until BOTH lists have actually been fetched this session. The counts are 0 while
+  // loading (and the persisted cache can be stale), and on Android setBadgeCountAsync(0) clears the whole
+  // notification tray — so syncing early would wipe pending notifications the user hasn't seen.
+  const ready = notifications.isFetchedAfterMount && conversations.isFetchedAfterMount && notifications.isSuccess && conversations.isSuccess;
+  const total = (notifications.data?.filter((n) => !n.read_at).length ?? 0) + (conversations.data?.filter((c) => c.unread).length ?? 0);
 
   useEffect(() => {
-    if (status !== "granted") return;
+    if (status !== "granted" || !ready) return;
     Notifications.setBadgeCountAsync(total).catch(() => {});
-  }, [status, total]);
+  }, [status, ready, total]);
 }
 
 export function usePushLifecycle() {
+  useFirstRunPushAsk();
   usePushRegistration();
   usePushNavigation();
   useForegroundPushRefresh();

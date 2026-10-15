@@ -30,7 +30,8 @@
         "android.permission.WRITE_CALENDAR",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.POST_NOTIFICATIONS"
       ],
       "googleServicesFile": "./google-services.json"
     },
@@ -70,11 +71,7 @@
         {
           "icon": "./assets/notifications/notification-icon.png",
           "color": "#3D5A45",
-          "defaultChannel": "default",
-          "sounds": [
-            "./assets/notifications/ako_message.wav",
-            "./assets/notifications/ako_activity.wav"
-          ]
+          "defaultChannel": "general_v2"
         }
       ],
       [

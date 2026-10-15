@@ -11,6 +11,7 @@ import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
+import { CHANNEL_MESSAGES, ensureNotificationChannels } from "./notificationChannels";
 import { supabase } from "./supabase";
 
 export type PushPermissionStatus = "granted" | "denied" | "undetermined";
@@ -91,4 +92,18 @@ export async function dismissPresentedWhere(predicate: (data: Record<string, unk
   } catch {
     /* tray bookkeeping is cosmetic */
   }
+}
+
+/**
+ * Fires a LOCAL notification a few seconds from now through the real "messages" channel. It exercises the
+ * channel's sound, vibration, heads-up banner and the tray without involving the server, so it separates
+ * "this phone can't show notifications" (permission / channel / Do Not Disturb) from "pushes aren't
+ * reaching this phone" (FCM / Expo credentials). Lock the screen or leave the app to see the tray path.
+ */
+export async function scheduleLocalTestNotification(delaySeconds = 5): Promise<void> {
+  await ensureNotificationChannels();
+  await Notifications.scheduleNotificationAsync({
+    content: { title: "Akọ", body: "Test notification — if you see and hear this, alerts work on this phone.", sound: "default", data: { type: "test" } },
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: delaySeconds, channelId: CHANNEL_MESSAGES },
+  });
 }

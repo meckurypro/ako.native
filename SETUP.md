@@ -27,6 +27,24 @@ eas env:set --name EXPO_PUBLIC_APP_URL --value https://ako-lime.vercel.app --env
 Repo Settings > Secrets and variables > Actions > New secret: `EXPO_TOKEN`
 (token from expo.dev > Account settings > Access tokens).
 
+## 4b. Push notifications (Android) — required, one-time
+`google-services.json` only configures the *app*. For Expo's push service to deliver to Android it also needs a
+Firebase **service-account key (FCM V1)** uploaded to EAS. Without it every push fails at Expo with
+`InvalidCredentials: Unable to retrieve the FCM server key` and the phone shows nothing (no tray, sound, vibration or badge).
+
+1. Firebase console → project **ako-by-meckury** → Project settings → **Service accounts** → *Generate new private key* (downloads a JSON).
+2. Upload it to EAS:
+   ```sh
+   eas credentials -p android
+   # → production → Google Service Account → Manage your Google Service Account Key for Push Notifications (FCM V1)
+   # → Set up a Google Service Account Key for Push Notifications (FCM V1) → Upload a new service account key
+   ```
+   (Or expo.dev → project → Credentials → Android → *Service Credentials* → FCM V1.) Don't commit the JSON.
+3. No rebuild is needed for this step — it takes effect on the next push. Re-run `eas credentials -p android` to confirm the key shows as assigned.
+
+Android channels are versioned (`messages_v2`, `activity_v2`, `general_v2`); the edge functions target the same ids. See `src/lib/notificationChannels.ts`.
+To verify on a phone: Settings → Notifications → **Send a test notification** (local; checks permission, sound, vibration, tray), and check the *Push status* line there.
+
 ## 5. Build the APK (once, and again after any native change)
 ```sh
 npm run build:apk
