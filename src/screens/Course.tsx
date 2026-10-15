@@ -29,6 +29,7 @@ import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useProjectOwnership } from "@/hooks/useProjectOwnership";
 import { useRecordFreeProjectOpen } from "@/hooks/useProjectAccess";
 import {
   useAddLesson,
@@ -145,11 +146,14 @@ export function Course() {
   const { user } = useAuth();
 
   const { data: project } = useProject(projectId);
-  const isOwner = !!user && project?.owner_id === user.id;
+  const ownership = useProjectOwnership();
+  const isOwner = ownership.isOwner(project);
+  // The creator opening their own free project isn't a reader, whichever identity they're acting as.
+  const isCreator = !!user && project?.owner_id === user.id;
   const isFree = !!project && isProjectFree(project);
   const hasPurchasedQuery = useHasPurchased(projectId ?? "");
   const hasAccess = isOwner || isFree || !!hasPurchasedQuery.data;
-  useRecordFreeProjectOpen(project, { isOwner });
+  useRecordFreeProjectOpen(project, { isOwner: isCreator });
 
   const { data: modules } = useCourseModules(projectId);
   const progressQuery = useCourseProgress(projectId, user?.id);

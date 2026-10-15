@@ -61,6 +61,7 @@ import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import { MediaViewer } from "@/components/post/MediaViewer";
 import { useIsRestricted } from "@/hooks/useAccountAccess";
 import { useAuth } from "@/hooks/useAuth";
+import { useProjectOwnership } from "@/hooks/useProjectOwnership";
 import { useContactNickname } from "@/hooks/useContactNicknames";
 import { useCancelFollowRequest, useHasPendingFollowRequest, useIncomingFollowRequestCount, useSendFollowRequest } from "@/hooks/useFollowRequests";
 import { useStartConversation } from "@/hooks/useMessaging";
@@ -167,6 +168,11 @@ export function ProfilePage() {
 
   const isOwnProfile = user?.id === profile?.id;
   const showOwnerView = isOwnProfile && !previewingAsVisitor;
+  // Projects on this profile are the PERSON's. While acting as a Page, the
+  // Page is a different account, so they read as another user's content: no
+  // owner controls and no drafts/archived — same as any visitor.
+  const { actingAsPageId, loading: identityLoading } = useProjectOwnership();
+  const projectsOwnerView = showOwnerView && !identityLoading && !actingAsPageId;
   const isFollowing = !!isFollowingQuery.data;
   const isFollowedByUser = !!isFollowedByUserQuery.data;
   const hasPendingRequest = !!hasPendingRequestQuery.data;
@@ -177,7 +183,7 @@ export function ProfilePage() {
   const isPrivateLocked = !!profile?.is_private && !showOwnerView && !isFollowing;
 
   const accountId = isPrivateLocked ? undefined : profile?.id;
-  const { data: projects, refetch: refetchProjects } = useUserProjects(isPrivateLocked ? "" : profile?.id ?? "", showOwnerView);
+  const { data: projects, refetch: refetchProjects } = useUserProjects(isPrivateLocked ? "" : profile?.id ?? "", projectsOwnerView);
   const { data: posts, refetch: refetchPosts } = useUserPostsWithArchived(isPrivateLocked || restricted ? "" : profile?.id ?? "", false);
   const { data: portfolioCategories, refetch: refetchPortfolio } = usePortfolioCategories(accountId);
   const { data: categorizedProjectIds, refetch: refetchCategorizedIds } = useCategorizedProjectIds(accountId);
@@ -249,7 +255,7 @@ export function ProfilePage() {
 
     // Restricted account with no projects → no tab bar, just the empty message.
     if (tabDefs.length === 0) {
-      return [...base, { kind: "message", id: "no-projects", text: showOwnerView ? "No projects yet — publish your first one." : "No projects yet." }];
+      return [...base, { kind: "message", id: "no-projects", text: projectsOwnerView ? "No projects yet — publish your first one." : "No projects yet." }];
     }
 
     const out: Row[] = [...base, { kind: "tabs" }];
@@ -262,7 +268,7 @@ export function ProfilePage() {
       out.push({ kind: "grid", id: "media", projects: mediaProjects });
     } else if (id === "projects") {
       if (fallbackProjects && fallbackProjects.length > 0) out.push({ kind: "grid", id: "projects", projects: fallbackProjects });
-      else out.push({ kind: "message", id: "no-projects", text: showOwnerView ? "No projects yet — publish your first one." : "No projects yet." });
+      else out.push({ kind: "message", id: "no-projects", text: projectsOwnerView ? "No projects yet — publish your first one." : "No projects yet." });
     } else if (id.startsWith("type-")) {
       if (typeLoading) return out;
       if (!typeProjects || typeProjects.length === 0) out.push({ kind: "message", id: "empty-type", text: "Nothing here yet." });
@@ -276,7 +282,7 @@ export function ProfilePage() {
       }
     }
     return out;
-  }, [isBlocked, isPrivateLocked, tabDefs.length, activeDef?.id, posts, mediaProjects, fallbackProjects, typeProjects, typeLoading, categoryProjects, categoryGigs, categoryLoading, showOwnerView]);
+  }, [isBlocked, isPrivateLocked, tabDefs.length, activeDef?.id, posts, mediaProjects, fallbackProjects, typeProjects, typeLoading, categoryProjects, categoryGigs, categoryLoading, projectsOwnerView]);
 
   // ── actions ──
   function startUnfollow() {
@@ -574,7 +580,7 @@ export function ProfilePage() {
       case "grid":
         return (
           <View className="px-4 pt-4">
-            <ProjectCardList projects={item.projects} isOwnerView={showOwnerView} />
+            <ProjectCardList projects={item.projects} isOwnerView={projectsOwnerView} />
           </View>
         );
       case "gigs":

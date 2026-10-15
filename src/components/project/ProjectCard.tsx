@@ -52,6 +52,7 @@ import { useToast } from "@/components/ui/Toast";
 import { UnlockReveal } from "@/components/ui/UnlockReveal";
 import { useAffiliateProgram } from "@/hooks/useAffiliates";
 import { useAuth } from "@/hooks/useAuth";
+import { useProjectOwnership } from "@/hooks/useProjectOwnership";
 import { useStartConversation } from "@/hooks/useMessaging";
 import { useProjectAccessCount, useLogFreeProjectAccess } from "@/hooks/useProjectAccess";
 import { useIsProjectMember } from "@/hooks/useProjectMembers";
@@ -135,7 +136,10 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, shareUrl, visible
   const { user } = useAuth();
   const { colors, resolvedTheme } = useTheme();
   const toast = useToast();
-  const isOwner = isOwnerView ?? user?.id === project.owner_id;
+  // Ownership is judged against the identity being acted as: a project created
+  // personally is NOT a Page's own, even though owner_id is the same user.
+  const ownership = useProjectOwnership();
+  const isOwner = isOwnerView ?? ownership.isOwner(project);
   const isArchivedFrozen = isOwner && project.status === "archived";
   const isFree = isProjectFree(project);
   const showPromo = hasActivePromo(project);

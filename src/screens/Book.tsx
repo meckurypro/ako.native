@@ -10,6 +10,7 @@ import { BookLockedView } from "@/components/project/book/BookLockedView";
 import { BookReflowReader } from "@/components/project/book/BookReflowReader";
 import { Text } from "@/components/ui/Text";
 import { useAuth } from "@/hooks/useAuth";
+import { useProjectOwnership } from "@/hooks/useProjectOwnership";
 import { useRecordFreeProjectOpen } from "@/hooks/useProjectAccess";
 import { useBookChapters, usePublishBook } from "@/hooks/useBookBuilder";
 import { useIsProjectMember } from "@/hooks/useProjectMembers";
@@ -20,13 +21,15 @@ export function Book() {
   const { user } = useAuth();
 
   const { data: project } = useProject(projectId);
-  const isOwner = !!user && project?.owner_id === user.id;
+  const ownership = useProjectOwnership();
+  const isOwner = ownership.isOwner(project);
+  const isCreator = !!user && project?.owner_id === user.id;
   const isFree = !!project && isProjectFree(project);
   const hasPurchasedQuery = useHasPurchased(projectId ?? "");
   const isMemberQuery = useIsProjectMember(projectId ?? "", project?.is_private ?? false);
   const privacyBlocked = !!project?.is_private && !isOwner && !isMemberQuery.data;
   const hasAccess = !privacyBlocked && (isOwner || isFree || !!hasPurchasedQuery.data);
-  useRecordFreeProjectOpen(project, { isOwner, enabled: !privacyBlocked });
+  useRecordFreeProjectOpen(project, { isOwner: isCreator, enabled: !privacyBlocked });
 
   const { data: chapters } = useBookChapters(projectId);
   const publishBook = usePublishBook(projectId ?? "");

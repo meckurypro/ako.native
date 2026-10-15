@@ -17,7 +17,7 @@ import { RoomChat } from "@/components/room/RoomChat";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
-import { useAuth } from "@/hooks/useAuth";
+import { useProjectOwnership } from "@/hooks/useProjectOwnership";
 import { formatCountdown, useCountdown } from "@/hooks/useCountdown";
 import { useSmartBack } from "@/hooks/useSmartBack";
 import { useProject } from "@/hooks/useProjects";
@@ -30,9 +30,9 @@ export function Room() {
   const insets = useSafeAreaInsets();
   const smartBack = useSmartBack();
   const keyboard = useAnimatedKeyboard({ isStatusBarTranslucentAndroid: true });
-  const { user } = useAuth();
   const { data: project } = useProject(projectId);
-  const isOwner = !!user && project?.owner_id === user.id;
+  const ownership = useProjectOwnership();
+  const isOwner = ownership.isOwner(project);
 
   const { data: isMember } = useIsRoomMember(projectId);
   const { data: isHostQuery } = useIsRoomHost(projectId);

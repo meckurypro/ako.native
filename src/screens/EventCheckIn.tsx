@@ -12,7 +12,7 @@ import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useToast } from "@/components/ui/Toast";
-import { useAuth } from "@/hooks/useAuth";
+import { useProjectOwnership } from "@/hooks/useProjectOwnership";
 import { useCheckInTicket, useEventTicketHolders, useTicketByCode } from "@/hooks/useEventTickets";
 import { useProject } from "@/hooks/useProjects";
 import { haptics } from "@/lib/haptics";
@@ -24,9 +24,9 @@ export function EventCheckIn() {
   const insets = useSafeAreaInsets();
   const toast = useToast();
   const { colors } = useTheme();
-  const { user } = useAuth();
   const { data: project } = useProject(projectId);
-  const isOwner = !!user && project?.owner_id === user.id;
+  const ownership = useProjectOwnership();
+  const isOwner = ownership.isOwner(project);
 
   const [permission, requestPermission] = useCameraPermissions();
   const [mode, setMode] = useState<"camera" | "manual">("camera");
@@ -61,7 +61,7 @@ export function EventCheckIn() {
     setManualCode("");
   }
 
-  if (!project) {
+  if (!project || ownership.loading) {
     return (
       <View className="flex-1 items-center justify-center bg-canvas">
         <Text className="text-ink-muted">Loading…</Text>

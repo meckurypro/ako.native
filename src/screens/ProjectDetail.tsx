@@ -36,6 +36,7 @@ import { Text } from "@/components/ui/Text";
 import { TierBadge } from "@/components/ui/TierBadge";
 import { useAffiliateProgram } from "@/hooks/useAffiliates";
 import { useAuth } from "@/hooks/useAuth";
+import { useProjectOwnership } from "@/hooks/useProjectOwnership";
 import { useRecordFreeProjectOpen } from "@/hooks/useProjectAccess";
 import { formatCountdown, useCountdown } from "@/hooks/useCountdown";
 import { useMarkProjectSeen } from "@/hooks/useMarkProjectSeen";
@@ -63,8 +64,10 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
   const { data: gigDetails, refetch: refetchGig } = useGigDetails(project?.project_type === "gig" ? projectId : undefined);
   const { data: gigSamples, refetch: refetchGigSamples } = useGigSamples(project?.project_type === "gig" ? projectId : undefined);
   const { data: featuringGigs, refetch: refetchFeaturingGigs } = useGigsFeaturingProject(project && project.project_type !== "gig" ? projectId : undefined);
-  const isOwner = !!user && !!project && project.owner.id === user.id;
-  useRecordFreeProjectOpen(project, { isOwner });
+  const ownership = useProjectOwnership();
+  const isOwner = ownership.isOwner(project);
+  const isCreator = !!user && !!project && project.owner.id === user.id;
+  useRecordFreeProjectOpen(project, { isOwner: isCreator });
   const eventCountdownMs = useCountdown(project?.project_type === "event" ? eventDetails?.event_date : undefined);
 
   const { data: affiliateProgram, refetch: refetchAffiliate } = useAffiliateProgram(project && project.project_type !== "pitch" ? project.id : undefined);

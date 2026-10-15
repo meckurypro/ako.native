@@ -31,6 +31,7 @@ import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { Icon, Image } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useAffiliateProgram } from "@/hooks/useAffiliates";
+import { useProjectOwnership } from "@/hooks/useProjectOwnership";
 import { useRoomDetails } from "@/hooks/useRoom";
 import { useBookDetails, useEventDetails, useGigDetails, useGigSamples, useMediaDetails, useMeetingDetails, usePitchDetails } from "@/hooks/useProjectTypeDetails";
 import { PROJECT_TYPE_LABELS, useProject, useProjectTopics, useUpdateProject, type ProjectStatus } from "@/hooks/useProjects";
@@ -51,6 +52,7 @@ export function EditProject() {
   const insets = useSafeAreaInsets();
 
   const { data: project, isLoading } = useProject(projectId);
+  const ownership = useProjectOwnership();
   const [manageAccessOpen, setManageAccessOpen] = useState(false);
   const [affiliateSheetOpen, setAffiliateSheetOpen] = useState(false);
   const [linkSheetOpen, setLinkSheetOpen] = useState(false);
@@ -371,10 +373,27 @@ export function EditProject() {
     }
   }
 
-  if (isLoading || !project || !typeDetailsHydrated) {
+  if (isLoading || !project || !typeDetailsHydrated || ownership.loading) {
     return (
       <View className="flex-1 items-center justify-center bg-canvas">
         <Text className="text-ink-muted">Loading…</Text>
+      </View>
+    );
+  }
+
+  // A Page is its own account: while acting as one, a project published from
+  // the person's own profile (or another Page) is someone else's content and
+  // can't be edited from here — switch accounts first. (Server RLS is still the
+  // real gate; this keeps the UI from offering what it shouldn't.)
+  if (!ownership.isOwner(project)) {
+    return (
+      <View className="flex-1 items-center justify-center gap-4 bg-canvas px-6">
+        <Text className="text-center text-ink-muted">
+          {ownership.actingAsPageId
+            ? "This project wasn't published by the Page you're acting as. Switch to the account that published it to edit it."
+            : "You can't edit this project."}
+        </Text>
+        <Button onPress={() => router.back()}>Go back</Button>
       </View>
     );
   }

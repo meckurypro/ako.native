@@ -384,7 +384,7 @@ export function PagePage() {
               case "projects":
                 return (
                   <View className="p-4">
-                    <ProjectCardList projects={projects ?? []} isOwnerView={isMember} />
+                    <ProjectCardList projects={projects ?? []} isOwnerView={isMember && (identity?.mode !== "page" || isActiveHere)} />
                   </View>
                 );
               case "message":
