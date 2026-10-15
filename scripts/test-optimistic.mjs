@@ -13,11 +13,12 @@ const ts = require(path.join(root, "node_modules/typescript"));
 const rq = require(path.join(root, "node_modules/@tanstack/react-query"));
 
 const calls = [];
+let nextInsertError = null; // set to {code:"23505"} to simulate the unique index rejecting a repeat insert
 const fakeSupabase = {
   from: (table) => {
     const rec = { table, filters: [] };
     const chain = {
-      insert: (row) => { calls.push({ ...rec, op: "insert", row }); return Promise.resolve({ error: null }); },
+      insert: (row) => { calls.push({ ...rec, op: "insert", row }); const error = nextInsertError; nextInsertError = null; return Promise.resolve({ error }); },
       delete: () => { rec.op = "delete"; return chain; },
       eq: (c, v) => { rec.filters.push([c, v]); return chain; },
       is: (c, v) => { rec.filters.push([c, v]); return chain; },
@@ -129,6 +130,28 @@ await test("OFFLINE: queued like is paused, persisted, survives a 'kill', and re
   assert.equal(calls.length, 1); assert.equal(calls[0].op, "insert"); assert.equal(calls[0].row.post_id, "p1");
   assert.equal(qc2.getQueryData(["feed-posts", "ranked", "u1", 0])[0].like_count, 6);
   assert.deepEqual(qc2.getQueryData(om.myReactionKey(i)), { id: "confirmed" });
+});
+
+await test("share on a post patches share_count (the Reshare number); project dislike/share patch nothing", async () => {
+  const qc = mkClient(); calls.length = 0;
+  qc.setQueryData(["feed-posts", "x"], [{ id: "p1", like_count: 1, dislike_count: 0, share_count: 4 }], { updatedAt: 1 });
+  await run(qc, intent({ type: "share", queuedAt: 100 }));
+  assert.equal(qc.getQueryData(["feed-posts", "x"])[0].share_count, 5);
+  qc.setQueryData(["user-projects", "x"], [{ id: "pr1", like_count: 2, dislike_count: 0 }], { updatedAt: 1 });
+  await run(qc, intent({ targetType: "project", targetId: "pr1", type: "dislike", queuedAt: 100 }));
+  assert.equal(qc.getQueryData(["user-projects", "x"])[0].dislike_count, 0);
+  await run(qc, intent({ targetType: "project", targetId: "pr1", type: "like", queuedAt: 100 }));
+  assert.equal(qc.getQueryData(["user-projects", "x"])[0].like_count, 3);
+});
+
+await test("duplicate insert (unique violation) is a success but does NOT bump the count", async () => {
+  const qc = mkClient(); seedFeed(qc);
+  const i = intent({ queuedAt: 100 });
+  qc.setQueryData(om.myReactionKey(i), null);
+  nextInsertError = { code: "23505" };
+  await run(qc, i);
+  assert.equal(qc.getQueryData(["feed-posts", "ranked", "u1", 0])[0].like_count, 5);
+  assert.deepEqual(qc.getQueryData(om.myReactionKey(i)), { id: "confirmed" });
 });
 
 await test("only allow-listed idempotent mutations are persisted", () => {

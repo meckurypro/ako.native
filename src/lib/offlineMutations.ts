@@ -63,7 +63,17 @@ export interface CommentReactionState {
 }
 
 const COLUMN_FOR = { post: "post_id", project: "project_id" } as const;
-const COUNT_FIELD: Partial<Record<ReactionType, string>> = { like: "like_count", dislike: "dislike_count" };
+/**
+ * Which stored counter the DATABASE TRIGGERS move for a reaction (handle_reaction_counts / handle_project_reaction):
+ * posts count like, dislike AND share (share_count is the number on the Reshare button); comments count like/dislike;
+ * projects count ONLY likes. Patching anything else would show a number the server never produces.
+ */
+function postCountField(type: ReactionType): string | undefined {
+  return type === "like" ? "like_count" : type === "dislike" ? "dislike_count" : type === "share" ? "share_count" : undefined;
+}
+function countFieldFor(i: Pick<ReactionIntent, "targetType" | "type">): string | undefined {
+  return i.targetType === "project" ? (i.type === "like" ? "like_count" : undefined) : postCountField(i.type);
+}
 
 export const reactionScope = (i: Pick<ReactionIntent, "targetType" | "targetId" | "type" | "actingAsPageId">) =>
   `reaction:${i.targetType}:${i.targetId}:${i.type}:${i.actingAsPageId ?? "self"}`;
@@ -82,14 +92,15 @@ function shouldRetry(failureCount: number, error: unknown): boolean {
 
 // ─── reactions ───────────────────────────────────────────────────────────────
 
-async function sendReaction(i: ReactionIntent): Promise<void> {
+/** Resolves to true when a NEW row was inserted (the server counted it), false when it already existed. */
+async function sendReaction(i: ReactionIntent): Promise<boolean> {
   const column = COLUMN_FOR[i.targetType];
   if (!i.active) {
     let q = supabase.from("reactions").delete().eq(column, i.targetId).eq("user_id", i.userId).eq("type", i.type);
     q = i.actingAsPageId ? q.eq("acted_as_page_id", i.actingAsPageId) : q.is("acted_as_page_id", null);
     const { error } = await q;
     if (error) throw error;
-    return;
+    return true;
   }
   const { error } = await supabase.from("reactions").insert({
     [column]: i.targetId,
@@ -99,13 +110,16 @@ async function sendReaction(i: ReactionIntent): Promise<void> {
     acted_as_page_id: i.actingAsPageId,
   });
   if (error && error.code !== UNIQUE_VIOLATION) throw error;
+  return !error;
 }
 
-function onReactionConfirmed(qc: QueryClient, i: ReactionIntent) {
+function onReactionConfirmed(qc: QueryClient, i: ReactionIntent, inserted: boolean) {
   const key = myReactionKey(i);
   const wasActive = !!qc.getQueryData(key); // what the cache (and so the screen) considered the server state
-  const field = COUNT_FIELD[i.type];
-  const delta = (i.active ? 1 : 0) - (wasActive ? 1 : 0);
+  const field = countFieldFor(i);
+  // Insert: the trigger only counted it if a NEW row landed (a repeat hits the unique index and counts nothing).
+  // Delete: assume the cache was right about the row existing.
+  const delta = i.active ? (inserted ? 1 : 0) : wasActive ? -1 : 0;
 
   // ONE notification flush for every cache write below. The screen shows `row.like_count + overlayDelta`, where the
   // overlay delta depends on the my-reaction cache (serverActive) while the pending intent is still applied. If the
@@ -210,7 +224,7 @@ const GC_TIME = 24 * 60 * 60 * 1000;
 export function registerOfflineMutations(qc: QueryClient): void {
   qc.setMutationDefaults(REACTION_MUTATION_KEY, {
     mutationFn: (i: ReactionIntent) => sendReaction(i),
-    onSuccess: (_d: unknown, i: ReactionIntent) => onReactionConfirmed(qc, i),
+    onSuccess: (inserted: boolean, i: ReactionIntent) => onReactionConfirmed(qc, i, inserted),
     onError: (e: unknown, i: ReactionIntent) => console.error(`${i.targetType} ${i.type} failed`, e),
     retry: shouldRetry,
     gcTime: GC_TIME,

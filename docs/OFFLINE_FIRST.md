@@ -96,10 +96,12 @@ gives the identical UX at a fraction of the cost and risk. Revisit a sync engine
 
 * Everything here is verified in Node against the real `@tanstack/query-core` (`scripts/test-optimistic.mjs`: patch math,
   in-order replay, offline queue → persist → "kill" → restore → replay). **Not yet run on a phone.**
-* Server-side `like_count` maintenance (trigger) was not readable from the sandbox. The client assumes the server keeps
-  the counter in step with `reactions` rows; any refetch overwrites a local patch with server truth, so a wrong
-  assumption can only cause a brief drift, never a wrong stored value.
+* **Server counters** are maintained by DB triggers on `reactions` (`handle_reaction_counts`, `handle_project_reaction`),
+  read from the "Ako Temp" Supabase project (the connector could not see the production project, so confirm the same
+  functions exist there): posts count like / dislike / **share** (`share_count` is the Reshare number), comments count
+  like / dislike, projects count **only likes**. The client mirrors exactly that (`countFieldFor`), and only counts an
+  insert if a NEW row landed (a repeat hits the unique index and the server counts nothing). Any refetch overwrites a
+  local patch with server truth.
 * A like queued offline on a post that was deleted meanwhile fails with a DB error and silently reverts.
 * The persisted queue is replayed with the **user id captured at tap time**; if that session no longer exists the
   replay is rejected by RLS and dropped.
-* `share` reactions are queued like the others but their count isn't patched locally (its counter semantics are unclear).
