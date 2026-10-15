@@ -1,5 +1,5 @@
 // src/screens/auth/SignUp.tsx
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams, type Href } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { type TextInput, View } from "react-native";
 
@@ -12,6 +12,7 @@ import { TextLink } from "@/components/ui/TextLink";
 import { Wordmark } from "@/components/ui/Wordmark";
 import { setPendingAddAccount } from "@/lib/accountSessions";
 import { authRedirectUrl } from "@/lib/authLink";
+import { rememberReturnTo, safeReturnPath } from "@/lib/authRedirect";
 import { supabase } from "@/lib/supabase";
 
 type UsernameStatus = "idle" | "checking" | "available" | "taken" | "error";
@@ -28,8 +29,10 @@ function friendlySignUpError(message: string): string {
 }
 
 export function SignUp() {
-  const { add } = useLocalSearchParams<{ add?: string }>();
+  const { add, redirect } = useLocalSearchParams<{ add?: string; redirect?: string }>();
   const addMode = add === "1";
+  // Where the visitor was headed; parked until onboarding finishes (BuildingAko).
+  const returnTo = safeReturnPath(redirect);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -151,6 +154,7 @@ export function SignUp() {
       return;
     }
 
+    rememberReturnTo(returnTo);
     router.push({ pathname: "/verify-email", params: { email: cleanEmail } });
   }
 
@@ -233,7 +237,7 @@ export function SignUp() {
       </Button>
 
       <Text className="mt-6 text-center text-sm text-ink-muted">
-        Already have an account? <TextLink href={addMode ? "/login?add=1" : "/login"}>Log in</TextLink>
+        Already have an account? <TextLink href={(addMode ? "/login?add=1" : returnTo ? `/login?redirect=${encodeURIComponent(returnTo)}` : "/login")}>Log in</TextLink>
       </Text>
     </AuthScreen>
   );

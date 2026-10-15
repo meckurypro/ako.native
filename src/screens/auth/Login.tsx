@@ -12,6 +12,7 @@ import { Text } from "@/components/ui/Text";
 import { Wordmark } from "@/components/ui/Wordmark";
 import { useAddAccount } from "@/hooks/useAccountSwitcher";
 import { useAuth } from "@/hooks/useAuth";
+import { safeReturnPath } from "@/lib/authRedirect";
 import { supabase } from "@/lib/supabase";
 
 export function Login() {
@@ -19,7 +20,8 @@ export function Login() {
   const { redirect, add } = useLocalSearchParams<{ redirect?: string; add?: string }>();
 
   // Only same-app paths are honoured as a post-login destination (no open redirects).
-  const redirectTo = redirect && redirect.startsWith("/") && !redirect.startsWith("//") ? redirect : "/feed";
+  const returnTo = safeReturnPath(redirect);
+  const redirectTo = returnTo ?? "/feed";
   // add=1: signing into a SECOND personal account from the account switcher.
   const addMode = add === "1";
   const addAccount = useAddAccount();
@@ -150,7 +152,7 @@ export function Login() {
       ) : null}
 
       <Text className="mt-6 text-center text-sm text-ink-muted">
-        New to Akọ? <TextLink href={addMode ? "/signup?add=1" : "/signup"}>Create an account</TextLink>
+        New to Akọ? <TextLink href={(addMode ? "/signup?add=1" : returnTo ? `/signup?redirect=${encodeURIComponent(returnTo)}` : "/signup")}>Create an account</TextLink>
       </Text>
     </AuthScreen>
   );

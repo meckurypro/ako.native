@@ -9,7 +9,7 @@
 //   declined / suspended             → AccountUnderReview
 //   onboarding incomplete            → resume at the right step
 //   onboarding already complete      → (onboardingOnly) back to /feed
-import { Redirect, type Href } from "expo-router";
+import { Redirect, usePathname, type Href } from "expo-router";
 import { useRef, type ReactNode } from "react";
 import { ActivityIndicator, Pressable, View } from "react-native";
 
@@ -17,6 +17,7 @@ import { Text } from "@/components/ui/Text";
 import { useAccountAccess } from "@/hooks/useAccountAccess";
 import { useAuth } from "@/hooks/useAuth";
 import { useOnboardingStatus } from "@/hooks/useOnboarding";
+import { safeReturnPath } from "@/lib/authRedirect";
 import { AccountUnderReview } from "@/screens/AccountUnderReview";
 import { useTheme } from "@/theme/ThemeProvider";
 
@@ -39,6 +40,7 @@ export function FullScreenLoading() {
 
 export function AuthGate({ children, skipOnboardingCheck = false, onboardingOnly = false }: AuthGateProps) {
   const { user, loading } = useAuth();
+  const pathname = usePathname();
   const { data: onboarding, isLoading: onboardingLoading } = useOnboardingStatus();
   const { data: access, isLoading: accessLoading, isError: accessError, refetch } = useAccountAccess();
 
@@ -55,8 +57,13 @@ export function AuthGate({ children, skipOnboardingCheck = false, onboardingOnly
   if (stillResolving && !keepMounted) return <FullScreenLoading />;
 
   if (!user) {
+    // A cold-start deep link (a shared /:slug) hasn't shown the app yet, so
+    // remember where it was headed and send them back after login. A sign-out
+    // from inside the app doesn't: the next login shouldn't resume the old screen.
+    const cameFromDeepLink = shownFor.current === null;
     shownFor.current = null;
-    return <Redirect href={"/login" as Href} />;
+    const returnTo = cameFromDeepLink ? safeReturnPath(pathname) : null;
+    return <Redirect href={(returnTo ? { pathname: "/login", params: { redirect: returnTo } } : "/login") as Href} />;
   }
 
   if (accessError && !keepMounted) {

@@ -1,7 +1,7 @@
 // src/screens/onboarding/BuildingAko.tsx
 // Final step: marks onboarding complete, holds for at least ~1.1s so the screen
 // doesn't flash, then drops into the feed. Retry on failure.
-import { router } from "expo-router";
+import { router, type Href } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { Text } from "@/components/ui/Text";
 import { Wordmark } from "@/components/ui/Wordmark";
 import { useCompleteOnboarding } from "@/hooks/useOnboarding";
+import { takeReturnTo } from "@/lib/authRedirect";
 import { useTheme } from "@/theme/ThemeProvider";
 
 const MIN_DISPLAY_MS = 1100;
@@ -29,7 +30,8 @@ export function BuildingAko() {
       const elapsed = Date.now() - startedAt;
       await new Promise<void>((resolve) => setTimeout(() => resolve(), Math.max(0, MIN_DISPLAY_MS - elapsed)));
 
-      if (!cancelledRef.current) router.replace("/feed");
+      // A visitor who signed up from a shared link goes back to it, not the feed.
+      if (!cancelledRef.current) router.replace((takeReturnTo() ?? "/feed") as Href);
     } catch (err) {
       console.error("Failed to complete onboarding:", err);
       if (!cancelledRef.current) setFailed(true);
