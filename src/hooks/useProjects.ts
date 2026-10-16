@@ -1,5 +1,6 @@
 // src/hooks/useProjects.ts
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { resolveFunctionErrorMessage } from "../lib/functionErrors";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "./useAuth";
 import { useSound } from "./useSound";
@@ -983,15 +984,24 @@ export function useDeleteProject() {
       const { data, error } = await supabase.functions.invoke("delete-project", {
         body: { project_id: projectId },
       });
-      if (error) throw error;
+      // A non-2xx reply (e.g. the 409 "archive it instead") hides its message inside error.context;
+      // read it back so the owner sees the real reason, not "Edge Function returned a non-2xx status code".
+      if (error) throw new Error(await resolveFunctionErrorMessage(error, "Couldn't delete this project."));
       if (data?.error) throw new Error(data.error);
     },
     // Awaited — same reasoning as useSetProjectStatus/useDeletePost:
     // without this, the overlay could close a beat before the
     // deleted project actually drops out of the list.
-    onSuccess: async () => {
+    onSuccess: async (_data, projectId) => {
+      // Drop the deleted project's own caches first, so nothing refetches a row that no longer exists.
+      queryClient.removeQueries({ queryKey: ["project", projectId] });
+      queryClient.removeQueries({ queryKey: ["project-detail", projectId] });
       await queryClient.invalidateQueries({ queryKey: ["user-projects"] });
       await queryClient.invalidateQueries({ queryKey: ["page-projects"] });
+      // Every other list that can hold projects (saved, liked, similar, portfolio, library…) refreshes in the background.
+      void queryClient.invalidateQueries({
+        predicate: (q) => typeof q.queryKey[0] === "string" && (q.queryKey[0] as string).includes("project"),
+      });
     },
   });
 }
