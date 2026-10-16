@@ -11,7 +11,7 @@ import { FlatList, Pressable, View, type NativeScrollEvent, type NativeSynthetic
 
 import { Image } from "@/components/ui/styled";
 
-export function ProjectImageCarousel({ images }: { images: string[] }) {
+export function ProjectImageCarousel({ images, fit = "cover" }: { images: string[]; fit?: "cover" | "contain" }) {
   const listRef = useRef<FlatList<string>>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [index, setIndex] = useState(0);
@@ -68,7 +68,7 @@ export function ProjectImageCarousel({ images }: { images: string[] }) {
           style={{ width: size.width, height: size.height }}
           renderItem={({ item }) => (
             <View style={{ width: size.width, height: size.height }}>
-              <Image source={{ uri: item }} contentFit="cover" transition={150} style={{ width: "100%", height: "100%" }} />
+              <Image source={{ uri: item }} contentFit={fit} transition={150} style={{ width: "100%", height: "100%" }} />
             </View>
           )}
         />

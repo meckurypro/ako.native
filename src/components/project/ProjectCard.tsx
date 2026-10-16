@@ -39,7 +39,8 @@ import * as Clipboard from "expo-clipboard";
 import * as Linking from "expo-linking";
 import { router, type Href } from "expo-router";
 import { memo, useRef, useState } from "react";
-import { Pressable, Share, View } from "react-native";
+import { MAX_THUMB_HEIGHT_VH, thumbnailLayout } from "@/lib/thumbnailFit";
+import { Pressable, Share, View, useWindowDimensions } from "react-native";
 
 import { ReactionMoreSheet } from "@/components/post/ReactionMoreSheet";
 import { ReactionTray, type EngagementAction } from "@/components/post/ReactionTray";
@@ -357,7 +358,11 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, shareUrl, visible
 
   // Supporting images only exist on the project's own page (swipe the thumbnail). Every list, grid and rail renders isDetailView=false → plain thumbnail.
   const galleryImages = isDetailView ? projectGalleryImages(project) : [];
-  const aspectRatio = project.thumbnail_width && project.thumbnail_height ? project.thumbnail_width / project.thumbnail_height : 16 / 9;
+  // Clamped ratio + height cap: a tall poster or wide banner must not blow the card up past the screen.
+  const { height: windowHeight } = useWindowDimensions();
+  const thumb = thumbnailLayout(project.thumbnail_width, project.thumbnail_height);
+  const aspectRatio = thumb.aspectRatio;
+  const thumbMaxHeight = windowHeight * MAX_THUMB_HEIGHT_VH;
   const TypeIcon = TYPE_ICON[project.project_type];
   const primaryMediaKind: "audio" | "video" | null =
     isMedia && mediaDetails?.has_video && mediaDetails.video_file_path ? "video" : isMedia && mediaDetails?.has_audio && mediaDetails.audio_file_path ? "audio" : null;
@@ -505,7 +510,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, shareUrl, visible
       className="relative mb-4 overflow-hidden rounded-[28px] border border-border-a60 bg-surface"
       style={{ shadowColor: `rgb(${colors.shadowInkRgb})`, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.14, shadowRadius: 18, elevation: 3 }}
     >
-      <View style={{ aspectRatio }} className="w-full items-center justify-center overflow-hidden bg-canvas">
+      <View style={{ aspectRatio, maxHeight: thumbMaxHeight }} className="w-full items-center justify-center overflow-hidden bg-canvas">
         {primaryMediaKind ? (
           <MediaHeroPlayer
             kind={primaryMediaKind}
@@ -516,9 +521,10 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, shareUrl, visible
             onLoadPreview={primaryMediaKind === "video" ? handlePlayVideo : handlePlayAudio}
             autoLoadOnMount={!!isDetailView}
             visible={visible}
+            fit={thumb.fit}
           />
         ) : project.thumbnail_url && isDetailView && galleryImages.length > 1 ? (
-          <ProjectImageCarousel images={galleryImages} />
+          <ProjectImageCarousel images={galleryImages} fit={thumb.fit} />
         ) : project.thumbnail_url ? (
           <Pressable
             onPress={() => !isDetailView && router.push(`/projects/${project.id}` as Href)}
@@ -526,7 +532,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, shareUrl, visible
             accessibilityRole={isDetailView ? "image" : "link"}
             className="h-full w-full"
           >
-            <Image source={{ uri: project.thumbnail_url }} contentFit="cover" transition={150} style={{ width: "100%", height: "100%" }} />
+            <Image source={{ uri: project.thumbnail_url }} contentFit={thumb.fit} transition={150} style={{ width: "100%", height: "100%" }} />
           </Pressable>
         ) : (
           <Icon as={ImageIcon} size={32} className="text-ink-muted" />

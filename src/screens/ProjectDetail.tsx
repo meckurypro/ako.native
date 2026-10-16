@@ -297,7 +297,8 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
                 )}
               </Pressable>
 
-              <ProjectRail title={`More from ${project.posted_as_page ? project.posted_as_page.name : project.owner.display_name}`} projects={similar?.moreFromCreator ?? []} />
+              {/* "More from <you>" is for visitors — the creator already has all of this on their own profile. */}
+              {!isOwner ? <ProjectRail title={`More from ${project.posted_as_page ? project.posted_as_page.name : project.owner.display_name}`} projects={similar?.moreFromCreator ?? []} /> : null}
               <ProjectRail title="Similar contents" projects={similar?.similarContent ?? []} />
             </>
           )}

@@ -18,6 +18,8 @@ export const PREVIEW_SECONDS = 30;
 interface MediaHeroPlayerProps {
   kind: "audio" | "video";
   thumbnailUrl: string | null;
+  /** How the cover sits in its box: "cover" fills it, "contain" shows a clamped (very tall/wide) picture whole. */
+  fit?: "cover" | "contain";
   hasAccess: boolean;
   previewSrc: string | null;
   isLoadingPreview: boolean;
@@ -27,7 +29,7 @@ interface MediaHeroPlayerProps {
   visible: boolean;
 }
 
-export function MediaHeroPlayer({ kind, thumbnailUrl, hasAccess, previewSrc, isLoadingPreview, onLoadPreview, autoLoadOnMount, visible }: MediaHeroPlayerProps) {
+export function MediaHeroPlayer({ kind, thumbnailUrl, hasAccess, previewSrc, isLoadingPreview, onLoadPreview, autoLoadOnMount, visible, fit = "cover" }: MediaHeroPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const requestedRef = useRef(false);
@@ -113,7 +115,7 @@ export function MediaHeroPlayer({ kind, thumbnailUrl, hasAccess, previewSrc, isL
     return (
       <View className="h-full w-full">
         {thumbnailUrl ? (
-          <Image source={{ uri: thumbnailUrl }} contentFit="cover" style={{ width: "100%", height: "100%", opacity: 0.5 }} />
+          <Image source={{ uri: thumbnailUrl }} contentFit={fit} style={{ width: "100%", height: "100%", opacity: 0.5 }} />
         ) : (
           <View className="h-full w-full items-center justify-center">
             <Icon as={ImageIcon} size={32} className="text-ink-muted" />
@@ -142,7 +144,7 @@ export function MediaHeroPlayer({ kind, thumbnailUrl, hasAccess, previewSrc, isL
       {kind === "video" && previewSrc ? (
         <VideoView player={videoPlayer} contentFit="cover" nativeControls={false} style={{ width: "100%", height: "100%" }} />
       ) : thumbnailUrl ? (
-        <Image source={{ uri: thumbnailUrl }} contentFit="cover" transition={150} style={{ width: "100%", height: "100%" }} />
+        <Image source={{ uri: thumbnailUrl }} contentFit={fit} transition={150} style={{ width: "100%", height: "100%" }} />
       ) : (
         <View className="h-full w-full items-center justify-center">
           <Icon as={kind === "video" ? Video : Music} size={32} className="text-ink-muted" />
