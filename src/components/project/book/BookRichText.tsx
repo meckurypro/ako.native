@@ -6,11 +6,12 @@
 // Optional typography props (family, lineHeight, justify, heavy, ornament) back the
 // reader's Themes & Settings; with none given it renders exactly as before.
 import * as Clipboard from "expo-clipboard";
-import { Fragment, useMemo, useState, type ReactNode } from "react";
-import { Linking, Platform, Pressable, Text as RNText, View, type StyleProp, type TextStyle } from "react-native";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Platform, Pressable, Text as RNText, View, type LayoutChangeEvent, type StyleProp, type TextStyle } from "react-native";
 
 import { Text } from "@/components/ui/Text";
 import { parseBook, type BookBlock, type BookInline } from "@/lib/bookFormat";
+import { openExternal } from "@/lib/openExternal";
 
 export type BookFamily = "body" | "display" | "serif";
 
@@ -34,6 +35,11 @@ interface BookRichTextProps {
   heavy?: boolean;
   /** Render `---` as a small centred ornament instead of a hairline. */
   ornament?: boolean;
+  /**
+   * Reports the gaps between blocks (y from the top of the parent column) as they lay out, so the reader
+   * can seat its page dividers between paragraphs instead of through a line of text.
+   */
+  onGaps?: (gaps: number[]) => void;
 }
 
 const MONO = Platform.select({ ios: "Menlo", default: "monospace" });
@@ -149,6 +155,7 @@ export function BookRichText({
   justify = false,
   heavy = false,
   ornament = false,
+  onGaps,
 }: BookRichTextProps) {
   const blocks = useMemo(() => given ?? parseBook(content ?? ""), [given, content]);
   const lineHeight = fontSize * lineMultiple;
@@ -157,14 +164,47 @@ export function BookRichText({
   const align: TextStyle = justify ? { textAlign: "justify" } : {};
   const openLink: OpenLink = (href) => {
     onInteract?.();
-    Linking.openURL(href).catch(() => {
-      /* No app can open it: nothing useful to show inside a reader. */
-    });
+    void openExternal(href);
   };
 
+  // Block layouts, coalesced into a single report per layout pass.
+  const rootY = useRef(0);
+  const spans = useRef<Record<number, { y: number; h: number }>>({});
+  const flushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (flushTimer.current) clearTimeout(flushTimer.current);
+    },
+    []
+  );
+  const reportGaps = () => {
+    if (!onGaps || flushTimer.current) return;
+    flushTimer.current = setTimeout(() => {
+      flushTimer.current = null;
+      const laid = spans.current;
+      if (Object.keys(laid).length < blocks.length) return;
+      // The visible gap is the bottom margin of a block: the line goes through its middle.
+      onGaps(blocks.slice(0, -1).map((_, i) => rootY.current + laid[i].y + laid[i].h - paraGap / 2));
+    }, 0);
+  };
+  const track = (i: number, node: ReactNode) =>
+    onGaps ? (
+      <View
+        key={`w${i}`}
+        onLayout={(e: LayoutChangeEvent) => {
+          spans.current[i] = { y: e.nativeEvent.layout.y, h: e.nativeEvent.layout.height };
+          reportGaps();
+        }}
+      >
+        {node}
+      </View>
+    ) : (
+      node
+    );
+
   return (
-    <View>
-      {blocks.map((b, i) => {
+    <View onLayout={(e: LayoutChangeEvent) => (rootY.current = e.nativeEvent.layout.y)}>
+      {blocks.map((b, i) => track(i, ((): ReactNode => {
         const key = `b${i}`;
         switch (b.k) {
           case "heading": {
@@ -223,7 +263,7 @@ export function BookRichText({
               <View key={key} style={{ height: 1, backgroundColor: muted, opacity: 0.35, marginVertical: fontSize * 1.1 }} />
             );
         }
-      })}
+      })()))}
     </View>
   );
 }

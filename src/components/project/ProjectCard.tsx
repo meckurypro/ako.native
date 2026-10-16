@@ -80,6 +80,7 @@ import { ProjectImageCarousel } from "./ProjectImageCarousel";
 import { ctaFill } from "@/lib/contrast";
 import { renderFormattedText } from "@/lib/formatText";
 import { resolveFunctionErrorMessage } from "@/lib/functionErrors";
+import { openExternal } from "@/lib/openExternal";
 import { useTheme } from "@/theme/ThemeProvider";
 import { AffiliateShareSheet } from "./AffiliateShareSheet";
 import { ManageAccessSheet } from "./ManageAccessSheet";
@@ -327,7 +328,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
   function openExternal(url: string | null | undefined, kind: "link_click" = "link_click") {
     if (!url) return;
     logFreeAccessIfNeeded(kind);
-    void Linking.openURL(/^https?:\/\//i.test(url) ? url : `https://${url}`);
+    void openExternal(/^https?:\/\//i.test(url) ? url : `https://${url}`);
   }
 
   function handleStatusChange(status: "active" | "draft" | "archived") {

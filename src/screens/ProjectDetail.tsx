@@ -14,7 +14,6 @@ import {
   TrendingUp,
   Video,
 } from "lucide-react-native";
-import * as Linking from "expo-linking";
 import { router, useLocalSearchParams, usePathname, type Href } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
@@ -50,6 +49,7 @@ import { safeReturnPath } from "@/lib/authRedirect";
 import { addToCalendar } from "@/lib/calendar";
 import { pageModeLabel } from "@/lib/pageRoles";
 import { getProjectUrl } from "@/lib/projectLinks";
+import { openExternal } from "@/lib/openExternal";
 
 export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: string } = {}) {
   const params = useLocalSearchParams<{ projectId?: string }>();
@@ -153,7 +153,7 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
             ) : null}
             {eventDetails.location_type === "physical" && eventDetails.location_value ? (
               <Pressable
-                onPress={() => void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(eventDetails.location_value!)}`)}
+                onPress={() => void openExternal(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(eventDetails.location_value!)}`)}
                 accessibilityRole="link"
                 className="flex-row items-center gap-1.5"
               >

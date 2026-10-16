@@ -30,7 +30,6 @@ import {
   Wallet,
   X,
 } from "lucide-react-native";
-import * as Linking from "expo-linking";
 import { router, useLocalSearchParams, type Href } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
@@ -84,6 +83,7 @@ import { useUserProjects, type Project, type ProjectType } from "@/hooks/useProj
 import { useTabState } from "@/hooks/useTabState";
 import { APP_URL } from "@/lib/config";
 import { haptics } from "@/lib/haptics";
+import { openExternal } from "@/lib/openExternal";
 import { useTheme } from "@/theme/ThemeProvider";
 
 const MAX_EQUAL_TABS = 4;
@@ -526,7 +526,7 @@ export function ProfilePage() {
                 {profile.website_url ? (
                   <>
                     {" / "}
-                    <Text className="text-accent" accessibilityRole="link" onPress={() => void Linking.openURL(getWebsiteHref(profile.website_url!))}>
+                    <Text className="text-accent" accessibilityRole="link" onPress={() => void openExternal(getWebsiteHref(profile.website_url!))}>
                       {getWebsiteDomain(profile.website_url)}
                     </Text>
                   </>

@@ -13,7 +13,6 @@ import {
   UserCog,
   Users,
 } from "lucide-react-native";
-import * as Linking from "expo-linking";
 import { router, useLocalSearchParams, type Href } from "expo-router";
 import { useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, Share, View } from "react-native";
@@ -55,6 +54,7 @@ import { useTabState } from "@/hooks/useTabState";
 import { APP_URL } from "@/lib/config";
 import { haptics } from "@/lib/haptics";
 import { pageModeLabel } from "@/lib/pageRoles";
+import { openExternal } from "@/lib/openExternal";
 
 type Row = { kind: "header" } | { kind: "tabs" } | { kind: "post"; id: string; post: any } | { kind: "projects"; id: string } | { kind: "message"; id: string; text: string };
 
@@ -280,7 +280,7 @@ export function PagePage() {
         {page.bio ? <Text className="mt-3 text-sm text-ink">{page.bio}</Text> : null}
 
         {page.website_url ? (
-          <Pressable onPress={() => void Linking.openURL(getWebsiteHref(page.website_url!))} accessibilityRole="link" className="mt-2 flex-row items-center gap-1.5 self-start">
+          <Pressable onPress={() => void openExternal(getWebsiteHref(page.website_url!))} accessibilityRole="link" className="mt-2 flex-row items-center gap-1.5 self-start">
             <Icon as={Globe} size={14} className="text-accent" />
             <Text className="text-sm text-accent">{getWebsiteDomain(page.website_url)}</Text>
           </Pressable>

@@ -5,13 +5,14 @@
 import * as Clipboard from "expo-clipboard";
 import { Check, Copy, Square } from "lucide-react-native";
 import { memo, useMemo, useState } from "react";
-import { Linking, Pressable, ScrollView, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useToast } from "@/components/ui/Toast";
 import { haptics } from "@/lib/haptics";
 import { parseLesson, type Block, type Inline, type ListItem, type Tone } from "@/lib/lessonFormat";
+import { openExternal } from "@/lib/openExternal";
 import { MONO_FONT } from "@/theme/mono";
 import { useTheme } from "@/theme/ThemeProvider";
 
@@ -27,7 +28,7 @@ const TONE: Record<Tone, { bar: string; card: string; head: string }> = {
 const BODY = { fontSize: 15, lineHeight: 24 } as const;
 
 function openLink(href: string) {
-  Linking.openURL(href).catch(() => {});
+  void openExternal(href);
 }
 
 function Inlines({ parts, muted = false }: { parts: Inline[]; muted?: boolean }) {

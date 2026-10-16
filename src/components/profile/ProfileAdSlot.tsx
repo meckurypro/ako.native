@@ -2,7 +2,7 @@
 // A slim sponsored strip in the owner's profile toolbar. Image or looping muted
 // video; tapping opens the advertiser's link. Renders an empty box when there's
 // no matching ad, so the toolbar layout never shifts.
-import * as Linking from "expo-linking";
+import { openExternal } from "@/lib/openExternal";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { Pressable, View } from "react-native";
 
@@ -30,7 +30,7 @@ export function ProfileAdSlot({ className = "" }: { className?: string }) {
     <View className={`h-10 overflow-hidden rounded-lg ${className}`}>
       {media ? (
         creative?.link_url ? (
-          <Pressable onPress={() => void Linking.openURL(creative.link_url!)} accessibilityRole="link" className="h-full w-full">
+          <Pressable onPress={() => void openExternal(creative.link_url!)} accessibilityRole="link" className="h-full w-full">
             {media}
           </Pressable>
         ) : (

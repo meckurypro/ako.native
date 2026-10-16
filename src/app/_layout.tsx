@@ -18,6 +18,7 @@ import { AppSplash } from "@/components/AppSplash";
 import { UpdatePrompt } from "@/components/UpdatePrompt";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
+import { ExternalLinkDialog } from "@/components/ui/ExternalLinkDialog";
 import { PortalHost } from "@/components/ui/Portal";
 import { SystemNavigationBar } from "@/components/ui/SystemNavigationBar";
 import { ToastProvider } from "@/components/ui/Toast";
@@ -116,6 +117,7 @@ function Shell() {
             <GlobalEffects />
             <ThemedStack />
             <UpdatePrompt />
+            <ExternalLinkDialog />
           </PortalHost>
         </ToastProvider>
       </ErrorBoundary>

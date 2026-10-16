@@ -6,13 +6,14 @@ import { useEvent } from "expo";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { PlayCircle } from "lucide-react-native";
 import { useEffect, useRef } from "react";
-import { Linking, Pressable, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { WebView } from "react-native-webview";
 
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useDuckWhile } from "@/hooks/useDuckWhile";
 import { APP_URL } from "@/lib/config";
+import { openExternal } from "@/lib/openExternal";
 
 type EmbedKind = { type: "youtube" | "vimeo"; embedUrl: string } | { type: "video" } | { type: "link" };
 
@@ -102,7 +103,7 @@ export function LessonMedia({
   if (embed.type === "video") return <DirectVideo url={url} onWatched={onWatched} startAt={startAt} onTime={onTime} />;
 
   return (
-    <Pressable onPress={() => void Linking.openURL(url)} accessibilityRole="link" className="mb-2 flex-row items-center gap-1.5 self-start">
+    <Pressable onPress={() => void openExternal(url)} accessibilityRole="link" className="mb-2 flex-row items-center gap-1.5 self-start">
       <Icon as={PlayCircle} size={15} className="text-accent" />
       <Text className="text-sm font-medium text-accent">Open lesson video</Text>
     </Pressable>
