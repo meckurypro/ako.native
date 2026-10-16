@@ -75,7 +75,7 @@ export function Archive() {
   const { data: allPosts, refetch: refetchPosts } = useUserPostsWithArchived(user?.id ?? "", true, { includePagePosts: true });
   const archivedPosts = allPosts?.filter((p) => p.is_archived) ?? [];
   const { data: allProjects, refetch: refetchProjects } = useUserProjects(user?.id ?? "", true, { includePageProjects: true });
-  const { refreshControl } = usePullToRefresh([refetchArchived, refetchPosts, refetchProjects]);
+  const { refreshControl, refreshing } = usePullToRefresh([refetchArchived, refetchPosts, refetchProjects]);
   const archivedProjects = allProjects?.filter((p) => p.status === "archived") ?? [];
 
   const [openSection, setOpenSection] = useState<Section | null>(null);
@@ -223,7 +223,7 @@ export function Archive() {
     <View className="flex-1 bg-canvas">
       {header}
 
-      <ScrollView ref={onScroll.listRef} refreshControl={refreshControl} onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset }}>
+      <ScrollView ref={onScroll.listRef} refreshControl={refreshControl} onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset, opacity: refreshing ? 0 : 1 }}>
         <View className="w-full max-w-xl self-center">
           {isLoading ? (
             <Text className="py-10 text-center text-ink-muted">Loading…</Text>

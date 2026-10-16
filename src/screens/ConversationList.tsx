@@ -20,6 +20,7 @@ import { Text } from "@/components/ui/Text";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useFeatureFlag } from "@/hooks/useFeatureFlags";
+import { RefreshSkeleton } from "@/components/ui/RefreshSkeleton";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import {
   useArchiveBadgeCount,
@@ -46,7 +47,7 @@ export function ConversationList() {
   const chromeScroll = useChromeScroll();
 
   const { data: conversations, isLoading, refetch: refetchConversations } = useConversations();
-  const { refreshControl } = usePullToRefresh(refetchConversations);
+  const { refreshControl, refreshing } = usePullToRefresh(refetchConversations);
   const authorIds = conversations?.map((c) => c.other_participant.id) ?? [];
   const { data: unseenPosts } = useUnseenPosts(authorIds);
   const archiveBadgeCount = useArchiveBadgeCount();
@@ -229,8 +230,9 @@ export function ConversationList() {
         <Text className="py-10 text-center text-sm text-ink-muted">No conversations match your search.</Text>
       ) : (
         <FlashList
-          data={items}
+          data={refreshing ? [] : items}
           refreshControl={refreshControl}
+          ListEmptyComponent={refreshing ? <RefreshSkeleton /> : null}
           keyExtractor={(i) => (i.kind === "section" ? `section-${i.label}` : i.conversation.id)}
           getItemType={(i) => i.kind}
           extraData={{ selectMode, selectedIds, unseenPosts }}

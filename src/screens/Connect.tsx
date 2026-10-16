@@ -57,7 +57,7 @@ export function Connect() {
   const [tab, setTab] = useTabState<ConnectTab>(TABS, "events");
   const { data: items, isLoading: activityLoading, refetch: refetchActivity } = useActivity();
   const { data: relationships, isLoading: affiliatesLoading, refetch: refetchAffiliates } = useMyAffiliateRelationships();
-  const { refreshControl } = usePullToRefresh([refetchActivity, refetchAffiliates]);
+  const { refreshControl, refreshing } = usePullToRefresh([refetchActivity, refetchAffiliates]);
 
   const now = Date.now();
   const kindItems = tab === "affiliates" ? [] : (items ?? []).filter((i) => i.kind === KIND_FOR_TAB[tab]);
@@ -65,7 +65,7 @@ export function Connect() {
   const past = kindItems.filter((i) => i.when && new Date(i.when).getTime() < now);
   const affiliates = relationships ?? [];
 
-  const scrollProps = { ref: onScroll.listRef, refreshControl, onScroll, scrollEventThrottle: 16, showsVerticalScrollIndicator: false, contentContainerStyle: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset } } as const;
+  const scrollProps = { ref: onScroll.listRef, refreshControl, onScroll, scrollEventThrottle: 16, showsVerticalScrollIndicator: false, contentContainerStyle: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset, opacity: refreshing ? 0 : 1 } } as const;
 
   return (
     <View className="flex-1 bg-canvas">

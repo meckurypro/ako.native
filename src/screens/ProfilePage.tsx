@@ -75,6 +75,7 @@ import {
   useTypePortfolioCategories,
 } from "@/hooks/usePortfolio";
 import { useUserPostsWithArchived } from "@/hooks/usePosts";
+import { RefreshSkeleton } from "@/components/ui/RefreshSkeleton";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useIsBlocked, useIsMuted, useRemoveFollower, useToggleBlock, useToggleMute } from "@/hooks/usePrivacy";
 import { useIsFollowedByUser, useIsFollowingAsActiveIdentity, useProfileByUsername, useToggleFollowAsActiveIdentity } from "@/hooks/useProfile";
@@ -232,7 +233,7 @@ export function ProfilePage() {
 
   // refetch() ignores `enabled`, so a locked/private profile refetches only the profile; the rest are disabled for it.
   // The same goes for the active-tab queries, which idle (undefined key arg) unless their tab is showing.
-  const { refreshControl } = usePullToRefresh(
+  const { refreshControl, refreshing } = usePullToRefresh(
     isPrivateLocked
       ? [refetchProfile]
       : [
@@ -611,12 +612,13 @@ export function ProfilePage() {
       <SwipeToSwitch index={activeIndex} count={tabDefs.length} onIndexChange={switchTab} enabled={!isPrivateLocked && !isBlocked && tabDefs.length > 1}>
         <FlashList
           ref={listRef}
-          data={rows}
+          data={refreshing ? [] : rows}
           refreshControl={refreshControl}
+          ListEmptyComponent={refreshing ? <RefreshSkeleton /> : null}
           keyExtractor={(r) => (r.kind === "header" || r.kind === "tabs" ? r.kind : r.id)}
           getItemType={(r) => r.kind}
           renderItem={renderRow}
-          stickyHeaderIndices={rows.findIndex((r) => r.kind === "tabs") >= 0 ? [rows.findIndex((r) => r.kind === "tabs")] : undefined}
+          stickyHeaderIndices={refreshing ? undefined : rows.findIndex((r) => r.kind === "tabs") >= 0 ? [rows.findIndex((r) => r.kind === "tabs")] : undefined}
           onScroll={onScroll}
           scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}

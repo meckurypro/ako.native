@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { useBottomNavInset } from "@/components/nav/BottomNav";
 import { useChromeScroll } from "@/components/nav/ChromeProvider";
 import { Text } from "@/components/ui/Text";
+import { RefreshSkeleton } from "@/components/ui/RefreshSkeleton";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import type { Project } from "@/hooks/useProjects";
 import { ProjectCard } from "./ProjectCard";
@@ -22,14 +23,14 @@ interface ProjectListProps {
 export function ProjectList({ projects, isLoading, emptyMessage, header, onRefresh }: ProjectListProps) {
   const bottomInset = useBottomNavInset();
   const onScroll = useChromeScroll();
-  const { refreshControl } = usePullToRefresh(() => onRefresh?.());
+  const { refreshControl, refreshing } = usePullToRefresh(() => onRefresh?.());
 
   if (isLoading) return <Text className="py-10 text-center text-ink-muted">Loading…</Text>;
   if (!projects || projects.length === 0) return <Text className="px-4 py-10 text-center text-sm text-ink-muted">{emptyMessage}</Text>;
 
   return (
     <FlashList
-      data={projects}
+      data={refreshing ? [] : projects}
       refreshControl={onRefresh ? refreshControl : undefined}
       keyExtractor={(p) => p.id}
       renderItem={({ item }) => <ProjectCard project={item} />}
@@ -37,7 +38,8 @@ export function ProjectList({ projects, isLoading, emptyMessage, header, onRefre
       onScroll={onScroll}
       scrollEventThrottle={16}
       showsVerticalScrollIndicator={false}
-      ListHeaderComponent={header as React.ReactElement | null | undefined}
+      ListHeaderComponent={(refreshing ? null : header) as React.ReactElement | null | undefined}
+      ListEmptyComponent={refreshing ? <RefreshSkeleton /> : null}
       contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset }}
     />
   );

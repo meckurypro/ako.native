@@ -47,7 +47,7 @@ function FullDiscover() {
   const { data: suggestedPeople, isLoading: suggestedLoading, refetch: refetchPeople } = activePageId ? pageSuggestions : personalSuggestions;
   const { data: suggestedPages, isLoading: suggestedPagesLoading, refetch: refetchPages } = useSuggestedPages();
   // Only the suggestion query in use is refetched; the other one is disabled and refetch() would still hit the network.
-  const { refreshControl } = usePullToRefresh([refetchCategories, refetchPeople, refetchPages], topInset + 16);
+  const { refreshControl, refreshing } = usePullToRefresh([refetchCategories, refetchPeople, refetchPages], topInset + 16);
 
   const isSearching = isSearchable(query);
 
@@ -61,7 +61,7 @@ function FullDiscover() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: topInset + 16, paddingHorizontal: 16, paddingBottom: bottomInset }}
+        contentContainerStyle={{ paddingTop: topInset + 16, paddingHorizontal: 16, paddingBottom: bottomInset, opacity: refreshing ? 0 : 1 }}
       >
         <View className="mb-6">
           <SearchField value={query} onChangeText={setQuery} placeholder="Search people, pages, posts…" />

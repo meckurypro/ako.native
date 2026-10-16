@@ -27,7 +27,7 @@ export function RestrictedDiscover() {
 
   const { data: suggestedProjects, isLoading: suggestedProjectsLoading, refetch: refetchProjects } = useSuggestedProjects();
   const { data: suggestedPages, isLoading: suggestedPagesLoading, refetch: refetchPages } = useSuggestedPages();
-  const { refreshControl } = usePullToRefresh([refetchProjects, refetchPages], topInset + 16);
+  const { refreshControl, refreshing } = usePullToRefresh([refetchProjects, refetchPages], topInset + 16);
 
   const isSearching = isSearchable(query);
 
@@ -41,7 +41,7 @@ export function RestrictedDiscover() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: topInset + 16, paddingHorizontal: 16, paddingBottom: bottomInset }}
+        contentContainerStyle={{ paddingTop: topInset + 16, paddingHorizontal: 16, paddingBottom: bottomInset, opacity: refreshing ? 0 : 1 }}
       >
         <View className="mb-6">
           <SearchField value={query} onChangeText={setQuery} placeholder="Search pages and projects…" />

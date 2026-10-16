@@ -11,6 +11,7 @@ import { useBottomNavInset } from "@/components/nav/BottomNav";
 import { useChromeScroll } from "@/components/nav/ChromeProvider";
 import { useTopBarInset } from "@/components/nav/AutoHideTopBar";
 import { Text } from "@/components/ui/Text";
+import { RefreshSkeleton } from "@/components/ui/RefreshSkeleton";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useTheme } from "@/theme/ThemeProvider";
 
@@ -97,7 +98,7 @@ function PostListInner<T extends PostListItem>(
   // Same refresh path as every other screen: re-probes connectivity (a stale "offline" flag can't leave the spinner
   // hanging), caps the spinner, and can't be re-triggered mid-flight. A post feed is self-contained (rows carry their
   // own counts), so it doesn't also refetch every other query on screen.
-  const { refreshControl } = usePullToRefresh(() => onRefresh?.(), padTop, { refetchActive: false });
+  const { refreshControl, refreshing } = usePullToRefresh(() => onRefresh?.(), padTop, { refetchActive: false });
 
   if (isLoading && posts.length === 0) {
     return (
@@ -118,7 +119,7 @@ function PostListInner<T extends PostListItem>(
   return (
     <FlashList
       ref={setListRef}
-      data={posts}
+      data={refreshing ? [] : posts}
       keyExtractor={(p) => p.id}
       renderItem={({ item }) => renderPost(item, { visible: visibleIds.has(item.id) })}
       extraData={visibleIds}
@@ -132,8 +133,8 @@ function PostListInner<T extends PostListItem>(
       keyboardShouldPersistTaps="handled"
       refreshControl={onRefresh ? refreshControl : undefined}
       contentContainerStyle={{ paddingTop: padTop, paddingHorizontal: 20, paddingBottom: bottomInset }}
-      ListHeaderComponent={header ? <>{header}</> : null}
-      ListEmptyComponent={<>{emptyState}</>}
+      ListHeaderComponent={header && !refreshing ? <>{header}</> : null}
+      ListEmptyComponent={refreshing ? <RefreshSkeleton /> : <>{emptyState}</>}
       ListFooterComponent={
         isFetchingMore && !exhausted ? (
           <View className="items-center py-4">

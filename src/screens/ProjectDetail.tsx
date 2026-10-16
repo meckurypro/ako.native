@@ -75,7 +75,7 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
 
   // refetch() ignores `enabled`, so only refetch the queries this project type actually loads.
   const type = project?.project_type;
-  const { refreshControl } = usePullToRefresh(
+  const { refreshControl, refreshing } = usePullToRefresh(
     !project
       ? [refetchProject]
       : [
@@ -103,7 +103,7 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
         onScroll={onScroll}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: insets.top + 16, paddingHorizontal: 16, paddingBottom: bottomInset + 16 }}
+        contentContainerStyle={{ paddingTop: insets.top + 16, paddingHorizontal: 16, paddingBottom: bottomInset + 16, opacity: refreshing ? 0 : 1 }}
       >
         <View className="w-full max-w-2xl self-center">
           <Pressable

@@ -33,7 +33,7 @@ export function Activity() {
   const onScroll = useChromeScroll();
   const { data: drafts, refetch: refetchDrafts } = useMyDraftPosts();
   const { data: scheduled, refetch: refetchScheduled } = useMyScheduledPosts();
-  const { refreshControl } = usePullToRefresh([refetchDrafts, refetchScheduled]);
+  const { refreshControl, refreshing } = usePullToRefresh([refetchDrafts, refetchScheduled]);
 
   // Only drafts/scheduled get a badge: they're the rows with a pending action behind them.
   const countFor = (from: ActivityRow["countFrom"]) => (from === "drafts" ? (drafts?.length ?? 0) : from === "scheduled" ? (scheduled?.length ?? 0) : 0);
@@ -41,7 +41,7 @@ export function Activity() {
   return (
     <View className="flex-1 bg-canvas">
       <ScreenHeader title="Activity" />
-      <ScrollView ref={onScroll.listRef} refreshControl={refreshControl} onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset }}>
+      <ScrollView ref={onScroll.listRef} refreshControl={refreshControl} onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset, opacity: refreshing ? 0 : 1 }}>
         {ROWS.map(({ to, icon, label, description, countFrom }) => {
           const count = countFor(countFrom);
           return (

@@ -11,6 +11,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { Text } from "@/components/ui/Text";
 import { usePageConversations, type PageConversationSummary } from "@/hooks/usePageInbox";
+import { RefreshSkeleton } from "@/components/ui/RefreshSkeleton";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useActiveIdentity } from "@/hooks/usePages";
 import { messagePreview } from "@/lib/chatMedia";
@@ -52,7 +53,7 @@ export function PageInbox() {
   const { data: identity } = useActiveIdentity();
   const pageId = identity?.mode === "page" ? identity.page.id : undefined;
   const { data: conversations, isLoading, refetch } = usePageConversations(pageId);
-  const { refreshControl } = usePullToRefresh(refetch);
+  const { refreshControl, refreshing } = usePullToRefresh(refetch);
 
   return (
     <View className="flex-1 bg-canvas">
@@ -63,8 +64,9 @@ export function PageInbox() {
         <Text className="py-10 text-center text-sm text-ink-muted">No conversations yet for this page.</Text>
       ) : (
         <FlatList
-          data={conversations}
+          data={refreshing ? [] : conversations}
           refreshControl={refreshControl}
+          ListEmptyComponent={refreshing ? <RefreshSkeleton /> : null}
           keyExtractor={(c) => c.id}
           ref={onScroll.listRef}
           onScroll={onScroll}

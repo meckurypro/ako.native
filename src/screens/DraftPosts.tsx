@@ -13,13 +13,14 @@ import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useToast } from "@/components/ui/Toast";
 import { useDeleteDraftOrScheduledPost, useMyDraftPosts } from "@/hooks/usePosts";
+import { RefreshSkeleton } from "@/components/ui/RefreshSkeleton";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 
 export function DraftPosts() {
   const insets = useSafeAreaInsets();
   const toast = useToast();
   const { data: drafts, isLoading, refetch } = useMyDraftPosts();
-  const { refreshControl } = usePullToRefresh(refetch);
+  const { refreshControl, refreshing } = usePullToRefresh(refetch);
   const deleteDraft = useDeleteDraftOrScheduledPost();
   const [pendingDiscard, setPendingDiscard] = useState<string | null>(null);
 
@@ -39,8 +40,9 @@ export function DraftPosts() {
         <EmptyNotice large icon={FileEdit} title="No drafts yet" message={'Start a post and choose "Save as draft" instead of posting — it\'ll show up here.'} />
       ) : (
         <FlatList
-          data={drafts}
+          data={refreshing ? [] : drafts}
           refreshControl={refreshControl}
+          ListEmptyComponent={refreshing ? <RefreshSkeleton /> : null}
           keyExtractor={(d) => d.id}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: insets.bottom + 24, gap: 12 }}

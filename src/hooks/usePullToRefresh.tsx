@@ -2,6 +2,9 @@
 // query currently on screen is refetched too (cards, FAQs, purchase/saved state, counts…). The spinner clears when
 // all settle, or after a cap. The logic itself lives in lib/refresh.ts (pure, unit-tested); this is the React wrapper.
 //
+// `refreshing` stays true for the whole reload (min. MIN_CLEAR_MS): screens use it to clear their content while it runs,
+// so the page visibly empties and then repopulates with fresh data.
+//
 // Used by every pull-to-refresh screen, including PostList (the Feed, hashtag feeds…) and Notifications.
 import NetInfo from "@react-native-community/netinfo";
 import { onlineManager, useQueryClient } from "@tanstack/react-query";
@@ -10,6 +13,9 @@ import { RefreshControl } from "react-native";
 
 import { runRefresh, type NetProbeResult } from "@/lib/refresh";
 import { useTheme } from "@/theme/ThemeProvider";
+
+/** Even a fast refetch keeps the page cleared this long, so the reload is visible rather than a flicker. */
+const MIN_CLEAR_MS = 700;
 
 type Refetch = () => Promise<unknown> | unknown;
 
@@ -48,10 +54,13 @@ export function usePullToRefresh(refetch: Refetch | Refetch[], offset = 0, optio
     if (inFlight.current) return; // a second pull while one is running would just cancel and restart the fetches
     inFlight.current = true;
     setRefreshing(true);
+    const startedAt = Date.now();
     try {
       const list = Array.isArray(refetchRef.current) ? refetchRef.current : [refetchRef.current];
       await runRefresh(list, { refetchActive: refetchActiveRef.current }, { queryClient, setOnline: (online) => onlineManager.setOnline(online), probe: probeNetwork });
     } finally {
+      const wait = MIN_CLEAR_MS - (Date.now() - startedAt);
+      if (wait > 0) await new Promise<void>((resolve) => setTimeout(resolve, wait));
       inFlight.current = false;
       if (mounted.current) setRefreshing(false);
     }

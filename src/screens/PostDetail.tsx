@@ -64,7 +64,7 @@ export function PostDetail() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { data: post, isLoading: postLoading, refetch: refetchPost } = usePost(postId);
-  const { refreshControl } = usePullToRefresh([refetchPost, () => queryClient.invalidateQueries({ queryKey: ["comments", postId] })], insets.top + 16);
+  const { refreshControl, refreshing } = usePullToRefresh([refetchPost, () => queryClient.invalidateQueries({ queryKey: ["comments", postId] })], insets.top + 16);
 
   const highlightId = comment ?? null;
   const viewOnly = view === "post";
@@ -86,7 +86,7 @@ export function PostDetail() {
         onScroll={onScroll}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: insets.top + 16, paddingHorizontal: 16, paddingBottom: bottomInset }}
+        contentContainerStyle={{ paddingTop: insets.top + 16, paddingHorizontal: 16, paddingBottom: bottomInset, opacity: refreshing ? 0 : 1 }}
       >
         <Pressable onPress={smartBack} accessibilityRole="button" accessibilityLabel="Back" hitSlop={12} className="mb-3 self-start">
           <Icon as={ArrowLeft} size={22} className="text-ink-muted" />
