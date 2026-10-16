@@ -149,11 +149,7 @@ export function BottomNav() {
             width: FAB_SIZE,
             height: FAB_SIZE,
             borderRadius: 18,
-            // Dark: a green-tinted raised tile with a bright-green glyph, so it sits in the theme instead of
-            // being a white slab. Light: solid brand green.
-            backgroundColor: resolvedTheme === "dark" ? colors.accentSoft : colors.accent,
-            borderWidth: resolvedTheme === "dark" ? 1 : 0,
-            borderColor: `rgba(${colors.accentRgb}, 0.32)`,
+            backgroundColor: resolvedTheme === "dark" ? colors.ink : colors.accent,
             alignItems: "center",
             justifyContent: "center",
             transform: [{ scale: pressed ? 0.95 : 1 }],
@@ -164,7 +160,7 @@ export function BottomNav() {
             elevation: 6,
           })}
         >
-          <ChatPlusIcon size={26} bubble={resolvedTheme === "dark" ? colors.accent : colors.canvas} knockout={resolvedTheme === "dark" ? colors.accentSoft : colors.accent} />
+          <ChatPlusIcon size={26} bubble={resolvedTheme === "dark" ? colors.accent : colors.canvas} knockout={resolvedTheme === "dark" ? colors.ink : colors.accent} />
           {unreadCount > 0 ? (
             // Straddles the tile's top-right corner. The ring is the page colour, so it reads as cut out of the
             // button instead of a flat red dot stuck on it.
