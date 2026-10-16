@@ -13,6 +13,7 @@ import { AppState } from "react-native";
 
 import { notificationAction, parsePushData, type PushTapData } from "../lib/notificationRoute";
 import { getExpoPushToken, registerPushToken } from "../lib/push";
+import { startPushOutbox } from "../lib/pushNotify";
 import { askForPushPermission, refreshPushPermission, usePushPermission } from "../lib/pushPermissionStore";
 import { describePushError, setPushStatus } from "../lib/pushStatusStore";
 import { supabase } from "../lib/supabase";
@@ -183,7 +184,17 @@ export function useBadgeSync() {
   }, [status, ready, total]);
 }
 
+/** Re-sends chat pushes that didn't get out (no signal, app closed right after sending). */
+export function usePushOutbox() {
+  const { user } = useAuth();
+  useEffect(() => {
+    if (!user) return;
+    return startPushOutbox();
+  }, [user?.id]);
+}
+
 export function usePushLifecycle() {
+  usePushOutbox();
   useFirstRunPushAsk();
   usePushRegistration();
   usePushNavigation();

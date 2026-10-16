@@ -57,6 +57,10 @@ const PROFILE: NavItem = { key: "profile", label: "Profile", Icon: wrap(User) };
 const FULL_ITEMS: NavItem[] = [FEED, DISCOVER, LIBRARY, CONNECT, PROFILE];
 const RESTRICTED_ITEMS: NavItem[] = [DISCOVER, LIBRARY, CONNECT, PROFILE];
 
+/** Unread badge: one crisp notification red in both themes (the semantic `danger` tone is muted and read as muddy on the button). */
+const BADGE_BG = "#D8453A";
+const BADGE_TEXT = "#FFFFFF";
+
 export const FAB_SIZE = 56;
 export const FAB_GAP = 16;
 
@@ -145,7 +149,11 @@ export function BottomNav() {
             width: FAB_SIZE,
             height: FAB_SIZE,
             borderRadius: 18,
-            backgroundColor: resolvedTheme === "dark" ? colors.ink : colors.accent,
+            // Dark: a green-tinted raised tile with a bright-green glyph, so it sits in the theme instead of
+            // being a white slab. Light: solid brand green.
+            backgroundColor: resolvedTheme === "dark" ? colors.accentSoft : colors.accent,
+            borderWidth: resolvedTheme === "dark" ? 1 : 0,
+            borderColor: `rgba(${colors.accentRgb}, 0.32)`,
             alignItems: "center",
             justifyContent: "center",
             transform: [{ scale: pressed ? 0.95 : 1 }],
@@ -156,10 +164,30 @@ export function BottomNav() {
             elevation: 6,
           })}
         >
-          <ChatPlusIcon size={26} bubble={resolvedTheme === "dark" ? colors.accent : colors.canvas} knockout={resolvedTheme === "dark" ? colors.ink : colors.accent} />
+          <ChatPlusIcon size={26} bubble={resolvedTheme === "dark" ? colors.accent : colors.canvas} knockout={resolvedTheme === "dark" ? colors.accentSoft : colors.accent} />
           {unreadCount > 0 ? (
-            <View className="absolute -right-1.5 -top-1.5 h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1">
-              <Text className="text-[10px] font-medium text-canvas">{unreadCount > 9 ? "9+" : unreadCount}</Text>
+            // Straddles the tile's top-right corner. The ring is the page colour, so it reads as cut out of the
+            // button instead of a flat red dot stuck on it.
+            <View
+              pointerEvents="none"
+              style={{
+                position: "absolute",
+                top: -9,
+                right: -9,
+                minWidth: 24,
+                height: 24,
+                paddingHorizontal: 5,
+                borderRadius: 12,
+                borderWidth: 2.5,
+                borderColor: colors.canvas,
+                backgroundColor: BADGE_BG,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text style={{ color: BADGE_TEXT, fontSize: 11, lineHeight: 13, fontFamily: "Inter_600SemiBold", fontVariant: ["tabular-nums"], includeFontPadding: false }}>
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </Text>
             </View>
           ) : null}
         </Pressable>
