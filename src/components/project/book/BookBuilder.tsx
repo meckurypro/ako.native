@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAvoider } from "@/components/ui/KeyboardAvoider";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { EditorToolbar } from "@/components/ui/EditorToolbar";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { Icon, Image } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
@@ -23,6 +24,7 @@ import {
   type BookChapter,
   type BookChapterKind,
 } from "@/hooks/useBookBuilder";
+import { useUndoRedo } from "@/hooks/useUndoRedo";
 import { useUpdateProject } from "@/hooks/useProjects";
 import { useUploadProjectThumbnail } from "@/hooks/useUploadProjectThumbnail";
 import { haptics } from "@/lib/haptics";
@@ -47,8 +49,10 @@ export function BookBuilder({ projectId, project, chapters, publishBook }: BookB
   const updateProject = useUpdateProject();
 
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [draftTitle, setDraftTitle] = useState("");
-  const [draftContent, setDraftContent] = useState("");
+  const draft = useUndoRedo({ title: "", content: "" });
+  const draftTitle = draft.value.title;
+  const draftContent = draft.value.content;
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [addingSectionPicker, setAddingSectionPicker] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<BookChapter | null>(null);
@@ -59,15 +63,21 @@ export function BookBuilder({ projectId, project, chapters, publishBook }: BookB
 
   function startEdit(chapter: BookChapter) {
     setEditingId(chapter.id);
-    setDraftTitle(chapter.title);
-    setDraftContent(chapter.content ?? "");
+    draft.reset({ title: chapter.title, content: chapter.content ?? "" });
+  }
+
+  function closeEdit() {
+    if (draft.isDirty) setConfirmDiscard(true);
+    else setEditingId(null);
   }
 
   async function saveEdit() {
     if (!editingId) return;
     try {
+      setError(null);
       await updateChapter.mutateAsync({ chapterId: editingId, title: draftTitle.trim() || "Untitled", content: draftContent });
-      setEditingId(null);
+      // Stay in the editor after saving so undo/redo keep working; "Close" leaves it.
+      draft.markSaved();
       haptics.light();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't save.");
@@ -165,9 +175,19 @@ export function BookBuilder({ projectId, project, chapters, publishBook }: BookB
             <View key={chapter.id} className="rounded-xl border border-border p-3">
               {editingId === chapter.id ? (
                 <View className="gap-2">
+                  <EditorToolbar
+                    onUndo={draft.undo}
+                    onRedo={draft.redo}
+                    canUndo={draft.canUndo}
+                    canRedo={draft.canRedo}
+                    onSave={saveEdit}
+                    saving={updateChapter.isPending}
+                    dirty={draft.isDirty}
+                    onCancel={closeEdit}
+                  />
                   <TextInput
                     value={draftTitle}
-                    onChangeText={setDraftTitle}
+                    onChangeText={(title) => draft.set((d) => ({ ...d, title }))}
                     placeholder="Title"
                     placeholderTextColor={colors.inkMuted}
                     className="rounded-lg border border-border bg-canvas px-3 py-2 text-sm font-medium text-ink"
@@ -176,7 +196,7 @@ export function BookBuilder({ projectId, project, chapters, publishBook }: BookB
                   />
                   <TextInput
                     value={draftContent}
-                    onChangeText={setDraftContent}
+                    onChangeText={(content) => draft.set((d) => ({ ...d, content }))}
                     placeholder={BOOK_SECTION_INFO[chapter.kind].hint}
                     placeholderTextColor={colors.inkMuted}
                     multiline
@@ -185,14 +205,6 @@ export function BookBuilder({ projectId, project, chapters, publishBook }: BookB
                     style={{ fontFamily: "Inter_400Regular", minHeight: 240 }}
                     accessibilityLabel="Chapter text"
                   />
-                  <View className="flex-row items-center gap-2">
-                    <Button size="sm" onPress={saveEdit} loading={updateChapter.isPending}>
-                      Save
-                    </Button>
-                    <Pressable onPress={() => setEditingId(null)} accessibilityRole="button" className="px-3 py-1.5">
-                      <Text className="text-sm text-ink-muted">Cancel</Text>
-                    </Pressable>
-                  </View>
                 </View>
               ) : (
                 <View className="flex-row items-center gap-2">
@@ -257,6 +269,19 @@ export function BookBuilder({ projectId, project, chapters, publishBook }: BookB
           </View>
         )}
       </ScrollView>
+
+      {confirmDiscard && (
+        <ConfirmDialog
+          title="Discard changes?"
+          description="Your unsaved edits to this section will be lost."
+          confirmLabel="Discard"
+          onConfirm={() => {
+            setConfirmDiscard(false);
+            setEditingId(null);
+          }}
+          onCancel={() => setConfirmDiscard(false)}
+        />
+      )}
 
       {pendingDelete && (
         <ConfirmDialog

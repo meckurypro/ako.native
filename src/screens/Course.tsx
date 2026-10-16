@@ -54,6 +54,8 @@ import { useFeedDoorway } from "@/hooks/useFeedDoorway";
 import { isProjectFree, useHasPurchased, useProject } from "@/hooks/useProjects";
 import { haptics } from "@/lib/haptics";
 import { buildReaderModel, readMinutes } from "@/lib/lessonFormat";
+import { EditorToolbar } from "@/components/ui/EditorToolbar";
+import { useUndoRedo } from "@/hooks/useUndoRedo";
 import { useTheme } from "@/theme/ThemeProvider";
 
 interface LessonFormValue {
@@ -77,7 +79,9 @@ function LessonForm({
   onCancel: () => void;
 }) {
   const { colors } = useTheme();
-  const [value, setValue] = useState(initial);
+  const history = useUndoRedo(initial);
+  const value = history.value;
+  const setValue = history.set;
   const inputClass = "w-full rounded-lg border border-border bg-canvas px-3 py-2 text-sm text-ink";
   const inputStyle = { fontFamily: "Inter_400Regular" } as const;
   const canSubmit = !!value.title.trim() && !pending;
@@ -128,13 +132,23 @@ function LessonForm({
         <Icon as={Eye} size={12} className={value.isFreePreview ? "text-canvas" : "text-ink-muted"} />
         <Text className={`text-xs font-medium ${value.isFreePreview ? "text-canvas" : "text-ink-muted"}`}>Free preview</Text>
       </Pressable>
-      <View className="mt-0.5 flex-row items-center gap-4">
-        <Pressable onPress={() => canSubmit && onSubmit(value)} disabled={!canSubmit} accessibilityRole="button" hitSlop={8} className={canSubmit ? "" : "opacity-50"}>
-          <Text className="text-xs font-medium text-accent">{pending ? "Saving…" : submitLabel}</Text>
-        </Pressable>
-        <Pressable onPress={onCancel} accessibilityRole="button" hitSlop={8}>
-          <Text className="text-xs text-ink-muted">Cancel</Text>
-        </Pressable>
+      <View className="mt-0.5">
+        <EditorToolbar
+          onUndo={history.undo}
+          onRedo={history.redo}
+          canUndo={history.canUndo}
+          canRedo={history.canRedo}
+          onSave={() => {
+            if (!canSubmit) return;
+            onSubmit(value);
+            history.markSaved();
+          }}
+          saving={pending}
+          dirty={history.isDirty || !initial.title}
+          canSave={!!value.title.trim()}
+          saveLabel={submitLabel}
+          onCancel={onCancel}
+        />
       </View>
     </View>
   );
