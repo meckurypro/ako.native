@@ -22,7 +22,6 @@ import {
   Pressable,
   ScrollView,
   Share,
-  StyleSheet,
   Text as RNText,
   View,
   type GestureResponderEvent,
@@ -62,7 +61,6 @@ import {
   coerceFont,
   coerceSpacing,
   estimatePages,
-  pageBreakOffsets,
   locate,
   pagesLeftLabel,
   resolveOverall,
@@ -118,7 +116,6 @@ const ChapterBody = memo(function ChapterBody({
   family,
   justify,
   onInteract,
-  onGaps,
 }: {
   opener: { eyebrow: string | null; title: string; body: BookBlock[] };
   theme: ReaderThemeSpec;
@@ -127,7 +124,6 @@ const ChapterBody = memo(function ChapterBody({
   family: BookFamily;
   justify: boolean;
   onInteract: () => void;
-  onGaps: (gaps: number[]) => void;
 }) {
   const face: Face = { family, heavy: !!theme.heavy };
   return (
@@ -146,7 +142,7 @@ const ChapterBody = memo(function ChapterBody({
         </View>
       </View>
       {opener.body.length > 0 ? (
-        <BookRichText blocks={opener.body} ink={theme.ink} muted={theme.muted} accent={theme.accent} onInteract={onInteract} fontSize={fontSize} family={family} lineHeight={lineHeight} justify={justify} heavy={theme.heavy} ornament onGaps={onGaps} />
+        <BookRichText blocks={opener.body} ink={theme.ink} muted={theme.muted} accent={theme.accent} onInteract={onInteract} fontSize={fontSize} family={family} lineHeight={lineHeight} justify={justify} heavy={theme.heavy} ornament />
       ) : (
         <Span face={face} style={{ color: theme.muted, fontSize }}>
           Nothing here yet.
@@ -188,8 +184,6 @@ export function BookReflowReader({ projectId, title, chapters, userId, thumbnail
   const [resumeOffer, setResumeOffer] = useState<{ chapterId: string; fraction: number } | null>(null);
   const [fraction, setFraction] = useState(0);
   const [dims, setDims] = useState({ vw: 390, vh: 800, contentH: 0 });
-  // Gaps between blocks, from the top of the chapter column: where a page divider can sit without cutting through text.
-  const [gapState, setGapState] = useState<{ id: string; gaps: number[] }>({ id: "", gaps: [] });
   const [scrub, setScrub] = useState<number | null>(null);
   const [jumpBack, setJumpBack] = useState<{ chapterId: string; fraction: number; label: string } | null>(null);
 
@@ -295,13 +289,6 @@ export function BookReflowReader({ projectId, title, chapters, userId, thumbnail
     });
   }, [chapterPages]);
   const position = useMemo(() => locate(chapterPages, Math.max(0, currentIndex), current ? fraction : 0), [chapterPages, currentIndex, current, fraction]);
-  // Gaps belong to the chapter they were measured in; a freshly opened chapter starts with no dividers until it lays out.
-  const currentId = current?.id ?? "";
-  const onGaps = useCallback((gaps: number[]) => setGapState({ id: currentId, gaps }), [currentId]);
-  const pageBreaks = useMemo(
-    () => (currentIndex >= 0 && gapState.id === currentId ? pageBreakOffsets(gapState.gaps, dims.contentH, chapterPages[currentIndex] ?? 1) : []),
-    [gapState, currentId, dims.contentH, chapterPages, currentIndex]
-  );
 
   const opener = useMemo(() => {
     if (!current) return null;
@@ -528,10 +515,7 @@ export function BookReflowReader({ projectId, title, chapters, userId, thumbnail
         contentContainerStyle={{ paddingTop: padTop, paddingBottom: padBottom, paddingHorizontal: PAD_X }}
       >
         <View style={{ width: "100%", maxWidth: MAX_COLUMN, alignSelf: "center" }}>
-          {pageBreaks.map((y) => (
-            <View key={y} pointerEvents="none" style={{ position: "absolute", left: 0, right: 0, top: y, height: StyleSheet.hairlineWidth, backgroundColor: theme.rule }} />
-          ))}
-          <ChapterBody opener={opener} theme={theme} fontSize={fontSize} lineHeight={lineHeight} family={FAMILY_OF[font]} justify={justify} onInteract={markInteract} onGaps={onGaps} />
+          <ChapterBody opener={opener} theme={theme} fontSize={fontSize} lineHeight={lineHeight} family={FAMILY_OF[font]} justify={justify} onInteract={markInteract} />
 
           <View style={{ alignItems: "center", gap: 12, marginTop: 56, marginBottom: 8 }}>
             <Ornament color={theme.muted} width={112} />

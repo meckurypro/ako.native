@@ -170,36 +170,6 @@ export function resolveOverall(chapterPages: number[], overall: number): { index
   return { index: 0, fraction: 0 };
 }
 
-/**
- * Where to draw the thin page dividers inside a chapter. Pages are screenfuls, so the ideal
- * break for page k is k/pages of the way down the content. `edges` are the gaps between
- * blocks (paragraphs, headings, lists), measured from the top of the content; each ideal
- * break snaps to the nearest gap so a line never strikes through a line of text.
- */
-export function pageBreakOffsets(edges: number[], contentH: number, pages: number): number[] {
-  // Layout can briefly report 0 or non-finite sizes (a chapter swap); a page count from those is meaningless.
-  if (!Number.isFinite(pages) || !Number.isFinite(contentH) || pages < 2 || pages > 2000 || contentH <= 0 || edges.length === 0) return [];
-  const sorted = edges.filter((e) => Number.isFinite(e) && e > 0 && e < contentH).sort((a, b) => a - b);
-  const pageH = contentH / pages;
-  const out: number[] = [];
-  for (let k = 1; k < pages; k++) {
-    const target = k * pageH;
-    let best = -1;
-    let bestD = Infinity;
-    for (const e of sorted) {
-      const d = Math.abs(e - target);
-      if (d < bestD) {
-        bestD = d;
-        best = e;
-      }
-    }
-    // A gap more than half a page away would misplace the break: skip that one.
-    if (best < 0 || bestD > pageH / 2) continue;
-    if (out.length === 0 || best - out[out.length - 1] > pageH / 4) out.push(best);
-  }
-  return out;
-}
-
 export function pagesLeftLabel(n: number): string {
   if (n <= 0) return "Last page of chapter";
   if (n === 1) return "1 page left in chapter";
