@@ -5,12 +5,11 @@
 // small bridge below.
 import { Image as ExpoImage, type ImageProps as ExpoImageProps, type ImageSource } from "expo-image";
 import type { LucideIcon, LucideProps } from "lucide-react-native";
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import { useCssElement } from "react-native-css";
 
-import { useIsOnline } from "../../hooks/useIsOnline";
 import { isRemoteUrl, stableImageKey, storeFileName } from "../../lib/imageKey";
-import { lookupStoredImage, storeImage, subscribeStoredImage } from "../../lib/imageStore";
+import { discardStoredImage, lookupStoredImage, storeImage, subscribeStoredImage } from "../../lib/imageStore";
 
 type ImageProp = ExpoImageProps & {
   className?: string;
@@ -33,43 +32,48 @@ const NEVER = () => () => {};
 /**
  * expo-image with className (rounded-full, w-10, h-10, …) and offline-safe remote images:
  *   1. a stable `cacheKey` (signed-URL tokens no longer defeat expo-image's disk cache) and `memory-disk` caching;
- *   2. (durable, default) the picture is also kept in our own store — rendered from there once present, so it
- *      survives iOS cache expiry and works offline. While it downloads we render nothing (no double download); if
- *      we're offline or the download fails we fall back to the remote URL, which expo-image may still have cached.
+ *   2. (durable, default) once the picture has loaded, a copy is kept in our own store and used from then on, so it
+ *      survives iOS cache expiry and works offline.
+ *
+ * The remote URL is ALWAYS what renders until a stored copy exists. The store is a background optimisation and must
+ * never be able to blank a picture: it used to hold the image back until its own download finished, so a stalled or
+ * failed download left every avatar, thumbnail and photo empty. A stored copy that fails to display is discarded and
+ * the remote URL takes over again.
  */
-export function Image({ durable = true, source, cachePolicy, ...rest }: ImageProp) {
+export function Image({ durable = true, source, cachePolicy, onLoad, onError, ...rest }: ImageProp) {
   const remote = remoteUriOf(source);
   const name = remote && durable ? storeFileName(remote) : null;
   const subscribe = useCallback((l: () => void) => (name ? subscribeStoredImage(name, l) : NEVER()), [name]);
   const stored = useSyncExternalStore(subscribe, () => (name ? lookupStoredImage(name) : null));
-  const online = useIsOnline();
-  const [gaveUp, setGaveUp] = useState(false);
-
-  useEffect(() => {
-    if (!remote || !name || stored) return;
-    if (!online) {
-      setGaveUp(true);
-      return;
-    }
-    let alive = true;
-    setGaveUp(false);
-    void storeImage(remote).then((uri) => {
-      if (alive && !uri) setGaveUp(true);
-    });
-    return () => {
-      alive = false;
-    };
-  }, [remote, name, stored, online]);
 
   let resolved: ExpoImageProps["source"] = source;
   if (remote) {
     const base: ImageSource = typeof source === "string" ? { uri: source } : (source as ImageSource);
-    if (stored) resolved = { uri: stored };
-    else if (name && !gaveUp) resolved = null; // store download in flight
-    else resolved = { ...base, cacheKey: base.cacheKey ?? stableImageKey(remote) };
+    resolved = stored ? { uri: stored } : { ...base, cacheKey: base.cacheKey ?? stableImageKey(remote) };
   }
 
-  return useCssElement(ExpoImage, { ...rest, source: resolved, cachePolicy: cachePolicy ?? "memory-disk" }, { className: "style" });
+  const handleLoad = useCallback<NonNullable<ExpoImageProps["onLoad"]>>(
+    (e) => {
+      // Only a picture that actually displayed is worth keeping (no downloads for dead links), and only after it is
+      // on screen so the store never competes with the first paint.
+      if (remote && name && !stored) void storeImage(remote);
+      onLoad?.(e);
+    },
+    [remote, name, stored, onLoad]
+  );
+
+  const handleError = useCallback<NonNullable<ExpoImageProps["onError"]>>(
+    (e) => {
+      if (stored && name) {
+        discardStoredImage(name); // bad stored copy: drop it, the remote URL renders next
+        return;
+      }
+      onError?.(e);
+    },
+    [stored, name, onError]
+  );
+
+  return useCssElement(ExpoImage, { ...rest, source: resolved, cachePolicy: cachePolicy ?? "memory-disk", onLoad: handleLoad, onError: handleError }, { className: "style" });
 }
 
 type IconProps = Omit<LucideProps, "ref"> & {

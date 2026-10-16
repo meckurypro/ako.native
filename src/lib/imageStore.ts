@@ -89,14 +89,19 @@ async function download(uri: string, name: string): Promise<string | null> {
     if (!onlineManager.isOnline()) return null;
     dir.create({ intermediates: true, idempotent: true });
     if (part.exists) part.delete();
-    await File.downloadFileAsync(uri, part, {
-      idempotent: true,
-      signal: controller.signal,
-      // The server tells us the size up front: don't pull a 40 MB video poster just to throw it away.
-      onProgress: ({ totalBytes }) => {
-        if (totalBytes > MAX_FILE_BYTES) controller.abort();
-      },
-    });
+    // Raced against a hard timeout as well: if the native download ever ignores the abort signal, the promise would
+    // never settle and its queue slot would be lost for good (four of those and no picture could be stored again).
+    await Promise.race([
+      File.downloadFileAsync(uri, part, {
+        idempotent: true,
+        signal: controller.signal,
+        // The server tells us the size up front: don't pull a 40 MB video poster just to throw it away.
+        onProgress: ({ totalBytes }) => {
+          if (totalBytes > MAX_FILE_BYTES) controller.abort();
+        },
+      }),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("download_timeout")), DOWNLOAD_TIMEOUT_MS + 3_000)),
+    ]);
     const size = part.size ?? 0;
     if (size <= 0 || size > MAX_FILE_BYTES) throw new Error("bad_size");
     const final = new File(dir, name);
@@ -118,6 +123,22 @@ async function download(uri: string, name: string): Promise<string | null> {
     clearTimeout(timer);
     release();
   }
+}
+
+/**
+ * Drops a stored copy that failed to display (corrupt / not an image) and stops re-downloading it for a day, so the
+ * remote URL renders instead of the bad file coming straight back.
+ */
+export function discardStoredImage(name: string): void {
+  try {
+    const f = new File(root(), name);
+    if (f.exists) f.delete();
+  } catch {
+    /* nothing to delete */
+  }
+  known.set(name, null);
+  failedAt.set(name, Date.now() + 24 * 60 * 60 * 1000);
+  emit(name);
 }
 
 /** Stores one remote image (once). Resolves to the local uri, or null if offline / too big / failed. */
