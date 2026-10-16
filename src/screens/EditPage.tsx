@@ -1,7 +1,7 @@
 // src/screens/EditPage.tsx
 // Edit a Page's cover, avatar, name, tagline, bio, website and topics (admins only).
 import { Camera } from "lucide-react-native";
-import { router, useLocalSearchParams, type Href } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -16,6 +16,8 @@ import { Icon, Image } from "@/components/ui/styled";
 import { SurfaceInput } from "@/components/ui/SurfaceInput";
 import { Text } from "@/components/ui/Text";
 import { useAuth } from "@/hooks/useAuth";
+import { useReturnAfterSave } from "@/hooks/useReturnAfterSave";
+import { useToast } from "@/components/ui/Toast";
 import { useMyPagePermissions, usePageByUsername, usePageMembers, usePageTopics, useUpdatePage } from "@/hooks/usePages";
 import { useUploadAvatar } from "@/hooks/useUploadAvatar";
 import { pickSingleImage } from "@/lib/pickImage";
@@ -29,6 +31,8 @@ export function EditPage() {
   const { data: members } = usePageMembers(page?.id ?? "");
   const { data: existingTopicIds } = usePageTopics(page?.id);
   const updatePage = useUpdatePage();
+  const returnAfterSave = useReturnAfterSave();
+  const toast = useToast();
   const uploadAvatar = useUploadAvatar();
 
   const [name, setName] = useState("");
@@ -110,7 +114,8 @@ export function EditPage() {
         avatar_url: avatarUrl ?? undefined,
         cover_url: coverUrl ?? undefined,
       });
-      router.replace(`/page/${page.username}` as Href);
+      toast("Page updated.", { variant: "success" });
+      await returnAfterSave({ fallback: `/page/${page.username}` });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't save those changes.");
     }

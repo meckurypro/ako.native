@@ -446,12 +446,17 @@ export function useUpdatePage() {
         }
       }
     },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["page"] });
-      queryClient.invalidateQueries({ queryKey: ["my-pages"] });
-      queryClient.invalidateQueries({ queryKey: ["active-identity"] });
-      queryClient.invalidateQueries({ queryKey: ["page-members", variables.page_id] });
-      queryClient.invalidateQueries({ queryKey: ["page-topics", variables.page_id] });
+    // Awaited + refetchType "all": the editor returns to the screen it
+    // was opened from straight after this, which should show the
+    // saved name/avatar/cover on its first frame.
+    onSuccess: async (_data, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["page"], refetchType: "all" }),
+        queryClient.invalidateQueries({ queryKey: ["my-pages"], refetchType: "all" }),
+        queryClient.invalidateQueries({ queryKey: ["active-identity"], refetchType: "all" }),
+        queryClient.invalidateQueries({ queryKey: ["page-members", variables.page_id] }),
+        queryClient.invalidateQueries({ queryKey: ["page-topics", variables.page_id], refetchType: "all" }),
+      ]);
     },
   });
 }

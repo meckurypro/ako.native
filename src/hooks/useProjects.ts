@@ -808,13 +808,21 @@ export function useUpdateProject() {
 
       return data as Project;
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["user-projects"] });
-      queryClient.invalidateQueries({ queryKey: ["page-projects"] });
-      queryClient.invalidateQueries({ queryKey: ["project", data.id] });
-      queryClient.invalidateQueries({ queryKey: ["project-topics", data.id] });
-      queryClient.invalidateQueries({ queryKey: ["project-detail", data.id] });
-      queryClient.invalidateQueries({ queryKey: ["similar-projects"] });
+    // Awaited, and refetchType "all" so lists that aren't mounted right
+    // now (the screen the editor was opened from) are refetched too —
+    // otherwise a draft→published change returns to a list that
+    // paints the old status for a beat before correcting itself, and
+    // the overlay would already have settled by then. Same reasoning
+    // as useSetProjectStatus below.
+    onSuccess: async (data) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["user-projects"], refetchType: "all" }),
+        queryClient.invalidateQueries({ queryKey: ["page-projects"], refetchType: "all" }),
+        queryClient.invalidateQueries({ queryKey: ["project", data.id], refetchType: "all" }),
+        queryClient.invalidateQueries({ queryKey: ["project-topics", data.id], refetchType: "all" }),
+        queryClient.invalidateQueries({ queryKey: ["project-detail", data.id], refetchType: "all" }),
+        queryClient.invalidateQueries({ queryKey: ["similar-projects"] }),
+      ]);
     },
   });
 }
@@ -950,9 +958,9 @@ export function useSetProjectStatus() {
     // usePosts.ts for the full reasoning; same fix, same bug.
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["user-projects"] }),
-        queryClient.invalidateQueries({ queryKey: ["page-projects"] }),
-        queryClient.invalidateQueries({ queryKey: ["project"] }),
+        queryClient.invalidateQueries({ queryKey: ["user-projects"], refetchType: "all" }),
+        queryClient.invalidateQueries({ queryKey: ["page-projects"], refetchType: "all" }),
+        queryClient.invalidateQueries({ queryKey: ["project"], refetchType: "all" }),
       ]);
     },
   });

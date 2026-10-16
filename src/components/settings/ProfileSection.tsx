@@ -15,6 +15,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useOwnProfile } from "@/hooks/useOwnProfile";
 import { useUpdateProfile, useUpdateProfileRoles } from "@/hooks/useProfile";
 import { useProfileVisitCount } from "@/hooks/useProfileVisits";
+import { useReturnAfterSave } from "@/hooks/useReturnAfterSave";
+import { useToast } from "@/components/ui/Toast";
 import { useRoles } from "@/hooks/useRoles";
 import { useUploadAvatar } from "@/hooks/useUploadAvatar";
 import { haptics } from "@/lib/haptics";
@@ -36,6 +38,8 @@ export function ProfileSection({ open, onToggle }: ProfileSectionProps) {
   const { data: visitCount } = useProfileVisitCount(profile?.id, !!profile?.id);
   const updateProfile = useUpdateProfile();
   const updateProfileRoles = useUpdateProfileRoles();
+  const returnAfterSave = useReturnAfterSave();
+  const toast = useToast();
   const uploadAvatar = useUploadAvatar();
   const { data: roles } = useRoles();
 
@@ -152,6 +156,14 @@ export function ProfileSection({ open, onToggle }: ProfileSectionProps) {
       ]);
       setProfileSaved(true);
       haptics.success();
+      toast("Profile updated.", { variant: "success" });
+
+      // Back to the screen the person came from, refreshed. A changed username would leave that screen's
+      // route dead (/profile/old), so in that case swap Settings for the profile under its new name.
+      await returnAfterSave({
+        fallback: `/profile/${usernameChanged ? normalizedUsername : profile?.username}`,
+        replaceWith: usernameChanged ? `/profile/${normalizedUsername}` : undefined,
+      });
     } catch (err) {
       setProfileError(err instanceof Error ? err.message : "Couldn't save changes.");
     }

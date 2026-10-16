@@ -139,9 +139,13 @@ export function usePublishMusic() {
       if (data?.error) throw new Error(data.error);
       return data as { success: true; catalogue: MusicCatalogueWithContributors };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["my-published-music"] });
-      queryClient.invalidateQueries({ queryKey: ["music-catalogue-search"] });
+    // Awaited so the publish sheet only closes once the page behind it
+    // (PublishMusicButton's "published" state) has refetched.
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["my-published-music"], refetchType: "all" }),
+        queryClient.invalidateQueries({ queryKey: ["music-catalogue-search"], refetchType: "all" }),
+      ]);
     },
   });
 }
@@ -158,9 +162,13 @@ export function useUnpublishMusic() {
       if (data?.error) throw new Error(data.error);
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["my-published-music"] });
-      queryClient.invalidateQueries({ queryKey: ["music-catalogue-search"] });
+    // Awaited so the publish sheet only closes once the page behind it
+    // (PublishMusicButton's "published" state) has refetched.
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["my-published-music"], refetchType: "all" }),
+        queryClient.invalidateQueries({ queryKey: ["music-catalogue-search"], refetchType: "all" }),
+      ]);
     },
   });
 }

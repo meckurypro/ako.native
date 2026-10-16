@@ -3,7 +3,7 @@
 // accepted collaborators. Same fields as Compose minus posting options.
 import { useQuery } from "@tanstack/react-query";
 import { Image as ImageIcon, X } from "lucide-react-native";
-import { router, useLocalSearchParams, type Href } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -18,7 +18,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCollaborators } from "@/hooks/useCollaboration";
 import { usePhotoAttachments } from "@/hooks/usePhotoAttachments";
 import { canEditPost, usePostTopics, useUpdatePost } from "@/hooks/usePosts";
+import { useReturnAfterSave } from "@/hooks/useReturnAfterSave";
 import { useSmartBack } from "@/hooks/useSmartBack";
+import { useToast } from "@/components/ui/Toast";
 import { isVideoUrl } from "@/hooks/useUploadPostMedia";
 import { supabase } from "@/lib/supabase";
 import { CONTENT_LIMIT, contentCounterClass } from "@/lib/textLimits";
@@ -61,6 +63,8 @@ export function EditPost() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const smartBack = useSmartBack();
+  const returnAfterSave = useReturnAfterSave();
+  const toast = useToast();
   const { user } = useAuth();
   const { data: post, isLoading } = usePostForEdit(postId);
   const updatePost = useUpdatePost();
@@ -117,7 +121,10 @@ export function EditPost() {
         interest_ids: Array.from(topicIds),
         media_urls: photos.mediaUrls,
       });
-      router.replace(`/post/${postId}` as Href);
+      toast("Post updated.", { variant: "success" });
+      // Back to where the editor was opened from (usually the post or a feed), refreshed — post detail is
+      // only the fallback.
+      await returnAfterSave({ fallback: `/post/${postId}` });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't save changes.");
     }

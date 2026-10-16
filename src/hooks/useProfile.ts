@@ -323,15 +323,21 @@ export function useUpdateProfile() {
       const { error } = await supabase.from("profiles").update(input).eq("id", user.id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
+    // Awaited (and refetchType "all", so the profile screen we're about
+    // to return to is refetched even though it isn't mounted) — the
+    // caller leaves Settings right after this resolves, and should
+    // land on the new name/avatar/username, not the cached old ones.
+    onSuccess: async () => {
       // Settings' own profile lookup, plus the two username-keyed caches
       // (TopHeader's avatar link, BottomNav's "is this my own profile"
       // check) — a username change makes both stale immediately, not
-      // just the ["profile", oldUsername] lookup above.
-      queryClient.invalidateQueries({ queryKey: ["own-profile"] });
-      queryClient.invalidateQueries({ queryKey: ["my-username"] });
-      queryClient.invalidateQueries({ queryKey: ["my-profile"] });
+      // just the ["profile", oldUsername] lookup.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["profile"], refetchType: "all" }),
+        queryClient.invalidateQueries({ queryKey: ["own-profile"], refetchType: "all" }),
+        queryClient.invalidateQueries({ queryKey: ["my-username"], refetchType: "all" }),
+        queryClient.invalidateQueries({ queryKey: ["my-profile"], refetchType: "all" }),
+      ]);
     },
   });
 }
@@ -353,9 +359,11 @@ export function useUpdateProfileRoles() {
       const { error } = await supabase.rpc("set_profile_roles", { p_role_ids: roleIds });
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
-      queryClient.invalidateQueries({ queryKey: ["own-profile"] });
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["profile"], refetchType: "all" }),
+        queryClient.invalidateQueries({ queryKey: ["own-profile"], refetchType: "all" }),
+      ]);
     },
   });
 }

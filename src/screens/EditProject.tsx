@@ -33,6 +33,8 @@ import { Icon, Image } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useAffiliateProgram } from "@/hooks/useAffiliates";
 import { useProjectOwnership } from "@/hooks/useProjectOwnership";
+import { useReturnAfterSave } from "@/hooks/useReturnAfterSave";
+import { useToast } from "@/components/ui/Toast";
 import { useRoomDetails } from "@/hooks/useRoom";
 import { useBookDetails, useEventDetails, useGigDetails, useGigSamples, useMediaDetails, useMeetingDetails, usePitchDetails } from "@/hooks/useProjectTypeDetails";
 import { PROJECT_TYPE_LABELS, useProject, useProjectTopics, useUpdateProject, type ProjectStatus } from "@/hooks/useProjects";
@@ -69,6 +71,8 @@ export function EditProject() {
   const { data: existingRoomDetails } = useRoomDetails(project?.project_type === "room" ? projectId : undefined);
   const { data: existingBookDetails } = useBookDetails(project?.project_type === "book" ? projectId : undefined);
   const updateProject = useUpdateProject();
+  const returnAfterSave = useReturnAfterSave();
+  const toast = useToast();
   const uploadThumbnail = useUploadProjectThumbnail();
 
   const [title, setTitle] = useState("");
@@ -373,7 +377,11 @@ export function EditProject() {
         fail(e);
       }
 
-      router.back();
+      // Draft/archived → published is the moment worth calling out; any other save is just "saved".
+      // Either way the person goes back to the screen they opened the editor from, refreshed.
+      const justPublished = project.status !== "active" && status === "active";
+      toast(justPublished ? "Project published." : "Changes saved.", { variant: "success" });
+      await returnAfterSave({ fallback: `/projects/${projectId}` });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't save changes.");
     }

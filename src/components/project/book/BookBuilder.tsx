@@ -24,6 +24,8 @@ import {
 } from "@/hooks/useBookBuilder";
 import { useBookDraft } from "@/hooks/useBookDraft";
 import { useUpdateProject } from "@/hooks/useProjects";
+import { useReturnAfterSave } from "@/hooks/useReturnAfterSave";
+import { useToast } from "@/components/ui/Toast";
 import { useUploadProjectThumbnail } from "@/hooks/useUploadProjectThumbnail";
 import { haptics } from "@/lib/haptics";
 import { pickSingleImage } from "@/lib/pickImage";
@@ -41,6 +43,8 @@ export function BookBuilder({ projectId, project, chapters, publishBook }: BookB
   const { colors } = useTheme();
   const uploadThumbnail = useUploadProjectThumbnail();
   const updateProject = useUpdateProject();
+  const returnAfterSave = useReturnAfterSave();
+  const toast = useToast();
   const navigation = useNavigation();
 
   // Everything below edits a local draft; nothing is stored until Save.
@@ -135,6 +139,9 @@ export function BookBuilder({ projectId, project, chapters, publishBook }: BookB
     try {
       await publishBook.mutateAsync();
       haptics.success();
+      toast("Book published.", { variant: "success" });
+      // Back to wherever the builder was opened from, refreshed.
+      await returnAfterSave({ fallback: `/books/${projectId}` });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't publish.");
     }

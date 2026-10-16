@@ -2,10 +2,10 @@
 // Home: For You · Top Discussions · Following, as a drag-tracking tab carousel.
 // Each tab is its own virtualized list (so each keeps its own scroll position),
 // under a header that slides away on scroll-down together with the bottom nav.
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { X } from "lucide-react-native";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, View } from "react-native";
 import type { FlashListRef } from "@shopify/flash-list";
 import Animated, { useAnimatedStyle, useSharedValue } from "react-native-reanimated";
@@ -25,6 +25,7 @@ import { pageFeedKeys, usePageFollowingFeed, usePageRankedFeed } from "@/hooks/u
 import { useActiveIdentity } from "@/hooks/usePages";
 import { feedKeys, useFeedPosts, useFollowingFeed, usePostById, useTopDiscussionsFeed } from "@/hooks/usePosts";
 import { useTabState } from "@/hooks/useTabState";
+import { consumeJustPosted } from "@/lib/justPosted";
 import { haptics } from "@/lib/haptics";
 import type { PostWithAuthor } from "@/types/database";
 
@@ -228,6 +229,13 @@ export function Feed() {
     if (params.scrollToPostId) setScrollToPostId(params.scrollToPostId);
     router.setParams({ justPostedId: undefined, scrollToPostId: undefined });
   }, [params.justPostedId, params.scrollToPostId]);
+  // Compose returns here with plain back navigation (no params) and leaves a one-shot hint instead.
+  useFocusEffect(
+    useCallback(() => {
+      const id = consumeJustPosted();
+      if (id) setJustPostedId(id);
+    }, [])
+  );
 
   const [activeTab, setActiveTab] = useTabState<TabKey>(TAB_KEYS, "for-you");
   const activeIndex = TABS.findIndex((t) => t.key === activeTab);

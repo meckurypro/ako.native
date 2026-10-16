@@ -30,6 +30,7 @@ import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useToast } from "@/components/ui/Toast";
+import { useReturnAfterSave } from "@/hooks/useReturnAfterSave";
 import { useAuth } from "@/hooks/useAuth";
 import { useProjectOwnership } from "@/hooks/useProjectOwnership";
 import { useRecordFreeProjectOpen } from "@/hooks/useProjectAccess";
@@ -194,6 +195,7 @@ export function Course() {
   const deleteLesson = useDeleteLesson(projectId ?? "");
   const moveLesson = useMoveLesson(projectId ?? "");
   const publishCourse = usePublishCourse(projectId ?? "");
+  const returnAfterSave = useReturnAfterSave();
 
   const [newModuleTitle, setNewModuleTitle] = useState("");
   const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
@@ -253,6 +255,19 @@ export function Course() {
   const markComplete = setLessonComplete.mutate;
 
   const fail = useCallback((e: unknown) => toast(e instanceof Error && e.message ? e.message : "Something went wrong.", { variant: "error" }), [toast]);
+
+  async function handlePublishCourse() {
+    try {
+      await publishCourse.mutateAsync();
+    } catch (e) {
+      fail(e);
+      return;
+    }
+    haptics.success();
+    toast("Course published.", { variant: "success" });
+    // Back to wherever the course was opened from, refreshed.
+    await returnAfterSave({ fallback: `/projects/${projectId}` });
+  }
 
   function toggleModuleCollapsed(moduleId: string) {
     setCollapsedModules((prev) => {
@@ -421,7 +436,7 @@ export function Course() {
             )}
             {!project.published_at && (
               <Pressable
-                onPress={() => publishCourse.mutate(undefined, { onSuccess: () => haptics.success(), onError: fail })}
+                onPress={handlePublishCourse}
                 disabled={publishCourse.isPending || modulesList.length === 0}
                 accessibilityRole="button"
                 className={`rounded-full bg-accent px-3 py-1.5 ${publishCourse.isPending || modulesList.length === 0 ? "opacity-50" : ""}`}

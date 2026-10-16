@@ -346,16 +346,26 @@ export function useCreatePost() {
       if (data?.error) throw new Error(data.error);
       return data.post;
     },
-    onSuccess: (_post, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
+    // Awaited + refetchType "all" so the screen Compose returns to (feed,
+    // a profile, a Page) is refetched with the new post already in it,
+    // rather than painting its old cached list first.
+    onSuccess: async (_post, variables) => {
+      const refreshes = [
+        queryClient.invalidateQueries({ queryKey: ["feed-posts"], refetchType: "all" }),
+        // A new post shows on the author's own profile too.
+        queryClient.invalidateQueries({ queryKey: ["user-posts"], refetchType: "all" }),
+      ];
       if (variables.posted_as_page_id) {
-        queryClient.invalidateQueries({ queryKey: ["page-posts", variables.posted_as_page_id] });
+        refreshes.push(
+          queryClient.invalidateQueries({ queryKey: ["page-posts", variables.posted_as_page_id], refetchType: "all" })
+        );
       }
       if (variables.status === "draft") {
-        queryClient.invalidateQueries({ queryKey: ["my-draft-posts"] });
+        refreshes.push(queryClient.invalidateQueries({ queryKey: ["my-draft-posts"], refetchType: "all" }));
       } else if (variables.status === "scheduled") {
-        queryClient.invalidateQueries({ queryKey: ["my-scheduled-posts"] });
+        refreshes.push(queryClient.invalidateQueries({ queryKey: ["my-scheduled-posts"], refetchType: "all" }));
       }
+      await Promise.all(refreshes);
     },
   });
 }
@@ -566,11 +576,13 @@ export function useUpdatePost() {
       if (data?.error) throw new Error(data.error);
       return data.post;
     },
-    onSuccess: (post) => {
-      queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
-      queryClient.invalidateQueries({ queryKey: ["user-posts"] });
-      queryClient.invalidateQueries({ queryKey: ["post", post.id] });
-      queryClient.invalidateQueries({ queryKey: ["post-topics", post.id] });
+    onSuccess: async (post) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["feed-posts"], refetchType: "all" }),
+        queryClient.invalidateQueries({ queryKey: ["user-posts"], refetchType: "all" }),
+        queryClient.invalidateQueries({ queryKey: ["post", post.id], refetchType: "all" }),
+        queryClient.invalidateQueries({ queryKey: ["post-topics", post.id], refetchType: "all" }),
+      ]);
     },
   });
 }

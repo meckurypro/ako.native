@@ -29,7 +29,9 @@ import { PageActionBlocked } from "@/components/page/PageActionBlocked";
 import { useActiveIdentity, useActivePagePermissions } from "@/hooks/usePages";
 import { useCreatePost, useDeleteDraftOrScheduledPost } from "@/hooks/usePosts";
 import { useMyProfile } from "@/hooks/useProfile";
+import { useReturnAfterSave } from "@/hooks/useReturnAfterSave";
 import { useSmartBack } from "@/hooks/useSmartBack";
+import { setJustPosted } from "@/lib/justPosted";
 import { isVideoUrl, useUploadPostMedia } from "@/hooks/useUploadPostMedia";
 import { fromImagePickerAsset } from "@/lib/localFile";
 import { supabase } from "@/lib/supabase";
@@ -45,6 +47,7 @@ export function Compose() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const smartBack = useSmartBack();
+  const returnAfterSave = useReturnAfterSave();
   const toast = useToast();
   const params = useLocalSearchParams<{
     draftId?: string;
@@ -186,9 +189,13 @@ export function Compose() {
         toast("Scheduled — it'll post automatically.", { variant: "success" });
         router.replace("/activity/scheduled" as Href);
       } else {
-        if (postingAsPage) router.replace(`/page/${postingAsPage.username}` as Href);
-        else router.dismissTo({ pathname: "/feed", params: { justPostedId: (createdPost as { id: string }).id } });
+        // Back to the screen Compose was opened from, refreshed (the create-post hook already refetched
+        // feed / profile / Page lists, so the new post is there as the screen slides back into view). The
+        // hint lets Feed pin this exact post at the top of "For You"; it expires on its own if we land
+        // somewhere other than the Feed. Page-mode posts skip it — a Page's own feed is already newest-first.
+        if (!postingAsPage) setJustPosted((createdPost as { id: string }).id);
         toast("Posted.", { variant: "success" });
+        await returnAfterSave({ fallback: postingAsPage ? `/page/${postingAsPage.username}` : "/feed" });
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Couldn't post this.";

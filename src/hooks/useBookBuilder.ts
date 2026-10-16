@@ -287,9 +287,16 @@ export function usePublishBook(projectId: string) {
         .eq("id", projectId);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
-      queryClient.invalidateQueries({ queryKey: ["project-detail", projectId] });
+    // Awaited so the blocking overlay holds until the project (and
+    // every list showing it) has refetched as published — the caller
+    // navigates away right after this resolves.
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["project", projectId], refetchType: "all" }),
+        queryClient.invalidateQueries({ queryKey: ["project-detail", projectId], refetchType: "all" }),
+        queryClient.invalidateQueries({ queryKey: ["user-projects"], refetchType: "all" }),
+        queryClient.invalidateQueries({ queryKey: ["page-projects"], refetchType: "all" }),
+      ]);
     },
   });
 }
