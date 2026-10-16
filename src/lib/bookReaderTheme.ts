@@ -177,8 +177,9 @@ export function resolveOverall(chapterPages: number[], overall: number): { index
  * break snaps to the nearest gap so a line never strikes through a line of text.
  */
 export function pageBreakOffsets(edges: number[], contentH: number, pages: number): number[] {
-  if (pages < 2 || contentH <= 0 || edges.length === 0) return [];
-  const sorted = [...edges].filter((e) => e > 0 && e < contentH).sort((a, b) => a - b);
+  // Layout can briefly report 0 or non-finite sizes (a chapter swap); a page count from those is meaningless.
+  if (!Number.isFinite(pages) || !Number.isFinite(contentH) || pages < 2 || pages > 2000 || contentH <= 0 || edges.length === 0) return [];
+  const sorted = edges.filter((e) => Number.isFinite(e) && e > 0 && e < contentH).sort((a, b) => a - b);
   const pageH = contentH / pages;
   const out: number[] = [];
   for (let k = 1; k < pages; k++) {

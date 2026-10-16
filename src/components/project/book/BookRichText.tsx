@@ -182,9 +182,16 @@ export function BookRichText({
     flushTimer.current = setTimeout(() => {
       flushTimer.current = null;
       const laid = spans.current;
-      if (Object.keys(laid).length < blocks.length) return;
-      // The visible gap is the bottom margin of a block: the line goes through its middle.
-      onGaps(blocks.slice(0, -1).map((_, i) => rootY.current + laid[i].y + laid[i].h - paraGap / 2));
+      const gaps: number[] = [];
+      for (let i = 0; i < blocks.length - 1; i++) {
+        const s = laid[i];
+        if (!s) return; // not every block has laid out yet; the next layout event reports again
+        // The visible gap is the bottom margin of a block: the line goes through its middle.
+        const gap = rootY.current + s.y + s.h - paraGap / 2;
+        if (!Number.isFinite(gap)) return;
+        gaps.push(gap);
+      }
+      onGaps(gaps);
     }, 0);
   };
   const track = (i: number, node: ReactNode) =>
