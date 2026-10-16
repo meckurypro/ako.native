@@ -219,6 +219,60 @@ export function useDeleteChapter(projectId: string) {
   });
 }
 
+// Chapters added in the builder get a temporary id until the creator saves.
+export const isTempChapterId = (id: string) => id.startsWith("tmp-");
+
+// The builder works on a local draft (add / edit / move / delete are all staged);
+// nothing touches the database until the creator taps Save. This applies the
+// difference between what's stored and the draft: deletes, then edits + new
+// order, then inserts (last, so a retry after a partial failure can't duplicate).
+export function useSaveBookDraft(projectId: string) {
+  return useMutation({
+    meta: { blocking: true },
+    mutationFn: async ({ original, draft }: { original: BookChapter[]; draft: BookChapter[] }): Promise<BookChapter[]> => {
+      const draftIds = new Set(draft.map((c) => c.id));
+      const removed = original.filter((c) => !draftIds.has(c.id)).map((c) => c.id);
+      if (removed.length > 0) {
+        const { error } = await supabase.from("book_chapters").delete().in("id", removed);
+        if (error) throw error;
+      }
+
+      const byId = new Map(original.map((c) => [c.id, c]));
+      const updates: PromiseLike<{ error: unknown }>[] = [];
+      const inserts: { project_id: string; kind: BookChapterKind; title: string; content: string; sort_order: number }[] = [];
+      draft.forEach((c, i) => {
+        const title = c.title.trim() || "Untitled";
+        const content = c.content ?? "";
+        if (isTempChapterId(c.id)) {
+          inserts.push({ project_id: projectId, kind: c.kind, title, content, sort_order: i });
+          return;
+        }
+        const prev = byId.get(c.id);
+        if (!prev) return;
+        if (prev.title !== title || (prev.content ?? "") !== content || prev.sort_order !== i) {
+          updates.push(supabase.from("book_chapters").update({ title, content, sort_order: i }).eq("id", c.id));
+        }
+      });
+      const results = await Promise.all(updates);
+      const failed = results.find((r) => r.error);
+      if (failed?.error) throw failed.error;
+
+      if (inserts.length > 0) {
+        const { error } = await supabase.from("book_chapters").insert(inserts);
+        if (error) throw error;
+      }
+
+      const { data, error } = await supabase
+        .from("book_chapters")
+        .select("*")
+        .eq("project_id", projectId)
+        .order("sort_order", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as BookChapter[];
+    },
+  });
+}
+
 // Publishing just means setting the project active with published_at
 // set, same as Course — the purchase edge function is what actually
 // enforces "can't buy before this is set".

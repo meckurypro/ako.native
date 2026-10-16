@@ -9,8 +9,9 @@ const MAX_HISTORY = 100;
 
 export interface UndoRedo<T> {
   value: T;
-  /** Set a new value (pass a function to derive it from the current one). */
-  set: (next: T | ((prev: T) => T)) => void;
+  /** Set a new value (pass a function to derive it from the current one).
+   *  `{ step: true }` always starts a new undo step (use for discrete actions like move/delete). */
+  set: (next: T | ((prev: T) => T), opts?: { step?: boolean }) => void;
   undo: () => void;
   redo: () => void;
   canUndo: boolean;
@@ -32,12 +33,12 @@ export function useUndoRedo<T>(initial: T): UndoRedo<T> {
   }));
   const lastChange = useRef(0);
 
-  const set = useCallback((next: T | ((prev: T) => T)) => {
+  const set = useCallback((next: T | ((prev: T) => T), opts?: { step?: boolean }) => {
     setState((s) => {
       const value = typeof next === "function" ? (next as (p: T) => T)(s.present) : next;
       if (Object.is(value, s.present)) return s;
       const now = Date.now();
-      const coalesce = now - lastChange.current < COALESCE_MS && s.past.length > 0 && s.future.length === 0;
+      const coalesce = !opts?.step && now - lastChange.current < COALESCE_MS && s.past.length > 0 && s.future.length === 0;
       lastChange.current = now;
       const past = coalesce ? s.past : [...s.past, s.present].slice(-MAX_HISTORY);
       return { ...s, past, present: value, future: [] };
