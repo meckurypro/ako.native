@@ -29,6 +29,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useUploadProjectThumbnail } from "@/hooks/useUploadProjectThumbnail";
 import { haptics } from "@/lib/haptics";
 import { pickSingleImage } from "@/lib/pickImage";
+import { BookChapterEditor } from "./BookChapterEditor";
 import { useTheme } from "@/theme/ThemeProvider";
 
 interface BookBuilderProps {
@@ -210,16 +211,11 @@ export function BookBuilder({ projectId, project, chapters, publishBook }: BookB
                     style={{ fontFamily: "Inter_500Medium" }}
                     accessibilityLabel="Chapter title"
                   />
-                  <TextInput
-                    value={chapter.content ?? ""}
-                    onChangeText={(content) => draft.edit(chapter.id, { content })}
-                    placeholder={BOOK_SECTION_INFO[chapter.kind].hint}
-                    placeholderTextColor={colors.inkMuted}
-                    multiline
-                    textAlignVertical="top"
-                    className="rounded-lg border border-border bg-canvas px-3 py-2 text-sm text-ink"
-                    style={{ fontFamily: "Inter_400Regular", minHeight: 240 }}
-                    accessibilityLabel="Chapter text"
+                  <BookChapterEditor
+                    kind={chapter.kind}
+                    title={chapter.title}
+                    content={chapter.content ?? ""}
+                    onChange={(content) => draft.edit(chapter.id, { content })}
                   />
                   <Pressable onPress={() => setEditingId(null)} accessibilityRole="button" hitSlop={8} className="self-start px-1 py-1.5">
                     <Text className="text-sm font-medium text-accent">Done</Text>
