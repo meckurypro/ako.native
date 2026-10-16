@@ -1,4 +1,4 @@
-// src/app/(app)/books/[projectId].tsx
+// src/app/(app)/books/[projectId]/index.tsx
 import { Book } from "@/screens/Book";
 
 export default function BookRoute() {

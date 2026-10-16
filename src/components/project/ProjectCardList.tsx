@@ -9,7 +9,7 @@ export function ProjectCardList({ projects, isOwnerView }: { projects: Project[]
   return (
     <View>
       {projects.map((project) => (
-        <ProjectCard key={project.id} project={project} isOwnerView={isOwnerView} />
+        <ProjectCard key={project.id} project={project} isOwnerView={isOwnerView} manageContent={isOwnerView} />
       ))}
     </View>
   );

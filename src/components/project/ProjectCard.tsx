@@ -130,12 +130,14 @@ interface ProjectCardProps {
   project: Project;
   isOwnerView?: boolean;
   isDetailView?: boolean;
+  /** True only for the creator's own profile → Projects lists: the one place the creator gets the book builder. Everywhere else they see the project as a visitor does. */
+  manageContent?: boolean;
   shareUrl?: string;
   /** True while the card is on screen — a playing preview stops when this goes false. */
   visible?: boolean;
 }
 
-function ProjectCardImpl({ project, isOwnerView, isDetailView, shareUrl, visible = true }: ProjectCardProps) {
+function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, shareUrl, visible = true }: ProjectCardProps) {
   const { user } = useAuth();
   const { colors, resolvedTheme } = useTheme();
   const toast = useToast();
@@ -174,6 +176,8 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, shareUrl, visible
   const { data: pitchRaised } = usePitchRaised(isPitch ? project.id : undefined);
   const { data: bookDetails } = useBookDetails(isBook ? project.id : undefined);
   const isBookDraftUnpublished = isBook && bookDetails?.content_source === "authored" && !project.published_at;
+  // The builder is reachable only from the creator's own profile lists (manageContent) — see the prop.
+  const canEditBookContent = !!manageContent && isOwner && isBook && bookDetails?.content_source === "authored";
   const { data: affiliateProgram } = useAffiliateProgram(project.project_type !== "pitch" ? project.id : undefined);
   const canBecomeAffiliate = !!user && !isOwner && !!affiliateProgram?.enabled && project.price_usd > 0;
   const isMemberQuery = useIsProjectMember(project.id, project.is_private);
@@ -371,6 +375,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, shareUrl, visible
 
   const ownerMenuItems: (DropdownMenuItem | "divider")[] = [
     { key: "edit", label: "Edit", icon: <Icon as={Pencil} size={22} className="text-overlay-ink" />, onSelect: () => router.push(`/projects/${project.id}/edit` as Href) },
+    ...(canEditBookContent ? [{ key: "edit-book-contents", label: "Edit book contents", icon: <Icon as={BookOpen} size={22} className="text-overlay-ink" />, onSelect: () => router.push(`/books/${project.id}/edit` as Href) }] : []),
     { key: "share", label: "Share", icon: <Icon as={Redo2} size={22} className="text-overlay-ink" />, onSelect: handleShare },
     ...(project.status === "active" && !project.is_private
       ? [
@@ -475,7 +480,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, shareUrl, visible
     else if (bookReadsInApp) detailCta = { label: "Read", icon: BookText, onPress: openBookReader };
     else if (bookCanDownload) detailCta = { label: getBookDownload.isPending ? "Preparing…" : "Download", icon: Download, onPress: downloadBook, disabled: getBookDownload.isPending };
     else if (bookDetails?.content_source === "authored") {
-      detailCta = { label: isOwner && !project.published_at ? "Continue building" : "Read", icon: BookOpen, onPress: () => router.push(`/books/${project.id}` as Href) };
+      detailCta = { label: canEditBookContent && !project.published_at ? "Continue building" : "Read", icon: BookOpen, onPress: () => router.push((canEditBookContent && !project.published_at ? `/books/${project.id}/edit` : `/books/${project.id}`) as Href) };
     }
   } else if (isMedia) {
     const audioUrl = mediaDetails?.has_audio ? mediaDetails.audio_url : null;
@@ -713,8 +718,8 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, shareUrl, visible
                 {bookDetails.content_source === "authored" ? (
                   <LinkAction
                     icon={BookOpen}
-                    label={isOwner && !project.published_at ? "Continue building" : "Read"}
-                    onPress={() => router.push(`/books/${project.id}` as Href)}
+                    label={canEditBookContent && !project.published_at ? "Continue building" : "Read"}
+                    onPress={() => router.push((canEditBookContent && !project.published_at ? `/books/${project.id}/edit` : `/books/${project.id}`) as Href)}
                   />
                 ) : null}
               </View>

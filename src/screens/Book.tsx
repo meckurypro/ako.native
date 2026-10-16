@@ -1,7 +1,9 @@
 // src/screens/Book.tsx
-// Authored-book screen: owners get the builder, buyers the reader, everyone
-// else the locked/buy view. (Uploaded-PDF books use the separate BookReader.)
-import { useLocalSearchParams } from "expo-router";
+// Authored-book screens. /books/:id is the book AS A READER SEES IT — for everyone, the creator included (a creator
+// who opens their own book's link, or finds it in Discover, reads it like any visitor): buyers get the reader,
+// everyone else the locked/buy view. The builder lives at /books/:id/edit (BookEdit below), reached only from the
+// creator's own profile → Projects. (Uploaded-PDF books use the separate BookReader.)
+import { Redirect, useLocalSearchParams, type Href } from "expo-router";
 import { useMemo } from "react";
 import { View } from "react-native";
 
@@ -33,20 +35,18 @@ export function Book() {
   useRecordFreeProjectOpen(project, { isOwner: isCreator, enabled: !privacyBlocked });
 
   const { data: chapters } = useBookChapters(projectId);
-  const publishBook = usePublishBook(projectId ?? "");
   const purchaseProject = usePurchaseProject();
 
   const ordered = useMemo(() => (chapters ?? []).slice().sort((a, b) => a.sort_order - b.sort_order), [chapters]);
 
-  if (!project) {
+  // Wait for the acting identity: until it resolves isOwner is false, which would flash the locked view at the creator.
+  if (!project || ownership.loading) {
     return (
       <View className="flex-1 items-center justify-center bg-canvas">
         <Text className="text-ink-muted">Loading…</Text>
       </View>
     );
   }
-
-  if (isOwner) return <BookBuilder projectId={project.id} project={project} chapters={ordered} publishBook={publishBook} />;
 
   if (!hasAccess) {
     return (
@@ -72,4 +72,24 @@ export function Book() {
       shareUrl={getProjectUrl(project)}
     />
   );
+}
+
+/** The builder: owner only. Anyone else who lands here (a stale link, a switched identity) is sent to the reader. */
+export function BookEdit() {
+  const { projectId } = useLocalSearchParams<{ projectId: string }>();
+  const { data: project } = useProject(projectId);
+  const ownership = useProjectOwnership();
+  const { data: chapters } = useBookChapters(projectId);
+  const publishBook = usePublishBook(projectId ?? "");
+  const ordered = useMemo(() => (chapters ?? []).slice().sort((a, b) => a.sort_order - b.sort_order), [chapters]);
+
+  if (!project || ownership.loading) {
+    return (
+      <View className="flex-1 items-center justify-center bg-canvas">
+        <Text className="text-ink-muted">Loading…</Text>
+      </View>
+    );
+  }
+  if (!ownership.isOwner(project)) return <Redirect href={`/books/${project.id}` as Href} />;
+  return <BookBuilder projectId={project.id} project={project} chapters={ordered} publishBook={publishBook} />;
 }
