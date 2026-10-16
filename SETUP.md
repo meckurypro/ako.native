@@ -54,3 +54,7 @@ npm run build:apk
 Push UI/JS changes to `main`. The "EAS Update" workflow typechecks, then publishes to the
 `preview` channel. Open the APK, let it download, close and reopen to apply.
 A new native package, plugin or native app.json field changes the fingerprint and needs a new APK.
+
+## 7. Deep links (open shared links in the app)
+Full guide — accounts, `.well-known` files, SHA-256 / Team ID, testing: [`docs/DEEP_LINKING_SETUP.md`](docs/DEEP_LINKING_SETUP.md).
+The `app.json` link config is a native change: it needs a new build (`npm run build:apk`), not an OTA update.

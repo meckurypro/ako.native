@@ -4,7 +4,7 @@
 // single Stack for navigation. /create presents as a transparent modal over
 // whatever screen opened it — the native form of the web's "modal route".
 import { BlurTargetView } from "expo-blur";
-import { Stack } from "expo-router";
+import { Stack, usePathname } from "expo-router";
 import { View } from "react-native";
 
 import { AuthGate } from "@/components/nav/AuthGate";
@@ -12,6 +12,7 @@ import { BottomNav } from "@/components/nav/BottomNav";
 import { ChromeProvider, useChrome } from "@/components/nav/ChromeProvider";
 import { ScrollToTopButton } from "@/components/nav/ScrollToTopButton";
 import { useAuth } from "@/hooks/useAuth";
+import { isGuestProjectPath } from "@/lib/guestRoutes";
 import { usePersistedQueries } from "@/hooks/usePersistedQueries";
 import { usePushLifecycle } from "@/hooks/usePushLifecycle";
 import { useRouteMemory } from "@/hooks/useRouteMemory";
@@ -56,7 +57,26 @@ function Shell() {
   );
 }
 
+/**
+ * What a signed-out visitor gets when a shared project link opens the app: just the navigator (no bottom nav, no push,
+ * no offline cache). The project screen itself shows the guest view; its actions send them through login and back.
+ */
+function GuestShell() {
+  const { colors } = useTheme();
+  return (
+    <ChromeProvider>
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.canvas } }} />
+    </ChromeProvider>
+  );
+}
+
 export default function AppLayout() {
+  const { user, loading } = useAuth();
+  const pathname = usePathname();
+
+  // A project link is the one screen that doesn't need an account to look at. Everything else still goes through AuthGate.
+  if (!loading && !user && isGuestProjectPath(pathname)) return <GuestShell />;
+
   return (
     <AuthGate>
       <PersistGate>

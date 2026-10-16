@@ -15,7 +15,7 @@ import {
   Video,
 } from "lucide-react-native";
 import * as Linking from "expo-linking";
-import { router, useLocalSearchParams, type Href } from "expo-router";
+import { router, useLocalSearchParams, usePathname, type Href } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -35,6 +35,7 @@ import { Icon } from "@/components/ui/styled";
 import { RoleTags } from "@/components/ui/RoleTags";
 import { Text } from "@/components/ui/Text";
 import { TierBadge } from "@/components/ui/TierBadge";
+import { Wordmark } from "@/components/ui/Wordmark";
 import { useAffiliateProgram } from "@/hooks/useAffiliates";
 import { useAuth } from "@/hooks/useAuth";
 import { useProjectOwnership } from "@/hooks/useProjectOwnership";
@@ -45,6 +46,7 @@ import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useSmartBack } from "@/hooks/useSmartBack";
 import { useEventDetails, useGigDetails, useGigSamples, useGigsFeaturingProject, useMeetingDetails } from "@/hooks/useProjectTypeDetails";
 import { useProjectDetail, useSimilarProjects } from "@/hooks/useProjects";
+import { safeReturnPath } from "@/lib/authRedirect";
 import { addToCalendar } from "@/lib/calendar";
 import { pageModeLabel } from "@/lib/pageRoles";
 import { getProjectUrl } from "@/lib/projectLinks";
@@ -54,12 +56,19 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
   const projectId = resolvedProjectId ?? params.projectId;
   const smartBack = useSmartBack();
   const insets = useSafeAreaInsets();
-  const bottomInset = useBottomNavInset();
+  const navInset = useBottomNavInset();
   const onScroll = useChromeScroll();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const pathname = usePathname();
+  // Signed-out visitors (a shared link opened in the app) get the page as a landing: the project itself, but no way
+  // to wander off into the rest of the app. Everything that would (creator profile, other projects, back-nav) is
+  // hidden, and every action goes through login first. Mirrors the web app.
+  const isGuest = !authLoading && !user;
+  // There is no bottom nav in the guest shell, so don't reserve room for it.
+  const bottomInset = isGuest ? insets.bottom + 16 : navInset;
 
   const { data: project, isLoading, refetch: refetchProject } = useProjectDetail(projectId);
-  const { data: similar, refetch: refetchSimilar } = useSimilarProjects(project);
+  const { data: similar, refetch: refetchSimilar } = useSimilarProjects(user ? project : undefined);
   const { data: eventDetails, refetch: refetchEvent } = useEventDetails(project?.project_type === "event" ? projectId : undefined);
   const { data: meetingDetails, refetch: refetchMeeting } = useMeetingDetails(project?.project_type === "meeting" ? projectId : undefined);
   const { data: gigDetails, refetch: refetchGig } = useGigDetails(project?.project_type === "gig" ? projectId : undefined);
@@ -80,7 +89,7 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
       ? [refetchProject]
       : [
           refetchProject,
-          refetchSimilar,
+          ...(isGuest ? [] : [refetchSimilar]),
           ...(type === "event" ? [refetchEvent] : []),
           ...(type === "meeting" ? [refetchMeeting] : []),
           ...(type === "gig" ? [refetchGig, refetchGigSamples] : [refetchFeaturingGigs]),
@@ -94,6 +103,132 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
 
   useMarkProjectSeen(projectId!, project?.owner?.id);
 
+  // Back to THIS page after login/sign-up (the pretty /:slug address when that's how they arrived). replace, not push:
+  // the guest page must not stay mounted underneath once they're signed in.
+  const returnTo = safeReturnPath(pathname) ?? (projectId ? `/projects/${projectId}` : null);
+  const goAuth = (screen: "login" | "signup") => router.replace((returnTo ? `/${screen}?redirect=${encodeURIComponent(returnTo)}` : `/${screen}`) as Href);
+
+  // Browsing info below the title. Members see it laid out under the card; guests get it folded into the card
+  // behind a "Details" toggle.
+  const pull = isGuest ? "" : "-mt-2";
+  const detailBlocks = project ? (
+    <>
+      {/* Event/meeting browsing info — shown to everyone; purchase is what unlocks the ticket/join page. */}
+      {project.project_type === "event" && eventDetails ? (
+        <View className={`${pull} mb-4 gap-2`}>
+          <View className="gap-1.5">
+            {eventDetails.event_date ? (
+              <View className="flex-row items-center gap-1.5">
+                <Icon as={CalendarClock} size={14} className="text-ink-muted" />
+                <Text className="text-sm text-ink-muted">{new Date(eventDetails.event_date).toLocaleString()}</Text>
+              </View>
+            ) : null}
+            <View className="flex-row items-center gap-1.5">
+              <Icon as={MapPin} size={14} className="text-ink-muted" />
+              <Text className="flex-1 text-sm text-ink-muted">{eventDetails.location_type === "physical" ? eventDetails.location_value : "Online"}</Text>
+            </View>
+          </View>
+
+          {eventDetails.event_date && eventCountdownMs !== null && eventCountdownMs > 0 ? (
+            <Text className="text-sm font-medium text-accent">Starts in {formatCountdown(eventCountdownMs)}</Text>
+          ) : null}
+
+          <View className="flex-row items-center gap-4">
+            {eventDetails.event_date ? (
+              <Pressable
+                onPress={() =>
+                  void addToCalendar({
+                    title: project.title,
+                    description: project.description ?? undefined,
+                    location: eventDetails.location_value || undefined,
+                    startIso: eventDetails.event_date!,
+                  })
+                }
+                accessibilityRole="button"
+                className="flex-row items-center gap-1.5"
+              >
+                <Icon as={CalendarPlus} size={15} className="text-accent" />
+                <Text className="text-sm font-medium text-accent">Add to calendar</Text>
+              </Pressable>
+            ) : null}
+            {eventDetails.location_type === "physical" && eventDetails.location_value ? (
+              <Pressable
+                onPress={() => void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(eventDetails.location_value!)}`)}
+                accessibilityRole="link"
+                className="flex-row items-center gap-1.5"
+              >
+                <Icon as={Navigation} size={15} className="text-accent" />
+                <Text className="text-sm font-medium text-accent">Directions</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
+      ) : null}
+
+      {project.project_type === "meeting" && meetingDetails ? (
+        <View className={`${pull} mb-4 flex-row items-center gap-1.5`}>
+          <Icon as={Video} size={14} className="text-ink-muted" />
+          <Text className="text-sm text-ink-muted">{new Date(meetingDetails.scheduled_at).toLocaleString()}</Text>
+        </View>
+      ) : null}
+
+      {/* Gig browsing info — tagline/delivery up top, proof-of-work samples below. Message/Book live on the card. */}
+      {project.project_type === "gig" && gigDetails?.tagline ? <Text className={`${pull} mb-2 text-sm font-medium text-ink`}>{gigDetails.tagline}</Text> : null}
+      {project.project_type === "gig" && gigDetails?.delivery_estimate ? (
+        <View className="mb-1.5 flex-row flex-wrap items-center gap-1.5">
+          <Icon as={Clock} size={14} className="text-ink-muted" />
+          <Text className="text-sm text-ink-muted">{gigDetails.delivery_estimate}</Text>
+          {gigDetails.revisions_included !== null && gigDetails.revisions_included !== undefined ? (
+            <View className="flex-row items-center gap-1">
+              <Text className="text-sm text-ink-muted">·</Text>
+              <Icon as={RefreshCw} size={12} className="text-ink-muted" />
+              <Text className="text-sm text-ink-muted">
+                {gigDetails.revisions_included} revision{gigDetails.revisions_included === 1 ? "" : "s"}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+      {project.project_type === "gig" && !gigDetails?.delivery_estimate && gigDetails?.revisions_included !== null && gigDetails?.revisions_included !== undefined ? (
+        <View className="mb-1.5 flex-row items-center gap-1.5">
+          <Icon as={RefreshCw} size={12} className="text-ink-muted" />
+          <Text className="text-sm text-ink-muted">
+            {gigDetails.revisions_included} revision{gigDetails.revisions_included === 1 ? "" : "s"}
+          </Text>
+        </View>
+      ) : null}
+      {project.project_type === "gig" && gigDetails?.deliverables && gigDetails.deliverables.length > 0 ? (
+        <View className="mb-4 gap-1">
+          {gigDetails.deliverables.map((item, i) => (
+            <View key={i} className="flex-row items-start gap-1.5">
+              <Text className="mt-0.5 text-sm text-accent">✓</Text>
+              <Text className="flex-1 text-sm text-ink-muted">{item}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+      {project.project_type === "gig" && gigSamples && gigSamples.length > 0 ? <ProjectRail title="Work samples" projects={gigSamples} /> : null}
+      {project.project_type === "gig" && gigDetails?.faq && gigDetails.faq.length > 0 ? <GigFaqSection faq={gigDetails.faq} /> : null}
+      {project.project_type === "gig" ? <GigReviewsSection projectId={project.id} /> : null}
+
+      {project.project_type === "event" ? <EventHighlightsSection projectId={project.id} isOwner={isOwner} /> : null}
+
+      <ProjectFaqSection projectId={project.id} projectType={project.project_type} isOwner={isOwner} />
+
+      {project.project_type === "media" && isOwner ? <PublishMusicButton projectId={project.id} /> : null}
+
+      {project.topics.length > 0 ? (
+        <View className="mb-4 mt-4 flex-row flex-wrap gap-2">
+          {project.topics.map((topic) => (
+            <View key={topic.id} className="rounded-full border border-border-a60 bg-surface px-3 py-1">
+              <Text className="text-xs font-medium text-ink-muted">{topic.name}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+    </>
+  ) : null;
+
   return (
     <KeyboardAvoider className="flex-1 bg-canvas">
       <ScrollView
@@ -106,25 +241,45 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
         contentContainerStyle={{ paddingTop: insets.top + 16, paddingHorizontal: 16, paddingBottom: bottomInset + 16, opacity: refreshing ? 0 : 1 }}
       >
         <View className="w-full max-w-2xl self-center">
-          <Pressable
-            onPress={smartBack}
-            accessibilityRole="button"
-            accessibilityLabel="Back"
-            className="mb-4 h-10 w-10 items-center justify-center self-start rounded-full border border-border-a60 bg-surface"
-            style={{ elevation: 2 }}
-          >
-            <Icon as={ArrowLeft} size={20} className="text-ink-muted" />
-          </Pressable>
+          {isGuest ? (
+            <View className="mb-4 flex-row items-center justify-between">
+              <Wordmark size="sm" />
+              <View className="flex-row items-center gap-2">
+                <Pressable
+                  onPress={() => goAuth("login")}
+                  accessibilityRole="button"
+                  className="rounded-full border border-border-a60 bg-surface px-4 py-2 active:opacity-90"
+                  style={{ elevation: 2 }}
+                >
+                  <Text className="text-sm font-medium text-ink">Log in</Text>
+                </Pressable>
+                <Pressable onPress={() => goAuth("signup")} accessibilityRole="button" className="rounded-full bg-accent px-4 py-2 active:opacity-90" style={{ elevation: 2 }}>
+                  <Text className="text-sm font-semibold text-canvas">Sign up</Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
+          {user ? (
+            <Pressable
+              onPress={smartBack}
+              accessibilityRole="button"
+              accessibilityLabel="Back"
+              className="mb-4 h-10 w-10 items-center justify-center self-start rounded-full border border-border-a60 bg-surface"
+              style={{ elevation: 2 }}
+            >
+              <Icon as={ArrowLeft} size={20} className="text-ink-muted" />
+            </Pressable>
+          ) : null}
 
-          {isLoading || !project ? (
+          {authLoading || isLoading || !project ? (
             <Text className="text-ink-muted">Loading…</Text>
           ) : (
             <>
-              <ProjectCard project={project} isDetailView shareUrl={shareUrl} />
+              <ProjectCard project={project} isDetailView shareUrl={shareUrl} concealDetails={isGuest} detailsSlot={isGuest ? detailBlocks : undefined} />
 
               {/* Reverse link to the gig(s) this is proof-of-work for — otherwise a visitor landing here
                   directly (a feed post, a share) has no way to discover the gig itself. */}
-              {featuringGigs && featuringGigs.length > 0 ? (
+              {!isGuest && featuringGigs && featuringGigs.length > 0 ? (
                 <View className="-mt-2 mb-4 flex-row flex-wrap gap-2">
                   {featuringGigs.map((gig) => (
                     <Pressable
@@ -151,155 +306,45 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
                 </Pressable>
               ) : null}
 
-              {/* Event/meeting browsing info — shown to everyone; purchase is what unlocks the ticket/join page. */}
-              {project.project_type === "event" && eventDetails ? (
-                <View className="-mt-2 mb-4 gap-2">
-                  <View className="gap-1.5">
-                    {eventDetails.event_date ? (
-                      <View className="flex-row items-center gap-1.5">
-                        <Icon as={CalendarClock} size={14} className="text-ink-muted" />
-                        <Text className="text-sm text-ink-muted">{new Date(eventDetails.event_date).toLocaleString()}</Text>
-                      </View>
-                    ) : null}
-                    <View className="flex-row items-center gap-1.5">
-                      <Icon as={MapPin} size={14} className="text-ink-muted" />
-                      <Text className="flex-1 text-sm text-ink-muted">{eventDetails.location_type === "physical" ? eventDetails.location_value : "Online"}</Text>
-                    </View>
-                  </View>
-
-                  {eventDetails.event_date && eventCountdownMs !== null && eventCountdownMs > 0 ? (
-                    <Text className="text-sm font-medium text-accent">Starts in {formatCountdown(eventCountdownMs)}</Text>
-                  ) : null}
-
-                  <View className="flex-row items-center gap-4">
-                    {eventDetails.event_date ? (
-                      <Pressable
-                        onPress={() =>
-                          void addToCalendar({
-                            title: project.title,
-                            description: project.description ?? undefined,
-                            location: eventDetails.location_value || undefined,
-                            startIso: eventDetails.event_date!,
-                          })
-                        }
-                        accessibilityRole="button"
-                        className="flex-row items-center gap-1.5"
-                      >
-                        <Icon as={CalendarPlus} size={15} className="text-accent" />
-                        <Text className="text-sm font-medium text-accent">Add to calendar</Text>
-                      </Pressable>
-                    ) : null}
-                    {eventDetails.location_type === "physical" && eventDetails.location_value ? (
-                      <Pressable
-                        onPress={() => void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(eventDetails.location_value!)}`)}
-                        accessibilityRole="link"
-                        className="flex-row items-center gap-1.5"
-                      >
-                        <Icon as={Navigation} size={15} className="text-accent" />
-                        <Text className="text-sm font-medium text-accent">Directions</Text>
-                      </Pressable>
-                    ) : null}
-                  </View>
-                </View>
-              ) : null}
-
-              {project.project_type === "meeting" && meetingDetails ? (
-                <View className="-mt-2 mb-4 flex-row items-center gap-1.5">
-                  <Icon as={Video} size={14} className="text-ink-muted" />
-                  <Text className="text-sm text-ink-muted">{new Date(meetingDetails.scheduled_at).toLocaleString()}</Text>
-                </View>
-              ) : null}
-
-              {/* Gig browsing info — tagline/delivery up top, proof-of-work samples below. Message/Book live on the card. */}
-              {project.project_type === "gig" && gigDetails?.tagline ? <Text className="-mt-2 mb-2 text-sm font-medium text-ink">{gigDetails.tagline}</Text> : null}
-              {project.project_type === "gig" && gigDetails?.delivery_estimate ? (
-                <View className="mb-1.5 flex-row flex-wrap items-center gap-1.5">
-                  <Icon as={Clock} size={14} className="text-ink-muted" />
-                  <Text className="text-sm text-ink-muted">{gigDetails.delivery_estimate}</Text>
-                  {gigDetails.revisions_included !== null && gigDetails.revisions_included !== undefined ? (
-                    <View className="flex-row items-center gap-1">
-                      <Text className="text-sm text-ink-muted">·</Text>
-                      <Icon as={RefreshCw} size={12} className="text-ink-muted" />
-                      <Text className="text-sm text-ink-muted">
-                        {gigDetails.revisions_included} revision{gigDetails.revisions_included === 1 ? "" : "s"}
-                      </Text>
-                    </View>
-                  ) : null}
-                </View>
-              ) : null}
-              {project.project_type === "gig" && !gigDetails?.delivery_estimate && gigDetails?.revisions_included !== null && gigDetails?.revisions_included !== undefined ? (
-                <View className="mb-1.5 flex-row items-center gap-1.5">
-                  <Icon as={RefreshCw} size={12} className="text-ink-muted" />
-                  <Text className="text-sm text-ink-muted">
-                    {gigDetails.revisions_included} revision{gigDetails.revisions_included === 1 ? "" : "s"}
-                  </Text>
-                </View>
-              ) : null}
-              {project.project_type === "gig" && gigDetails?.deliverables && gigDetails.deliverables.length > 0 ? (
-                <View className="mb-4 gap-1">
-                  {gigDetails.deliverables.map((item, i) => (
-                    <View key={i} className="flex-row items-start gap-1.5">
-                      <Text className="mt-0.5 text-sm text-accent">✓</Text>
-                      <Text className="flex-1 text-sm text-ink-muted">{item}</Text>
-                    </View>
-                  ))}
-                </View>
-              ) : null}
-              {project.project_type === "gig" && gigSamples && gigSamples.length > 0 ? <ProjectRail title="Work samples" projects={gigSamples} /> : null}
-              {project.project_type === "gig" && gigDetails?.faq && gigDetails.faq.length > 0 ? <GigFaqSection faq={gigDetails.faq} /> : null}
-              {project.project_type === "gig" ? <GigReviewsSection projectId={project.id} /> : null}
-
-              {project.project_type === "event" ? <EventHighlightsSection projectId={project.id} isOwner={isOwner} /> : null}
-
-              <ProjectFaqSection projectId={project.id} projectType={project.project_type} isOwner={isOwner} />
-
-              {project.project_type === "media" && isOwner ? <PublishMusicButton projectId={project.id} /> : null}
-
-              {project.topics.length > 0 ? (
-                <View className="mb-4 mt-4 flex-row flex-wrap gap-2">
-                  {project.topics.map((topic) => (
-                    <View key={topic.id} className="rounded-full border border-border-a60 bg-surface px-3 py-1">
-                      <Text className="text-xs font-medium text-ink-muted">{topic.name}</Text>
-                    </View>
-                  ))}
-                </View>
-              ) : null}
+              {!isGuest ? detailBlocks : null}
 
               {/* Creator byline — opens the creator's profile (or the Page's, if this was posted in page mode).
                   A page-posted project shows the brand/org here; owner_id underneath is still the creating user. */}
-              <Pressable
-                onPress={() => router.push((project.posted_as_page ? `/page/${project.posted_as_page.username}` : `/profile/${project.owner.username}`) as Href)}
-                accessibilityRole="link"
-                className="flex-row items-center gap-3 rounded-2xl border border-border-a60 bg-surface p-4 active:opacity-90"
-                style={{ elevation: 2 }}
-              >
-                {project.posted_as_page ? (
-                  <>
-                    <Avatar src={project.posted_as_page.avatar_url} name={project.posted_as_page.name} size="lg" />
-                    <View className="min-w-0 flex-1">
-                      <Text className="font-medium text-ink">{project.posted_as_page.name}</Text>
-                      <Text className="mt-0.5 text-xs text-ink-muted">{pageModeLabel(project.posted_as_page.page_type)}</Text>
-                      <Text className="text-sm text-ink-muted">@{project.posted_as_page.username}</Text>
-                    </View>
-                  </>
-                ) : (
-                  <>
-                    <Avatar src={project.owner.avatar_url} name={project.owner.display_name} size="lg" />
-                    <View className="min-w-0 flex-1">
-                      <View className="flex-row flex-wrap items-center gap-2">
-                        <Text className="font-medium text-ink">{project.owner.display_name}</Text>
-                        <TierBadge tier={project.owner.tier} />
+              {!isGuest ? (
+                <Pressable
+                  onPress={() => router.push((project.posted_as_page ? `/page/${project.posted_as_page.username}` : `/profile/${project.owner.username}`) as Href)}
+                  accessibilityRole="link"
+                  className="flex-row items-center gap-3 rounded-2xl border border-border-a60 bg-surface p-4 active:opacity-90"
+                  style={{ elevation: 2 }}
+                >
+                  {project.posted_as_page ? (
+                    <>
+                      <Avatar src={project.posted_as_page.avatar_url} name={project.posted_as_page.name} size="lg" />
+                      <View className="min-w-0 flex-1">
+                        <Text className="font-medium text-ink">{project.posted_as_page.name}</Text>
+                        <Text className="mt-0.5 text-xs text-ink-muted">{pageModeLabel(project.posted_as_page.page_type)}</Text>
+                        <Text className="text-sm text-ink-muted">@{project.posted_as_page.username}</Text>
                       </View>
-                      {project.owner.roles.length > 0 ? <RoleTags roles={project.owner.roles} className="mt-0.5 text-xs text-ink-muted" /> : null}
-                      <Text className="text-sm text-ink-muted">@{project.owner.username}</Text>
-                    </View>
-                  </>
-                )}
-              </Pressable>
+                    </>
+                  ) : (
+                    <>
+                      <Avatar src={project.owner.avatar_url} name={project.owner.display_name} size="lg" />
+                      <View className="min-w-0 flex-1">
+                        <View className="flex-row flex-wrap items-center gap-2">
+                          <Text className="font-medium text-ink">{project.owner.display_name}</Text>
+                          <TierBadge tier={project.owner.tier} />
+                        </View>
+                        {project.owner.roles.length > 0 ? <RoleTags roles={project.owner.roles} className="mt-0.5 text-xs text-ink-muted" /> : null}
+                        <Text className="text-sm text-ink-muted">@{project.owner.username}</Text>
+                      </View>
+                    </>
+                  )}
+                </Pressable>
+              ) : null}
 
               {/* "More from <you>" is for visitors — the creator already has all of this on their own profile. */}
-              {!isOwner ? <ProjectRail title={`More from ${project.posted_as_page ? project.posted_as_page.name : project.owner.display_name}`} projects={similar?.moreFromCreator ?? []} /> : null}
-              <ProjectRail title="Similar contents" projects={similar?.similarContent ?? []} />
+              {!isGuest && !isOwner ? <ProjectRail title={`More from ${project.posted_as_page ? project.posted_as_page.name : project.owner.display_name}`} projects={similar?.moreFromCreator ?? []} /> : null}
+              {!isGuest ? <ProjectRail title="Similar contents" projects={similar?.similarContent ?? []} /> : null}
             </>
           )}
         </View>

@@ -11,6 +11,7 @@ import {
   Bookmark,
   Briefcase,
   Check,
+  ChevronDown,
   Copy,
   Download,
   Eye,
@@ -37,8 +38,8 @@ import {
 } from "lucide-react-native";
 import * as Clipboard from "expo-clipboard";
 import * as Linking from "expo-linking";
-import { router, type Href } from "expo-router";
-import { memo, useRef, useState } from "react";
+import { router, usePathname, type Href } from "expo-router";
+import { memo, useRef, useState, type ReactNode } from "react";
 import { MAX_THUMB_HEIGHT_VH, thumbnailLayout } from "@/lib/thumbnailFit";
 import { Pressable, Share, View, useWindowDimensions } from "react-native";
 
@@ -73,6 +74,7 @@ import {
 } from "@/hooks/useProjects";
 import { useIsProjectSaved, useToggleSavedProject } from "@/hooks/useSavedProjects";
 import { APP_URL } from "@/lib/config";
+import { safeReturnPath } from "@/lib/authRedirect";
 import { projectGalleryImages } from "@/lib/projectImages";
 import { ProjectImageCarousel } from "./ProjectImageCarousel";
 import { ctaFill } from "@/lib/contrast";
@@ -135,10 +137,15 @@ interface ProjectCardProps {
   shareUrl?: string;
   /** True while the card is on screen — a playing preview stops when this goes false. */
   visible?: boolean;
+  /** Signed-out landing mode: the description and any extra browsing info stay behind a "Details" toggle; the action row below is always visible. */
+  concealDetails?: boolean;
+  /** Extra content (event info, FAQ, topics…) shown with the description when Details is open. */
+  detailsSlot?: ReactNode;
 }
 
-function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, shareUrl, visible = true }: ProjectCardProps) {
+function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, shareUrl, visible = true, concealDetails, detailsSlot }: ProjectCardProps) {
   const { user } = useAuth();
+  const pathname = usePathname();
   const { colors, resolvedTheme } = useTheme();
   const toast = useToast();
   // Ownership is judged against the identity being acted as: a project created
@@ -184,6 +191,8 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
 
   const [error, setError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const showDetails = !concealDetails || detailsOpen;
   const [showMoreActions, setShowMoreActions] = useState(false);
   const [showGiftPicker, setShowGiftPicker] = useState(false);
   const [manageAccessOpen, setManageAccessOpen] = useState(false);
@@ -200,14 +209,27 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
   const hasPurchased = !!hasPurchasedQuery.data;
   const isMember = isMemberQuery.data === true;
   const privacyBlocked = project.is_private && !isOwner && !isMember;
-  const hasAccess = !privacyBlocked && (isOwner || hasPurchased || (isFree && !isRoom));
+  // A signed-out visitor never has access to anything, free or not: a shared link is a landing page, and every way
+  // past it (Read, Download, Listen, Join…) goes through login first.
+  const hasAccess = !!user && !privacyBlocked && (isOwner || hasPurchased || (isFree && !isRoom));
   const isSaved = !!isSavedQuery.data;
 
-  const redirectToLogin = () => router.push(`/login?redirect=${encodeURIComponent(`/projects/${project.id}`)}` as Href);
+  // Back to THIS page after login — the pretty /:slug address when that's how they arrived. replace (not push) so the
+  // guest page isn't left mounted underneath once they're signed in.
+  const redirectToLogin = () => {
+    const target = (isDetailView ? safeReturnPath(pathname) : null) ?? `/projects/${project.id}`;
+    router.replace(`/login?redirect=${encodeURIComponent(target)}` as Href);
+  };
   const requireUser = (): boolean => {
     if (user) return true;
     redirectToLogin();
     return false;
+  };
+  const openGift = () => {
+    if (requireUser()) setShowGiftPicker(true);
+  };
+  const openSupport = () => {
+    if (requireUser()) setSupportSheetOpen(true);
   };
   const logFreeAccessIfNeeded = (accessType: "download" | "stream" | "link_click") => {
     if (isFree && !isOwner) logFreeAccess.mutate({ projectId: project.id, accessType });
@@ -342,7 +364,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
         ]
       : []),
     ...(isMedia && !isOwner
-      ? [{ key: "gift", label: "Gift", icon: mk(GiftIcon), count: null, onClick: () => setShowGiftPicker(true) } satisfies EngagementAction]
+      ? [{ key: "gift", label: "Gift", icon: mk(GiftIcon), count: null, onClick: openGift } satisfies EngagementAction]
       : []),
     ...(isRoom
       ? [
@@ -439,9 +461,29 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
   };
   const downloadBook = () => void openSigned(getBookDownload, { projectId: project.id, kind: "book", action: "download" }, "Couldn't access file.");
 
+  // What a signed-out visitor's primary button says: the action they'd get once in. Tapping it opens login, never the content.
+  const hasMediaLink = isMedia && ((!!mediaDetails?.has_audio && !!mediaDetails.audio_url) || (!!mediaDetails?.has_video && !!mediaDetails.video_url));
+  const guestCta: { label: string; icon?: LucideIcon } = (() => {
+    if (project.project_type === "file") return { label: "Download", icon: Download };
+    if (project.project_type === "url") return { label: "Open link", icon: LinkIcon };
+    if (isBook) {
+      if (bookDetails?.content_source === "link") return { label: "Open link", icon: LinkIcon };
+      if (!bookReadsInApp && bookCanDownload) return { label: "Download", icon: Download };
+      return { label: "Read", icon: BookText };
+    }
+    if (isMedia) {
+      const isAudio = !!mediaDetails?.has_audio && !!mediaDetails.audio_url;
+      return { label: isAudio ? "Listen" : "Watch", icon: isAudio ? Music : Video };
+    }
+    if (project.project_type === "event") return { label: "Get ticket", icon: TypeIcon };
+    if (project.project_type === "meeting") return { label: "Join meeting", icon: TypeIcon };
+    if (project.project_type === "course") return { label: "Start course", icon: TypeIcon };
+    return { label: "Continue" };
+  })();
+
   let detailCta: DetailCta | null = null;
   if (isPitch) {
-    if (!isOwner) detailCta = { label: "Support", icon: Heart, onPress: () => setSupportSheetOpen(true) };
+    if (!isOwner) detailCta = { label: "Support", icon: Heart, onPress: openSupport };
   } else if (project.project_type === "gig") {
     if (!isOwner) {
       detailCta = gigBookable
@@ -452,6 +494,9 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
     detailCta = hasAccess
       ? { label: "Enter cohort", icon: Users, onPress: handleJoinRoom }
       : { label: purchaseProject.isPending ? "Joining…" : isFree ? "Join cohort" : `Join for ${priceLabel}`, icon: Users, onPress: handleJoinRoom, disabled: purchaseProject.isPending };
+  } else if (!user && isFree && !isCourseUnpublished && !isBookDraftUnpublished) {
+    // Signed-out visitor on a FREE project: no price to show ("Buy for $0.00" reads wrong).
+    detailCta = isMedia && !hasMediaLink ? { label: "Gift", icon: GiftIcon, onPress: openGift } : { label: guestCta.label, icon: guestCta.icon, onPress: redirectToLogin };
   } else if (!hasAccess) {
     if (!isCourseUnpublished && !isBookDraftUnpublished) {
       detailCta = {
@@ -487,7 +532,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
     const videoUrl = mediaDetails?.has_video ? mediaDetails.video_url : null;
     if (audioUrl) detailCta = { label: "Listen", icon: Music, onPress: () => openExternal(audioUrl) };
     else if (videoUrl) detailCta = { label: "Watch", icon: Video, onPress: () => openExternal(videoUrl) };
-    else if (!isOwner) detailCta = { label: "Gift", icon: GiftIcon, onPress: () => setShowGiftPicker(true) };
+    else if (!isOwner) detailCta = { label: "Gift", icon: GiftIcon, onPress: openGift };
   } else if (typeRouteBtn) {
     detailCta = {
       label: project.project_type === "event" && isOwner ? "Scan tickets" : (TYPE_ACTION_LABEL[project.project_type] ?? "Open"),
@@ -500,7 +545,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
   const visitorMenuItems: (DropdownMenuItem | "divider")[] = [
     { key: "save", label: isSaved ? "Saved" : "Save", icon: menuIcon(Bookmark), onSelect: () => { if (requireUser()) toggleSaved.mutate(isSaved); } },
     { key: "share", label: "Share", icon: menuIcon(Redo2), onSelect: handleShare },
-    ...(isMedia ? [{ key: "gift", label: "Gift", icon: menuIcon(GiftIcon), onSelect: () => setShowGiftPicker(true) } satisfies DropdownMenuItem] : []),
+    ...(isMedia ? [{ key: "gift", label: "Gift", icon: menuIcon(GiftIcon), onSelect: openGift } satisfies DropdownMenuItem] : []),
     ...(gigBookable ? [{ key: "message", label: "Message", icon: menuIcon(MessageCircle), onSelect: () => void handleMessage() } satisfies DropdownMenuItem] : []),
     ...(project.project_type === "url" && hasAccess && project.external_url
       ? [{ key: "copy-link", label: "Copy link", icon: menuIcon(Copy), onSelect: () => void copyText(project.external_url!, () => flash(setLinkCopied)) } satisfies DropdownMenuItem]
@@ -624,10 +669,26 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
           <PrivateProjectNotice onMessage={() => void handleMessage(`Hi! I'd like access to "${project.title}".`)} messagePending={startConversation.isPending} />
         ) : (
           <UnlockReveal unlocked={hasAccess}>
-            {project.description ? <Text className="mt-1 text-sm text-ink-muted">{renderFormattedText(project.description, "d")}</Text> : null}
+            {concealDetails ? (
+              <Pressable
+                onPress={() => setDetailsOpen((o) => !o)}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: detailsOpen }}
+                className="mt-3 w-full flex-row items-center justify-between rounded-2xl border border-border-a60 bg-canvas px-4 py-2.5 active:opacity-90"
+              >
+                <Text className="text-sm font-medium text-ink">Details</Text>
+                <View style={{ transform: [{ rotate: detailsOpen ? "180deg" : "0deg" }] }}>
+                  <Icon as={ChevronDown} size={16} className="text-ink-muted" />
+                </View>
+              </Pressable>
+            ) : null}
+
+            {showDetails && project.description ? (
+              <Text className={`${concealDetails ? "mt-3" : "mt-1"} text-sm text-ink-muted`}>{renderFormattedText(project.description, "d")}</Text>
+            ) : null}
 
             {/* Goal progress — informational only; hitting or missing the goal changes nothing about what's already pledged. */}
-            {isPitch && pitchDetails ? (
+            {showDetails && isPitch && pitchDetails ? (
               <View className="mt-2.5">
                 <View className="h-1.5 w-full overflow-hidden rounded-full bg-canvas">
                   <View className="h-full rounded-full bg-accent" style={{ width: `${Math.min(100, ((pitchRaised ?? 0) / pitchDetails.goal_amount_usd) * 100)}%` }} />
@@ -637,6 +698,8 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
                 </Text>
               </View>
             ) : null}
+
+            {concealDetails && detailsOpen && detailsSlot ? <View className="mt-4">{detailsSlot}</View> : null}
 
             {error ? <Text accessibilityRole="alert" className="mt-2 text-sm text-danger">{error}</Text> : null}
 
@@ -786,7 +849,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
 
               {isPitch && !isOwner ? (
                 <Pressable
-                  onPress={() => setSupportSheetOpen(true)}
+                  onPress={openSupport}
                   accessibilityRole="button"
                   className="ml-auto flex-row items-center gap-1.5 rounded-full bg-accent px-4 py-1.5 active:scale-[0.97]"
                   style={{ elevation: 3 }}
