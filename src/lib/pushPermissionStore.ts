@@ -26,7 +26,7 @@ export async function refreshPushPermission(): Promise<void> {
   }
 }
 
-/** Shows the OS prompt (only possible while canAskAgain). Always call from a user gesture, never at launch. */
+/** Shows the OS prompt (only possible while canAskAgain). Called once at first launch (useLaunchPushAsk) and from the card / Settings. */
 export async function askForPushPermission(): Promise<PushPermission> {
   await ensureNotificationChannels(); // Android 13+ shows no prompt until a channel exists
   const result = await requestPushPermission();

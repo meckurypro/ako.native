@@ -28,6 +28,7 @@ import {
   useTrackAffiliateClick,
 } from "@/hooks/useAffiliates";
 import { useAccountAccess } from "@/hooks/useAccountAccess";
+import { useLaunchPushAsk } from "@/hooks/useLaunchPushAsk";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { usePageThemeSync } from "@/hooks/usePageThemeSync";
 import { SoundProvider } from "@/hooks/useSound";
@@ -95,6 +96,9 @@ function Shell() {
   const [fontsLoaded, fontError] = useFonts(fontAssets);
   const appReady = ready && (fontsLoaded || !!fontError);
   const [showSplash, setShowSplash] = useState(true);
+
+  // Ask for notification permission on the very first launch, right after the splash lifts (signed in or not).
+  useLaunchPushAsk(appReady && !showSplash);
 
   // The native splash (background-only) stays up until the first frame of this tree — AppSplash included — has
   // laid out, so the branded splash is already on screen when it goes. Hiding it any earlier would flash the app.

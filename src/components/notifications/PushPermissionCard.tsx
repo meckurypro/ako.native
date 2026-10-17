@@ -1,6 +1,6 @@
 // src/components/notifications/PushPermissionCard.tsx
-// Contextual ask for notification permission — shown where the value is obvious (the Notifications screen),
-// never at launch. Three states: not yet asked → explain, then the OS prompt; denied but askable (Android) →
+// Fallback ask for notification permission (the first-launch prompt is useLaunchPushAsk) — for anyone who said
+// no, or whose prompt never showed. Three states: not yet asked → explain, then the OS prompt; denied but askable (Android) →
 // ask again; blocked (iOS after one denial, or "Don't ask again") → only system Settings can change it.
 import { Bell } from "lucide-react-native";
 import { useState } from "react";

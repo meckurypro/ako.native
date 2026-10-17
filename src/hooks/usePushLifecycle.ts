@@ -1,6 +1,6 @@
 // src/hooks/usePushLifecycle.ts
 // Everything push-related that must run while a user is signed in; mounted once in the (app) layout.
-//   • first-run ask  – offer the OS permission prompt once, shortly after the first signed-in session starts
+//   • (first-run ask lives at the app root now — see hooks/useLaunchPushAsk)
 //   • registration   – mint the Expo token and attach it to the account (only once the OS permission is granted)
 //   • tap routing    – open the right screen when a notification is tapped (background, killed, or tray);
 //                      also runs the Reply / Mark as read buttons when the app is open (see lib/pushActions)
@@ -17,7 +17,7 @@ import { handleMessageAction, isMessageAction, type ActionResponse } from "../li
 import { markPushTap } from "../lib/pushLaunch";
 import { getExpoPushToken, registerPushToken } from "../lib/push";
 import { startPushOutbox } from "../lib/pushNotify";
-import { askForPushPermission, refreshPushPermission, usePushPermission } from "../lib/pushPermissionStore";
+import { refreshPushPermission, usePushPermission } from "../lib/pushPermissionStore";
 import { describePushError, setPushStatus } from "../lib/pushStatusStore";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "./useAuth";
@@ -67,29 +67,6 @@ export function usePushRegistration() {
       cancelled = true;
     };
   }, [user?.id, status]);
-}
-
-const ASKED_KEY = "ako-push-first-ask-done";
-const FIRST_ASK_DELAY_MS = 2500;
-
-/**
- * Notification permission used to be asked ONLY from a dismissible card on the Notifications screen, so most
- * people never granted it and never got a push. Ask once, a moment after the first signed-in session starts
- * (not at cold-launch, not before sign-in). Later asks stay with the card / Settings.
- */
-export function useFirstRunPushAsk() {
-  const { user } = useAuth();
-  const { status, canAskAgain, loaded } = usePushPermission();
-
-  useEffect(() => {
-    if (!user || !loaded || status !== "undetermined" || !canAskAgain) return;
-    if (localStorage.getItem(ASKED_KEY)) return;
-    const timer = setTimeout(() => {
-      localStorage.setItem(ASKED_KEY, "1");
-      void askForPushPermission();
-    }, FIRST_ASK_DELAY_MS);
-    return () => clearTimeout(timer);
-  }, [user?.id, loaded, status, canAskAgain]);
 }
 
 async function openFromPush(data: PushTapData): Promise<void> {
@@ -227,7 +204,6 @@ export function usePushOutbox() {
 
 export function usePushLifecycle() {
   usePushOutbox();
-  useFirstRunPushAsk();
   usePushRegistration();
   usePushNavigation();
   useForegroundPushRefresh();
