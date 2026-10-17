@@ -38,7 +38,7 @@ export function ProjectList({ projects, isLoading, emptyMessage, header, onRefre
       onScroll={onScroll}
       scrollEventThrottle={16}
       showsVerticalScrollIndicator={false}
-      ListHeaderComponent={(refreshing ? null : header) as React.ReactElement | null | undefined}
+      ListHeaderComponent={header as React.ReactElement | null | undefined}
       ListEmptyComponent={refreshing ? <RefreshSkeleton /> : null}
       contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset }}
     />

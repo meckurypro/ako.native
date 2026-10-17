@@ -86,6 +86,7 @@ export function SheetFrame({
       radius="3xl"
       zIndex={zIndex}
       scrim={scrim}
+      onBackStep={onBack}
       avoidKeyboard={avoidKeyboard}
       heightRatio={heightRatio}
       maxHeightRatio={0.85}

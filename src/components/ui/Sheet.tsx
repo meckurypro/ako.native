@@ -71,6 +71,12 @@ interface SheetProps {
   zIndex?: number;
   /** Backdrop tint, matching the web sheet it mirrors (default canvas/70). */
   scrim?: ScrimTone;
+  /**
+   * Multi-step sheets: Android Back runs this instead of closing the sheet (e.g. confirm → catalogue).
+   * Registered by the Sheet itself because child effects mount before the Sheet's own, so a handler
+   * registered inside the body would sit UNDER the sheet's close handler and never run.
+   */
+  onBackStep?: () => void;
   accessibilityLabel?: string;
 }
 
@@ -91,6 +97,7 @@ export function Sheet({
   avoidKeyboard = true,
   zIndex = 50,
   scrim = "canvas",
+  onBackStep,
   accessibilityLabel,
 }: SheetProps) {
   const insets = useSafeAreaInsets();
@@ -112,7 +119,7 @@ export function Sheet({
     });
   }, [closing, finish, panelH, translateY]);
 
-  useBackDismiss(close);
+  useBackDismiss(onBackStep ?? close);
 
   const pan = useMemo(
     () =>

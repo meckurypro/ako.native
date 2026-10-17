@@ -133,7 +133,7 @@ function PostListInner<T extends PostListItem>(
       keyboardShouldPersistTaps="handled"
       refreshControl={onRefresh ? refreshControl : undefined}
       contentContainerStyle={{ paddingTop: padTop, paddingHorizontal: 20, paddingBottom: bottomInset }}
-      ListHeaderComponent={header && !refreshing ? <>{header}</> : null}
+      ListHeaderComponent={header ? <>{header}</> : null}
       ListEmptyComponent={refreshing ? <RefreshSkeleton /> : <>{emptyState}</>}
       ListFooterComponent={
         isFetchingMore && !exhausted ? (

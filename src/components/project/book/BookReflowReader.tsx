@@ -11,8 +11,8 @@
 // Text reflows (it is real text, not a raster page), so "page" means one screenful at
 // the current type size: estimated from text length for chapters you haven't opened and
 // measured for the open one. Reading position (chapter + scroll fraction) is saved to
-// the server, debounced. The theme opens in the app's light/dark and a pick lasts for
-// the session (see useBookReaderTheme); type settings persist.
+// the server, debounced. The theme opens in the app's light/dark; once the reader picks one it is
+// remembered (see useBookReaderTheme), and type settings persist too.
 import Slider from "@react-native-community/slider";
 import { StatusBar } from "expo-status-bar";
 import { ArrowUpToLine, Bookmark, Check, ChevronLeft, ChevronRight, List, RotateCcw, Search, Share as ShareIcon, Star, Type } from "lucide-react-native";

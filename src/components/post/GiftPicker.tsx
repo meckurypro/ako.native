@@ -124,7 +124,7 @@ function Body(props: GiftPickerProps & { step: Step; setStep: (s: Step) => void 
   const giftingEnabled = useFeatureFlag("gifting_enabled");
 
   useBackDismiss(() => setInsufficientGift(null), !!insufficientGift);
-  useBackDismiss(() => setStep("catalog"), step === "confirm" && !insufficientGift);
+  // Back from the confirm step is handled by SheetFrame (onBack → Sheet.onBackStep).
 
   const balance = Number(wallet?.balance ?? 0);
 

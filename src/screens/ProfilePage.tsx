@@ -599,6 +599,11 @@ export function ProfilePage() {
     }
   }
 
+  // Pull-to-refresh clears only the content (posts, projects, grid…) — the profile header and the
+  // tab bar stay put, like the top bar and bottom nav do, and a skeleton stands in below them.
+  const listRows = refreshing ? rows.filter((r) => r.kind === "header" || r.kind === "tabs") : rows;
+  const tabsIndex = listRows.findIndex((r) => r.kind === "tabs");
+
   if (isLoading || !profile) {
     return (
       <View className="flex-1 items-center justify-center bg-canvas">
@@ -612,13 +617,13 @@ export function ProfilePage() {
       <SwipeToSwitch index={activeIndex} count={tabDefs.length} onIndexChange={switchTab} enabled={!isPrivateLocked && !isBlocked && tabDefs.length > 1}>
         <FlashList
           ref={listRef}
-          data={refreshing ? [] : rows}
+          data={listRows}
           refreshControl={refreshControl}
-          ListEmptyComponent={refreshing ? <RefreshSkeleton /> : null}
+          ListFooterComponent={refreshing ? <RefreshSkeleton /> : null}
           keyExtractor={(r) => (r.kind === "header" || r.kind === "tabs" ? r.kind : r.id)}
           getItemType={(r) => r.kind}
           renderItem={renderRow}
-          stickyHeaderIndices={refreshing ? undefined : rows.findIndex((r) => r.kind === "tabs") >= 0 ? [rows.findIndex((r) => r.kind === "tabs")] : undefined}
+          stickyHeaderIndices={tabsIndex >= 0 ? [tabsIndex] : undefined}
           onScroll={onScroll}
           scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}

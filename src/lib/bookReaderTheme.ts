@@ -64,7 +64,7 @@ export const READER_THEMES: Record<ReaderThemeId, ReaderThemeSpec> = {
 
 export const READER_THEME_ORDER: ReaderThemeId[] = ["original", "quiet", "paper", "bold", "calm", "focus"];
 
-/** The theme a reader opens in: the app's own light/dark. In-reader picks are session-only (see useBookReaderTheme). */
+/** The theme a reader opens in: the app's own light/dark. An explicit in-reader pick is remembered (see useBookReaderTheme) and wins over this default. */
 export function defaultThemeFor(appIsDark: boolean): ReaderThemeId {
   return appIsDark ? "quiet" : "original";
 }
@@ -94,6 +94,8 @@ export const READER_STORAGE = {
   font: "ako-reader-font",
   spacing: "ako-reader-line-spacing",
   justify: "ako-reader-justify",
+  theme: "ako-reader-theme",
+  pdfTheme: "ako-reader-pdf-theme",
 } as const;
 
 // ---------------------------------------------------------------
