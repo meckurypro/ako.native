@@ -23,6 +23,7 @@ import { useBottomNavInset } from "@/components/nav/BottomNav";
 import { useChromeScroll } from "@/components/nav/ChromeProvider";
 import { AffiliateShareSheet } from "@/components/project/AffiliateShareSheet";
 import { EventHighlightsSection } from "@/components/project/EventHighlightsSection";
+import { BookReviewsSection } from "@/components/project/book/BookReviewsSection";
 import { GigFaqSection, GigReviewsSection } from "@/components/project/GigSections";
 import { ProjectCard } from "@/components/project/ProjectCard";
 import { PublishMusicButton } from "@/components/music/PublishMusicButton";
@@ -210,6 +211,8 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
       {project.project_type === "gig" && gigSamples && gigSamples.length > 0 ? <ProjectRail title="Work samples" projects={gigSamples} /> : null}
       {project.project_type === "gig" && gigDetails?.faq && gigDetails.faq.length > 0 ? <GigFaqSection faq={gigDetails.faq} /> : null}
       {project.project_type === "gig" ? <GigReviewsSection projectId={project.id} /> : null}
+      {/* Book reviews: signed-in users only (RLS enforces it too); reviewing happens in the reader. */}
+      {project.project_type === "book" && !isGuest ? <BookReviewsSection projectId={project.id} /> : null}
 
       {project.project_type === "event" ? <EventHighlightsSection projectId={project.id} isOwner={isOwner} /> : null}
 

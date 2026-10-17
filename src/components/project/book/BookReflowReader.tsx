@@ -15,7 +15,7 @@
 // the session (see useBookReaderTheme); type settings persist.
 import Slider from "@react-native-community/slider";
 import { StatusBar } from "expo-status-bar";
-import { ArrowUpToLine, Bookmark, Check, ChevronLeft, ChevronRight, List, RotateCcw, Search, Share as ShareIcon, Type } from "lucide-react-native";
+import { ArrowUpToLine, Bookmark, Check, ChevronLeft, ChevronRight, List, RotateCcw, Search, Share as ShareIcon, Star, Type } from "lucide-react-native";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AppState,
@@ -48,6 +48,7 @@ import {
   type BookChapter,
 } from "@/hooks/useBookBuilder";
 import { useBookReaderTheme } from "@/hooks/useBookReaderTheme";
+import { useCanReviewBook, useMyBookReview } from "@/hooks/useBookReviews";
 import { useFeedDoorway } from "@/hooks/useFeedDoorway";
 import { parseBook, type BookBlock } from "@/lib/bookFormat";
 import { chapterPlainText, readingMinutes, snippetAt, splitChapterOpener } from "@/lib/bookReaderText";
@@ -71,6 +72,8 @@ import { ChapterScrollMark, useChapterScrollMark } from "./ChapterScrollMark";
 
 import { BookRichText, Ornament, Span, type BookFamily, type Face } from "./BookRichText";
 import { ContentsSheet, SearchSheet, SettingsSheet, chapterLabel, type ContentsTab } from "./ReaderSheets";
+import { ReviewSheet } from "./ReviewSheet";
+import { StarPicker, StarRow } from "./Stars";
 
 const SAVE_DEBOUNCE_MS = 900;
 const PAD_X = 24;
@@ -93,7 +96,7 @@ function writeStored(key: string, value: string) {
   }
 }
 
-type SheetName = null | "contents" | "search" | "settings";
+type SheetName = null | "contents" | "search" | "settings" | "review";
 
 interface BookReflowReaderProps {
   projectId: string;
@@ -158,6 +161,10 @@ export function BookReflowReader({ projectId, title, chapters, userId, thumbnail
   const { data: bookmarkData } = useBookBookmarks(projectId, userId);
   const addBookmark = useAddBookBookmark(projectId, userId);
   const deleteBookmark = useDeleteBookBookmark(projectId, userId);
+  // Reviews: the owner and anyone without access can't review, so the entry points only show for readers who can.
+  const { data: canReview } = useCanReviewBook(projectId);
+  const { review: myReview } = useMyBookReview(projectId);
+  const [reviewSeed, setReviewSeed] = useState<number | undefined>(undefined);
   const bookDoorway = useFeedDoorway("book");
   const bookmarks = useMemo(() => bookmarkData ?? [], [bookmarkData]);
 
@@ -500,6 +507,9 @@ export function BookReflowReader({ projectId, title, chapters, userId, thumbnail
     { label: `Contents · ${overallPct}%`, icon: List, run: () => { setContentsTab("contents"); setSheet("contents"); setMenuOpen(false); } },
     { label: "Bookmarks", count: bookmarks.length, icon: Bookmark, run: () => { setContentsTab("bookmarks"); setSheet("contents"); setMenuOpen(false); } },
     { label: "Search Book", icon: Search, run: () => { setSheet("search"); setMenuOpen(false); } },
+    ...(canReview || myReview
+      ? [{ label: myReview ? "Your Review" : "Rate & Review", icon: Star, run: () => { setReviewSeed(undefined); setSheet("review"); setMenuOpen(false); } }]
+      : []),
     { label: "Themes & Settings", icon: Type, run: () => { setSheet("settings"); setMenuOpen(false); } },
   ];
 
@@ -557,6 +567,20 @@ export function BookReflowReader({ projectId, title, chapters, userId, thumbnail
                 <Text className="text-[15px] font-semibold" style={{ color: theme.ink }}>
                   {`You've reached the end of ${title}`}
                 </Text>
+                {canReview || myReview ? (
+                  <View style={{ alignItems: "center", gap: 8, paddingVertical: 4 }}>
+                    <Text className="text-[13px]" style={{ color: theme.muted }}>
+                      {myReview ? "Your rating" : "How was it? Tap to rate"}
+                    </Text>
+                    {myReview ? (
+                      <Pressable onPress={() => { setReviewSeed(undefined); setSheet("review"); }} accessibilityRole="button" accessibilityLabel="Edit your review" hitSlop={8}>
+                        <StarRow rating={myReview.rating} size={26} on={theme.accent} off={theme.rule} />
+                      </Pressable>
+                    ) : (
+                      <StarPicker value={0} size={30} on={theme.accent} off={theme.rule} onChange={(n) => { setReviewSeed(n); setSheet("review"); }} />
+                    )}
+                  </View>
+                ) : null}
                 <Pressable onPress={() => setView("toc")} accessibilityRole="button" style={{ borderRadius: 999, paddingHorizontal: 20, paddingVertical: 10, backgroundColor: theme.ink }}>
                   <Text className="text-sm font-semibold" style={{ color: theme.bg }}>
                     Back to contents
@@ -756,6 +780,9 @@ export function BookReflowReader({ projectId, title, chapters, userId, thumbnail
           onDeleteBookmark={(id) => deleteBookmark.mutate(id)}
           onClose={() => setSheet(null)}
         />
+      ) : null}
+      {sheet === "review" ? (
+        <ReviewSheet theme={theme} projectId={projectId} bookTitle={title} initialRating={reviewSeed} onClose={() => { setSheet(null); setReviewSeed(undefined); }} />
       ) : null}
       {sheet === "search" ? <SearchSheet theme={theme} chapters={chapters} onOpenHit={(id, f) => goTo(id, f)} onClose={() => setSheet(null)} /> : null}
       {sheet === "settings" ? (

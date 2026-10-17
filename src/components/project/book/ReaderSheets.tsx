@@ -39,7 +39,7 @@ const chipBg = (t: ReaderThemeSpec) => (t.dark ? "rgba(255,255,255,0.10)" : "rgb
 // Frame
 // ---------------------------------------------------------------
 
-function Sheet({
+export function Sheet({
   theme,
   title,
   subtitle,
