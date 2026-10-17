@@ -6,6 +6,7 @@
 // get a menu to edit, publish, archive, manage access, push to feed, or delete.
 import {
   Archive,
+  ArrowDownToLine,
   BookOpen,
   BookText,
   Bookmark,
@@ -39,7 +40,7 @@ import {
 import * as Clipboard from "expo-clipboard";
 import * as Linking from "expo-linking";
 import { router, usePathname, type Href } from "expo-router";
-import { memo, useRef, useState, type ReactNode } from "react";
+import { memo, useEffect, useRef, useState, type ReactNode } from "react";
 import { MAX_THUMB_HEIGHT_VH, thumbnailLayout } from "@/lib/thumbnailFit";
 import { Pressable, Share, View, useWindowDimensions } from "react-native";
 
@@ -72,19 +73,23 @@ import {
   useSetProjectStatus,
   type Project,
 } from "@/hooks/useProjects";
+import { useOfflineDownload } from "@/hooks/useOfflineProjects";
 import { useIsProjectSaved, useToggleSavedProject } from "@/hooks/useSavedProjects";
 import { APP_URL } from "@/lib/config";
 import { safeReturnPath } from "@/lib/authRedirect";
 import { projectGalleryImages } from "@/lib/projectImages";
 import { ProjectImageCarousel } from "./ProjectImageCarousel";
 import { ctaFill } from "@/lib/contrast";
+import { haptics } from "@/lib/haptics";
 import { renderFormattedText } from "@/lib/formatText";
 import { resolveFunctionErrorMessage } from "@/lib/functionErrors";
+import { formatBytes, isOfflineEligible, libraryTabForType, OfflineError } from "@/lib/offlineProjects";
 // Aliased: ProjectCard declares its own openExternal(url, kind) below, which would otherwise shadow this import and call itself.
 import { openExternal as openExternalGuarded } from "@/lib/openExternal";
 import { useTheme } from "@/theme/ThemeProvider";
 import { AffiliateShareSheet } from "./AffiliateShareSheet";
 import { ManageAccessSheet } from "./ManageAccessSheet";
+import { OfflineDownloadSheet } from "./OfflineDownloadSheet";
 import { MediaHeroPlayer } from "./MediaHeroPlayer";
 import { PrivateProjectNotice } from "./PrivateProjectNotice";
 import { SupportPitchSheet } from "./SupportPitchSheet";
@@ -240,6 +245,60 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
     setter(true);
     setTimeout(() => setter(false), 2000);
   };
+
+  // ── Download to library: keep this project on the device so it opens with no network (see lib/offlineStore.ts) ──
+  const offline = useOfflineDownload(project.id, hasPurchased ? "purchased" : "free");
+  const [offlineSheetOpen, setOfflineSheetOpen] = useState(false);
+  const [cellularBytes, setCellularBytes] = useState<number | null>(null);
+  const [confirmRemoveOffline, setConfirmRemoveOffline] = useState(false);
+  const mountedRef = useRef(true);
+  useEffect(
+    () => () => {
+      mountedRef.current = false;
+    },
+    []
+  );
+  // Only offered on the project's own page, to someone who can already open it (paid, or free). The server re-checks
+  // everything — including a host's choice to switch downloads off — so this only decides whether to SHOW the option.
+  const offlineEligible =
+    !!isDetailView &&
+    !isOwner &&
+    hasAccess &&
+    !isCourseUnpublished &&
+    !isBookDraftUnpublished &&
+    isOfflineEligible({
+      projectType: project.project_type,
+      filePath: project.file_path,
+      book: bookDetails ? { content_source: bookDetails.content_source, allow_download: bookDetails.allow_download, allow_read_in_app: bookDetails.allow_read_in_app } : null,
+      media: mediaDetails ?? null,
+    });
+
+  async function beginOfflineDownload(confirmedCellular = false) {
+    if (!requireUser()) return;
+    setCellularBytes(null);
+    setOfflineSheetOpen(true);
+    try {
+      await offline.start(confirmedCellular);
+    } catch (e) {
+      if (e instanceof OfflineError && e.code === "needs_confirmation") {
+        setOfflineSheetOpen(false);
+        setCellularBytes(e.bytes ?? 0);
+      } else if (e instanceof OfflineError && e.code === "cancelled") {
+        setOfflineSheetOpen(false);
+      }
+      // Any other failure: the sheet stays open and shows the reason, with Try again where that makes sense.
+      return;
+    }
+    // Saved. A free project joins the Library through an access event (a paid one already has its purchase row).
+    logFreeAccessIfNeeded("download");
+    haptics.success();
+    toast("Saved to your library for offline use", { variant: "success" });
+    // Take them to it — but only if they're still looking at this page; if they've gone elsewhere, don't yank them back.
+    if (mountedRef.current) {
+      setOfflineSheetOpen(false);
+      router.navigate(`/library?tab=${libraryTabForType(project.project_type)}&highlight=${project.id}` as Href);
+    }
+  }
 
   async function handleBuy() {
     if (!requireUser()) return;
@@ -554,6 +613,22 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
       ? [{ key: "copy-link", label: "Copy link", icon: menuIcon(Copy), onSelect: () => void copyText(project.external_url!, () => flash(setLinkCopied)) } satisfies DropdownMenuItem]
       : []),
     ...(hasAccess && bookReadsInApp && bookCanDownload ? [{ key: "download", label: "Download", icon: menuIcon(Download), onSelect: downloadBook } satisfies DropdownMenuItem] : []),
+    // Lives in the options menu, never beside the main button (Read / Start course / …), so the primary action stays one clear thing.
+    ...(offline.isSaved
+      ? [
+          {
+            key: "offline-remove",
+            label: "Remove download",
+            icon: menuIcon(Trash2),
+            badge: <Text className="text-xs text-overlay-ink-muted">{formatBytes(offline.entry?.bytes ?? 0)}</Text>,
+            onSelect: () => setConfirmRemoveOffline(true),
+          } satisfies DropdownMenuItem,
+        ]
+      : offline.isBusy
+        ? [{ key: "offline-progress", label: `Downloading… ${Math.round(offline.state.progress * 100)}%`, icon: menuIcon(ArrowDownToLine), onSelect: () => setOfflineSheetOpen(true) } satisfies DropdownMenuItem]
+        : offlineEligible
+          ? [{ key: "offline", label: "Download to library", icon: menuIcon(ArrowDownToLine), onSelect: () => void beginOfflineDownload() } satisfies DropdownMenuItem]
+          : []),
   ];
   const detailMenuItems = isOwner ? ownerMenuItems : visitorMenuItems;
   const isDark = resolvedTheme === "dark";
@@ -983,6 +1058,44 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
           confirmLabel={deleteProject.isPending ? "Deleting…" : "Delete"}
           onConfirm={handleConfirmDelete}
           onCancel={() => setShowDeleteConfirm(false)}
+        />
+      ) : null}
+
+      {offlineSheetOpen && (offline.isBusy || offline.state.phase === "failed") ? (
+        <OfflineDownloadSheet
+          title={project.title}
+          state={offline.state}
+          onCancel={offline.cancel}
+          onRetry={() => void beginOfflineDownload(false)}
+          onClose={() => {
+            setOfflineSheetOpen(false);
+            if (offline.state.phase === "failed") offline.dismissError();
+          }}
+        />
+      ) : null}
+
+      {cellularBytes !== null ? (
+        <ConfirmDialog
+          title="Download on mobile data?"
+          description={`This is ${formatBytes(cellularBytes)}, and you're not on Wi-Fi, so it will use your data plan.`}
+          confirmLabel="Download"
+          danger={false}
+          onConfirm={() => void beginOfflineDownload(true)}
+          onCancel={() => setCellularBytes(null)}
+        />
+      ) : null}
+
+      {confirmRemoveOffline ? (
+        <ConfirmDialog
+          title="Remove this download?"
+          description="It will be removed from this device. You can download it again anytime."
+          confirmLabel="Remove"
+          danger={false}
+          onConfirm={() => {
+            setConfirmRemoveOffline(false);
+            void offline.remove().then(() => toast("Download removed"));
+          }}
+          onCancel={() => setConfirmRemoveOffline(false)}
         />
       ) : null}
     </View>
