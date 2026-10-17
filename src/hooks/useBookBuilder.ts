@@ -1,5 +1,6 @@
 // src/hooks/useBookBuilder.ts
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
 import { supabase } from "../lib/supabase";
 
 // Optional named front/back-matter sections the builder offers as
@@ -477,6 +478,101 @@ export function useExtractBookPdf(projectId: string) {
     onSettled: () => {
       invalidateBook(queryClient, projectId);
       queryClient.invalidateQueries({ queryKey: ["project-book-details", projectId] });
+    },
+  });
+}
+
+// ---------------------------------------------------------------
+// OCR for scanned PDF books. extract-book-pdf says reason "no_text" for a scan; the owner can then ask the
+// ocr-book-pdf edge function to read the pages and write the same book_chapters rows, after which the book opens in
+// the reflow reader (and downloads for offline as text). It runs in the background for minutes: start returns at
+// once and the book_ocr_jobs row (owner-readable) is the progress, polled here while it is running.
+// ---------------------------------------------------------------
+
+export type BookOcrStatus = "running" | "done" | "failed";
+
+export interface BookOcrJob {
+  project_id: string;
+  status: BookOcrStatus;
+  total_pages: number;
+  next_page: number;
+  chapters_count: number | null;
+  error_code: string | null;
+  updated_at: string;
+}
+
+export interface StartBookOcrResult {
+  ok: boolean;
+  status?: "running";
+  already?: boolean;
+  total_pages?: number;
+  reason?: "ocr_unavailable" | "too_large" | "busy";
+}
+
+/** Plain-language reason for a failed or refused conversion (job error_code or start reason). */
+export function bookOcrMessage(code: string | null | undefined): string {
+  switch (code) {
+    case "ocr_unavailable":
+      return "Reading scanned books isn't switched on yet.";
+    case "too_large":
+      return "This PDF is too large to convert (limit 600 pages and 50 MB).";
+    case "busy":
+      return "Two of your books are already being converted. Try again when one finishes.";
+    case "no_text":
+      return "No readable text was found in this PDF.";
+    case "ocr_quota":
+      return "The reading service is at capacity right now. Try again later.";
+    case "ocr_bad_document":
+      return "The reading service couldn't process this file.";
+    default:
+      return "Something went wrong while reading this book. Try again.";
+  }
+}
+
+export function useBookOcrJob(projectId: string | undefined, enabled: boolean) {
+  const queryClient = useQueryClient();
+  const query = useQuery({
+    queryKey: ["book-ocr-job", projectId],
+    queryFn: async (): Promise<BookOcrJob | null> => {
+      const { data, error } = await supabase
+        .from("book_ocr_jobs")
+        .select("project_id, status, total_pages, next_page, chapters_count, error_code, updated_at")
+        .eq("project_id", projectId)
+        .maybeSingle();
+      if (error) {
+        console.warn("book_ocr_jobs unavailable — has the migration run yet?", error);
+        return null;
+      }
+      return (data as BookOcrJob | null) ?? null;
+    },
+    enabled: !!projectId && enabled,
+    refetchInterval: (q) => (q.state.data?.status === "running" ? 4000 : false),
+  });
+
+  // The moment a job finishes, the book has chapters: refresh them so the app switches to the reflow reader.
+  const status = query.data?.status;
+  const previous = useRef<BookOcrStatus | undefined>(undefined);
+  useEffect(() => {
+    if (previous.current === "running" && status === "done" && projectId) {
+      invalidateBook(queryClient, projectId);
+      queryClient.invalidateQueries({ queryKey: ["project-book-details", projectId] });
+    }
+    previous.current = status;
+  }, [status, projectId, queryClient]);
+
+  return query;
+}
+
+export function useStartBookOcr(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (force: boolean = false): Promise<StartBookOcrResult> => {
+      const { data, error } = await supabase.functions.invoke("ocr-book-pdf", { body: { project_id: projectId, force } });
+      if (error) throw error;
+      return data as StartBookOcrResult;
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["book-ocr-job", projectId] });
     },
   });
 }

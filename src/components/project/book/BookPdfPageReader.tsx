@@ -25,6 +25,7 @@ import { ResumePrompt } from "@/components/ui/ResumePrompt";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useAuth } from "@/hooks/useAuth";
+import { bookOcrMessage, useBookOcrJob, useStartBookOcr } from "@/hooks/useBookBuilder";
 import { useBookReaderTheme } from "@/hooks/useBookReaderTheme";
 import { useProjectOwnership } from "@/hooks/useProjectOwnership";
 import { useRecordFreeProjectOpen } from "@/hooks/useProjectAccess";
@@ -98,6 +99,21 @@ export function BookPdfPageReader({ projectId }: { projectId: string }) {
   const privacyBlocked = !!project?.is_private && !isOwner && !isMemberQuery.data;
   const hasAccess = !privacyBlocked && (isOwner || isFree || !!hasPurchasedQuery.data);
   useRecordFreeProjectOpen(project, { isOwner: isCreator, enabled: !privacyBlocked });
+
+  // Owner only: turn a scan into reflowable text. Progress is the job row; when it finishes the book gains chapters
+  // and BookRead swaps this reader for the reflow reader on its own.
+  const ocrJob = useBookOcrJob(projectId, isCreator).data ?? null;
+  const startOcr = useStartBookOcr(projectId);
+  const [ocrRefusal, setOcrRefusal] = useState<string | null>(null);
+  async function convertToText() {
+    setOcrRefusal(null);
+    try {
+      const r = await startOcr.mutateAsync(ocrJob?.status === "failed");
+      if (!r.ok) setOcrRefusal(bookOcrMessage(r.reason));
+    } catch {
+      setOcrRefusal(bookOcrMessage(null));
+    }
+  }
 
   const [themeId, setThemeId] = useBookReaderTheme();
   const theme = READER_THEMES[themeId];
@@ -404,6 +420,35 @@ export function BookPdfPageReader({ projectId }: { projectId: string }) {
                 accessibilityLabel="Brightness"
               />
             </View>
+            {isCreator ? (
+              <View style={{ borderTopWidth: 1, borderTopColor: theme.rule, paddingTop: 16, gap: 8 }}>
+                <Text style={{ color: theme.ink, fontSize: 15, fontWeight: "600" }}>Reflowable text</Text>
+                {ocrJob?.status === "running" ? (
+                  <>
+                    <Text style={{ color: theme.muted, fontSize: 13 }}>
+                      Reading page {Math.min(ocrJob.next_page + 1, ocrJob.total_pages)} of {ocrJob.total_pages}. You can leave — it keeps going.
+                    </Text>
+                    <View style={{ height: 6, borderRadius: 3, backgroundColor: theme.rule, overflow: "hidden" }}>
+                      <View style={{ height: 6, width: `${Math.round((ocrJob.next_page / Math.max(ocrJob.total_pages, 1)) * 100)}%`, backgroundColor: theme.accent }} />
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    <Text style={{ color: theme.muted, fontSize: 13 }}>
+                      {ocrJob?.status === "failed"
+                        ? bookOcrMessage(ocrJob.error_code)
+                        : "This book is made of page images. Convert it to text so readers can resize type, change themes, search it and read it offline. It takes a few minutes."}
+                    </Text>
+                    {ocrRefusal ? <Text style={{ color: theme.muted, fontSize: 13 }}>{ocrRefusal}</Text> : null}
+                    <View style={{ alignItems: "flex-start" }}>
+                      <Button size="sm" onPress={convertToText} disabled={startOcr.isPending}>
+                        {ocrJob?.status === "failed" ? "Try again" : "Convert to text"}
+                      </Button>
+                    </View>
+                  </>
+                )}
+              </View>
+            ) : null}
           </View>
         </Sheet>
       ) : null}
