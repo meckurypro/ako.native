@@ -67,7 +67,7 @@ import {
   type ReaderThemeSpec,
 } from "@/lib/bookReaderTheme";
 import { haptics } from "@/lib/haptics";
-import { ChapterScrollMark, MARK_TRACK_H, useChapterScrollMark } from "./ChapterScrollMark";
+import { ChapterScrollMark, useChapterScrollMark } from "./ChapterScrollMark";
 
 import { BookRichText, Ornament, Span, type BookFamily, type Face } from "./BookRichText";
 import { ContentsSheet, SearchSheet, SettingsSheet, chapterLabel, type ContentsTab } from "./ReaderSheets";
@@ -269,6 +269,13 @@ export function BookReflowReader({ projectId, title, chapters, userId, thumbnail
   useEffect(() => {
     resetScrollMark();
   }, [currentChapterId, resetScrollMark]);
+  // The thumb travels the visible page: below the status bar, above the footer.
+  const markTop = insets.top + 8;
+  const markH = Math.max(40, dims.vh - markTop - (insets.bottom + FOOTER_H));
+  const setScrollMarkTrack = scrollMark.setTrack;
+  useEffect(() => {
+    setScrollMarkTrack(markH);
+  }, [markH, setScrollMarkTrack]);
   const prev = currentIndex > 0 ? chapters[currentIndex - 1] : null;
   const next = currentIndex >= 0 && currentIndex < chapters.length - 1 ? chapters[currentIndex + 1] : null;
 
@@ -569,8 +576,8 @@ export function BookReflowReader({ projectId, title, chapters, userId, thumbnail
         </View>
       </ScrollView>
 
-      {/* Where you are in the chapter: a faint mark on the left edge, only while scrolling */}
-      <ChapterScrollMark mark={scrollMark} color={theme.muted} top={Math.max(insets.top, (dims.vh - MARK_TRACK_H) / 2)} />
+      {/* Scroll indicator on the right edge, like the web reader's scrollbar: only while scrolling */}
+      <ChapterScrollMark mark={scrollMark} color={theme.muted} top={markTop} height={markH} />
 
       {/* Return pill after a jump */}
       {jumpBack && !chromeVisible ? (
