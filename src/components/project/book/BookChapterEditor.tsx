@@ -2,7 +2,7 @@
 // The creator's chapter editor: a formatting toolbar over the text box, plus a Preview tab that renders the
 // chapter exactly as the reader will (same parser, same block renderer, same Copy button on code blocks).
 // Everything the reader can display is one tap away; the text underneath stays plain Markdown.
-import { Bold, Code, FileCode, Italic, Link as LinkIcon, List, ListOrdered, Minus, Quote } from "lucide-react-native";
+import { Bold, Code, FileCode, Image as ImageIcon, Italic, Link as LinkIcon, List, ListOrdered, Minus, Quote, Table as TableIcon } from "lucide-react-native";
 import { useRef, useState } from "react";
 import { Pressable, ScrollView, TextInput, View, type NativeSyntheticEvent, type TextInputSelectionChangeEventData } from "react-native";
 
@@ -10,11 +10,13 @@ import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { BOOK_SECTION_INFO, type BookChapterKind } from "@/hooks/useBookBuilder";
 import { useBookReaderTheme } from "@/hooks/useBookReaderTheme";
-import { applyBookFormat, type BookFormatOp } from "@/lib/bookEditorOps";
+import { useUploadProjectThumbnail } from "@/hooks/useUploadProjectThumbnail";
+import { applyBookFormat, insertBookImage, type BookFormatOp } from "@/lib/bookEditorOps";
 import { parseBook } from "@/lib/bookFormat";
 import { splitChapterOpener } from "@/lib/bookReaderText";
 import { READER_THEMES } from "@/lib/bookReaderTheme";
 import { haptics } from "@/lib/haptics";
+import { pickSingleImage } from "@/lib/pickImage";
 import { useTheme } from "@/theme/ThemeProvider";
 import { BookRichText } from "./BookRichText";
 
@@ -32,6 +34,7 @@ const TOOLS: { op: BookFormatOp; label: string; text?: string; icon?: typeof Bol
   { op: "numbered", label: "Numbered list", icon: ListOrdered },
   { op: "quote", label: "Quote", icon: Quote },
   { op: "codeblock", label: "Code block (readers get a Copy button)", icon: FileCode },
+  { op: "table", label: "Table", icon: TableIcon },
   { op: "divider", label: "Divider", icon: Minus },
 ];
 
@@ -60,6 +63,27 @@ export function BookChapterEditor({
     sel.current = { start: r.start, end: r.end };
     onChange(r.text);
     setForced({ start: r.start, end: r.end });
+  }
+
+  const upload = useUploadProjectThumbnail();
+  const [imageError, setImageError] = useState<string | null>(null);
+
+  async function addImage() {
+    haptics.selection();
+    setImageError(null);
+    // The picker takes focus away; remember where the cursor was.
+    const at = { ...sel.current };
+    try {
+      const file = await pickSingleImage();
+      if (!file) return;
+      const { url } = await upload.mutateAsync(file);
+      const r = insertBookImage(content, at.start, at.end, url);
+      sel.current = { start: r.start, end: r.end };
+      onChange(r.text);
+      setForced({ start: r.start, end: r.end });
+    } catch (err) {
+      setImageError(err instanceof Error ? err.message : "Couldn't upload that image.");
+    }
   }
 
   function onSelectionChange(e: NativeSyntheticEvent<TextInputSelectionChangeEventData>) {
@@ -102,7 +126,19 @@ export function BookChapterEditor({
                 {icon ? <Icon as={icon} size={16} className="text-ink-muted" /> : <Text className="text-xs font-semibold text-ink-muted">{text}</Text>}
               </Pressable>
             ))}
+            <Pressable
+              onPress={addImage}
+              disabled={upload.isPending}
+              accessibilityRole="button"
+              accessibilityLabel="Image"
+              hitSlop={4}
+              className="h-9 min-w-9 items-center justify-center rounded-lg px-2 active:bg-surface"
+              style={{ opacity: upload.isPending ? 0.4 : 1 }}
+            >
+              {upload.isPending ? <Text className="text-xs font-semibold text-ink-muted">…</Text> : <Icon as={ImageIcon} size={16} className="text-ink-muted" />}
+            </Pressable>
           </ScrollView>
+          {imageError ? <Text className="text-xs text-danger">{imageError}</Text> : null}
           <TextInput
             value={content}
             onChangeText={onChange}

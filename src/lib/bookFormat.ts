@@ -4,6 +4,8 @@
 //   # / ## / ###  headings        **bold**   *italic*   `code`
 //   [label](https://…) links, and bare https://… URLs (both become tappable links)
 //   - / * / • bullets, 1. numbered (indent = nesting)    > quote    --- divider
+//   ![caption](https://…) on its own line = an image (caption optional)
+//   | a | b |  then  |---|---|  then rows = a table  (:--- / :---: / ---: set column alignment)
 // Blank lines separate paragraphs; single line breaks inside a paragraph are kept.
 //
 // Deliberately NOT lessonFormat.ts: that parser is tuned for course lessons
@@ -32,7 +34,11 @@ export type BookBlock =
   | { k: "list"; items: BookListItem[] }
   | { k: "quote"; inline: BookInline[] }
   | { k: "code"; text: string }
+  | { k: "image"; alt: string; url: string }
+  | { k: "table"; align: BookTableAlign[]; head: BookInline[][]; rows: BookInline[][][] }
   | { k: "hr" };
+
+export type BookTableAlign = "left" | "center" | "right";
 
 const WORD_CHAR = /[A-Za-z0-9\u00C0-\u024F\u0370-\u03FF\u0400-\u04FF]/;
 const isSpace = (ch: string | undefined) => ch === undefined || /\s/.test(ch);
@@ -175,6 +181,41 @@ const LIST_RE = /^(\s*)([-*+•▸▪◦●]|\d{1,3}[.)])\s+(\S.*)$/;
 const HR_RE = /^([-*_])(\s*\1){2,}$/;
 const HEADING_RE = /^(#{1,6})\s+(.+?)(?:\s+#+)?\s*$/;
 
+// ![alt](https://…) alone on its line. http(s) only, like links.
+const IMAGE_RE = /^!\[([^\]\n]*)\]\((https?:\/\/[^\s)]+)\)$/;
+const TABLE_SEP_RE = /^\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?$/;
+
+/** Cells of one table row: leading/trailing pipes dropped, `\|` kept as a literal pipe. */
+function splitRow(line: string): string[] {
+  let t = line.trim();
+  if (t.startsWith("|")) t = t.slice(1);
+  if (t.endsWith("|") && !t.endsWith("\\|")) t = t.slice(0, -1);
+  const cells: string[] = [];
+  let cur = "";
+  for (let j = 0; j < t.length; j++) {
+    if (t[j] === "\\" && t[j + 1] === "|") {
+      cur += "|";
+      j++;
+    } else if (t[j] === "|") {
+      cells.push(cur.trim());
+      cur = "";
+    } else {
+      cur += t[j];
+    }
+  }
+  cells.push(cur.trim());
+  return cells;
+}
+
+/** A table starts with a header row and a `---|---` separator row with the same number of cells. */
+function isTableStart(header: string | undefined, sep: string | undefined): boolean {
+  if (header === undefined || sep === undefined) return false;
+  const h = header.trim();
+  const d = sep.trim();
+  if (h.indexOf("|") === -1 || d.indexOf("|") === -1 || !TABLE_SEP_RE.test(d)) return false;
+  return splitRow(h).length === splitRow(d).length;
+}
+
 function isBlockStart(trimmed: string, raw: string): boolean {
   return (
     /^```/.test(trimmed) ||
@@ -244,6 +285,34 @@ export function parseBook(src: string | null | undefined): BookBlock[] {
         i++;
       }
       blocks.push({ k: "quote", inline: parseBookInline(q.join("\n")) });
+      continue;
+    }
+
+    const img = IMAGE_RE.exec(trimmed);
+    if (img) {
+      flushPara();
+      blocks.push({ k: "image", alt: img[1].trim(), url: img[2] });
+      i++;
+      continue;
+    }
+
+    if (isTableStart(trimmed, lines[i + 1])) {
+      flushPara();
+      const head = splitRow(trimmed);
+      const align = splitRow(lines[i + 1]).map((c): BookTableAlign => {
+        const l = c.startsWith(":");
+        const r = c.endsWith(":");
+        return l && r ? "center" : r ? "right" : "left";
+      });
+      i += 2;
+      const rows: BookInline[][][] = [];
+      while (i < lines.length && lines[i].trim() && lines[i].indexOf("|") !== -1) {
+        const cells = splitRow(lines[i]);
+        // Short rows are padded, long rows trimmed, so every row has one cell per column.
+        rows.push(head.map((_, c) => parseBookInline(cells[c] ?? "")));
+        i++;
+      }
+      blocks.push({ k: "table", align, head: head.map((c) => parseBookInline(c)), rows });
       continue;
     }
 

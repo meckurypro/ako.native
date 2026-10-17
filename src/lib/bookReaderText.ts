@@ -24,6 +24,10 @@ export function blockToPlain(b: BookBlock): string {
       return b.items.map((it) => inlineToPlain(it.inline)).join("\n");
     case "code":
       return b.text;
+    case "image":
+      return b.alt;
+    case "table":
+      return [b.head, ...b.rows].map((row) => row.map((cell) => inlineToPlain(cell)).join(" ")).join("\n");
     case "hr":
       return "";
   }

@@ -7,10 +7,11 @@
 // reader's Themes & Settings; with none given it renders exactly as before.
 import * as Clipboard from "expo-clipboard";
 import { Fragment, useMemo, useState, type ReactNode } from "react";
-import { Platform, Pressable, Text as RNText, View, type StyleProp, type TextStyle } from "react-native";
+import { Image as RNImage, Platform, Pressable, ScrollView, Text as RNText, View, type StyleProp, type TextStyle } from "react-native";
 
 import { Text } from "@/components/ui/Text";
-import { parseBook, type BookBlock, type BookInline } from "@/lib/bookFormat";
+import { parseBook, type BookBlock, type BookInline, type BookTableAlign } from "@/lib/bookFormat";
+import { inlineToPlain } from "@/lib/bookReaderText";
 import { openExternal } from "@/lib/openExternal";
 
 export type BookFamily = "body" | "display" | "serif";
@@ -99,6 +100,91 @@ function CodeBlock({ text, ink, muted, fontSize, paraGap, onInteract }: { text: 
         {text}
       </RNText>
     </View>
+  );
+}
+
+/** A picture in the flow of the text, full column width, height from its own proportions. */
+function BookImage({ url, alt, muted, fontSize, paraGap }: { url: string; alt: string; muted: string; fontSize: number; paraGap: number }) {
+  const [ratio, setRatio] = useState(16 / 9);
+  const [failed, setFailed] = useState(false);
+  return (
+    <View style={{ marginBottom: paraGap }}>
+      {failed ? (
+        <View style={{ borderRadius: 8, borderWidth: 1, borderColor: muted, padding: 16, alignItems: "center" }}>
+          <RNText style={{ color: muted, fontSize: fontSize - 2 }}>Image couldn't load</RNText>
+        </View>
+      ) : (
+        <RNImage
+          source={{ uri: url }}
+          accessibilityLabel={alt || undefined}
+          resizeMode="contain"
+          style={{ width: "100%", aspectRatio: ratio, borderRadius: 8 }}
+          onLoad={(e) => {
+            const { width, height } = e.nativeEvent.source;
+            if (width > 0 && height > 0) setRatio(width / height);
+          }}
+          onError={() => setFailed(true)}
+        />
+      )}
+      {alt ? (
+        <RNText style={{ color: muted, fontSize: fontSize - 3, lineHeight: (fontSize - 3) * 1.4, textAlign: "center", marginTop: 6 }}>{alt}</RNText>
+      ) : null}
+    </View>
+  );
+}
+
+/** A table that scrolls sideways when it is wider than the page; column widths follow the longest cell. */
+function BookTable({
+  align,
+  head,
+  rows,
+  face,
+  ink,
+  muted,
+  accent,
+  fontSize,
+  paraGap,
+  openLink,
+}: {
+  align: BookTableAlign[];
+  head: BookInline[][];
+  rows: BookInline[][][];
+  face: Face;
+  ink: string;
+  muted: string;
+  accent: string | undefined;
+  fontSize: number;
+  paraGap: number;
+  openLink: OpenLink;
+}) {
+  const cellSize = fontSize - 1;
+  const widths = head.map((h, c) => {
+    const longest = Math.max(inlineToPlain(h).length, ...rows.map((r) => inlineToPlain(r[c] ?? []).length));
+    return Math.min(240, Math.max(90, Math.round(longest * cellSize * 0.55) + 24));
+  });
+  const cell = (nodes: BookInline[], c: number, key: string, header: boolean, last: boolean) => (
+    <View key={key} style={{ width: widths[c], paddingHorizontal: 10, paddingVertical: 6, borderBottomWidth: header ? 1.5 : 1, borderColor: muted, borderBottomColor: muted }}>
+      <Span
+        face={face}
+        kind={header ? "bold" : undefined}
+        selectable
+        style={{ color: ink, fontSize: cellSize, lineHeight: cellSize * 1.45, textAlign: align[c] }}
+      >
+        {renderInline(nodes, key, face, accent, openLink)}
+      </Span>
+    </View>
+  );
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: paraGap }} nestedScrollEnabled>
+      <View>
+        <View style={{ flexDirection: "row" }}>{head.map((h, c) => cell(h, c, `h${c}`, true, c === head.length - 1))}</View>
+        {rows.map((row, r) => (
+          <View key={`r${r}`} style={{ flexDirection: "row" }}>
+            {row.map((nodes, c) => cell(nodes, c, `r${r}c${c}`, false, c === row.length - 1))}
+          </View>
+        ))}
+      </View>
+    </ScrollView>
   );
 }
 
@@ -212,6 +298,24 @@ export function BookRichText({
           case "code":
             return (
               <CodeBlock key={key} text={b.text} ink={ink} muted={muted} fontSize={fontSize} paraGap={paraGap} onInteract={onInteract} />
+            );
+          case "image":
+            return <BookImage key={key} url={b.url} alt={b.alt} muted={muted} fontSize={fontSize} paraGap={paraGap} />;
+          case "table":
+            return (
+              <BookTable
+                key={key}
+                align={b.align}
+                head={b.head}
+                rows={b.rows}
+                face={face}
+                ink={ink}
+                muted={muted}
+                accent={accent}
+                fontSize={fontSize}
+                paraGap={paraGap}
+                openLink={openLink}
+              />
             );
           case "hr":
             return ornament ? (

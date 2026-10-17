@@ -16,6 +16,7 @@ export type BookFormatOp =
   | "numbered"
   | "quote"
   | "codeblock"
+  | "table"
   | "divider";
 
 export interface EditResult {
@@ -92,15 +93,31 @@ function codeBlock(text: string, s: number, e: number): EditResult {
   return { text: out, start: cursor, end: cursor + sel.length };
 }
 
-function divider(text: string, s: number, e: number): EditResult {
+/** Puts `md` on its own paragraph at the selection (blank line before and after), cursor selecting [selFrom, selTo) of it. */
+function insertBlock(text: string, s: number, e: number, md: string, selFrom: number, selTo: number): EditResult {
   const before = text.slice(0, s);
   const after = text.slice(e);
   const lead = before === "" || before.endsWith("\n\n") ? "" : before.endsWith("\n") ? "\n" : "\n\n";
   const trail = after === "" || after.startsWith("\n\n") ? "" : after.startsWith("\n") ? "\n" : "\n\n";
-  const ins = lead + "---" + trail;
-  const out = before + ins + after;
-  const cursor = before.length + ins.length;
-  return { text: out, start: cursor, end: cursor };
+  const base = before.length + lead.length;
+  return { text: before + lead + md + trail + after, start: base + selFrom, end: base + selTo };
+}
+
+function divider(text: string, s: number, e: number): EditResult {
+  const r = insertBlock(text, s, e, "---", 3, 3);
+  return r;
+}
+
+const TABLE_MD = "| Column 1 | Column 2 |\n|---|---|\n| Cell | Cell |";
+function table(text: string, s: number, e: number): EditResult {
+  return insertBlock(text, s, e, TABLE_MD, 2, 10);
+}
+
+/** An image block `![caption](url)`, cursor in the caption so it can be typed straight away. */
+export function insertBookImage(text: string, selStart: number, selEnd: number, url: string): EditResult {
+  const s = Math.max(0, Math.min(selStart, text.length));
+  const e = Math.max(s, Math.min(selEnd, text.length));
+  return insertBlock(text, s, e, `![](${url})`, 2, 2);
 }
 
 export function applyBookFormat(text: string, selStart: number, selEnd: number, op: BookFormatOp): EditResult {
@@ -113,6 +130,8 @@ export function applyBookFormat(text: string, selStart: number, selEnd: number, 
       return link(text, s, e);
     case "codeblock":
       return codeBlock(text, s, e);
+    case "table":
+      return table(text, s, e);
     case "divider":
       return divider(text, s, e);
     default:
