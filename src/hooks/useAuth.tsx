@@ -5,6 +5,8 @@ import type { Session, User } from "@supabase/supabase-js";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { updateSavedAccountTokens } from "../lib/accountSessions";
+import { authStorageKey, isUnreachableError, parseStoredSession } from "../lib/authOffline";
+import { encryptedAuthStorage } from "../lib/secureStorage";
 
 interface MyProfile {
   username: string;
@@ -27,8 +29,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Get the current session on load
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
+    supabase.auth.getSession().then(async ({ data: { session }, error }) => {
+      // Offline with an access token older than ~1h, getSession() can't refresh and returns null — which would send a
+      // signed-in person to a login screen that can't work offline, and make everything saved for offline use
+      // unreachable. ONLY when that is because the server couldn't be reached, keep the session still stored on the
+      // device (see lib/authOffline.ts). A revoked/invalid session isn't a network error and still signs out as before;
+      // once online, supabase-js refreshes the token itself (or signs out if the server rejects it).
+      let effective = session;
+      if (!effective && isUnreachableError(error)) {
+        const key = authStorageKey(process.env.EXPO_PUBLIC_SUPABASE_URL ?? "");
+        if (key) effective = parseStoredSession(await encryptedAuthStorage.getItem(key).catch(() => null));
+      }
+      setSession(effective);
       setLoading(false);
     });
 
