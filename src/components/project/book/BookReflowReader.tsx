@@ -22,7 +22,6 @@ import {
   Pressable,
   ScrollView,
   Share,
-  Text as RNText,
   View,
   type GestureResponderEvent,
   type LayoutChangeEvent,
@@ -600,11 +599,8 @@ export function BookReflowReader({ projectId, title, chapters, userId, thumbnail
         </View>
       ) : null}
 
-      {/* Footer: page counter + menu button */}
+      {/* Footer: menu button (progress is the left-edge scroll mark; the scrubber shows pages on demand) */}
       <View pointerEvents="box-none" style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: insets.bottom + FOOTER_H, backgroundColor: `${theme.bg}F2` }}>
-        <View pointerEvents="none" style={{ position: "absolute", left: 0, right: 0, top: 10, alignItems: "center" }}>
-          <RNText style={{ fontSize: 12, color: theme.muted, fontVariant: ["tabular-nums"] }}>{`${position.page} of ${position.totalPages}`}</RNText>
-        </View>
         <Pressable
           onPress={() => {
             haptics.light();
