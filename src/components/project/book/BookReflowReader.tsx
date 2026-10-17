@@ -62,13 +62,13 @@ import {
   coerceSpacing,
   estimatePages,
   locate,
-  pagesLeftLabel,
   resolveOverall,
   type PageMetrics,
   type ReaderFontId,
   type ReaderThemeSpec,
 } from "@/lib/bookReaderTheme";
 import { haptics } from "@/lib/haptics";
+import { ChapterScrollMark, MARK_TRACK_H, useChapterScrollMark } from "./ChapterScrollMark";
 
 import { BookRichText, Ornament, Span, type BookFamily, type Face } from "./BookRichText";
 import { ContentsSheet, SearchSheet, SettingsSheet, chapterLabel, type ContentsTab } from "./ReaderSheets";
@@ -183,6 +183,7 @@ export function BookReflowReader({ projectId, title, chapters, userId, thumbnail
   // Where the reader stopped last time, offered once on reopening: continue there, or start from the beginning.
   const [resumeOffer, setResumeOffer] = useState<{ chapterId: string; fraction: number } | null>(null);
   const [fraction, setFraction] = useState(0);
+  const scrollMark = useChapterScrollMark();
   const [dims, setDims] = useState({ vw: 390, vh: 800, contentH: 0 });
   const [scrub, setScrub] = useState<number | null>(null);
   const [jumpBack, setJumpBack] = useState<{ chapterId: string; fraction: number; label: string } | null>(null);
@@ -263,6 +264,12 @@ export function BookReflowReader({ projectId, title, chapters, userId, thumbnail
 
   const currentIndex = chapters.findIndex((c) => c.id === chapterId);
   const current = currentIndex >= 0 ? chapters[currentIndex] : null;
+  // Each chapter starts with the scroll mark hidden.
+  const currentChapterId = current?.id;
+  const resetScrollMark = scrollMark.reset;
+  useEffect(() => {
+    resetScrollMark();
+  }, [currentChapterId, resetScrollMark]);
   const prev = currentIndex > 0 ? chapters[currentIndex - 1] : null;
   const next = currentIndex >= 0 && currentIndex < chapters.length - 1 ? chapters[currentIndex + 1] : null;
 
@@ -312,6 +319,7 @@ export function BookReflowReader({ projectId, title, chapters, userId, thumbnail
     const range = contentSize.height - layoutMeasurement.height;
     const f = range > 0 ? Math.min(1, Math.max(0, contentOffset.y / range)) : 0;
     lastY.current = contentOffset.y;
+    scrollMark.onMetrics(contentOffset.y, contentSize.height, layoutMeasurement.height);
     setFraction((old) => (Math.abs(old - f) > 0.003 || f === 0 || f === 1 ? f : old));
     if (chromeVisible && Math.abs(contentOffset.y - chromeAnchor.current) > 90) setChromeVisible(false);
     if (menuOpen) setMenuOpen(false);
@@ -499,6 +507,8 @@ export function BookReflowReader({ projectId, title, chapters, userId, thumbnail
         ref={scrollRef}
         onScroll={handleScroll}
         scrollEventThrottle={32}
+        onScrollBeginDrag={scrollMark.onBeginDrag}
+        onScrollEndDrag={scrollMark.onEndDrag}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
         onLayout={(e: LayoutChangeEvent) => {
@@ -560,10 +570,8 @@ export function BookReflowReader({ projectId, title, chapters, userId, thumbnail
         </View>
       </ScrollView>
 
-      {/* Status line: always there, like Apple Books */}
-      <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, alignItems: "center", paddingTop: insets.top + 10 }}>
-        <RNText style={{ fontSize: 11, letterSpacing: 0.4, color: theme.muted }}>{pagesLeftLabel(position.pagesLeftInChapter)}</RNText>
-      </View>
+      {/* Where you are in the chapter: a faint mark on the left edge, only while scrolling */}
+      <ChapterScrollMark mark={scrollMark} color={theme.muted} top={Math.max(insets.top, (dims.vh - MARK_TRACK_H) / 2)} />
 
       {/* Return pill after a jump */}
       {jumpBack && !chromeVisible ? (
