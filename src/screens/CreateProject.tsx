@@ -4,6 +4,7 @@
 // → privacy → publish. Which types you see depends on personal vs Page mode,
 // admin switches and your eligibility. Course / authored Book / Room are
 // created as drafts you finish building afterwards.
+import { extractBookPdf } from "@/hooks/useBookBuilder";
 import { Image as ImageIcon } from "lucide-react-native";
 import { router, type Href } from "expo-router";
 import { useEffect, useState } from "react";
@@ -219,7 +220,7 @@ export function CreateProject() {
     const cleanDeliverables = gigFields.deliverables.map((d) => d.trim()).filter(Boolean);
 
     try {
-      await createProject.mutateAsync({
+      const created = await createProject.mutateAsync({
         title: title.trim(),
         description: description.trim() || undefined,
         project_type: projectType,
@@ -295,6 +296,11 @@ export function CreateProject() {
               }
             : undefined,
       });
+      // An uploaded PDF book: extract its text into chapters in the background (best effort — the reader retries on the
+      // owner's first open).
+      if (projectType === "book" && bookFields.content_source === "upload" && bookFields.allow_read_in_app && created?.id) {
+        void extractBookPdf(created.id).catch(() => {});
+      }
       goToCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't create project.");

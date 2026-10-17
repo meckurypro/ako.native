@@ -1,6 +1,6 @@
 // src/app/(app)/projects/[projectId]/read.tsx
-import { ScreenPlaceholder } from "@/components/ui/ScreenPlaceholder";
+import { BookRead } from "@/screens/BookRead";
 
 export default function Screen() {
-  return <ScreenPlaceholder name="BookReader" step={9} />;
+  return <BookRead />;
 }

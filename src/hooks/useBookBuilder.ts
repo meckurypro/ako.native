@@ -448,3 +448,35 @@ export function useDeleteBookBookmark(projectId: string, userId: string | undefi
     },
   });
 }
+
+// ---------------------------------------------------------------
+// Uploaded-PDF books: the extract-book-pdf edge function turns the PDF's text into book_chapters rows so the book
+// reads in the same reflow reader as an authored one. Idempotent unless `force` (it returns existing chapters).
+// ok:false (reason "no_text" = a scanned PDF, "too_large") means there is no reflowable text for this book.
+// ---------------------------------------------------------------
+
+export interface ExtractBookPdfResult {
+  ok: boolean;
+  already?: boolean;
+  chapters?: number;
+  reason?: string;
+}
+
+export async function extractBookPdf(projectId: string, force = false): Promise<ExtractBookPdfResult> {
+  const { data, error } = await supabase.functions.invoke("extract-book-pdf", {
+    body: { project_id: projectId, force },
+  });
+  if (error) throw error;
+  return data as ExtractBookPdfResult;
+}
+
+export function useExtractBookPdf(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (force: boolean = false) => extractBookPdf(projectId, force),
+    onSettled: () => {
+      invalidateBook(queryClient, projectId);
+      queryClient.invalidateQueries({ queryKey: ["project-book-details", projectId] });
+    },
+  });
+}
