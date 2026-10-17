@@ -502,8 +502,10 @@ export function BookReflowReader({ projectId, title, chapters, userId, thumbnail
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
         onLayout={(e: LayoutChangeEvent) => {
-          viewportH.current = e.nativeEvent.layout.height;
-          setDims((d) => ({ ...d, vw: e.nativeEvent.layout.width, vh: e.nativeEvent.layout.height }));
+          // Read the event now: React runs the setDims updater later, when the event has already been released.
+          const { width, height } = e.nativeEvent.layout;
+          viewportH.current = height;
+          setDims((d) => ({ ...d, vw: width, vh: height }));
           applyPending();
         }}
         onContentSizeChange={(_w, h) => {
