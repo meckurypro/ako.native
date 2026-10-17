@@ -1,7 +1,8 @@
 // src/screens/BookRead.tsx
 // /projects/:id/read — reading a book from the project page. An uploaded PDF reads as reflowable chapters (the same
 // reader as a book written in Akọ) once its text has been extracted; the owner's first open triggers that extraction.
-// A PDF with no text layer (a scan) or one the extractor can't handle has nothing to reflow, so it says so plainly.
+// A PDF with no text layer (a scan, a flyer) or one the extractor can't handle has nothing to reflow, so it opens in the
+// page-image reader instead (BookPdfPageReader) — readable, zoomable, with the same access rules and saved position.
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useRef } from "react";
 import { ActivityIndicator, View } from "react-native";
@@ -15,6 +16,7 @@ import { useProjectOwnership } from "@/hooks/useProjectOwnership";
 import { useBookDetails } from "@/hooks/useProjectTypeDetails";
 import { useProject } from "@/hooks/useProjects";
 import { useSmartBack } from "@/hooks/useSmartBack";
+import { BookPdfPageReader } from "@/components/project/book/BookPdfPageReader";
 import { Book } from "@/screens/Book";
 
 export function BookRead() {
@@ -56,11 +58,12 @@ export function BookRead() {
 
   if (hasChapters && canRead) return <Book />;
 
+  // Nothing to reflow: show the pages themselves, unless the host made the book download-only.
+  if (canRead && details?.content_source === "upload") return <BookPdfPageReader projectId={project.id} />;
+
   const message = !canRead
     ? "The host made this book available for download only, not for reading in the app."
-    : isOwner
-      ? "This PDF has no selectable text (it may be a scan), so it can't be shown as readable pages."
-      : "This book isn't ready to read in the app yet. Try again later, or ask the host.";
+    : "This book isn't ready to read in the app yet. Try again later, or ask the host.";
 
   return (
     <View className="flex-1 items-center justify-center gap-4 bg-canvas px-6" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
