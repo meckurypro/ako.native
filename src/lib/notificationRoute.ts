@@ -63,15 +63,40 @@ export function notificationLink(n: RoutableNotification): string | null {
  *  so nothing sensitive sits in the OS tray), so the caller resolves the row first. */
 export type PushTapData =
   | { type: "message"; conversationId: string }
-  | { type: "activity"; notificationId: string; source: "user" | "page" }
+  | { type: "activity"; notificationId: string; source: "user" | "page"; notificationType?: string }
   | null;
+
+/** Where a tapped chat push leads: the inbox (it resolves to the Page inbox when acting as a Page). */
+export const INBOX_ROUTE = "/inbox";
+
+/** Where an activity push leads when its row can't be read (offline, deleted): the closest screen for its type. */
+export function fallbackRouteForType(type: string | undefined): string {
+  switch (type) {
+    case "follow_request":
+      return "/requests";
+    case "give_back_received":
+    case "project_purchased":
+    case "affiliate_commission_earned":
+    case "withdrawal_status":
+    case "promotion_approved":
+    case "promotion_declined":
+      return "/wallet";
+    default:
+      return "/notifications";
+  }
+}
 
 export function parsePushData(data: unknown): PushTapData {
   if (!data || typeof data !== "object") return null;
   const d = data as Record<string, unknown>;
   if (d.type === "message" && typeof d.conversationId === "string") return { type: "message", conversationId: d.conversationId };
   if (d.type === "activity" && typeof d.notificationId === "string") {
-    return { type: "activity", notificationId: d.notificationId, source: d.source === "page" ? "page" : "user" };
+    return {
+      type: "activity",
+      notificationId: d.notificationId,
+      source: d.source === "page" ? "page" : "user",
+      notificationType: typeof d.notificationType === "string" ? d.notificationType : undefined,
+    };
   }
   return null;
 }

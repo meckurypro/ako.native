@@ -2,7 +2,8 @@
 // Everything push-related that must run while a user is signed in; mounted once in the (app) layout.
 //   • first-run ask  – offer the OS permission prompt once, shortly after the first signed-in session starts
 //   • registration   – mint the Expo token and attach it to the account (only once the OS permission is granted)
-//   • tap routing    – open the right screen when a notification is tapped (background, killed, or tray)
+//   • tap routing    – open the right screen when a notification is tapped (background, killed, or tray);
+//                      also runs the Reply / Mark as read buttons when the app is open (see lib/pushActions)
 //   • live refresh   – a push that arrives in the foreground refreshes the matching lists
 //   • badge sync     – app-icon badge = unread notifications + unread conversations
 import { useQueryClient } from "@tanstack/react-query";
@@ -11,7 +12,9 @@ import * as Notifications from "expo-notifications";
 import { useEffect, useRef } from "react";
 import { AppState } from "react-native";
 
-import { notificationAction, parsePushData, type PushTapData } from "../lib/notificationRoute";
+import { fallbackRouteForType, INBOX_ROUTE, notificationAction, parsePushData, type PushTapData } from "../lib/notificationRoute";
+import { handleMessageAction, isMessageAction, type ActionResponse } from "../lib/pushActions";
+import { markPushTap } from "../lib/pushLaunch";
 import { getExpoPushToken, registerPushToken } from "../lib/push";
 import { startPushOutbox } from "../lib/pushNotify";
 import { askForPushPermission, refreshPushPermission, usePushPermission } from "../lib/pushPermissionStore";
@@ -89,9 +92,15 @@ export function useFirstRunPushAsk() {
   }, [user?.id, loaded, status, canAskAgain]);
 }
 
-async function openFromPush(data: NonNullable<PushTapData>): Promise<void> {
-  if (data.type === "message") {
-    router.push(`/messages/${data.conversationId}` as Href);
+async function openFromPush(data: PushTapData): Promise<void> {
+  // A chat message leads to the inbox (the Page inbox when acting as a Page — /inbox decides).
+  if (data?.type === "message") {
+    router.navigate(INBOX_ROUTE as Href);
+    return;
+  }
+  // No usable payload (a push sent without our data): the notifications list is the most relevant place.
+  if (!data) {
+    router.navigate("/notifications" as Href);
     return;
   }
 
@@ -104,7 +113,7 @@ async function openFromPush(data: NonNullable<PushTapData>): Promise<void> {
     .eq("id", data.notificationId)
     .maybeSingle();
   if (!row) {
-    router.push("/notifications" as Href);
+    router.navigate(fallbackRouteForType(data.notificationType) as Href);
     return;
   }
 
@@ -115,39 +124,62 @@ async function openFromPush(data: NonNullable<PushTapData>): Promise<void> {
 
   const [notification] = await enrichNotifications([row as unknown as NotificationWithActor]);
   const action = notificationAction(notification);
-  if (action.kind === "route") router.push(action.href as Href);
+  if (action.kind === "route") router.navigate(action.href as Href);
   // Invites/credits are answered in a dialog owned by the Notifications screen.
-  else if (action.kind === "none") router.push("/notifications" as Href);
-  else router.push({ pathname: "/notifications", params: { open: notification.id } } as Href);
+  else if (action.kind === "none") router.navigate(fallbackRouteForType(data.notificationType) as Href);
+  else router.navigate({ pathname: "/notifications", params: { open: notification.id } } as Href);
 }
 
 export function usePushNavigation() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const response = Notifications.useLastNotificationResponse();
-  const handledId = useRef<string | null>(null);
+  // Notification ids already acted on, so the launch response and the live listener never both open it.
+  const handled = useRef(new Set<string>());
 
   useEffect(() => {
-    if (!user || !response) return;
-    if (response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return;
-    const id = response.notification.request.identifier;
-    if (handledId.current === id) return;
-    handledId.current = id;
-    Notifications.clearLastNotificationResponse();
+    if (!user) return;
 
-    const data = parsePushData(response.notification.request.content.data);
-    if (!data) return;
-    // Let the navigator finish mounting on a cold start before pushing a route.
-    const timer = setTimeout(() => {
-      openFromPush(data)
-        .catch(() => router.push("/notifications" as Href))
-        .finally(() => {
-          void queryClient.invalidateQueries({ queryKey: ["notifications"] });
-          void queryClient.invalidateQueries({ queryKey: ["page-notifications"] });
+    const handle = (response: Notifications.NotificationResponse | null) => {
+      if (!response) return;
+      const id = response.notification.request.identifier;
+
+      // Reply / Mark as read, tapped while the app is open (background and killed are handled by the task).
+      if (isMessageAction(response.actionIdentifier)) {
+        if (handled.current.has(`${id}:${response.actionIdentifier}`)) return;
+        handled.current.add(`${id}:${response.actionIdentifier}`);
+        void handleMessageAction(response as unknown as ActionResponse).finally(() => {
+          void queryClient.invalidateQueries({ queryKey: ["conversations"] });
+          void queryClient.invalidateQueries({ queryKey: ["messages"], exact: false });
         });
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [response, user?.id, queryClient]);
+        return;
+      }
+
+      if (response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return;
+      if (handled.current.has(id)) return;
+      handled.current.add(id);
+      // Tell route memory this launch belongs to the notification, so it never restores an old screen on top.
+      markPushTap();
+
+      const data = parsePushData(response.notification.request.content.data);
+      // The navigator may still be settling on a cold start; navigating after the current task is enough.
+      // (This is deliberately NOT cancelled by effect cleanup: clearing the response below re-renders
+      // listeners, and a cancelled timer here used to drop the navigation entirely.)
+      setTimeout(() => {
+        openFromPush(data)
+          .catch(() => router.navigate((data?.type === "message" ? INBOX_ROUTE : "/notifications") as Href))
+          .finally(() => {
+            Notifications.clearLastNotificationResponse();
+            void queryClient.invalidateQueries({ queryKey: ["notifications"] });
+            void queryClient.invalidateQueries({ queryKey: ["page-notifications"] });
+          });
+      }, 0);
+    };
+
+    // Launch tap (killed app) first, then every tap while the app lives.
+    handle(Notifications.getLastNotificationResponse());
+    const sub = Notifications.addNotificationResponseReceivedListener(handle);
+    return () => sub.remove();
+  }, [user?.id, queryClient]);
 }
 
 export function useForegroundPushRefresh() {

@@ -20,6 +20,7 @@
   ],
   "exclude": [
     "node_modules",
-    "src/_pending"
+    "src/_pending",
+    "supabase"
   ]
 }

@@ -15,9 +15,10 @@
 //     remembered; the last *other* screen is kept instead
 //   • restore happens once per process, and only if nobody has navigated away from the landing screen yet
 import * as Linking from "expo-linking";
-import * as Notifications from "expo-notifications";
 import { router, useGlobalSearchParams, usePathname, type Href } from "expo-router";
 import { useEffect, useRef } from "react";
+
+import { appOpenedFromPush } from "../lib/pushLaunch";
 
 const KEY = "ako-last-route";
 /** Older than this, the person has "left" — a fresh start at the Feed is the right landing. */
@@ -116,10 +117,12 @@ export function useRouteMemory(userId: string | undefined) {
         // Opened from a link or a notification: that destination wins.
         const initialUrl = await Linking.getInitialURL();
         if (initialUrl && !/^[a-z][a-z0-9+.-]*:\/\/\/?$/i.test(initialUrl)) return;
-        if (Notifications.getLastNotificationResponse()) return;
       } catch {
         /* can't tell: restoring is the safer default for a plain launch */
       }
+      // Opened by tapping a notification: its page wins. This is a flag captured at startup (see pushLaunch),
+      // not a live lookup, because the tap handler clears the live value before this point is reached.
+      if (appOpenedFromPush()) return;
       router.push(candidate.href as Href);
     })().finally(() => {
       restorePending.current = false;

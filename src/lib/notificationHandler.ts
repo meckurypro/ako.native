@@ -1,10 +1,12 @@
 // src/lib/notificationHandler.ts
 // Side-effect module (imported once from the root layout): decides how a push that arrives WHILE the app
-// is open is presented, and creates the Android channels at startup.
+// is open is presented, and creates the Android channels and the chat-button category at startup.
 import * as Notifications from "expo-notifications";
 
 import { ensureNotificationChannels } from "./notificationChannels";
 import { parsePushData } from "./notificationRoute";
+import "./pushLaunch"; // reads "opened by a notification?" before anything can clear it
+import { registerMessageCategory } from "./pushActions";
 import { getActiveConversation } from "./pushState";
 
 Notifications.setNotificationHandler({
@@ -23,3 +25,4 @@ Notifications.setNotificationHandler({
 });
 
 void ensureNotificationChannels();
+void registerMessageCategory();
