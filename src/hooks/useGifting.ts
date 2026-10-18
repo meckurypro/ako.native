@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { useSound } from "./useSound";
 import { useAuth } from "./useAuth";
+import { resolveFunctionErrorMessage } from "../lib/functionErrors";
 
 interface SendGiftInput {
   recipient_id: string;
@@ -22,7 +23,7 @@ export function useSendGift() {
         body: input,
       });
 
-      if (error) throw error;
+      if (error) throw new Error(await resolveFunctionErrorMessage(error, "Couldn't send gift."));
       if (data?.error) throw new Error(data.error);
 
       return data.gift;

@@ -4,6 +4,7 @@
 // download a file, open a link, read a book, view a ticket, join a course /
 // room / meeting — or the Buy / Book / Support control when you don't. Owners
 // get a menu to edit, publish, archive, manage access, push to feed, or delete.
+import { PurchaseError } from "@/components/wallet/PurchaseError";
 import {
   Archive,
   ArrowDownToLine,
@@ -779,7 +780,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
 
             {concealDetails && detailsOpen && detailsSlot ? <View className="mt-4">{detailsSlot}</View> : null}
 
-            {error ? <Text accessibilityRole="alert" className="mt-2 text-sm text-danger">{error}</Text> : null}
+            {error ? <PurchaseError message={error} className="mt-2" /> : null}
 
             {/* Media: the playable preview is the card's thumbnail; this holds the "full thing" links and the private image. */}
             {isMedia && mediaDetails ? (

@@ -1,5 +1,6 @@
 // src/components/project/book/BookLockedView.tsx
 // Shown to a signed-in non-owner who hasn't bought (or been granted) the book.
+import { PurchaseError } from "@/components/wallet/PurchaseError";
 import { Image as ImageIcon, Lock } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, View } from "react-native";
@@ -55,7 +56,7 @@ export function BookLockedView({ title, thumbnailUrl, price, onBuy, buying }: Bo
       >
         <Text className="text-sm font-medium text-canvas">{buying ? "Processing…" : `Buy for $${price.toFixed(2)}`}</Text>
       </Pressable>
-      {error && <Text className="text-center text-sm text-danger">{error}</Text>}
+      {error && <PurchaseError message={error} className="text-center" />}
     </View>
   );
 }

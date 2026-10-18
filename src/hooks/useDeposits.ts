@@ -5,6 +5,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "./useAuth";
+import { resolveFunctionErrorMessage } from "../lib/functionErrors";
 
 interface InitiateDepositResult {
   deposit_id: string;
@@ -31,7 +32,7 @@ export function useInitiateDeposit() {
         // server to send the user back to the app (ako:// deep link) afterwards.
         body: { amount_usd, platform: "native" },
       });
-      if (error) throw error;
+      if (error) throw new Error(await resolveFunctionErrorMessage(error, "Couldn't start payment."));
       if (data?.error) throw new Error(data.error);
       return data;
     },
@@ -55,19 +56,21 @@ export function useVerifyDeposit() {
       const { data, error } = await supabase.functions.invoke("verify-deposit", {
         body: { reference },
       });
-      if (error) throw error;
+      if (error) throw new Error(await resolveFunctionErrorMessage(error, "Couldn't verify this payment."));
       if (data?.error) throw new Error(data.error);
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["wallet"] });
       queryClient.invalidateQueries({ queryKey: ["wallet-transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["deposits"] });
     },
   });
 }
 
 export interface Deposit {
   id: string;
+  paystack_reference: string;
   amount_usd: number;
   amount_ngn: number;
   status: "pending" | "success" | "failed";
@@ -82,7 +85,7 @@ export function useDeposits() {
     queryFn: async (): Promise<Deposit[]> => {
       const { data, error } = await supabase
         .from("deposits")
-        .select("id, amount_usd, amount_ngn, status, created_at")
+        .select("id, paystack_reference, amount_usd, amount_ngn, status, created_at")
         .order("created_at", { ascending: false })
         .limit(20);
       if (error) throw error;
