@@ -6,6 +6,7 @@ import { type TextInput, View } from "react-native";
 import { AuthScreen } from "@/components/ui/AuthScreen";
 import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
+import { GoogleAuthButton } from "@/components/ui/GoogleAuthButton";
 import { PasswordField } from "@/components/ui/PasswordField";
 import { TextLink } from "@/components/ui/TextLink";
 import { Text } from "@/components/ui/Text";
@@ -150,6 +151,10 @@ export function Login() {
           </TextLink>
         </Text>
       ) : null}
+
+      {/* Add-account mode swaps the active session; the Google round trip can't carry the
+          "previous account" snapshot that needs, so it's email/password only there. */}
+      {!addMode ? <GoogleAuthButton returnTo={returnTo} /> : null}
 
       <Text className="mt-6 text-center text-sm text-ink-muted">
         New to Akọ? <TextLink href={(addMode ? "/signup?add=1" : returnTo ? `/signup?redirect=${encodeURIComponent(returnTo)}` : "/signup")}>Create an account</TextLink>

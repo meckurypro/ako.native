@@ -6,6 +6,7 @@ import { type TextInput, View } from "react-native";
 import { AuthScreen } from "@/components/ui/AuthScreen";
 import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
+import { GoogleAuthButton } from "@/components/ui/GoogleAuthButton";
 import { PasswordField } from "@/components/ui/PasswordField";
 import { Text } from "@/components/ui/Text";
 import { TextLink } from "@/components/ui/TextLink";
@@ -235,6 +236,9 @@ export function SignUp() {
       <Button onPress={handleSubmit} loading={loading}>
         Create account
       </Button>
+
+      {/* Add-account mode: see the note in Login.tsx. */}
+      {!addMode ? <GoogleAuthButton returnTo={returnTo} /> : null}
 
       <Text className="mt-6 text-center text-sm text-ink-muted">
         Already have an account? <TextLink href={(addMode ? "/login?add=1" : returnTo ? `/login?redirect=${encodeURIComponent(returnTo)}` : "/login")}>Log in</TextLink>
