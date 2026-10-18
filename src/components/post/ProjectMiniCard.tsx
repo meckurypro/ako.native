@@ -1,5 +1,6 @@
 // src/components/post/ProjectMiniCard.tsx
 // Compact project tile for shelves and grids (profile Projects tab, "more from…").
+import { thumbBoxAspectClass } from "@/lib/bookCover";
 import { ImageIcon } from "lucide-react-native";
 import { router, type Href } from "expo-router";
 import { Pressable, View } from "react-native";
@@ -36,7 +37,7 @@ export function ProjectMiniCard({ project, showStatus = false, width }: { projec
         elevation: 2,
       }}
     >
-      <View className="aspect-square w-full items-center justify-center overflow-hidden bg-canvas">
+      <View className={`${thumbBoxAspectClass(project.project_type, "aspect-square")} w-full items-center justify-center overflow-hidden bg-canvas`}>
         {statusLabel ? (
           <View className="absolute left-2 top-2 z-10 rounded-full bg-ink-a75 px-2 py-0.5">
             <Text className="text-[11px] font-medium text-canvas">{statusLabel}</Text>

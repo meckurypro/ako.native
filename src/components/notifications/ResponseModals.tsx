@@ -108,9 +108,10 @@ function Preview({ children, light }: { children: ReactNode; light?: boolean }) 
   return <View className={`${light ? "mt-3" : "mt-4"} rounded-xl px-3.5 py-3 ${TONE[light ? "light" : "dark"].preview}`}>{children}</View>;
 }
 
-function Thumb({ url, light }: { url: string | null | undefined; light?: boolean }) {
+function Thumb({ url, light, tall }: { url: string | null | undefined; light?: boolean; tall?: boolean }) {
+  const h = tall ? "h-[72px]" : "h-12";
   return url ? (
-    <Image source={url} contentFit="cover" className={`h-12 w-12 shrink-0 rounded-lg ${light ? "border border-border" : ""}`} />
+    <Image source={url} contentFit="cover" className={`${h} w-12 shrink-0 rounded-lg ${light ? "border border-border" : ""}`} />
   ) : (
     <View className={`h-12 w-12 shrink-0 rounded-lg ${TONE[light ? "light" : "dark"].thumb}`} />
   );
@@ -223,7 +224,7 @@ export function CollaborationInviteResponseModal({ target, targetId, onClose }: 
           ) : (
             <Preview light>
               <View className="flex-row items-center gap-3">
-                <Thumb light url={content.thumbnail_url} />
+                <Thumb light url={content.thumbnail_url} tall={content.project_type === "book"} />
                 <View className="min-w-0 flex-1">
                   <Text numberOfLines={1} className="font-display text-sm font-semibold text-ink">
                     {content.title}

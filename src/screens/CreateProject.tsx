@@ -4,6 +4,7 @@
 // → privacy → publish. Which types you see depends on personal vs Page mode,
 // admin switches and your eligibility. Course / authored Book / Room are
 // created as drafts you finish building afterwards.
+import { BOOK_COVER_ERROR, BOOK_COVER_HINT, BOOK_COVER_RATIO, isBookCoverRatio } from "@/lib/bookCover";
 import { extractBookPdf } from "@/hooks/useBookBuilder";
 import { Image as ImageIcon } from "lucide-react-native";
 import { router, type Href } from "expo-router";
@@ -132,10 +133,10 @@ export function CreateProject() {
   }
 
   async function handleThumbnailSelect() {
-    const file = await pickSingleImage();
+    const file = await pickSingleImage(projectType === "book" ? { aspect: [2, 3] } : {});
     if (!file) return;
     try {
-      const { url, width, height } = await uploadThumbnail.mutateAsync(file);
+      const { url, width, height } = await uploadThumbnail.mutateAsync({ file, bookCover: projectType === "book" });
       setThumbnailUrl(url);
       setThumbnailRatio({ width, height });
     } catch (err) {
@@ -144,6 +145,7 @@ export function CreateProject() {
   }
 
   function validateTypeSpecific(): string | null {
+    if (projectType === "book" && thumbnailUrl && thumbnailRatio && !isBookCoverRatio(thumbnailRatio.width, thumbnailRatio.height)) return BOOK_COVER_ERROR;
     if (projectType === "file" && !fileFields.file_path) return "Upload a file to continue.";
     if (projectType === "url" && !urlFields.url.trim()) return "Add the link you're sharing access to.";
     if (projectType === "media" && !mediaFieldsAreValid(mediaFields)) {
@@ -323,7 +325,8 @@ export function CreateProject() {
   const bookNotOwn = projectType === "book" && !bookFields.is_own_work;
   const isDraftType = projectType === "course" || (projectType === "book" && bookFields.content_source === "authored");
   const submitting = projectType === "pitch" ? createPitchProject.isPending : createProject.isPending;
-  const aspect = thumbnailRatio ? thumbnailRatio.width / thumbnailRatio.height : 16 / 9;
+  const isBook = projectType === "book";
+  const aspect = isBook ? BOOK_COVER_RATIO : thumbnailRatio ? thumbnailRatio.width / thumbnailRatio.height : 16 / 9;
 
   return (
     <KeyboardAvoider className="flex-1 bg-canvas">
@@ -335,7 +338,7 @@ export function CreateProject() {
             onPress={() => void handleThumbnailSelect()}
             accessibilityRole="button"
             accessibilityLabel="Choose thumbnail"
-            className="mb-4 w-full items-center justify-center overflow-hidden rounded-xl border border-border bg-surface"
+            className={`items-center justify-center overflow-hidden rounded-xl border border-border bg-surface ${isBook ? "mb-2 w-48 self-center" : "mb-4 w-full"}`}
             style={{ aspectRatio: aspect }}
           >
             {thumbnailUrl ? (
@@ -343,10 +346,11 @@ export function CreateProject() {
             ) : (
               <View className="items-center gap-1">
                 <Icon as={ImageIcon} size={24} className="text-ink-muted" />
-                <Text className="text-sm text-ink-muted">{uploadThumbnail.isPending ? "Uploading…" : "Add thumbnail"}</Text>
+                <Text className="text-sm text-ink-muted">{uploadThumbnail.isPending ? "Uploading…" : isBook ? "Add cover (2:3)" : "Add thumbnail"}</Text>
               </View>
             )}
           </Pressable>
+          {isBook ? <Text className="mb-4 text-center text-xs text-ink-muted">{BOOK_COVER_HINT}</Text> : null}
 
           <SupportingImagesField urls={supportingImageUrls} onChange={setSupportingImageUrls} hasThumbnail={!!thumbnailUrl} />
 

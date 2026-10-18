@@ -36,6 +36,7 @@ function LibraryRow({ item }: { item: LibraryItem }) {
     <ThumbRow
       onPress={() => router.push(libraryItemRoute(item) as Href)}
       thumbnailUrl={item.thumbnailUrl}
+      tall={item.projectType === "book"}
       fallbackIcon={ImageIcon}
       title={item.title}
       subtitleIcon={ICON_FOR[item.projectType]}

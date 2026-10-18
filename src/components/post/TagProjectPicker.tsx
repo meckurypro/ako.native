@@ -1,5 +1,6 @@
 // src/components/post/TagProjectPicker.tsx
 // Pick one of your published projects to tag on a post.
+import { isBookType } from "@/lib/bookCover";
 import { ImageIcon } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 
@@ -28,7 +29,7 @@ function Rows({ userId, onSelect }: { userId: string; onSelect: (projectId: stri
           accessibilityRole="button"
           className="flex-row items-center gap-2.5 px-1 py-2.5 active:bg-canvas"
         >
-          <View className="h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-canvas">
+          <View className={`${isBookType(project.project_type) ? "h-[60px]" : "h-10"} w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-canvas`}>
             {project.thumbnail_url ? (
               <Image source={{ uri: project.thumbnail_url }} contentFit="cover" style={{ width: "100%", height: "100%" }} />
             ) : (

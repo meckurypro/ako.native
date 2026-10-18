@@ -3,6 +3,7 @@
 // its own details table and member data); everything else — status, thumbnail,
 // text, topics, the type's own fields, price/promo, affiliate program, custom
 // URL, privacy and access — can change.
+import { BOOK_COVER_ERROR, BOOK_COVER_HINT, BOOK_COVER_RATIO, isBookCoverRatio } from "@/lib/bookCover";
 import { Image as ImageIcon } from "lucide-react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
@@ -209,10 +210,10 @@ export function EditProject() {
   }, [project, existingEventDetails, existingMeetingDetails, existingMediaDetails, existingGigDetails, existingGigSamples, existingPitchDetails, existingRoomDetails, existingBookDetails, typeDetailsHydrated]);
 
   async function handleThumbnailSelect() {
-    const file = await pickSingleImage();
+    const file = await pickSingleImage(project?.project_type === "book" ? { aspect: [2, 3] } : {});
     if (!file) return;
     try {
-      const { url, width, height } = await uploadThumbnail.mutateAsync(file);
+      const { url, width, height } = await uploadThumbnail.mutateAsync({ file, bookCover: project?.project_type === "book" });
       setThumbnailUrl(url);
       setThumbnailRatio({ width, height });
     } catch (err) {
@@ -223,6 +224,7 @@ export function EditProject() {
   function validateTypeSpecific(): string | null {
     if (!project) return null;
     const t = project.project_type;
+    if (t === "book" && thumbnailUrl && thumbnailRatio && !isBookCoverRatio(thumbnailRatio.width, thumbnailRatio.height)) return BOOK_COVER_ERROR;
     if (t === "file" && !fileFields.file_path) return "Upload a file to continue.";
     if (t === "url" && !urlFields.url.trim()) return "Add the link you're sharing access to.";
     if (t === "media" && !mediaFieldsAreValid(mediaFields)) {
@@ -414,7 +416,8 @@ export function EditProject() {
 
   const t = project.project_type;
   const bookNotOwn = t === "book" && !bookFields.is_own_work;
-  const aspect = thumbnailRatio ? thumbnailRatio.width / thumbnailRatio.height : 16 / 9;
+  const isBook = project?.project_type === "book";
+  const aspect = isBook ? BOOK_COVER_RATIO : thumbnailRatio ? thumbnailRatio.width / thumbnailRatio.height : 16 / 9;
 
   return (
     <KeyboardAvoider className="flex-1 bg-canvas">
@@ -448,7 +451,7 @@ export function EditProject() {
             onPress={() => void handleThumbnailSelect()}
             accessibilityRole="button"
             accessibilityLabel="Change thumbnail"
-            className="mb-4 w-full items-center justify-center overflow-hidden rounded-xl border border-border bg-surface"
+            className={`items-center justify-center overflow-hidden rounded-xl border border-border bg-surface ${isBook ? "mb-2 w-48 self-center" : "mb-4 w-full"}`}
             style={{ aspectRatio: aspect }}
           >
             {thumbnailUrl ? (
@@ -456,10 +459,11 @@ export function EditProject() {
             ) : (
               <View className="items-center gap-1">
                 <Icon as={ImageIcon} size={24} className="text-ink-muted" />
-                <Text className="text-sm text-ink-muted">{uploadThumbnail.isPending ? "Uploading…" : "Add thumbnail"}</Text>
+                <Text className="text-sm text-ink-muted">{uploadThumbnail.isPending ? "Uploading…" : isBook ? "Add cover (2:3)" : "Add thumbnail"}</Text>
               </View>
             )}
           </Pressable>
+          {isBook ? <Text className="mb-4 text-center text-xs text-ink-muted">{BOOK_COVER_HINT}</Text> : null}
 
           <SupportingImagesField urls={supportingImageUrls} onChange={setSupportingImageUrls} hasThumbnail={!!thumbnailUrl} />
 

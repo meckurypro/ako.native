@@ -78,6 +78,7 @@ export interface AffiliateRelationshipWithProject extends AffiliateRelationship 
     id: string;
     title: string;
     thumbnail_url: string | null;
+    project_type: string;
     price_usd: number;
     promo_price_usd: number | null;
     slug: string | null;
@@ -280,7 +281,7 @@ export function useMyAffiliateRelationships() {
       const { data, error } = await supabase
         .from("affiliate_relationships")
         .select(
-          "*, project:projects(id, title, thumbnail_url, price_usd, promo_price_usd, slug, owner:profiles!projects_owner_id_fkey(username), posted_as_page:pages(username))"
+          "*, project:projects(id, title, thumbnail_url, project_type, price_usd, promo_price_usd, slug, owner:profiles!projects_owner_id_fkey(username), posted_as_page:pages(username))"
         )
         .eq("affiliate_user_id", user!.id)
         .order("created_at", { ascending: false });

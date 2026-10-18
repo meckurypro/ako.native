@@ -27,6 +27,7 @@ function HistoryRow({ item }: { item: HistoryItem }) {
       size={44}
       onPress={() => router.push(href)}
       thumbnailUrl={isPost ? null : item.project.thumbnail_url}
+      tall={!isPost && item.project?.project_type === "book"}
       fallbackIcon={isPost ? FileText : ImageIcon}
       title={title}
       subtitle={subtitle}

@@ -29,6 +29,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useUploadProjectThumbnail } from "@/hooks/useUploadProjectThumbnail";
 import { haptics } from "@/lib/haptics";
 import { pickSingleImage } from "@/lib/pickImage";
+import { BOOK_COVER_HINT } from "@/lib/bookCover";
 import { BookChapterEditor } from "./BookChapterEditor";
 import { useTheme } from "@/theme/ThemeProvider";
 
@@ -120,7 +121,7 @@ export function BookBuilder({ projectId, project, chapters, publishBook }: BookB
     try {
       const file = await pickSingleImage({ aspect: [2, 3] });
       if (!file) return;
-      const uploaded = await uploadThumbnail.mutateAsync(file);
+      const uploaded = await uploadThumbnail.mutateAsync({ file, bookCover: true });
       // The web builder uploads but never writes the URL back, so the cover was lost on reload; save it here.
       await updateProject.mutateAsync({ id: projectId, thumbnail_url: uploaded.url, thumbnail_width: uploaded.width, thumbnail_height: uploaded.height });
     } catch (err) {
@@ -182,7 +183,7 @@ export function BookBuilder({ projectId, project, chapters, publishBook }: BookB
           disabled={coverBusy}
           accessibilityRole="button"
           accessibilityLabel={project.thumbnail_url ? "Change cover" : "Add cover"}
-          className={`mb-6 w-28 items-center justify-center overflow-hidden rounded-lg border border-border bg-surface ${coverBusy ? "opacity-50" : ""}`}
+          className={`mb-1 w-28 items-center justify-center overflow-hidden rounded-lg border border-border bg-surface ${coverBusy ? "opacity-50" : ""}`}
           style={{ aspectRatio: 2 / 3 }}
         >
           {project.thumbnail_url ? (
@@ -194,6 +195,7 @@ export function BookBuilder({ projectId, project, chapters, publishBook }: BookB
             </View>
           )}
         </Pressable>
+        <Text className="mb-6 max-w-[256px] text-xs text-ink-muted">{BOOK_COVER_HINT}</Text>
 
         {error && <Text className="mb-4 text-sm text-danger">{error}</Text>}
 

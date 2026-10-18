@@ -387,9 +387,10 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
   const galleryImages = isDetailView ? projectGalleryImages(project) : [];
   // Clamped ratio + height cap: a tall poster or wide banner must not blow the card up past the screen.
   const { height: windowHeight } = useWindowDimensions();
-  const thumb = thumbnailLayout(project.thumbnail_width, project.thumbnail_height);
+  const thumb = thumbnailLayout(project.thumbnail_width, project.thumbnail_height, project.project_type);
   const aspectRatio = thumb.aspectRatio;
-  const thumbMaxHeight = windowHeight * MAX_THUMB_HEIGHT_VH;
+  // Books are exactly 2:3 — no height cap, or the box would stop being 2:3 and crop the cover.
+  const thumbMaxHeight = project.project_type === "book" ? undefined : windowHeight * MAX_THUMB_HEIGHT_VH;
   const TypeIcon = TYPE_ICON[project.project_type];
   const primaryMediaKind: "audio" | "video" | null =
     isMedia && mediaDetails?.has_video && mediaDetails.video_file_path ? "video" : isMedia && mediaDetails?.has_audio && mediaDetails.audio_file_path ? "audio" : null;

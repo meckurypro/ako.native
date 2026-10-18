@@ -48,7 +48,7 @@ export function AffiliateLinkRow({ relationship }: { relationship: AffiliateRela
   return (
     <View className="mb-3 rounded-2xl border border-border bg-surface p-4">
       <View className="mb-3 flex-row items-center gap-3">
-        <Pressable onPress={open} accessibilityRole="link" accessibilityLabel={project.title} className="h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-canvas">
+        <Pressable onPress={open} accessibilityRole="link" accessibilityLabel={project.title} className={`${project.project_type === "book" ? "h-[72px]" : "h-12"} w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-canvas`}>
           {project.thumbnail_url ? <Image source={project.thumbnail_url} contentFit="cover" className="h-full w-full" /> : <Icon as={ImageIcon} size={18} className="text-ink-muted" />}
         </Pressable>
         <Pressable onPress={open} accessibilityRole="link" className="min-w-0 flex-1">

@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import { getImageSize, fileExtension, type LocalFile } from "../lib/localFile";
 import { uploadLocalFile } from "../lib/storageUpload";
 import { useAuth } from "./useAuth";
+import { BOOK_COVER_ERROR, isBookCoverRatio } from "../lib/bookCover";
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // matches the post-media bucket limit
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -26,8 +27,11 @@ export function useUploadProjectThumbnail() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async (file: LocalFile): Promise<UploadedThumbnail> => {
+    // Pass a bare LocalFile for any normal thumbnail, or { file, bookCover: true } to enforce the 2:3 book-cover ratio.
+    mutationFn: async (input: LocalFile | { file: LocalFile; bookCover?: boolean }): Promise<UploadedThumbnail> => {
       if (!user) throw new Error("Not signed in");
+      const file: LocalFile = "file" in input ? input.file : input;
+      const bookCover = "file" in input ? !!input.bookCover : false;
 
       if (!ALLOWED_TYPES.includes(file.type)) {
         throw new Error("Please choose a JPEG, PNG, WebP, or GIF image.");
@@ -45,6 +49,7 @@ export function useUploadProjectThumbnail() {
         throw new Error("Couldn't read this image. Try a different file.");
       }
       const { width, height } = size;
+      if (bookCover && !isBookCoverRatio(width, height)) throw new Error(BOOK_COVER_ERROR);
 
       const ext = fileExtension(file);
       const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;

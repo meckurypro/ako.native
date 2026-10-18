@@ -1,5 +1,6 @@
 // src/components/post/TaggedProjectEmbed.tsx
 // Subtle project tag at the bottom of a post: thumbnail + title, tap to open it.
+import { isBookType } from "@/lib/bookCover";
 import { ImageIcon } from "lucide-react-native";
 import { router, type Href } from "expo-router";
 import { Pressable, View } from "react-native";
@@ -42,7 +43,7 @@ export function TaggedProjectEmbed({ project }: { project: TaggedProjectSummary 
       accessibilityRole="link"
       className="mt-3 flex-row items-center gap-2.5 rounded-xl border border-border-a60 bg-surface-a60 px-2.5 py-2 active:bg-surface-a80"
     >
-      <View className="h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border-a50 bg-surface-a80">
+      <View className={`${isBookType(project.project_type) ? "h-[66px]" : "h-11"} w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border-a50 bg-surface-a80`}>
         {project.thumbnail_url ? (
           <Image source={{ uri: project.thumbnail_url }} contentFit="cover" style={{ width: "100%", height: "100%" }} />
         ) : (

@@ -19,10 +19,12 @@ interface ThumbRowProps {
   variant?: "card" | "line";
   /** Thumbnail edge in px (Tailwind w-11 = 44, w-12 = 48). */
   size?: 44 | 48;
+  /** Book covers are 2:3 portrait — draw the thumbnail 1.5× as tall as it is wide so nothing is cropped. */
+  tall?: boolean;
   accessibilityLabel?: string;
 }
 
-export function ThumbRow({ onPress, thumbnailUrl, fallbackIcon, title, subtitle, subtitleIcon, trailing, variant = "card", size = 48, accessibilityLabel }: ThumbRowProps) {
+export function ThumbRow({ onPress, thumbnailUrl, fallbackIcon, title, subtitle, subtitleIcon, trailing, variant = "card", size = 48, tall = false, accessibilityLabel }: ThumbRowProps) {
   return (
     <Pressable
       onPress={onPress}
@@ -30,7 +32,7 @@ export function ThumbRow({ onPress, thumbnailUrl, fallbackIcon, title, subtitle,
       accessibilityLabel={accessibilityLabel ?? title}
       className={`flex-row items-center gap-3 ${variant === "card" ? "rounded-xl border border-border bg-surface p-3" : "border-b border-border py-3"}`}
     >
-      <View className={`shrink-0 items-center justify-center overflow-hidden rounded-lg ${variant === "card" ? "bg-canvas" : "bg-surface"}`} style={{ width: size, height: size }}>
+      <View className={`shrink-0 items-center justify-center overflow-hidden rounded-lg ${variant === "card" ? "bg-canvas" : "bg-surface"}`} style={{ width: size, height: tall ? size * 1.5 : size }}>
         {thumbnailUrl ? <Image source={thumbnailUrl} contentFit="cover" className="h-full w-full" /> : <Icon as={fallbackIcon} size={18} className="text-ink-muted" />}
       </View>
       <View className="min-w-0 flex-1">
