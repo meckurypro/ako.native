@@ -23,7 +23,7 @@
 |---|---|
 | Web (source of truth) | `https://github.com/meckurypro/ako` — Vite + React 19 + TS + Tailwind v4 + react-router + Supabase. ~350 files / 63k lines |
 | Native | `https://github.com/meckurypro/ako.native`, branch `main` |
-| Web prod URL | `https://ako-lime.vercel.app` (= `EXPO_PUBLIC_APP_URL`, used for share links) |
+| Web prod URL | `https://myako.site` (= `EXPO_PUBLIC_APP_URL`, used for share links) |
 | Supabase project | `https://nokuwkxosyegaexlzdsl.supabase.co` (project id `nokuwkxosyegaexlzdsl`) |
 
 **Stack (native):** Expo SDK 57 (57.0.26), RN 0.86, React 19.2, Expo Router (`src/app`, groups `(auth)` `(onboarding)` `(app)`), TypeScript strict, `@/` → `src/`. NativeWind 5.0.0-rc.0 + react-native-css 3.1.0-rc.0 + Tailwind v4. FlashList v2, Reanimated, expo-video/expo-audio.
@@ -55,7 +55,7 @@
 
 1. Read the web source for a page (strip comments: `grep -v "^\s*//\|^\s*\*\|^\s*/\*"`), port it preserving behaviour and copy.
 2. `npx tsc --noEmit` must be clean.
-3. Bundle: `EXPO_PUBLIC_SUPABASE_URL=https://nokuwkxosyegaexlzdsl.supabase.co EXPO_PUBLIC_SUPABASE_ANON_KEY=placeholder EXPO_PUBLIC_APP_URL=https://ako-lime.vercel.app npx expo export --platform android --output-dir /tmp/x` (~40–60 s). Catches Metro/NativeWind errors. **A placeholder key is fine for bundling; no `.env` exists yet.**
+3. Bundle: `EXPO_PUBLIC_SUPABASE_URL=https://nokuwkxosyegaexlzdsl.supabase.co EXPO_PUBLIC_SUPABASE_ANON_KEY=placeholder EXPO_PUBLIC_APP_URL=https://myako.site npx expo export --platform android --output-dir /tmp/x` (~40–60 s). Catches Metro/NativeWind errors. **A placeholder key is fine for bundling; no `.env` exists yet.**
 4. **Unit-test pure logic in node** by transpiling TS: `ts.transpileModule(src, {compilerOptions:{module:"commonjs"}})` + `new Function("module","exports","require",js)` with a mock `require`. This session did it for `lib/notificationRoute.ts`, `lib/secureStorage.ts`, `lib/queryPersister.ts`. **Those test scripts lived in `/tmp` and are gone** — re-create them (ideally commit them under `scripts/`).
 5. **Verify native config by running prebuild in a throwaway copy** (this caught three real bugs — see §9):
    ```sh

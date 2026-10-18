@@ -20,7 +20,7 @@ Commit the changed app.json before building.
 ```sh
 eas env:set --name EXPO_PUBLIC_SUPABASE_URL --value https://nokuwkxosyegaexlzdsl.supabase.co --environment preview --visibility plaintext
 eas env:set --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value <anon key> --environment preview --visibility sensitive
-eas env:set --name EXPO_PUBLIC_APP_URL --value https://ako-lime.vercel.app --environment preview --visibility plaintext
+eas env:set --name EXPO_PUBLIC_APP_URL --value https://myako.site --environment preview --visibility plaintext
 ```
 
 ## 4. GitHub secret

@@ -3,10 +3,12 @@
 // URLs (https://<web-domain>/post/…, /profile/…, /projects/…), and the custom
 // scheme uses the same paths (ako://post/…), so both resolve to one route
 // table. Anything unrecognised falls through to +not-found.
+import { APP_URL } from "@/lib/config";
+
 export function redirectSystemPath({ path }: { path: string; initial: boolean }) {
   try {
     const url = new URL(path);
-    const webHost = process.env.EXPO_PUBLIC_APP_URL ? new URL(process.env.EXPO_PUBLIC_APP_URL).host : null;
+    const webHost = new URL(APP_URL).host;
     const isWeb = (url.protocol === "https:" || url.protocol === "http:") && !!webHost && url.host === webHost;
     const isScheme = url.protocol === "ako:";
 

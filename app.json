@@ -13,7 +13,7 @@
       "bundleIdentifier": "com.meckurypro.ako",
       "googleServicesFile": "./GoogleService-Info.plist",
       "associatedDomains": [
-        "applinks:ako-lime.vercel.app"
+        "applinks:myako.site"
       ]
     },
     "android": {
@@ -44,7 +44,7 @@
           "data": [
             {
               "scheme": "https",
-              "host": "ako-lime.vercel.app"
+              "host": "myako.site"
             }
           ],
           "category": [

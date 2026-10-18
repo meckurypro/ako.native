@@ -1,6 +1,6 @@
 # Deep Linking Setup — open shared Akọ links in the installed app
 
-A shared link such as `https://ako-lime.vercel.app/my-project` (or `/projects/<id>`) should open the **Akọ app** when it is installed, and the **website** when it is not. This document covers every step, who needs which account, how to test, and what is already done in the code.
+A shared link such as `https://myako.site/my-project` (or `/projects/<id>`) should open the **Akọ app** when it is installed, and the **website** when it is not. This document covers every step, who needs which account, how to test, and what is already done in the code.
 
 > Applies to both repositories:
 > - Web: `meckurypro/ako` (React + Vite on Vercel)
@@ -19,7 +19,7 @@ A shared link such as `https://ako-lime.vercel.app/my-project` (or `/projects/<i
 "Verified" means the domain publishes a file that names your app, and the app declares the domain. The OS checks both directions, then opens the app directly with no chooser.
 
 ```
-Tap https://ako-lime.vercel.app/my-project
+Tap https://myako.site/my-project
         │
         ├─ app installed + domain verified ──► OS opens Akọ ──► +native-intent.tsx maps URL → route
         │                                                         ├─ signed in  → project page (full)
@@ -35,7 +35,7 @@ The custom scheme is a fallback for "Open in app" buttons. It does nothing if th
 
 | Item | Value | Where it comes from |
 |---|---|---|
-| Web domain | `ako-lime.vercel.app` | `Native-Hand-off.md`, `EXPO_PUBLIC_APP_URL` |
+| Web domain | `myako.site` | `Native-Hand-off.md`, `EXPO_PUBLIC_APP_URL` |
 | iOS bundle identifier | `com.meckurypro.ako` | `app.json → expo.ios.bundleIdentifier` |
 | Android package | `com.meckurypro.ako` | `app.json → expo.android.package` |
 | URL scheme | `ako` | `app.json → expo.scheme` |
@@ -49,9 +49,9 @@ The custom scheme is a fallback for "Open in app" buttons. It does nothing if th
 
 **Native (`Ako.native`)**
 - `app.json` declares the domain for both platforms:
-  - `ios.associatedDomains = ["applinks:ako-lime.vercel.app"]`
-  - `android.intentFilters` with `autoVerify: true` for `https://ako-lime.vercel.app`
-- `src/app/+native-intent.tsx` rewrites incoming `https://ako-lime.vercel.app/...` and `ako://...` URLs into route paths. It only rewrites URLs whose host equals the host of `EXPO_PUBLIC_APP_URL`, so keep that variable set to the same domain.
+  - `ios.associatedDomains = ["applinks:myako.site"]`
+  - `android.intentFilters` with `autoVerify: true` for `https://myako.site`
+- `src/app/+native-intent.tsx` rewrites incoming `https://myako.site/...` and `ako://...` URLs into route paths. It only rewrites URLs whose host equals the host of `EXPO_PUBLIC_APP_URL`, so keep that variable set to the same domain.
 - `src/lib/guestRoutes.ts` + `src/app/(app)/_layout.tsx`: a **signed-out** visitor who opens a project link is shown the project page instead of being bounced to login. Every other screen is still behind sign-in.
 - `src/screens/ProjectDetail.tsx` + `src/components/project/ProjectCard.tsx`: the logged-out project page (see §8).
 - Login and Sign-up already accept `?redirect=/path`, so after authenticating the person lands back on the same project.
@@ -125,13 +125,13 @@ Remove the `//` comments — JSON does not allow them. Fingerprints are uppercas
 
 Deploy (push to `main`), then confirm:
 ```sh
-curl -i https://ako-lime.vercel.app/.well-known/assetlinks.json
+curl -i https://myako.site/.well-known/assetlinks.json
 ```
 Expect `200`, `content-type: application/json`, and no redirect.
 
 Validate with Google's API (should list your package):
 ```
-https://digitalassetlinks.googleapis.com/v1/statements:list?source.web.site=https://ako-lime.vercel.app&relation=delegate_permission/common.handle_all_urls
+https://digitalassetlinks.googleapis.com/v1/statements:list?source.web.site=https://myako.site&relation=delegate_permission/common.handle_all_urls
 ```
 Tester UI: https://developers.google.com/digital-asset-links/tools/generator
 
@@ -146,9 +146,9 @@ Install the APK on a phone.
 ```sh
 adb shell pm verify-app-links --re-verify com.meckurypro.ako
 adb shell pm get-app-links com.meckurypro.ako
-# expect: ako-lime.vercel.app: verified
+# expect: myako.site: verified
 
-adb shell am start -a android.intent.action.VIEW -d "https://ako-lime.vercel.app/projects/<a-real-project-id>"
+adb shell am start -a android.intent.action.VIEW -d "https://myako.site/projects/<a-real-project-id>"
 ```
 Also tap the link from WhatsApp, Notes or Gmail. (Typing it in the Chrome address bar normally stays in the browser.)
 
@@ -188,11 +188,11 @@ Path: `public/.well-known/apple-app-site-association` — **no file extension**.
 
 Deploy, then confirm:
 ```sh
-curl -i https://ako-lime.vercel.app/.well-known/apple-app-site-association
+curl -i https://myako.site/.well-known/apple-app-site-association
 ```
 Apple fetches this through its CDN, so also check what Apple sees (may lag by hours):
 ```
-https://app-site-association.cdn-apple.com/a/v1/ako-lime.vercel.app
+https://app-site-association.cdn-apple.com/a/v1/myako.site
 ```
 Reference: https://developer.apple.com/documentation/bundleresources/applinks
 
@@ -207,7 +207,7 @@ Docs: https://docs.expo.dev/linking/ios-universal-links/ and https://developer.a
 - Send yourself the link in **Notes** or **Messages**, then tap it. (Pasting it into Safari's address bar will not trigger it.)
 - Long-press a link: Apple shows **Open in Akọ** when the association works.
 - If the app was installed before the AASA file was live, delete and reinstall so iOS re-fetches it.
-- Development builds can use `applinks:ako-lime.vercel.app?mode=developer` together with Settings → Developer → Associated Domains Development to bypass the CDN cache.
+- Development builds can use `applinks:myako.site?mode=developer` together with Settings → Developer → Associated Domains Development to bypass the CDN cache.
 
 ---
 
@@ -217,10 +217,10 @@ Docs: https://docs.expo.dev/linking/ios-universal-links/ and https://developer.a
 
 | Incoming | Route |
 |---|---|
-| `https://ako-lime.vercel.app/my-project` | `/my-project` → `(app)/[slug].tsx` → `ProjectBySlug` |
-| `https://ako-lime.vercel.app/projects/<id>` | `(app)/projects/[projectId]/index.tsx` |
+| `https://myako.site/my-project` | `/my-project` → `(app)/[slug].tsx` → `ProjectBySlug` |
+| `https://myako.site/projects/<id>` | `(app)/projects/[projectId]/index.tsx` |
 | `ako://projects/<id>` | same as above |
-| `https://ako-lime.vercel.app/post/<id>#comment-<cid>` | `/post/<id>?comment=<cid>` |
+| `https://myako.site/post/<id>#comment-<cid>` | `/post/<id>?comment=<cid>` |
 
 Rewrites only apply when the URL host equals the host of `EXPO_PUBLIC_APP_URL`. Set it in EAS (see `SETUP.md` §3).
 
@@ -257,7 +257,7 @@ Get the ID from https://appstoreconnect.apple.com after creating the app record.
 
 **Android** — Chrome opens verified App Links by itself when the link is tapped from another app. For an explicit button on the page:
 ```
-intent://ako-lime.vercel.app/projects/<id>#Intent;scheme=https;package=com.meckurypro.ako;S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dcom.meckurypro.ako;end
+intent://myako.site/projects/<id>#Intent;scheme=https;package=com.meckurypro.ako;S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dcom.meckurypro.ako;end
 ```
 
 **Any platform (installed users only)** — `ako://projects/<id>`.
@@ -272,9 +272,9 @@ Store URLs:
 
 ---
 
-## 10. Move to a custom domain (recommended before launch)
+## 10. Custom domain
 
-`*.vercel.app` works, but a domain you own is safer for store listings and lets you change hosts later without re-shipping the app. If you change domain, update **all** of:
+Akọ now lives on its own domain, `myako.site` (the old `ako-lime.vercel.app` host redirects to it). `APP_URL` in `src/lib/config.ts` defaults to it and is overridable with `EXPO_PUBLIC_APP_URL`. If the domain ever changes again, update **all** of:
 1. Vercel: add the domain (https://vercel.com/docs/projects/domains).
 2. EAS env `EXPO_PUBLIC_APP_URL` (see `SETUP.md` §3).
 3. `app.json`: `ios.associatedDomains` and the Android intent-filter `host`.
@@ -336,6 +336,6 @@ Store URLs:
 - Digital Asset Links tester: https://developers.google.com/digital-asset-links/tools/generator
 - Apple: Supporting associated domains: https://developer.apple.com/documentation/xcode/supporting-associated-domains
 - Apple: `applinks` / AASA format: https://developer.apple.com/documentation/bundleresources/applinks
-- Apple CDN check: https://app-site-association.cdn-apple.com/a/v1/ako-lime.vercel.app
+- Apple CDN check: https://app-site-association.cdn-apple.com/a/v1/myako.site
 - Play Console: https://play.google.com/console
 - App Store Connect: https://appstoreconnect.apple.com
