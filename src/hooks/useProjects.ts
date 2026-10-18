@@ -93,7 +93,6 @@ export const PROJECT_TYPE_ACCESS: Record<ProjectType, ProjectAccess> = {
   // Page-only — benefits from a team/brand identity behind it.
   event: "page",
   room: "page",
-  course: "page",
   // Personal-only — inherently about one person's own time/skill/work
   // or, for pitch, one person's own idea.
   gig: "personal",
@@ -102,8 +101,9 @@ export const PROJECT_TYPE_ACCESS: Record<ProjectType, ProjectAccess> = {
   file: "personal",
   pitch: "personal",
   // Either — a personal author and a publisher/organization page can
-  // both reasonably post a book.
+  // both reasonably post a book or teach a course.
   book: "either",
+  course: "either",
   // Either.
   url: "either",
 };
