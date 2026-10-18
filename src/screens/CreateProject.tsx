@@ -39,6 +39,12 @@ import { useToast } from "@/components/ui/Toast";
 import { useFeatureFlag } from "@/hooks/useFeatureFlags";
 import { PageActionBlocked } from "@/components/page/PageActionBlocked";
 import { SupportingImagesField } from "@/components/project/SupportingImagesField";
+import {
+  isTypeAllowedForKind,
+  useBypassesCreatorRules,
+  useCreatorRules,
+  useMyCreatorKind,
+} from "@/hooks/useCreatorKinds";
 import { useActiveIdentity, useActivePagePermissions } from "@/hooks/usePages";
 import { useMyProfile } from "@/hooks/useProfile";
 import {
@@ -90,14 +96,26 @@ export function CreateProject() {
   const { data: myStats } = useMyEligibilityStats();
   const { data: isExempt } = useMyProjectTypeExemption();
 
-  const allowedTypes = getVisibleProjectTypes(postingAsPage ? "page" : "personal", typeSettings, accessRules, myStats, isExempt);
+  // Admin account-kind matrix: restricted / unrestricted / page type.
+  const creatorKind = useMyCreatorKind();
+  const { data: creatorRules } = useCreatorRules();
+  const bypassesCreatorRules = useBypassesCreatorRules();
+
+  const allowedTypes = getVisibleProjectTypes(
+    postingAsPage ? "page" : "personal",
+    typeSettings,
+    accessRules,
+    myStats,
+    isExempt,
+    (type) => bypassesCreatorRules || isTypeAllowedForKind(creatorRules, type, creatorKind)
+  );
   const eligibility = getProjectTypeEligibility(projectType, accessRules, myStats, isExempt);
 
   // If the current pick isn't offered in this mode, fall back to the first one that is.
   useEffect(() => {
     if (allowedTypes.length > 0 && !allowedTypes.includes(projectType)) setProjectType(allowedTypes[0]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [postingAsPage?.id, typeSettings, accessRules, myStats, isExempt]);
+  }, [postingAsPage?.id, typeSettings, accessRules, myStats, isExempt, creatorRules, creatorKind]);
 
   // Per-type field state is kept separately so switching type never discards what was entered.
   const [fileFields, setFileFields] = useState<FileFieldsValue>(EMPTY_FILE_FIELDS);
@@ -188,6 +206,9 @@ export function CreateProject() {
     const typeError = validateTypeSpecific();
     if (typeError) return setError(typeError);
     if (eligibility && !eligibility.eligible) return setError(eligibility.reasons[0]);
+    if (allowedTypes.length > 0 && !allowedTypes.includes(projectType)) {
+      return setError("This kind of account can't create that project type.");
+    }
 
     if (projectType === "pitch") {
       try {

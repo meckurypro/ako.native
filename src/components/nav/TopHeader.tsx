@@ -10,6 +10,7 @@ import { Text } from "@/components/ui/Text";
 import { Wordmark } from "@/components/ui/Wordmark";
 import { useUnreadCount } from "@/hooks/useNotifications";
 import { useIsRestricted } from "@/hooks/useAccountAccess";
+import { useCanCreateAnyProject } from "@/hooks/useCreatorKinds";
 import { useMyProfile } from "@/hooks/useProfile";
 
 interface TopHeaderProps {
@@ -20,15 +21,18 @@ export function TopHeader({ leftAction = "avatar" }: TopHeaderProps) {
   const unreadCount = useUnreadCount();
   const { data: me } = useMyProfile();
   const restricted = useIsRestricted();
+  const restrictedCanCreate = useCanCreateAnyProject();
 
   return (
     <View className="flex-row items-center justify-between px-4 pb-2 pt-5">
-      {leftAction === "create" && restricted ? (
+      {leftAction === "create" && restricted && !restrictedCanCreate ? (
         <View className="-ml-1.5 h-9 w-9" />
       ) : leftAction === "create" ? (
         // Opens as a native modal over the current screen (web: the "modal route" pattern).
         <Pressable
-          onPress={() => router.push("/create" as Href)}
+          // Restricted accounts can't post, so "+" goes straight to the project form
+          // (an admin has allowed them at least one type).
+          onPress={() => router.push((restricted ? "/projects/new" : "/create") as Href)}
           accessibilityRole="button"
           accessibilityLabel="Create"
           hitSlop={8}

@@ -285,11 +285,15 @@ export function getVisibleProjectTypes(
   typeSettings: ProjectTypeActiveSetting[] | undefined,
   rules: ProjectTypeAccessRule[] | undefined,
   stats: MyEligibilityStats | undefined,
-  isExempt?: boolean
+  isExempt?: boolean,
+  // Admin account-kind matrix (see useCreatorKinds.ts). Returns false for a
+  // type this kind of account may not create; omitted → no kind filtering.
+  isKindAllowed?: (type: ProjectType) => boolean
 ): ProjectType[] {
   return getAllowedProjectTypes(mode).filter((type) => {
     const setting = typeSettings?.find((s) => s.project_type === type);
     if (setting && !setting.is_active) return false;
+    if (isKindAllowed && !isKindAllowed(type)) return false;
     if (isExempt || !setting?.hide_when_ineligible) return true;
 
     const eligibility = getProjectTypeEligibility(type, rules, stats, isExempt);
