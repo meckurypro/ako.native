@@ -130,13 +130,14 @@ const ChapterBody = memo(function ChapterBody({
   const face: Face = { family, heavy: !!theme.heavy };
   return (
     <>
+      {/* Title: full-width (alignSelf stretch) so Android measures the wrapped lines at the width it draws them, and a 1.3 line height so Fraunces' tall ascenders/descenders aren't clipped on wrapped titles. */}
       <View style={{ alignItems: "center", marginTop: 20, marginBottom: 32 }}>
         {opener.eyebrow ? (
           <Text className="mb-3 text-xs font-semibold uppercase" style={{ color: theme.muted, letterSpacing: 2.4 }}>
             {opener.eyebrow}
           </Text>
         ) : null}
-        <Span face={face} kind="semibold" selectable style={{ color: theme.ink, fontSize: fontSize * 1.85, lineHeight: fontSize * 1.85 * 1.15, textAlign: "center" }}>
+        <Span face={face} kind="semibold" selectable style={{ alignSelf: "stretch", color: theme.ink, fontSize: fontSize * 1.85, lineHeight: fontSize * 1.85 * 1.3, paddingVertical: 2, textAlign: "center" }}>
           {opener.title}
         </Span>
         <View style={{ marginTop: 20 }}>
