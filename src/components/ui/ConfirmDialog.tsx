@@ -17,6 +17,8 @@ interface ConfirmDialogProps {
   cancelLabel?: string;
   /** Red confirm button + warning icon. Defaults true. */
   danger?: boolean;
+  /** Follow the app theme (light/dark) instead of the fixed dark-glass panel. */
+  themed?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -27,11 +29,12 @@ export function ConfirmDialog({
   confirmLabel,
   cancelLabel = "Cancel",
   danger = true,
+  themed = false,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
   return (
-    <Modal onClose={onCancel} role="alertdialog" ariaLabel={title}>
+    <Modal onClose={onCancel} role="alertdialog" ariaLabel={title} themed={themed}>
       <View className="flex-row items-start gap-4">
         {danger && (
           <View className="h-10 w-10 shrink-0 items-center justify-center rounded-full bg-overlay-danger-soft">
@@ -39,8 +42,8 @@ export function ConfirmDialog({
           </View>
         )}
         <View className="min-w-0 flex-1 pt-0.5">
-          <Text className="text-[15px] font-medium leading-snug text-overlay-ink">{title}</Text>
-          <Text className="mt-2 text-sm leading-relaxed text-overlay-ink-muted">{description}</Text>
+          <Text className={`text-[15px] font-medium leading-snug ${themed ? "text-ink" : "text-overlay-ink"}`}>{title}</Text>
+          <Text className={`mt-2 text-sm leading-relaxed ${themed ? "text-ink-muted" : "text-overlay-ink-muted"}`}>{description}</Text>
         </View>
       </View>
 
@@ -48,18 +51,18 @@ export function ConfirmDialog({
         <Pressable
           onPress={onCancel}
           accessibilityRole="button"
-          className="flex-1 items-center rounded-full bg-overlay-surface-raised py-3 active:opacity-80"
+          className={`flex-1 items-center rounded-full py-3 active:opacity-80 ${themed ? "bg-canvas" : "bg-overlay-surface-raised"}`}
         >
-          <Text className="text-sm font-medium text-overlay-ink">{cancelLabel}</Text>
+          <Text className={`text-sm font-medium ${themed ? "text-ink" : "text-overlay-ink"}`}>{cancelLabel}</Text>
         </Pressable>
         <Pressable
           onPress={onConfirm}
           accessibilityRole="button"
           className={`flex-1 items-center rounded-full py-3 active:opacity-80 ${
-            danger ? "bg-overlay-danger" : "bg-overlay-accent"
+            themed ? (danger ? "bg-danger" : "bg-accent") : danger ? "bg-overlay-danger" : "bg-overlay-accent"
           }`}
         >
-          <Text className="text-sm font-medium text-overlay-surface">{confirmLabel}</Text>
+          <Text className={`text-sm font-medium ${themed ? "text-surface" : "text-overlay-surface"}`}>{confirmLabel}</Text>
         </Pressable>
       </View>
     </Modal>

@@ -12,6 +12,7 @@ export function ExternalLinkDialog() {
   return (
     <ConfirmDialog
       danger={false}
+      themed
       title="Leaving Akọ"
       description={`This link opens ${pending.host}.`}
       cancelLabel="Stay"

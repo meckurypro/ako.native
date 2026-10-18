@@ -35,8 +35,7 @@ const ToastContext = createContext<ToastFn | null>(null);
 const DEFAULT_DURATION_MS = 2000;
 
 function ToastIcon({ variant }: { variant: ToastVariant }) {
-  // Toasts are ink-on-canvas inverted (bg-ink / text-canvas), so the icon
-  // tints use the *on-dark-surface* reading of each semantic colour.
+  // Toasts follow the theme (light surface + dark text in light mode, dark surface + light text in dark mode).
   if (variant === "success") return <Icon as={CheckCircle2} size={18} className="shrink-0 text-accent" />;
   if (variant === "error") return <Icon as={XCircle} size={18} className="shrink-0 text-danger" />;
   return <Icon as={Info} size={18} className="shrink-0 text-ink-muted" />;
@@ -58,7 +57,7 @@ function ToastViewport({ toasts }: { toasts: ToastItem[] }) {
           layout={LinearTransition}
           accessibilityRole="alert"
           accessibilityLiveRegion="polite"
-          className="w-full max-w-sm flex-row items-start gap-2.5 rounded-2xl bg-ink px-4 py-3"
+          className="w-full max-w-sm flex-row items-start gap-2.5 rounded-2xl border border-border bg-surface px-4 py-3"
           style={{
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 6 },
@@ -68,7 +67,7 @@ function ToastViewport({ toasts }: { toasts: ToastItem[] }) {
           }}
         >
           <ToastIcon variant={t.variant} />
-          <Text className="flex-1 text-sm leading-snug text-canvas">{t.message}</Text>
+          <Text className="flex-1 text-sm leading-snug text-ink">{t.message}</Text>
         </Animated.View>
       ))}
     </View>

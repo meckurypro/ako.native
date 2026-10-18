@@ -10,7 +10,7 @@ import Animated, { FadeIn, FadeOut, ZoomIn } from "react-native-reanimated";
 import { useBackDismiss } from "@/hooks/useBackDismiss";
 import { GlassScrim } from "./GlassScrim";
 import { KeyboardAvoider } from "./KeyboardAvoider";
-import { OverlayPanel, SCRIM_BOX } from "./OverlayPanel";
+import { OverlayPanel, PopoverPanel, SCRIM_BOX } from "./OverlayPanel";
 import { Portal } from "./Portal";
 
 interface ModalProps {
@@ -28,6 +28,8 @@ interface ModalProps {
   zIndex?: number;
   /** Backdrop: default black/40 (web Modal). "canvas" = canvas/70, used by the composer-style modals that are sheets on web. */
   scrim?: "black" | "canvas";
+  /** Follow the app theme (light panel + dark text, or dark panel + light text) instead of the fixed dark glass. */
+  themed?: boolean;
 }
 
 export function Modal({
@@ -40,6 +42,7 @@ export function Modal({
   align = "center",
   zIndex = 60,
   scrim = "black",
+  themed = false,
 }: ModalProps) {
   useBackDismiss(onClose);
 
@@ -66,6 +69,12 @@ export function Modal({
               <ScrollView bounces={false} keyboardShouldPersistTaps="handled">
                 {children}
               </ScrollView>
+            ) : themed ? (
+                <PopoverPanel className="rounded-[28px]">
+                  <ScrollView bounces={false} keyboardShouldPersistTaps="handled" contentContainerClassName="p-6">
+                    {children}
+                  </ScrollView>
+                </PopoverPanel>
             ) : (
               <OverlayPanel className="rounded-[28px]">
                 <ScrollView bounces={false} keyboardShouldPersistTaps="handled" contentContainerClassName="p-6">
