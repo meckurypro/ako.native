@@ -8,11 +8,14 @@ import { forwardRef, useCallback, useRef, useState, type ReactElement, type Reac
 import { ActivityIndicator, View, type ViewToken } from "react-native";
 
 import { useBottomNavInset } from "@/components/nav/BottomNav";
+import { OfflineFeedNotice } from "@/components/post/OfflineFeedNotice";
 import { useChromeScroll } from "@/components/nav/ChromeProvider";
 import { useTopBarInset } from "@/components/nav/AutoHideTopBar";
 import { Text } from "@/components/ui/Text";
 import { RefreshSkeleton } from "@/components/ui/RefreshSkeleton";
+import { useIsOnline } from "@/hooks/useIsOnline";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { isNetworkError } from "@/lib/networkErrors";
 import { useTheme } from "@/theme/ThemeProvider";
 
 export interface PostListItem {
@@ -100,7 +103,12 @@ function PostListInner<T extends PostListItem>(
   // own counts), so it doesn't also refetch every other query on screen.
   const { refreshControl, refreshing } = usePullToRefresh(() => onRefresh?.(), padTop, { refetchActive: false });
 
-  if (isLoading && posts.length === 0) {
+  // Nothing to show AND the reason is the connection (offline, or the request couldn't reach the server): say so rather
+  // than letting the caller's "no posts yet" / raw error text claim something about the feed itself.
+  const online = useIsOnline();
+  const offlineEmpty = posts.length === 0 && (!online || isNetworkError(error));
+
+  if (isLoading && posts.length === 0 && online) {
     return (
       <View className="flex-1 items-center justify-center" style={{ paddingTop: padTop }}>
         <Text className="text-ink-muted">{loadingLabel}</Text>
@@ -108,7 +116,7 @@ function PostListInner<T extends PostListItem>(
     );
   }
 
-  if (error && posts.length === 0) {
+  if (error && posts.length === 0 && !offlineEmpty) {
     return (
       <View style={{ paddingTop: padTop }}>
         <ListError error={error} />
@@ -134,7 +142,15 @@ function PostListInner<T extends PostListItem>(
       refreshControl={onRefresh ? refreshControl : undefined}
       contentContainerStyle={{ paddingTop: padTop, paddingHorizontal: 20, paddingBottom: bottomInset }}
       ListHeaderComponent={header ? <>{header}</> : null}
-      ListEmptyComponent={refreshing ? <RefreshSkeleton /> : <>{emptyState}</>}
+      ListEmptyComponent={
+        refreshing ? (
+          <RefreshSkeleton />
+        ) : offlineEmpty ? (
+          <OfflineFeedNotice reachable={online ? false : undefined} onRetry={onRefresh ? () => void onRefresh() : undefined} />
+        ) : (
+          <>{emptyState}</>
+        )
+      }
       ListFooterComponent={
         isFetchingMore && !exhausted ? (
           <View className="items-center py-4">

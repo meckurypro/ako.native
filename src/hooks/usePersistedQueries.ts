@@ -1,7 +1,7 @@
 // src/hooks/usePersistedQueries.ts
 // Restores the persisted cache for the signed-in user before the app shell renders (so lists open with
 // data, not spinners), then keeps saving changes. Returns true once it's safe to render.
-import { useQueryClient } from "@tanstack/react-query";
+import { onlineManager, useQueryClient } from "@tanstack/react-query";
 import { persistQueryClientRestore, persistQueryClientSubscribe } from "@tanstack/react-query-persist-client";
 import Constants from "expo-constants";
 import { useEffect, useState } from "react";
@@ -17,6 +17,11 @@ const CACHE_VERSION = "1";
 const BUSTER = `${Constants.expoConfig?.version ?? "0"}-${CACHE_VERSION}`;
 /** Never hold the UI hostage to a slow disk. */
 const RESTORE_TIMEOUT_MS = 1500;
+/**
+ * Offline, the saved cache is the ONLY thing there is to show, and nothing will refetch over it — so give the (local)
+ * restore longer to finish before the shell renders, instead of opening on an empty feed that fills in a moment later.
+ */
+const OFFLINE_RESTORE_TIMEOUT_MS = 4000;
 
 export function usePersistedQueries(): boolean {
   const { user } = useAuth();
@@ -57,7 +62,7 @@ export function usePersistedQueries(): boolean {
       void queryClient.resumePausedMutations();
       setReadyFor(user.id);
     })();
-    const timeout = setTimeout(() => setReadyFor((cur) => cur ?? user.id), RESTORE_TIMEOUT_MS);
+    const timeout = setTimeout(() => setReadyFor((cur) => cur ?? user.id), onlineManager.isOnline() ? RESTORE_TIMEOUT_MS : OFFLINE_RESTORE_TIMEOUT_MS);
 
     // The OS can kill a backgrounded app without warning: write the latest snapshot as it leaves the foreground.
     const appState = AppState.addEventListener("change", (s) => {

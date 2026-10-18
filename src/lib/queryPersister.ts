@@ -35,15 +35,21 @@ export const PERSISTED_QUERY_ROOTS: ReadonlySet<string> = new Set([
   "page",
 ]);
 
-/** Roots that are bulky: dropped first when a snapshot is over budget, so small, important ones are never lost. */
-const BULKY_ROOTS: ReadonlySet<string> = new Set(["feed-posts", "profile"]);
+/**
+ * Roots dropped, in stages, when a snapshot is over budget — so small, important ones are never lost. Profiles go first
+ * and the feed last: a cold offline start needs the posts far more than other people's profile rows.
+ */
+const SHED_STAGES: ReadonlyArray<ReadonlySet<string>> = [new Set(["profile", "page"]), new Set(["feed-posts"])];
 
 /** How long a persisted query may stay in the in-memory cache unobserved. Must be >= the persister's maxAge. */
 export const PERSISTED_GC_MS = 7 * 24 * 60 * 60 * 1000;
 
 export function shouldPersistQuery(query: Pick<Query, "queryKey" | "state">): boolean {
   const root = String(query.queryKey[0]);
-  if (query.state.status !== "success" || !PERSISTED_QUERY_ROOTS.has(root)) return false;
+  // Judge by "does it hold data", NOT status === "success". A refresh that fails (a launch on weak or no data) flips the
+  // status to "error" while KEEPING the last good data; filtering on status dropped exactly those lists from the next
+  // snapshot, which overwrote the saved copy — so the following cold start had nothing to show.
+  if (query.state.data === undefined || !PERSISTED_QUERY_ROOTS.has(root)) return false;
   // Feeds are keyed [..., page]: later pages are deep-scroll state, not worth the disk — and they're stale on arrival.
   if (root === "feed-posts") return query.queryKey[query.queryKey.length - 1] === 0;
   return true;
@@ -84,13 +90,18 @@ export function createSqlitePersister(namespace: string): FlushablePersister {
     if (!snapshot) return;
     let json = JSON.stringify(snapshot);
     if (json.length > MAX_BYTES) {
-      // Over budget: shed the bulky lists and keep the rest (small queries + queued offline writes) rather than
-      // skipping the whole write, which would silently stop persisting anything at all.
-      const slim: PersistedClient = {
-        ...snapshot,
-        clientState: { ...snapshot.clientState, queries: snapshot.clientState.queries.filter((q) => !BULKY_ROOTS.has(String(q.queryKey[0]))) },
-      };
-      json = JSON.stringify(slim);
+      // Over budget: shed the bulky lists a stage at a time and keep the rest (small queries + queued offline writes)
+      // rather than skipping the whole write, which would silently stop persisting anything at all.
+      const shed = new Set<string>();
+      for (const stage of SHED_STAGES) {
+        stage.forEach((root) => shed.add(root));
+        const slim: PersistedClient = {
+          ...snapshot,
+          clientState: { ...snapshot.clientState, queries: snapshot.clientState.queries.filter((q) => !shed.has(String(q.queryKey[0]))) },
+        };
+        json = JSON.stringify(slim);
+        if (json.length <= MAX_BYTES) break;
+      }
       if (json.length > MAX_BYTES) return;
     }
     await secureKvSet(namespace, CACHE_KEY, json).catch(() => {});
