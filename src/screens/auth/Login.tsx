@@ -13,6 +13,7 @@ import { Text } from "@/components/ui/Text";
 import { Wordmark } from "@/components/ui/Wordmark";
 import { useAddAccount } from "@/hooks/useAccountSwitcher";
 import { useAuth } from "@/hooks/useAuth";
+import { authErrorMessage, raceAuth, SLOW_AUTH_MESSAGE } from "@/lib/authErrors";
 import { safeReturnPath } from "@/lib/authRedirect";
 import { supabase } from "@/lib/supabase";
 
@@ -57,20 +58,28 @@ export function Login() {
         router.replace(`/profile/${newProfile.username}` as Href);
       } catch (err) {
         setLoading(false);
-        setError(err instanceof Error && err.message ? err.message : "Incorrect email or password.");
+        setError(authErrorMessage(err, err instanceof Error && err.message ? err.message : "Incorrect email or password."));
       }
       return;
     }
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
+    const raced = await raceAuth(supabase.auth.signInWithPassword({ email: cleanEmail, password }));
     setLoading(false);
+
+    // A dead network hangs instead of failing; don't leave the button spinning for a minute.
+    if (raced.timedOut) {
+      setError(SLOW_AUTH_MESSAGE);
+      return;
+    }
+    const { error: signInError } = raced.value;
 
     if (signInError) {
       if (signInError.message.toLowerCase().includes("email not confirmed")) {
         setUnconfirmed(true);
         setError("Confirm your email first. Check your inbox for the link we sent you.");
       } else {
-        setError("Incorrect email or password.");
+        // "Incorrect email or password" is only true when the server said so — never for a request that didn't arrive.
+        setError(authErrorMessage(signInError, "Incorrect email or password."));
       }
       return;
     }
@@ -83,10 +92,12 @@ export function Login() {
     const { error: resendError } = await supabase.auth.resend({ type: "signup", email: email.trim() });
     setResending(false);
 
-    if (!resendError) {
-      setResent(true);
-      setTimeout(() => setResent(false), 4000);
+    if (resendError) {
+      setError(authErrorMessage(resendError, "Couldn't resend the link. Try again in a moment."));
+      return;
     }
+    setResent(true);
+    setTimeout(() => setResent(false), 4000);
   }
 
   return (

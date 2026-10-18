@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
+import { useAuth } from "@/hooks/useAuth";
 import { useOfflineEntries, useOpenOfflineProject } from "@/hooks/useOfflineProjects";
 import { useSmartBack } from "@/hooks/useSmartBack";
 
@@ -24,6 +25,7 @@ interface Props {
 
 export function OfflineUnavailable({ projectId, inline = false, subject = "project" }: Props) {
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   const back = useSmartBack();
   const entries = useOfflineEntries();
   const openSaved = useOpenOfflineProject();
@@ -46,14 +48,20 @@ export function OfflineUnavailable({ projectId, inline = false, subject = "proje
         {saved
           ? "Open your saved copy to keep going."
           : subject === "project"
-            ? "Connect to the internet to open it. Everything you've downloaded is in your Library."
-            : "Connect to the internet to see it. Your downloads are in your Library."}
+            ? user
+              ? "Connect to the internet to open it. Everything you've downloaded is in your Library."
+              : "Connect to the internet to open it."
+            : user
+              ? "Connect to the internet to see it. Your downloads are in your Library."
+              : "Connect to the internet to see it."}
       </Text>
       <View className="mt-2 w-full max-w-xs gap-2">
         {saved ? <Button onPress={() => void openSaved(saved)}>Open saved copy</Button> : null}
-        <Button variant={saved ? "secondary" : "primary"} onPress={() => router.push("/library" as Href)}>
-          Open Library
-        </Button>
+        {user ? (
+          <Button variant={saved ? "secondary" : "primary"} onPress={() => router.push("/library" as Href)}>
+            Open Library
+          </Button>
+        ) : null}
         {inline ? null : (
           <Button variant="ghost" onPress={back}>
             Back

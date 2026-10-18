@@ -12,6 +12,7 @@ import { Text } from "@/components/ui/Text";
 import { TextLink } from "@/components/ui/TextLink";
 import { Wordmark } from "@/components/ui/Wordmark";
 import { setPendingAddAccount } from "@/lib/accountSessions";
+import { authErrorMessage, raceAuth, SLOW_AUTH_MESSAGE } from "@/lib/authErrors";
 import { authRedirectUrl } from "@/lib/authLink";
 import { rememberReturnTo, safeReturnPath } from "@/lib/authRedirect";
 import { supabase } from "@/lib/supabase";
@@ -93,11 +94,17 @@ export function SignUp() {
     setLoading(true);
 
     // Re-check right before submitting — the debounced check may be stale.
-    const { data: existing, error: recheckError } = await supabase.from("profiles").select("id").eq("username", username).maybeSingle();
+    const recheck = await raceAuth(supabase.from("profiles").select("id").eq("username", username).maybeSingle());
+    if (recheck.timedOut) {
+      setLoading(false);
+      setError(SLOW_AUTH_MESSAGE);
+      return;
+    }
+    const { data: existing, error: recheckError } = recheck.value;
 
     if (recheckError) {
       setLoading(false);
-      setError("Couldn't verify that username right now. Please try again.");
+      setError(authErrorMessage(recheckError, "Couldn't verify that username right now. Please try again."));
       return;
     }
     if (existing) {
@@ -131,20 +138,28 @@ export function SignUp() {
       }
     }
 
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email: cleanEmail,
-      password,
-      options: {
-        data: { username, display_name: displayName.trim() },
-        // The confirmation link opens THIS app (deep link) rather than the website.
-        emailRedirectTo: authRedirectUrl(),
-      },
-    });
+    const signUp = await raceAuth(
+      supabase.auth.signUp({
+        email: cleanEmail,
+        password,
+        options: {
+          data: { username, display_name: displayName.trim() },
+          // The confirmation link opens THIS app (deep link) rather than the website.
+          emailRedirectTo: authRedirectUrl(),
+        },
+      })
+    );
 
     setLoading(false);
 
+    if (signUp.timedOut) {
+      setError(SLOW_AUTH_MESSAGE);
+      return;
+    }
+    const { data: signUpData, error: signUpError } = signUp.value;
+
     if (signUpError) {
-      setError(friendlySignUpError(signUpError.message));
+      setError(authErrorMessage(signUpError, friendlySignUpError(signUpError.message)));
       return;
     }
 

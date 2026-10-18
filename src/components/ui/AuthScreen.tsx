@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import { ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { AuthOfflineNotice } from "./AuthOfflineNotice";
 import { AuthPattern } from "./AuthPattern";
 import { KeyboardAvoider } from "@/components/ui/KeyboardAvoider";
 
@@ -28,7 +29,10 @@ export function AuthScreen({ children }: { children: ReactNode }) {
             paddingBottom: insets.bottom + 24,
           }}
         >
-          <View className="w-full max-w-sm self-center">{children}</View>
+          <View className="w-full max-w-sm self-center">
+            <AuthOfflineNotice />
+            {children}
+          </View>
         </ScrollView>
       </KeyboardAvoider>
     </View>

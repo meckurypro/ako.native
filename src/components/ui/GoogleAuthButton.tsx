@@ -6,8 +6,11 @@ import { router, type Href } from "expo-router";
 import { useState } from "react";
 import { Pressable, View } from "react-native";
 
+import NetInfo from "@react-native-community/netinfo";
+
 import { GoogleGlyph } from "@/components/ui/BrandIcons";
 import { Text } from "@/components/ui/Text";
+import { NETWORK_AUTH_MESSAGE, authErrorMessage } from "@/lib/authErrors";
 import { signInWithGoogle } from "@/lib/googleAuth";
 
 interface GoogleAuthButtonProps {
@@ -24,6 +27,13 @@ export function GoogleAuthButton({ returnTo }: GoogleAuthButtonProps) {
     if (loading) return;
     setError(null);
     setLoading(true);
+    // With no network connection at all the browser sheet would just open onto an error page. (Only a definite "not
+    // connected" stops it — "connected but can't reach the internet" is a guess the request itself settles.)
+    if ((await NetInfo.fetch().catch(() => null))?.isConnected === false) {
+      setError(NETWORK_AUTH_MESSAGE);
+      setLoading(false);
+      return;
+    }
     try {
       const result = await signInWithGoogle(returnTo);
       if (result.status === "success") {
@@ -32,8 +42,8 @@ export function GoogleAuthButton({ returnTo }: GoogleAuthButtonProps) {
         return;
       }
       // "cancelled": they closed the browser — nothing to say.
-    } catch {
-      setError("Couldn't sign in with Google. Please try again.");
+    } catch (err) {
+      setError(authErrorMessage(err, "Couldn't sign in with Google. Please try again."));
     }
     setLoading(false);
   }

@@ -12,7 +12,9 @@ import { PasswordField } from "@/components/ui/PasswordField";
 import { Text } from "@/components/ui/Text";
 import { TextLink } from "@/components/ui/TextLink";
 import { Wordmark } from "@/components/ui/Wordmark";
+import { authErrorMessage, raceAuth, SLOW_AUTH_MESSAGE } from "@/lib/authErrors";
 import { authRedirectUrl } from "@/lib/authLink";
+import { isNetworkError } from "@/lib/offlineBoot";
 import { supabase } from "@/lib/supabase";
 
 type Step = "email" | "sent" | "new_password" | "done";
@@ -40,11 +42,25 @@ export function ResetPassword() {
     }
     setLoading(true);
 
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: authRedirectUrl(),
-    });
+    const raced = await raceAuth(
+      supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: authRedirectUrl(),
+      })
+    );
 
     setLoading(false);
+
+    // A request that never reached the server is not "sent". This says nothing about whether the account exists, so it
+    // doesn't weaken the identical-outcome rule below — it only stops us announcing an email that was never sent.
+    if (raced.timedOut) {
+      setError(SLOW_AUTH_MESSAGE);
+      return;
+    }
+    const { error: resetError } = raced.value;
+    if (resetError && isNetworkError(resetError)) {
+      setError(authErrorMessage(resetError, ""));
+      return;
+    }
 
     // Deliberately identical outcome whether or not the account exists, so this
     // screen can't be used to discover which emails are registered.
@@ -67,7 +83,7 @@ export function ResetPassword() {
     setLoading(false);
 
     if (updateError) {
-      setError(updateError.message);
+      setError(authErrorMessage(updateError, updateError.message));
       return;
     }
 

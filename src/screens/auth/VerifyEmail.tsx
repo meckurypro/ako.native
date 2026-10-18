@@ -7,6 +7,7 @@ import { AuthScreen } from "@/components/ui/AuthScreen";
 import { Text } from "@/components/ui/Text";
 import { TextLink } from "@/components/ui/TextLink";
 import { Wordmark } from "@/components/ui/Wordmark";
+import { authErrorMessage } from "@/lib/authErrors";
 import { authRedirectUrl } from "@/lib/authLink";
 import { supabase } from "@/lib/supabase";
 
@@ -33,7 +34,7 @@ export function VerifyEmail() {
     setResending(false);
 
     if (resendError) {
-      setError("Couldn't resend the link. Try again in a moment.");
+      setError(authErrorMessage(resendError, "Couldn't resend the link. Try again in a moment."));
       return;
     }
 
