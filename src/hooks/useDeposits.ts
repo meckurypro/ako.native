@@ -27,7 +27,9 @@ export function useInitiateDeposit() {
     meta: { blocking: true },
     mutationFn: async (amount_usd: number): Promise<InitiateDepositResult> => {
       const { data, error } = await supabase.functions.invoke("initiate-deposit", {
-        body: { amount_usd },
+        // The payment itself always happens in the web checkout; "native" tells the
+        // server to send the user back to the app (ako:// deep link) afterwards.
+        body: { amount_usd, platform: "native" },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
