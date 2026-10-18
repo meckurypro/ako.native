@@ -78,6 +78,7 @@ export function usePortfolioCategories(accountId: string | undefined) {
       return (data ?? []) as PortfolioCategory[];
     },
     enabled: !!accountId,
+    staleTime: 60_000,
   });
 }
 
@@ -128,6 +129,7 @@ export function usePortfolioCategoryProjects(accountId: string | undefined, cate
       return (projects ?? []) as Project[];
     },
     enabled: !!accountId && !!category,
+    staleTime: 60_000,
   });
 }
 
@@ -171,6 +173,7 @@ export function usePortfolioCategoryGigs(accountId: string | undefined, category
       return (projects ?? []) as Project[];
     },
     enabled: !!accountId && !!category,
+    staleTime: 60_000,
   });
 }
 
@@ -203,6 +206,7 @@ export function useTypePortfolioCategories(accountId: string | undefined) {
       return (data ?? []) as TypePortfolioCategory[];
     },
     enabled: !!accountId,
+    staleTime: 60_000,
   });
 }
 
@@ -225,6 +229,7 @@ export function useTypeCategoryProjects(accountId: string | undefined, projectTy
       return (data ?? []) as Project[];
     },
     enabled: !!accountId && !!projectType,
+    staleTime: 60_000,
   });
 }
 
@@ -385,6 +390,7 @@ export function useCategorizedProjectIds(accountId: string | undefined) {
       return ids;
     },
     enabled: !!accountId,
+    staleTime: 60_000,
   });
 }
 
@@ -415,5 +421,6 @@ export function useCollaboratorMediaProjects(accountId: string | undefined) {
       return (data ?? []) as Project[];
     },
     enabled: !!accountId,
+    staleTime: 60_000,
   });
 }

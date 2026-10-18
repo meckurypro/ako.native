@@ -1,10 +1,8 @@
 // src/components/ui/LoadingOverlay.tsx
 // Full-screen blocking spinner shown while any mutation flagged
-// `meta: { blocking: true }` is in flight — same trigger as web — and, touch-through, while a newly opened page is
-// still loading its first data (usePageLoading). Eight dots
+// `meta: { blocking: true }` is in flight — same trigger as web. Eight dots
 // fade in sequence around a circle while the whole ring gently "breathes".
 import { useIsMutating } from "@tanstack/react-query";
-import { usePathname } from "expo-router";
 import { useEffect } from "react";
 import { StyleSheet } from "react-native";
 import Animated, {
@@ -18,7 +16,6 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-import { usePageLoading } from "@/hooks/usePageLoading";
 import { LOADING_BLUR_INTENSITY } from "@/theme/blur";
 import { useTheme } from "@/theme/ThemeProvider";
 import { GlassScrim } from "./GlassScrim";
@@ -73,9 +70,6 @@ export function LoadingOverlay() {
     predicate: (mutation) => mutation.options.meta?.blocking === true,
   });
 
-  // Also shown (touch-through) while the page just opened is still loading its first data.
-  const pageLoading = usePageLoading(usePathname());
-
   const scale = useSharedValue(0.94);
   useEffect(() => {
     scale.value = withRepeat(
@@ -88,7 +82,7 @@ export function LoadingOverlay() {
   }, [scale]);
   const ringStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
-  if (blockingCount === 0 && !pageLoading) return null;
+  if (blockingCount === 0) return null;
 
   // A Portal layer above GLASS_ABOVE_Z so GlassScrim can really blur the app beneath (web: z-[999],
   // bg-canvas/35 + backdrop-blur-sm). The layer fades out via the Portal host.
@@ -97,10 +91,10 @@ export function LoadingOverlay() {
       <Animated.View
         entering={FadeIn.duration(180)}
         accessibilityRole="progressbar"
-        accessibilityLabel={blockingCount > 0 ? "Saving" : "Loading"}
+        accessibilityLabel="Saving"
         style={[StyleSheet.absoluteFill, { alignItems: "center", justifyContent: "center" }]}
         // Swallow touches so nothing underneath can be triggered mid-save.
-        pointerEvents={blockingCount > 0 ? "auto" : "none"}
+        pointerEvents="auto"
       >
         <GlassScrim tone="canvasFaint" intensity={LOADING_BLUR_INTENSITY} />
         <Animated.View style={[{ width: 34, height: 34 }, ringStyle]}>

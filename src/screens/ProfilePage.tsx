@@ -40,7 +40,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FAB_GAP, FAB_SIZE, useBottomNavInset } from "@/components/nav/BottomNav";
 import { useChromeScroll } from "@/components/nav/ChromeProvider";
 import { PostCard } from "@/components/post/PostCard";
-import { ProjectMiniCard } from "@/components/post/ProjectMiniCard";
+import { ProjectMiniCard, ProjectMiniGrid } from "@/components/post/ProjectMiniCard";
 import { ProjectCardList } from "@/components/project/ProjectCardList";
 import { AccountSwitcher } from "@/components/account/AccountSwitcher";
 import { ProfileAdSlot } from "@/components/profile/ProfileAdSlot";
@@ -75,6 +75,7 @@ import {
 } from "@/hooks/usePortfolio";
 import { useUserPostsWithArchived } from "@/hooks/usePosts";
 import { RefreshSkeleton } from "@/components/ui/RefreshSkeleton";
+import { ProfilePageSkeleton, ProjectGridSkeleton } from "@/components/ui/ProfileSkeletons";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useIsBlocked, useIsMuted, useRemoveFollower, useToggleBlock, useToggleMute } from "@/hooks/usePrivacy";
 import { useIsFollowedByUser, useIsFollowingAsActiveIdentity, useProfileByUsername, useToggleFollowAsActiveIdentity } from "@/hooks/useProfile";
@@ -110,6 +111,8 @@ type Row =
   | { kind: "tabs" }
   | { kind: "post"; id: string; post: any }
   | { kind: "grid"; id: string; projects: Project[] }
+  | { kind: "minigrid"; id: string; projects: Project[] }
+  | { kind: "skeleton"; id: string; projectType?: ProjectType }
   | { kind: "gigs"; id: string; gigs: Project[] }
   | { kind: "message"; id: string; text: string };
 
@@ -271,11 +274,13 @@ export function ProfilePage() {
       if (fallbackProjects && fallbackProjects.length > 0) out.push({ kind: "grid", id: "projects", projects: fallbackProjects });
       else out.push({ kind: "message", id: "no-projects", text: projectsOwnerView ? "No projects yet — publish your first one." : "No projects yet." });
     } else if (id.startsWith("type-")) {
-      if (typeLoading) return out;
+      if (typeLoading) return [...out, { kind: "skeleton", id: "skeleton-type", projectType: activeType }];
       if (!typeProjects || typeProjects.length === 0) out.push({ kind: "message", id: "empty-type", text: "Nothing here yet." });
+      // Books: compact 2-up cover grid (same tiles as Discover/search); a tap opens the book's slug page.
+      else if (activeType === "book") out.push({ kind: "minigrid", id, projects: typeProjects });
       else out.push({ kind: "grid", id, projects: typeProjects });
     } else {
-      if (categoryLoading) return out;
+      if (categoryLoading) return [...out, { kind: "skeleton", id: "skeleton-cat" }];
       if (!categoryProjects || categoryProjects.length === 0) out.push({ kind: "message", id: "empty-cat", text: "Nothing here yet." });
       else {
         if (categoryGigs && categoryGigs.length > 0) out.push({ kind: "gigs", id: "gigs", gigs: categoryGigs });
@@ -584,6 +589,18 @@ export function ProfilePage() {
             <ProjectCardList projects={item.projects} isOwnerView={projectsOwnerView} />
           </View>
         );
+      case "minigrid":
+        return (
+          <View className="px-4 pt-4">
+            <ProjectMiniGrid projects={item.projects} />
+          </View>
+        );
+      case "skeleton":
+        return (
+          <View className="px-4 pt-4">
+            <ProjectGridSkeleton projectType={item.projectType} />
+          </View>
+        );
       case "gigs":
         return (
           <View className="px-4 pt-4">
@@ -604,10 +621,11 @@ export function ProfilePage() {
   const listRows = refreshing ? rows.filter((r) => r.kind === "header" || r.kind === "tabs") : rows;
   const tabsIndex = listRows.findIndex((r) => r.kind === "tabs");
 
-  if (isLoading || !profile) {
+  if (isLoading) return <ProfilePageSkeleton />;
+  if (!profile) {
     return (
       <View className="flex-1 items-center justify-center bg-canvas">
-        <Text className="text-ink-muted">Loading…</Text>
+        <Text className="text-ink-muted">Profile not found.</Text>
       </View>
     );
   }

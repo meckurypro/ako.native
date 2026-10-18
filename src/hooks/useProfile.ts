@@ -20,6 +20,7 @@ export function useProfileByUsername(username: string) {
       return { ...profile, roles: toProfileRoles(profile_roles) };
     },
     enabled: !!username,
+    staleTime: 60_000,
   });
 }
 
