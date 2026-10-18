@@ -514,7 +514,7 @@ export function EditProject() {
           {t === "pitch" ? <PitchFields value={pitchFields} onChange={setPitchFields} /> : null}
           {t === "book" ? (
             <>
-              <BookFields value={bookFields} onChange={setBookFields} onError={setError} />
+              <BookFields value={bookFields} onChange={setBookFields} onError={setError} existingSource={existingBookDetails?.content_source} />
               {bookFields.content_source === "authored" ? <Text className="-mt-2 mb-4 text-xs text-ink-muted">Manage chapters from the book builder.</Text> : null}
             </>
           ) : null}

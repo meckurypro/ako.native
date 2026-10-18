@@ -67,6 +67,20 @@ export const FEATURE_FLAG_DEFS: FeatureFlagDef[] = [
     category: "projects",
   },
   {
+    key: "book_pdf_upload_enabled",
+    label: "Book PDF upload",
+    description:
+      "The \"Upload PDF\" option when creating a Book. Turning this off only stops new PDF books — existing PDF books and their readers are unaffected.",
+    category: "projects",
+  },
+  {
+    key: "book_link_enabled",
+    label: "Book link",
+    description:
+      "The \"Link\" option when creating a Book. Turning this off only stops new link books — existing link books are unaffected.",
+    category: "projects",
+  },
+  {
     key: "messaging_enabled",
     label: "Messaging",
     description:

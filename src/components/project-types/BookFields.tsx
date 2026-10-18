@@ -1,5 +1,6 @@
 // src/components/project-types/BookFields.tsx
 import * as DocumentPicker from "expo-document-picker";
+import { useEffect } from "react";
 import { FileUp } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 
@@ -8,6 +9,7 @@ import { FormField } from "@/components/ui/FormField";
 import { InfoNote } from "@/components/ui/InfoNote";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
+import { useFeatureFlag } from "@/hooks/useFeatureFlags";
 import { useUploadProjectFile } from "@/hooks/useUploadProjectFile";
 import { fromDocumentPickerAsset } from "@/lib/localFile";
 
@@ -63,8 +65,40 @@ function Segmented<T extends string>({ options, value, onChange }: { options: { 
   );
 }
 
-export function BookFields({ value, onChange, onError }: { value: BookFieldsValue; onChange: (value: BookFieldsValue) => void; onError: (message: string) => void }) {
+export function BookFields({
+  value,
+  onChange,
+  onError,
+  existingSource,
+}: {
+  value: BookFieldsValue;
+  onChange: (value: BookFieldsValue) => void;
+  onError: (message: string) => void;
+  /** Edit screen: the book's saved source. Stays selectable even if its flag is now off. */
+  existingSource?: BookContentSource;
+}) {
   const uploadFile = useUploadProjectFile();
+  const pdfUploadEnabled = useFeatureFlag("book_pdf_upload_enabled");
+  const linkEnabled = useFeatureFlag("book_link_enabled");
+
+  // Admin feature flags can hide "Upload PDF" / "Link". A book that
+  // already uses a hidden source keeps showing it (existingSource) so
+  // editing it doesn't strand it; everything else just loses the option.
+  const visibleOptions = SOURCE_OPTIONS.filter((opt) => {
+    if (opt.value === existingSource) return true;
+    if (opt.value === "upload") return pdfUploadEnabled;
+    if (opt.value === "link") return linkEnabled;
+    return true;
+  });
+
+  // If the current selection isn't offered (e.g. the default "upload"
+  // while that flag is off), fall back to the first one that is.
+  useEffect(() => {
+    if (!visibleOptions.some((o) => o.value === value.content_source)) {
+      onChange({ ...value, content_source: visibleOptions[0].value });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pdfUploadEnabled, linkEnabled, existingSource, value.content_source]);
 
   async function handleChoosePdf() {
     try {
@@ -98,7 +132,7 @@ export function BookFields({ value, onChange, onError }: { value: BookFieldsValu
       <View className="mb-4">
         <Text className="mb-1.5 text-sm font-medium text-ink-muted">How are you adding it?</Text>
         <View className="gap-2">
-          {SOURCE_OPTIONS.map((opt) => (
+          {visibleOptions.map((opt) => (
             <Pressable
               key={opt.value}
               onPress={() => onChange({ ...value, content_source: opt.value })}
