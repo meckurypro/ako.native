@@ -10,6 +10,7 @@ import { View } from "react-native";
 import { AuthGate } from "@/components/nav/AuthGate";
 import { BottomNav } from "@/components/nav/BottomNav";
 import { ChromeProvider, useChrome } from "@/components/nav/ChromeProvider";
+import { OfflineBanner } from "@/components/nav/OfflineBanner";
 import { ScrollToTopButton } from "@/components/nav/ScrollToTopButton";
 import { useAuth } from "@/hooks/useAuth";
 import { isGuestProjectPath } from "@/lib/guestRoutes";
@@ -52,6 +53,7 @@ function Shell() {
         </Stack>
       </BlurTargetView>
       <ScrollToTopButton />
+      <OfflineBanner />
       <BottomNav />
     </View>
   );

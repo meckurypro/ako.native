@@ -18,6 +18,7 @@
 //     personal projects, is just another user's content to the Page.
 //   - Acting personally: unchanged — owner_id === user.id.
 import { useAuth } from "./useAuth";
+import { useLoadingBudget } from "./useLoadingBudget";
 import { useActiveIdentity } from "./usePages";
 
 type OwnableProject = { owner_id: string; posted_as_page_id?: string | null };
@@ -42,7 +43,10 @@ export function useProjectOwnership() {
   // from page. Report "not owner" (never grant manage controls on a guess) and
   // expose `loading` so edit/guard screens can wait instead of flashing a
   // "not allowed" state.
-  const loading = !!user && identityQuery.isLoading;
+  // Capped at a few seconds: that query refetches on every mount, so over a dead network it would keep every project,
+  // book and course screen on "Loading…" (downloaded ones included) until the OS timed the request out. Unresolved
+  // still means "not owner", so waiting less never grants anything.
+  const loading = useLoadingBudget(!!user && identityQuery.isLoading, 3000);
 
   return {
     loading,

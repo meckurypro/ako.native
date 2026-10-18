@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { updateSavedAccountTokens } from "../lib/accountSessions";
 import { authStorageKey, isUnreachableError, parseStoredSession } from "../lib/authOffline";
+import { raceWithTimeout } from "../lib/offlineBoot";
 import { encryptedAuthStorage } from "../lib/secureStorage";
 
 interface MyProfile {
@@ -22,27 +23,53 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+/**
+ * How long the launch screen waits for supabase-js to restore the session. With an expired access token it must
+ * refresh over the network first; on a connected-but-dead network that request hangs (or retries with backoff for
+ * ~30 s) and the splash never lifts. Past this, start from the session stored on the device — same fallback as an
+ * outright offline start — and let the refresh finish in the background (onAuthStateChange delivers the result).
+ */
+const SESSION_RESTORE_TIMEOUT_MS = 5000;
+
+async function readStoredSession(): Promise<Session | null> {
+  const key = authStorageKey(process.env.EXPO_PUBLIC_SUPABASE_URL ?? "");
+  if (!key) return null;
+  return parseStoredSession(await encryptedAuthStorage.getItem(key).catch(() => null));
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const queryClient = useQueryClient();
 
   useEffect(() => {
+    let cancelled = false;
+
     // Get the current session on load
-    supabase.auth.getSession().then(async ({ data: { session }, error }) => {
+    (async () => {
+      const raced = await raceWithTimeout(supabase.auth.getSession(), SESSION_RESTORE_TIMEOUT_MS);
       // Offline with an access token older than ~1h, getSession() can't refresh and returns null — which would send a
       // signed-in person to a login screen that can't work offline, and make everything saved for offline use
-      // unreachable. ONLY when that is because the server couldn't be reached, keep the session still stored on the
-      // device (see lib/authOffline.ts). A revoked/invalid session isn't a network error and still signs out as before;
-      // once online, supabase-js refreshes the token itself (or signs out if the server rejects it).
-      let effective = session;
-      if (!effective && isUnreachableError(error)) {
-        const key = authStorageKey(process.env.EXPO_PUBLIC_SUPABASE_URL ?? "");
-        if (key) effective = parseStoredSession(await encryptedAuthStorage.getItem(key).catch(() => null));
+      // unreachable. ONLY when that is because the server couldn't be reached (an unreachable error, or no answer at
+      // all within the timeout), keep the session still stored on the device (see lib/authOffline.ts). A
+      // revoked/invalid session isn't a network error and still signs out as before; once online, supabase-js
+      // refreshes the token itself (or signs out if the server rejects it).
+      let effective: Session | null;
+      if (raced.timedOut) {
+        effective = await readStoredSession();
+      } else {
+        const {
+          data: { session },
+          error,
+        } = raced.value;
+        effective = session;
+        if (!effective && isUnreachableError(error)) effective = await readStoredSession();
       }
-      setSession(effective);
+      if (cancelled) return;
+      // `cur ??` so a session the auth listener delivered in the meantime (the late refresh) is never overwritten.
+      setSession((cur) => cur ?? effective);
       setLoading(false);
-    });
+    })();
 
     // Subscribe to auth changes (sign in, sign out, token refresh)
     const {
@@ -60,7 +87,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Session-wide realtime sync. As long as the user is signed in, listen

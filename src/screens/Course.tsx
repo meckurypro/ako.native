@@ -30,6 +30,9 @@ import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useToast } from "@/components/ui/Toast";
+import { OfflineUnavailable } from "@/components/project/OfflineUnavailable";
+import { useIsOnline } from "@/hooks/useIsOnline";
+import { useSeedOfflineProject } from "@/hooks/useSeedOfflineProject";
 import { useReturnAfterSave } from "@/hooks/useReturnAfterSave";
 import { useAuth } from "@/hooks/useAuth";
 import { useProjectOwnership } from "@/hooks/useProjectOwnership";
@@ -163,6 +166,9 @@ export function Course() {
   const toast = useToast();
   const { colors } = useTheme();
   const { user } = useAuth();
+  const online = useIsOnline();
+  // A saved course opens from here whichever way the person arrived, not only from the Library row.
+  useSeedOfflineProject(projectId);
 
   const { data: project } = useProject(projectId);
   const ownership = useProjectOwnership();
@@ -369,6 +375,8 @@ export function Course() {
       }
     );
   }
+
+  if (!project && !online) return <OfflineUnavailable projectId={projectId} />;
 
   if (!project) {
     return (

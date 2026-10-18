@@ -4,7 +4,8 @@
 // app once, (onboarding)/_layout gates onboarding.
 //
 //   signed out                       → /login
-//   access check failed              → retry screen (fails CLOSED, like web)
+//   access check failed              → retry screen (fails CLOSED, like web) — unless the failure is "couldn't reach the
+//                                      server": then the app opens (see below) so downloads and cached screens work
 //   pending account (gate on)        → enters in restricted consumer-only mode (silent; see useIsRestricted)
 //   declined / suspended             → AccountUnderReview
 //   onboarding incomplete            → resume at the right step
@@ -16,8 +17,10 @@ import { ActivityIndicator, Pressable, View } from "react-native";
 import { Text } from "@/components/ui/Text";
 import { useAccountAccess } from "@/hooks/useAccountAccess";
 import { useAuth } from "@/hooks/useAuth";
+import { useBootGrace } from "@/hooks/useBootGrace";
 import { useOnboardingStatus } from "@/hooks/useOnboarding";
 import { safeReturnPath } from "@/lib/authRedirect";
+import { isNetworkError } from "@/lib/offlineBoot";
 import { AccountUnderReview } from "@/screens/AccountUnderReview";
 import { useTheme } from "@/theme/ThemeProvider";
 
@@ -38,11 +41,24 @@ export function FullScreenLoading() {
   );
 }
 
+/**
+ * How long the app waits for the account / onboarding checks at launch. Past this it opens anyway and keeps checking in
+ * the background: a decline, suspension or unfinished onboarding that arrives later still takes over the screen. Without
+ * a ceiling, a connected-but-dead network (the request hangs for a minute or more) froze the app on its loading screen.
+ * Safe because the server, not this gate, is what enforces access (RLS + edge-function checks).
+ */
+const CHECKS_GRACE_MS = 4000;
+
 export function AuthGate({ children, skipOnboardingCheck = false, onboardingOnly = false }: AuthGateProps) {
   const { user, loading } = useAuth();
   const pathname = usePathname();
   const { data: onboarding, isLoading: onboardingLoading } = useOnboardingStatus();
-  const { data: access, isLoading: accessLoading, isError: accessError, refetch } = useAccountAccess();
+  const { data: access, isLoading: accessLoading, isError: accessIsError, error: accessErrorValue, refetch } = useAccountAccess();
+  const graceOver = useBootGrace(CHECKS_GRACE_MS);
+  // A failed check only blocks when the server actually answered badly. "Couldn't reach it" (offline, dead data) opens
+  // the app instead — otherwise people with no signal can't reach what they downloaded. React Query re-runs the check
+  // when the connection returns, and a real answer then applies (decline → Under Review, etc.).
+  const accessError = accessIsError && !isNetworkError(accessErrorValue);
 
   // Once the app has been shown for this user, keep it mounted through later re-checks. Swapping the children for a
   // spinner / retry screen unmounts the navigator, which wipes its stack; on remount it starts from its first declared
@@ -51,8 +67,9 @@ export function AuthGate({ children, skipOnboardingCheck = false, onboardingOnly
   const shownFor = useRef<string | null>(null);
   const keepMounted = !!user && shownFor.current === user.id;
 
-  const stillResolving =
-    loading || (!!user && !skipOnboardingCheck && onboardingLoading) || (!!user && accessLoading) || (!!user && onboardingOnly && onboardingLoading);
+  const checksPending =
+    (!!user && !skipOnboardingCheck && onboardingLoading) || (!!user && accessLoading) || (!!user && onboardingOnly && onboardingLoading);
+  const stillResolving = loading || (checksPending && !graceOver);
 
   if (stillResolving && !keepMounted) return <FullScreenLoading />;
 

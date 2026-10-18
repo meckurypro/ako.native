@@ -28,6 +28,7 @@ import {
   useTrackAffiliateClick,
 } from "@/hooks/useAffiliates";
 import { useAccountAccess } from "@/hooks/useAccountAccess";
+import { useBootGrace } from "@/hooks/useBootGrace";
 import { useLaunchPushAsk } from "@/hooks/useLaunchPushAsk";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { usePageThemeSync } from "@/hooks/usePageThemeSync";
@@ -96,6 +97,8 @@ function Shell() {
   const [fontsLoaded, fontError] = useFonts(fontAssets);
   const appReady = ready && (fontsLoaded || !!fontError);
   const [showSplash, setShowSplash] = useState(true);
+  // Same ceiling as the AuthGate: a hung account check may delay the splash by seconds, never hold it up indefinitely.
+  const graceOver = useBootGrace(4000);
 
   // Ask for notification permission on the very first launch, right after the splash lifts (signed in or not).
   useLaunchPushAsk(appReady && !showSplash);
@@ -110,7 +113,7 @@ function Shell() {
 
   // The branded splash lifts once the session is restored and, for a signed-in user, the account-access check has
   // answered — so the first thing revealed is the real landing screen, not a spinner.
-  const splashReady = !authLoading && !(!!user && access.isLoading);
+  const splashReady = !authLoading && (graceOver || !(!!user && access.isLoading));
 
   return (
     <View onLayout={onLayout} style={{ flex: 1, backgroundColor: colors.canvas }}>

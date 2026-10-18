@@ -17,6 +17,9 @@ import { useBookDetails } from "@/hooks/useProjectTypeDetails";
 import { useProject } from "@/hooks/useProjects";
 import { useSmartBack } from "@/hooks/useSmartBack";
 import { BookPdfPageReader } from "@/components/project/book/BookPdfPageReader";
+import { OfflineUnavailable } from "@/components/project/OfflineUnavailable";
+import { useIsOnline } from "@/hooks/useIsOnline";
+import { useSeedOfflineProject } from "@/hooks/useSeedOfflineProject";
 import { Book } from "@/screens/Book";
 
 export function BookRead() {
@@ -24,6 +27,8 @@ export function BookRead() {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const back = useSmartBack();
+  const online = useIsOnline();
+  useSeedOfflineProject(projectId);
   const { data: project } = useProject(projectId);
   const { data: details } = useBookDetails(projectId);
   const chaptersQuery = useBookChapters(projectId);
@@ -45,6 +50,9 @@ export function BookRead() {
 
   const loading =
     !project || !details || chaptersQuery.isLoading || ownership.loading || (needsExtract && !extract.isError && (extract.isIdle || extract.isPending));
+
+  // Offline and the book isn't on this device (or its saved copy is still being read): don't spin forever.
+  if (loading && !online && (!project || !details)) return <OfflineUnavailable projectId={projectId} />;
 
   if (loading) {
     return (

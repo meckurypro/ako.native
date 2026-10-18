@@ -47,6 +47,9 @@ import { useSmartBack } from "@/hooks/useSmartBack";
 import { useEventDetails, useGigDetails, useGigSamples, useGigsFeaturingProject, useMeetingDetails } from "@/hooks/useProjectTypeDetails";
 import { useProjectDetail, useSimilarProjects } from "@/hooks/useProjects";
 import { safeReturnPath } from "@/lib/authRedirect";
+import { OfflineUnavailable } from "@/components/project/OfflineUnavailable";
+import { useIsOnline } from "@/hooks/useIsOnline";
+import { useSeedOfflineProject } from "@/hooks/useSeedOfflineProject";
 import { addToCalendar } from "@/lib/calendar";
 import { pageModeLabel } from "@/lib/pageRoles";
 import { getProjectUrl } from "@/lib/projectLinks";
@@ -69,6 +72,8 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
   const bottomInset = isGuest ? insets.bottom + 16 : navInset;
 
   const { data: project, isLoading, refetch: refetchProject } = useProjectDetail(projectId);
+  const online = useIsOnline();
+  useSeedOfflineProject(projectId);
   const { data: similar, refetch: refetchSimilar } = useSimilarProjects(user ? project : undefined);
   const { data: eventDetails, refetch: refetchEvent } = useEventDetails(project?.project_type === "event" ? projectId : undefined);
   const { data: meetingDetails, refetch: refetchMeeting } = useMeetingDetails(project?.project_type === "meeting" ? projectId : undefined);
@@ -275,7 +280,8 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
           ) : null}
 
           {authLoading || isLoading || !project ? (
-            <Text className="text-ink-muted">Loading…</Text>
+            // Offline with nothing to show: say so (and offer the saved copy / Library) rather than spin forever.
+            !authLoading && !project && !online ? <OfflineUnavailable projectId={projectId} inline /> : <Text className="text-ink-muted">Loading…</Text>
           ) : (
             <>
               <ProjectCard project={project} isDetailView shareUrl={shareUrl} concealDetails={isGuest} detailsSlot={isGuest ? detailBlocks : undefined} />

@@ -10,8 +10,11 @@ import { View } from "react-native";
 import { BookBuilder } from "@/components/project/book/BookBuilder";
 import { BookLockedView } from "@/components/project/book/BookLockedView";
 import { BookReflowReader } from "@/components/project/book/BookReflowReader";
+import { OfflineUnavailable } from "@/components/project/OfflineUnavailable";
 import { Text } from "@/components/ui/Text";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsOnline } from "@/hooks/useIsOnline";
+import { useSeedOfflineProject } from "@/hooks/useSeedOfflineProject";
 import { useProjectOwnership } from "@/hooks/useProjectOwnership";
 import { useRecordFreeProjectOpen } from "@/hooks/useProjectAccess";
 import { useBookChapters, usePublishBook } from "@/hooks/useBookBuilder";
@@ -22,6 +25,9 @@ import { getEffectivePrice, isProjectFree, useHasPurchased, useProject, usePurch
 export function Book() {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
   const { user } = useAuth();
+  const online = useIsOnline();
+  // A saved copy opens from here whichever way the person arrived (see the hook), not only from the Library row.
+  useSeedOfflineProject(projectId);
 
   const { data: project } = useProject(projectId);
   const ownership = useProjectOwnership();
@@ -38,6 +44,8 @@ export function Book() {
   const purchaseProject = usePurchaseProject();
 
   const ordered = useMemo(() => (chapters ?? []).slice().sort((a, b) => a.sort_order - b.sort_order), [chapters]);
+
+  if (!project && !online) return <OfflineUnavailable projectId={projectId} />;
 
   // Wait for the acting identity: until it resolves isOwner is false, which would flash the locked view at the creator.
   if (!project || ownership.loading) {
@@ -77,11 +85,15 @@ export function Book() {
 /** The builder: owner only. Anyone else who lands here (a stale link, a switched identity) is sent to the reader. */
 export function BookEdit() {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
+  const online = useIsOnline();
   const { data: project } = useProject(projectId);
   const ownership = useProjectOwnership();
   const { data: chapters } = useBookChapters(projectId);
   const publishBook = usePublishBook(projectId ?? "");
   const ordered = useMemo(() => (chapters ?? []).slice().sort((a, b) => a.sort_order - b.sort_order), [chapters]);
+
+  // Editing needs a connection; say so instead of spinning.
+  if (!project && !online) return <OfflineUnavailable projectId={projectId} />;
 
   if (!project || ownership.loading) {
     return (
