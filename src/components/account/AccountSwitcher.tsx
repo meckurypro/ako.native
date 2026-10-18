@@ -14,7 +14,6 @@ import { Sheet, useSheet } from "@/components/ui/Sheet";
 import { SheetCancel, SheetCaption } from "@/components/ui/SheetParts";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
-import { useIsRestricted } from "@/hooks/useAccountAccess";
 import { useSavedAccounts, useSwitchAccount } from "@/hooks/useAccountSwitcher";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyProfile } from "@/hooks/useProfile";
@@ -24,7 +23,6 @@ import { haptics } from "@/lib/haptics";
 function SwitcherBody() {
   const { close } = useSheet();
   const { user } = useAuth();
-  const restricted = useIsRestricted();
   const { data: me } = useMyProfile();
   const { accounts, refresh: refreshSavedAccounts } = useSavedAccounts();
   const switchAccount = useSwitchAccount();
@@ -73,21 +71,17 @@ function SwitcherBody() {
 
       {switchError ? <Text className="border-t border-border px-4 py-2 text-xs text-danger">{switchError}</Text> : null}
 
-      {!restricted ? (
-        <>
-          {/* Full login flow in add mode (snapshots this account before signing into the new one). */}
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => runAfterDismiss(close, () => router.push("/login?add=1" as Href))}
-            className="flex-row items-center gap-3 px-4 py-3 active:bg-border-a40"
-          >
-            <View className="h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-soft">
-              <Icon as={Plus} size={15} className="text-accent" />
-            </View>
-            <Text className="text-sm text-accent">Add account</Text>
-          </Pressable>
-        </>
-      ) : null}
+      {/* Full login flow in add mode (snapshots this account before signing into the new one). */}
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => runAfterDismiss(close, () => router.push("/login?add=1" as Href))}
+        className="flex-row items-center gap-3 px-4 py-3 active:bg-border-a40"
+      >
+        <View className="h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-soft">
+          <Icon as={Plus} size={15} className="text-accent" />
+        </View>
+        <Text className="text-sm text-accent">Add account</Text>
+      </Pressable>
 
       <SheetCancel label="Close" />
     </>
