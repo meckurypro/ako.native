@@ -15,6 +15,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   type MutableRefObject,
@@ -46,6 +47,8 @@ interface ChromeContextValue {
   setActivePane: (pane: number | null) => void;
   /** Recomputes showScrollTop + scrollToTopRef from the registry and the active pane. */
   publishScrollTop: () => void;
+  /** Whether a list in `pane` is the one on screen (lists outside any tab pane always are). */
+  isPaneActive: (pane: number | null) => boolean;
 }
 
 /**
@@ -90,18 +93,25 @@ export function ChromeProvider({ children }: { children: ReactNode }) {
 
   const setActivePane = useCallback(
     (pane: number | null) => {
+      // Moving to another tab always brings the bars back. The "hidden" flag is shared by every pane, but only the list
+      // being scrolled ever updates it: scroll down in one tab, swipe to a short or empty one, and nothing there can
+      // scroll up — so without this the bars stayed gone until you swiped back. (Standard tab behaviour: a new
+      // section starts with its navigation showing.)
+      if (pane !== null && pane !== activePane.current) hidden.value = 0;
       activePane.current = pane;
       publishScrollTop();
     },
-    [publishScrollTop]
+    [hidden, publishScrollTop]
   );
+
+  const isPaneActive = useCallback((pane: number | null) => pane === null || activePane.current === null || pane === activePane.current, []);
 
   const value = useMemo(
     () => ({
       hidden, navHeight, setNavHeight, blurTarget, topBarHeight, setTopBarHeight,
-      showScrollTop, scrollToTopRef, scrollRegistry, setActivePane, publishScrollTop,
+      showScrollTop, scrollToTopRef, scrollRegistry, setActivePane, publishScrollTop, isPaneActive,
     }),
-    [hidden, navHeight, blurTarget, topBarHeight, showScrollTop, setActivePane, publishScrollTop]
+    [hidden, navHeight, blurTarget, topBarHeight, showScrollTop, setActivePane, publishScrollTop, isPaneActive]
   );
   return <ChromeContext.Provider value={value}>{children}</ChromeContext.Provider>;
 }
@@ -115,6 +125,23 @@ export function useChrome(): ChromeContextValue {
   const ctx = useContext(ChromeContext);
   if (!ctx) throw new Error("useChrome must be used within <ChromeProvider>");
   return ctx;
+}
+
+/**
+ * Keeps the bars showing while `when` is true — for a list that has nothing to scroll (loading, empty, error, offline
+ * notice) or that is being pulled to refresh. Scrolling is the only thing that un-hides the bars, so a list that can't
+ * scroll must never be left sitting under bars that were hidden by another one. Only acts for the list that is on
+ * screen: a neighbouring tab going empty in the background must not pop the bars in while you scroll elsewhere.
+ */
+export function useRevealChromeWhen(when: boolean) {
+  const chrome = useOptionalChrome();
+  const pane = useContext(PaneIndexContext);
+  const hidden = chrome?.hidden;
+  const isPaneActive = chrome?.isPaneActive;
+  useEffect(() => {
+    if (!when || !hidden || !isPaneActive?.(pane)) return;
+    hidden.value = 0;
+  }, [when, pane, hidden, isPaneActive]);
 }
 
 const SHOW_NEAR_TOP_PX = 8;

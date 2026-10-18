@@ -9,7 +9,7 @@ import { ActivityIndicator, View, type ViewToken } from "react-native";
 
 import { useBottomNavInset } from "@/components/nav/BottomNav";
 import { OfflineFeedNotice } from "@/components/post/OfflineFeedNotice";
-import { useChromeScroll } from "@/components/nav/ChromeProvider";
+import { useChromeScroll, useRevealChromeWhen } from "@/components/nav/ChromeProvider";
 import { useTopBarInset } from "@/components/nav/AutoHideTopBar";
 import { Text } from "@/components/ui/Text";
 import { RefreshSkeleton } from "@/components/ui/RefreshSkeleton";
@@ -102,6 +102,9 @@ function PostListInner<T extends PostListItem>(
   // hanging), caps the spinner, and can't be re-triggered mid-flight. A post feed is self-contained (rows carry their
   // own counts), so it doesn't also refetch every other query on screen.
   const { refreshControl, refreshing } = usePullToRefresh(() => onRefresh?.(), padTop, { refetchActive: false });
+
+  // An empty / loading / error / offline list can't scroll, so nothing else would ever bring the bars back.
+  useRevealChromeWhen(refreshing || posts.length === 0);
 
   // Nothing to show AND the reason is the connection (offline, or the request couldn't reach the server): say so rather
   // than letting the caller's "no posts yet" / raw error text claim something about the feed itself.
