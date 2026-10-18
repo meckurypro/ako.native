@@ -2,7 +2,7 @@
 
 > **Audience:** a fresh Claude session continuing this build. Read this whole file before touching code.
 > **Written:** end of the session that took native `main` from `1301ff0` → `fdf1a02`.
-> **Owner:** Meckury (Emeka Kingsley Madu), Nigeria. Solo developer, IQ Universe founder. Wants honest status, not optimism.
+> **Owner:** Meckury (Emeka Kingsley Madu), Nigeria. Solo developer, IQ Universe founder. Wants honest status, not optimism...
 
 ---
 
