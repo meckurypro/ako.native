@@ -27,7 +27,7 @@ interface BookRichTextProps {
   /** Called when a link or Copy button is pressed, so the reader can ignore that tap (it would toggle the chrome). */
   onInteract?: () => void;
   fontSize: number;
-  /** "body" = Inter, "display" = Playfair (both bundled), "serif" = the platform serif. Default "body". */
+  /** "body" = Inter, "display" = Fraunces, "serif" = Newsreader (all bundled). Default "body". */
   family?: BookFamily;
   /** Line height as a multiple of font size. */
   lineHeight?: number;
@@ -39,25 +39,16 @@ interface BookRichTextProps {
 }
 
 const MONO = Platform.select({ ios: "Menlo", default: "monospace" });
-export const SYSTEM_SERIF = Platform.select({ ios: "Georgia", default: "serif" });
 
-// "body" / "display" go through our Text (bundled font files per weight); "serif" has no bundled
-// files, so it uses the platform serif and expresses weight / slant with fontWeight / fontStyle.
+// Every face goes through our Text (bundled font files per weight). "serif" is Newsreader, a
+// reading face designed for long-form on-screen text, so it looks identical on iOS and Android.
 export interface Face {
   family: BookFamily;
   heavy: boolean;
 }
 
 export function Span({ face, kind, style, children, ...rest }: { face: Face; kind?: "bold" | "italic" | "semibold"; style?: StyleProp<TextStyle>; children?: ReactNode; selectable?: boolean }) {
-  if (face.family === "serif") {
-    const weight: TextStyle["fontWeight"] = kind === "bold" ? "700" : kind === "semibold" ? "600" : face.heavy ? "600" : "400";
-    return (
-      <RNText {...rest} style={[{ fontFamily: SYSTEM_SERIF, fontWeight: weight, fontStyle: kind === "italic" ? "italic" : "normal" }, style]}>
-        {children}
-      </RNText>
-    );
-  }
-  const fam = face.family === "display" ? "font-display" : "font-body";
+  const fam = face.family === "display" ? "font-display" : face.family === "serif" ? "font-reading" : "font-body";
   const cls = kind === "bold" ? "font-bold" : kind === "semibold" ? "font-semibold" : kind === "italic" ? "italic" : face.heavy ? "font-semibold" : "";
   return (
     <Text {...rest} className={`${fam} ${cls}`.trim()} style={style}>

@@ -53,7 +53,8 @@
   --color-heading-graphite: #2B2B2E;
 
   /* Font families are loaded in src/theme/fonts.ts under these exact names */
-  --font-display: "PlayfairDisplay_600SemiBold";
+  --font-display: "Fraunces_600SemiBold";
+  --font-reading: "Newsreader_400Regular";
   --font-body: "Inter_400Regular";
   --font-simple: "Roboto_400Regular";
 }

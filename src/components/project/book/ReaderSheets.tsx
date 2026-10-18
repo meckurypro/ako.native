@@ -27,7 +27,6 @@ import {
 } from "@/lib/bookReaderTheme";
 import { haptics } from "@/lib/haptics";
 
-import { SYSTEM_SERIF } from "./BookRichText";
 
 export function chapterLabel(c: BookChapter): string {
   return c.kind === "chapter" ? "Chapter" : BOOK_SECTION_INFO[c.kind].label;
@@ -529,7 +528,7 @@ export function SettingsSheet({
                     borderColor: selected ? theme.ink : theme.rule,
                   }}
                 >
-                  <Text style={{ fontFamily: SYSTEM_SERIF, fontSize: 24, color: t.ink, fontWeight: t.heavy ? "800" : "500" }}>Aa</Text>
+                  <Text className={`font-reading ${t.heavy ? "font-extrabold" : "font-medium"}`} style={{ fontSize: 24, color: t.ink }}>Aa</Text>
                 </View>
                 <Text className="mt-1.5 text-xs font-medium" style={{ color: selected ? theme.ink : theme.muted }}>
                   {t.label}

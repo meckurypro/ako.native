@@ -20,6 +20,7 @@ const FAMILY_CLASS: Record<string, FontFamilyKey> = {
   "font-display": "display",
   "font-body": "body",
   "font-simple": "simple",
+  "font-reading": "reading",
 };
 
 const WEIGHT_CLASS: Record<string, FontWeightKey> = {
@@ -58,9 +59,9 @@ export function Text({ className, style, children, ...rest }: TextProps) {
     else kept.push(token);
   }
 
-  // Playfair and Inter ship real italics; for Roboto keep the italic class so
+  // Fraunces, Inter and Newsreader ship real italics; for Roboto keep the italic class so
   // the platform's synthetic slant applies.
-  const hasRealItalic = italic && (family === "display" || family === "body");
+  const hasRealItalic = italic && (family === "display" || family === "body" || family === "reading");
   if (italic && !hasRealItalic) kept.push("italic");
 
   const fontFamily = resolveFontFamily(family, weight, hasRealItalic);

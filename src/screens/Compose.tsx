@@ -259,7 +259,7 @@ export function Compose() {
               selectionColor={colors.accent}
               cursorColor={colors.accent}
               className="flex-1 text-2xl leading-tight text-ink"
-              style={{ fontFamily: "PlayfairDisplay_600SemiBold", paddingVertical: 0 }}
+              style={{ fontFamily: "Fraunces_600SemiBold", paddingVertical: 0 }}
             />
             {/* Only worth showing once there's something to colour. */}
             {heading.trim().length > 0 ? (
