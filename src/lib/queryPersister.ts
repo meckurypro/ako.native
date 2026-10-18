@@ -27,6 +27,12 @@ export const PERSISTED_QUERY_ROOTS: ReadonlySet<string> = new Set([
   "my-profile",
   "own-profile",
   "profile",
+  // The bottom-nav Profile tab (/me) decides where to go from these two: who am I (username) and am I acting as a Page.
+  // Small, per-user, and safe to show stale — online they refetch on mount, and a stale answer only picks the screen.
+  "my-username",
+  "active-identity",
+  // A Page's own profile page, by username (same shape of data as "profile").
+  "page",
 ]);
 
 /** Roots that are bulky: dropped first when a snapshot is over budget, so small, important ones are never lost. */

@@ -74,6 +74,8 @@ import {
   useTypePortfolioCategories,
 } from "@/hooks/usePortfolio";
 import { useUserPostsWithArchived } from "@/hooks/usePosts";
+import { OfflineUnavailable } from "@/components/project/OfflineUnavailable";
+import { useIsOnline } from "@/hooks/useIsOnline";
 import { RefreshSkeleton } from "@/components/ui/RefreshSkeleton";
 import { PostListSkeleton, ProfilePageSkeleton, ProjectGridSkeleton } from "@/components/ui/ProfileSkeletons";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
@@ -156,6 +158,7 @@ export function ProfilePage() {
   }, []);
 
   const { data: profile, isLoading, refetch: refetchProfile } = useProfileByUsername(username ?? "");
+  const online = useIsOnline();
 
   const isFollowingQuery = useIsFollowingAsActiveIdentity(profile?.id ?? "");
   const isFollowedByUserQuery = useIsFollowedByUser(profile?.id ?? "");
@@ -638,6 +641,8 @@ export function ProfilePage() {
 
   if (isLoading) return <ProfilePageSkeleton />;
   if (!profile) {
+    // Offline, a missing profile means "never loaded on this device", not "doesn't exist".
+    if (!online) return <OfflineUnavailable subject="profile" />;
     return (
       <View className="flex-1 items-center justify-center bg-canvas">
         <Text className="text-ink-muted">Profile not found.</Text>

@@ -52,6 +52,8 @@ import { useMyProfile } from "@/hooks/useProfile";
 import { usePageProjects } from "@/hooks/useProjects";
 import { useTabState } from "@/hooks/useTabState";
 import { APP_URL } from "@/lib/config";
+import { OfflineUnavailable } from "@/components/project/OfflineUnavailable";
+import { useIsOnline } from "@/hooks/useIsOnline";
 import { haptics } from "@/lib/haptics";
 import { pageModeLabel } from "@/lib/pageRoles";
 import { openExternal } from "@/lib/openExternal";
@@ -99,6 +101,7 @@ export function PagePage() {
   const restricted = useIsRestricted();
   const { data: me } = useMyProfile();
   const { data: page, isLoading } = usePageByUsername(username ?? "");
+  const online = useIsOnline();
   const { data: members } = usePageMembers(page?.id ?? "");
   const { data: posts } = usePagePosts(restricted ? "" : page?.id ?? "");
   const { data: projects, isLoading: projectsLoading } = usePageProjects(page?.id);
@@ -167,6 +170,8 @@ export function PagePage() {
     }
     return out;
   }, [activeTab, posts, projects, projectsLoading, isMember, page?.name]);
+
+  if (!page && !isLoading && !online) return <OfflineUnavailable subject="page" />;
 
   if (isLoading) {
     return (

@@ -18,9 +18,11 @@ interface Props {
   projectId?: string;
   /** Inside a scrolling page (no full-screen centring or safe-area padding). */
   inline?: boolean;
+  /** What couldn't be shown; only changes the wording. Saved copies exist for projects only. */
+  subject?: "project" | "profile" | "page";
 }
 
-export function OfflineUnavailable({ projectId, inline = false }: Props) {
+export function OfflineUnavailable({ projectId, inline = false, subject = "project" }: Props) {
   const insets = useSafeAreaInsets();
   const back = useSmartBack();
   const entries = useOfflineEntries();
@@ -34,10 +36,18 @@ export function OfflineUnavailable({ projectId, inline = false }: Props) {
     >
       <Icon as={WifiOff} size={28} className="text-ink-muted" />
       <Text className="text-center text-base text-ink">
-        {saved ? "You're offline, but this is saved on your device." : "You're offline, and this isn't saved on your device."}
+        {saved
+          ? "You're offline, but this is saved on your device."
+          : subject === "project"
+            ? "You're offline, and this isn't saved on your device."
+            : `You're offline, and this ${subject} hasn't been opened on this device yet.`}
       </Text>
       <Text className="max-w-xs text-center text-sm text-ink-muted">
-        {saved ? "Open your saved copy to keep going." : "Connect to the internet to open it. Everything you've downloaded is in your Library."}
+        {saved
+          ? "Open your saved copy to keep going."
+          : subject === "project"
+            ? "Connect to the internet to open it. Everything you've downloaded is in your Library."
+            : "Connect to the internet to see it. Your downloads are in your Library."}
       </Text>
       <View className="mt-2 w-full max-w-xs gap-2">
         {saved ? <Button onPress={() => void openSaved(saved)}>Open saved copy</Button> : null}

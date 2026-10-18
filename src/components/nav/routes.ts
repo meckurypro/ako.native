@@ -20,6 +20,7 @@ const SHOWS_BOTTOM_NAV: RegExp[] = [
   /^\/wallet$/,
   /^\/gigs$/,
   /^\/library$/,
+  /^\/me$/, // the Profile tab's redirect screen — keeps the nav up while it resolves instead of a bare blank screen
   /^\/connect$/,
   /^\/inbox$/,
   /^\/messages$/,
