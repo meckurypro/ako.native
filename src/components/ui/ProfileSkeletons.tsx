@@ -26,25 +26,33 @@ export function ProjectGridSkeleton({ count = 4, projectType }: { count?: number
   );
 }
 
-/** Whole-profile placeholder, shown only until the profile row itself arrives. */
+/**
+ * Whole-profile placeholder, shown only until the profile row itself arrives. The frame never disappears: the
+ * toolbar bar keeps its height and position (its buttons fill in once we know whose profile this is), the
+ * persistent bottom nav is untouched, and only the content area pulses — the same "frame stays, content
+ * reloads" behaviour as pull-to-refresh.
+ */
 export function ProfilePageSkeleton() {
   const insets = useSafeAreaInsets();
   return (
-    <View className="flex-1 bg-canvas px-4" style={{ paddingTop: insets.top + 56 }} accessibilityRole="progressbar" accessibilityLabel="Loading profile">
-      <View className="flex-row items-center gap-4">
-        <Skeleton className="h-20 w-20 rounded-full" />
-        <View className="flex-1 gap-2.5">
-          <Skeleton className="h-5 w-2/5 rounded" />
-          <Skeleton className="h-3.5 w-1/3 rounded" />
+    <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
+      <View className="h-14 border-b border-border-a60 bg-canvas" />
+      <View className="px-4 pt-4" accessibilityRole="progressbar" accessibilityLabel="Loading profile">
+        <View className="flex-row items-center gap-4">
+          <Skeleton className="h-20 w-20 rounded-full" />
+          <View className="flex-1 gap-2.5">
+            <Skeleton className="h-5 w-2/5 rounded" />
+            <Skeleton className="h-3.5 w-1/3 rounded" />
+          </View>
         </View>
-      </View>
-      <View className="mt-5 gap-2">
-        <Skeleton className="h-3.5 w-full rounded" />
-        <Skeleton className="h-3.5 w-4/5 rounded" />
-      </View>
-      <Skeleton className="mt-6 h-10 w-full rounded" />
-      <View className="mt-4">
-        <ProjectGridSkeleton />
+        <View className="mt-5 gap-2">
+          <Skeleton className="h-3.5 w-full rounded" />
+          <Skeleton className="h-3.5 w-4/5 rounded" />
+        </View>
+        <Skeleton className="mt-6 h-10 w-full rounded" />
+        <View className="mt-4">
+          <PostListSkeleton count={2} />
+        </View>
       </View>
     </View>
   );
