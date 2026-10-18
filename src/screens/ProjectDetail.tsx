@@ -117,14 +117,13 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
   const returnTo = safeReturnPath(pathname) ?? (projectId ? `/projects/${projectId}` : null);
   const goAuth = (screen: "login" | "signup") => router.replace((returnTo ? `/${screen}?redirect=${encodeURIComponent(returnTo)}` : `/${screen}`) as Href);
 
-  // Browsing info below the title. Members see it laid out under the card; guests get it folded into the card
-  // behind a "Details" toggle.
-  const pull = isGuest ? "" : "-mt-2";
+  // Browsing info below the title. Everyone — guests and signed-in members alike — gets it folded into the card
+  // behind a "Details" toggle that starts closed, so the page opens on the title, cover and actions.
   const detailBlocks = project ? (
     <>
       {/* Event/meeting browsing info — shown to everyone; purchase is what unlocks the ticket/join page. */}
       {project.project_type === "event" && eventDetails ? (
-        <View className={`${pull} mb-4 gap-2`}>
+        <View className={`mb-4 gap-2`}>
           <View className="gap-1.5">
             {eventDetails.event_date ? (
               <View className="flex-row items-center gap-1.5">
@@ -175,14 +174,14 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
       ) : null}
 
       {project.project_type === "meeting" && meetingDetails ? (
-        <View className={`${pull} mb-4 flex-row items-center gap-1.5`}>
+        <View className={`mb-4 flex-row items-center gap-1.5`}>
           <Icon as={Video} size={14} className="text-ink-muted" />
           <Text className="text-sm text-ink-muted">{new Date(meetingDetails.scheduled_at).toLocaleString()}</Text>
         </View>
       ) : null}
 
       {/* Gig browsing info — tagline/delivery up top, proof-of-work samples below. Message/Book live on the card. */}
-      {project.project_type === "gig" && gigDetails?.tagline ? <Text className={`${pull} mb-2 text-sm font-medium text-ink`}>{gigDetails.tagline}</Text> : null}
+      {project.project_type === "gig" && gigDetails?.tagline ? <Text className={`mb-2 text-sm font-medium text-ink`}>{gigDetails.tagline}</Text> : null}
       {project.project_type === "gig" && gigDetails?.delivery_estimate ? (
         <View className="mb-1.5 flex-row flex-wrap items-center gap-1.5">
           <Icon as={Clock} size={14} className="text-ink-muted" />
@@ -226,7 +225,6 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
 
       <ProjectFaqSection projectId={project.id} projectType={project.project_type} isOwner={isOwner} />
 
-      {project.project_type === "media" && isOwner ? <PublishMusicButton projectId={project.id} /> : null}
 
       {project.topics.length > 0 ? (
         <View className="mb-4 mt-4 flex-row flex-wrap gap-2">
@@ -287,7 +285,7 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
             !authLoading && !project && !online ? <OfflineUnavailable projectId={projectId} inline /> : <Text className="text-ink-muted">Loading…</Text>
           ) : (
             <>
-              <ProjectCard project={project} isDetailView shareUrl={shareUrl} concealDetails={isGuest} detailsSlot={isGuest ? detailBlocks : undefined} />
+              <ProjectCard project={project} isDetailView shareUrl={shareUrl} concealDetails detailsSlot={detailBlocks} />
 
               {/* Reverse link to the gig(s) this is proof-of-work for — otherwise a visitor landing here
                   directly (a feed post, a share) has no way to discover the gig itself. */}
@@ -318,7 +316,8 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
                 </Pressable>
               ) : null}
 
-              {!isGuest ? detailBlocks : null}
+              {/* The owner's publish action is a main action, not browsing info: it stays out of the folded details. */}
+              {project.project_type === "media" && isOwner ? <PublishMusicButton projectId={project.id} /> : null}
 
               {/* Creator byline — opens the creator's profile (or the Page's, if this was posted in page mode).
                   A page-posted project shows the brand/org here; owner_id underneath is still the creating user. */}
