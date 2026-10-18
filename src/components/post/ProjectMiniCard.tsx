@@ -49,11 +49,11 @@ export function ProjectMiniCard({ project, showStatus = false, width }: { projec
           <Icon as={ImageIcon} size={24} className="text-ink-muted" />
         )}
       </View>
-      <View className="p-3">
-        <Text numberOfLines={1} className="text-sm font-medium text-ink">
+      <View className="px-4 pb-4 pt-3.5">
+        <Text numberOfLines={1} className="text-[15px] font-medium text-ink">
           {project.title}
         </Text>
-        <Text className="mt-0.5 text-xs text-ink-muted">{PROJECT_TYPE_LABELS[project.project_type]}</Text>
+        <Text className="mt-1 text-[13px] text-ink-muted">{PROJECT_TYPE_LABELS[project.project_type]}</Text>
       </View>
     </Pressable>
   );
@@ -62,9 +62,9 @@ export function ProjectMiniCard({ project, showStatus = false, width }: { projec
 /** Two-column grid (web: grid-cols-2). */
 export function ProjectMiniGrid({ projects, showStatus = false }: { projects: Project[]; showStatus?: boolean }) {
   return (
-    <View className="flex-row flex-wrap gap-3">
+    <View className="flex-row flex-wrap justify-between" style={{ rowGap: 16 }}>
       {projects.map((project) => (
-        <View key={project.id} style={{ width: "48%" }}>
+        <View key={project.id} style={{ width: "48.5%" }}>
           <ProjectMiniCard project={project} showStatus={showStatus} />
         </View>
       ))}

@@ -276,9 +276,9 @@ export function Archive() {
                     onToggle={() => setOpenSection((c) => (c === "projects" ? null : "projects"))}
                   />
                   <Collapsible open={openSection === "projects"}>
-                    <View className="flex-row flex-wrap gap-3 pb-3">
+                    <View className="flex-row flex-wrap justify-between pb-3" style={{ rowGap: 16 }}>
                       {archivedProjects.map((project) => (
-                        <View key={project.id} style={{ width: "48%" }}>
+                        <View key={project.id} style={{ width: "48.5%" }}>
                           <ProjectMiniCard project={project} showStatus />
                         </View>
                       ))}
