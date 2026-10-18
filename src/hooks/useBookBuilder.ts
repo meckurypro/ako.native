@@ -1,5 +1,5 @@
 // src/hooks/useBookBuilder.ts
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { supabase } from "../lib/supabase";
 
@@ -108,8 +108,14 @@ export interface BookChapter {
   sort_order: number;
 }
 
-export function useBookChapters(projectId: string | undefined) {
-  return useQuery({
+/**
+ * Shared by useBookChapters and by prefetching (the project page warms this up before "Read" is tapped).
+ * A book's text rarely changes, so a non-empty result stays fresh for 5 minutes (builder edits invalidate the key).
+ * An empty result is never treated as fresh: RLS returns no rows until the viewer has access, so a book that was
+ * prefetched before purchase must refetch the moment the reader opens.
+ */
+export function bookChaptersOptions(projectId: string | undefined) {
+  return queryOptions({
     queryKey: ["book-chapters", projectId],
     queryFn: async (): Promise<BookChapter[]> => {
       const { data, error } = await supabase
@@ -120,8 +126,21 @@ export function useBookChapters(projectId: string | undefined) {
       if (error) throw error;
       return (data ?? []) as BookChapter[];
     },
-    enabled: !!projectId,
+    staleTime: (query) => (query.state.data && query.state.data.length > 0 ? 5 * 60_000 : 0),
   });
+}
+
+export function useBookChapters(projectId: string | undefined) {
+  return useQuery({ ...bookChaptersOptions(projectId), enabled: !!projectId });
+}
+
+/** Warms the chapter text while the project page is open, so tapping "Read" opens the book without a wait. */
+export function usePrefetchBookChapters(projectId: string | undefined, enabled: boolean) {
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    if (!enabled || !projectId) return;
+    void queryClient.prefetchQuery(bookChaptersOptions(projectId));
+  }, [enabled, projectId, queryClient]);
 }
 
 function invalidateBook(queryClient: ReturnType<typeof useQueryClient>, projectId: string) {

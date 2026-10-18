@@ -9,11 +9,13 @@ import { View } from "react-native";
 
 import { BookBuilder } from "@/components/project/book/BookBuilder";
 import { BookLockedView } from "@/components/project/book/BookLockedView";
+import { BookReaderSkeleton } from "@/components/project/book/BookReaderSkeleton";
 import { BookReflowReader } from "@/components/project/book/BookReflowReader";
 import { OfflineUnavailable } from "@/components/project/OfflineUnavailable";
 import { Text } from "@/components/ui/Text";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsOnline } from "@/hooks/useIsOnline";
+import { useLoadingBudget } from "@/hooks/useLoadingBudget";
 import { useSeedOfflineProject } from "@/hooks/useSeedOfflineProject";
 import { useProjectOwnership } from "@/hooks/useProjectOwnership";
 import { useRecordFreeProjectOpen } from "@/hooks/useProjectAccess";
@@ -40,21 +42,22 @@ export function Book() {
   const hasAccess = !privacyBlocked && (isOwner || isFree || !!hasPurchasedQuery.data);
   useRecordFreeProjectOpen(project, { isOwner: isCreator, enabled: !privacyBlocked });
 
-  const { data: chapters } = useBookChapters(projectId);
+  const chaptersQuery = useBookChapters(projectId);
+  const chapters = chaptersQuery.data;
   const purchaseProject = usePurchaseProject();
 
   const ordered = useMemo(() => (chapters ?? []).slice().sort((a, b) => a.sort_order - b.sort_order), [chapters]);
 
+  // Both waits are capped (see useLoadingBudget): on a dead-but-"connected" network a query reports loading until the OS
+  // times the request out, and the saved-copy seeding (useSeedOfflineProject) fills the cache after a few seconds.
+  // A buyer's access resolves after the project does; without this a paid book flashes its locked view first.
+  const accessPending = useLoadingBudget(!isOwner && !isFree && hasPurchasedQuery.isLoading);
+  const chaptersPending = useLoadingBudget(chaptersQuery.isLoading, 8000);
+
   if (!project && !online) return <OfflineUnavailable projectId={projectId} />;
 
   // Wait for the acting identity: until it resolves isOwner is false, which would flash the locked view at the creator.
-  if (!project || ownership.loading) {
-    return (
-      <View className="flex-1 items-center justify-center bg-canvas">
-        <Text className="text-ink-muted">Loading…</Text>
-      </View>
-    );
-  }
+  if (!project || ownership.loading || accessPending) return <BookReaderSkeleton title={project?.title} thumbnailUrl={project?.thumbnail_url} />;
 
   if (!hasAccess) {
     return (
@@ -69,6 +72,9 @@ export function Book() {
       />
     );
   }
+
+  // Don't open the reader on an empty chapter list ("0 sections · about 0 min read"): wait for the text.
+  if (chaptersPending) return <BookReaderSkeleton title={project.title} thumbnailUrl={project.thumbnail_url} />;
 
   return (
     <BookReflowReader

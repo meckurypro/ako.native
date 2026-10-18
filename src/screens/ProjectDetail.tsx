@@ -38,6 +38,7 @@ import { TierBadge } from "@/components/ui/TierBadge";
 import { Wordmark } from "@/components/ui/Wordmark";
 import { useAffiliateProgram } from "@/hooks/useAffiliates";
 import { useAuth } from "@/hooks/useAuth";
+import { usePrefetchBookChapters } from "@/hooks/useBookBuilder";
 import { useProjectOwnership } from "@/hooks/useProjectOwnership";
 import { useRecordFreeProjectOpen } from "@/hooks/useProjectAccess";
 import { formatCountdown, useCountdown } from "@/hooks/useCountdown";
@@ -74,6 +75,8 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
   const { data: project, isLoading, refetch: refetchProject } = useProjectDetail(projectId);
   const online = useIsOnline();
   useSeedOfflineProject(projectId);
+  // Warm the book's text while this page is open so "Read" opens without a wait (skipped offline: the saved copy is seeded instead).
+  usePrefetchBookChapters(project?.id, online && !!user && project?.project_type === "book");
   const { data: similar, refetch: refetchSimilar } = useSimilarProjects(user ? project : undefined);
   const { data: eventDetails, refetch: refetchEvent } = useEventDetails(project?.project_type === "event" ? projectId : undefined);
   const { data: meetingDetails, refetch: refetchMeeting } = useMeetingDetails(project?.project_type === "meeting" ? projectId : undefined);

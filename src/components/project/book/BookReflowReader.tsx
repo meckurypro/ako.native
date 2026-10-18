@@ -294,7 +294,18 @@ export function BookReflowReader({ projectId, title, chapters, userId, thumbnail
 
   // ---------- page estimates ----------
   const lineHeight = LINE_HEIGHT[spacing];
-  const plainLengths = useMemo(() => chapters.map((c) => chapterPlainText(c.content).length), [chapters]);
+  // Parsed once per set of chapters. The contents screen used to re-parse and word-count every chapter on every
+  // render (per row, plus the total), and it re-renders each time progress/bookmarks/reviews resolve.
+  const chapterStats = useMemo(
+    () =>
+      chapters.map((c) => {
+        const text = chapterPlainText(c.content);
+        return { length: text.length, minutes: readingMinutes(text) };
+      }),
+    [chapters]
+  );
+  const plainLengths = useMemo(() => chapterStats.map((s) => s.length), [chapterStats]);
+  const totalMinutes = useMemo(() => chapterStats.reduce((a, s) => a + s.minutes, 0), [chapterStats]);
   const chapterPages = useMemo(() => {
     const m: PageMetrics = { viewportW: dims.vw, viewportH: dims.vh, fontSize, lineHeight, padX: PAD_X, maxColumn: MAX_COLUMN };
     const est = plainLengths.map((n) => estimatePages(n, m));
@@ -424,7 +435,6 @@ export function BookReflowReader({ projectId, title, chapters, userId, thumbnail
     const pages = plainLengths.map((n) => estimatePages(n, m));
     const savedOverall = savedIndex >= 0 ? locate(pages, savedIndex, progress?.scroll_fraction ?? 0).overall : 0;
     const startChapter = savedIndex >= 0 ? chapters[savedIndex] : chapters[0];
-    const totalMinutes = chapters.reduce((a, c) => a + readingMinutes(chapterPlainText(c.content)), 0);
 
     const openAt = (idx: number) => {
       haptics.selection();
@@ -469,7 +479,7 @@ export function BookReflowReader({ projectId, title, chapters, userId, thumbnail
                     {c.title}
                   </Text>
                 </View>
-                <Text className="text-xs text-ink-muted">{`${readingMinutes(chapterPlainText(c.content))} min`}</Text>
+                <Text className="text-xs text-ink-muted">{`${chapterStats[i]?.minutes ?? 1} min`}</Text>
                 {read ? <Icon as={Check} size={15} className="text-accent" /> : <Icon as={ChevronRight} size={15} className="text-ink-muted" />}
               </Pressable>
             );
