@@ -75,7 +75,7 @@ import {
 } from "@/hooks/usePortfolio";
 import { useUserPostsWithArchived } from "@/hooks/usePosts";
 import { RefreshSkeleton } from "@/components/ui/RefreshSkeleton";
-import { ProfilePageSkeleton, ProjectGridSkeleton } from "@/components/ui/ProfileSkeletons";
+import { PostListSkeleton, ProfilePageSkeleton, ProjectGridSkeleton } from "@/components/ui/ProfileSkeletons";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useIsBlocked, useIsMuted, useRemoveFollower, useToggleBlock, useToggleMute } from "@/hooks/usePrivacy";
 import { useIsFollowedByUser, useIsFollowingAsActiveIdentity, useProfileByUsername, useToggleFollowAsActiveIdentity } from "@/hooks/useProfile";
@@ -113,6 +113,7 @@ type Row =
   | { kind: "grid"; id: string; projects: Project[] }
   | { kind: "minigrid"; id: string; projects: Project[] }
   | { kind: "skeleton"; id: string; projectType?: ProjectType }
+  | { kind: "postskeleton"; id: string }
   | { kind: "gigs"; id: string; gigs: Project[] }
   | { kind: "message"; id: string; text: string };
 
@@ -187,12 +188,16 @@ export function ProfilePage() {
   const isPrivateLocked = !!profile?.is_private && !showOwnerView && !isFollowing;
 
   const accountId = isPrivateLocked ? undefined : profile?.id;
-  const { data: projects, refetch: refetchProjects } = useUserProjects(isPrivateLocked ? "" : profile?.id ?? "", projectsOwnerView);
-  const { data: posts, refetch: refetchPosts } = useUserPostsWithArchived(isPrivateLocked || restricted ? "" : profile?.id ?? "", false);
-  const { data: portfolioCategories, refetch: refetchPortfolio } = usePortfolioCategories(accountId);
+  const { data: projects, isLoading: projectsLoading, refetch: refetchProjects } = useUserProjects(isPrivateLocked ? "" : profile?.id ?? "", projectsOwnerView);
+  const { data: posts, isLoading: postsLoading, isError: postsError, refetch: refetchPosts } = useUserPostsWithArchived(isPrivateLocked || restricted ? "" : profile?.id ?? "", false);
+  const { data: portfolioCategories, isLoading: portfolioLoading, refetch: refetchPortfolio } = usePortfolioCategories(accountId);
   const { data: categorizedProjectIds, refetch: refetchCategorizedIds } = useCategorizedProjectIds(accountId);
-  const { data: typeCategories, refetch: refetchTypeCategories } = useTypePortfolioCategories(accountId);
+  const { data: typeCategories, isLoading: typeCategoriesLoading, refetch: refetchTypeCategories } = useTypePortfolioCategories(accountId);
   const { data: collaboratorMedia, refetch: refetchCollaboratorMedia } = useCollaboratorMediaProjects(accountId);
+
+  // True until the queries that decide which tabs exist (and what the Projects tab holds) have answered — an
+  // empty-state message before then would claim "nothing here" about data that simply hasn't arrived.
+  const tabsLoading = projectsLoading || portfolioLoading || typeCategoriesLoading;
 
   const visibleProjects = projects?.filter((p) => p.status !== "archived");
 
@@ -258,6 +263,7 @@ export function ProfilePage() {
     if (isPrivateLocked) return base;
 
     // Restricted account with no projects → no tab bar, just the empty message.
+    if (tabDefs.length === 0 && tabsLoading) return [...base, { kind: "skeleton", id: "skeleton-tabs" }];
     if (tabDefs.length === 0) {
       return [...base, { kind: "message", id: "no-projects", text: projectsOwnerView ? "No projects yet — publish your first one." : "No projects yet." }];
     }
@@ -266,12 +272,15 @@ export function ProfilePage() {
     const id = activeDef.id;
 
     if (id === "posts") {
-      if (!posts || posts.length === 0) out.push({ kind: "message", id: "no-posts", text: "No posts yet." });
+      if (postsLoading) out.push({ kind: "postskeleton", id: "skeleton-posts" });
+      else if (postsError && (!posts || posts.length === 0)) out.push({ kind: "message", id: "posts-error", text: "Couldn't load posts. Pull down to retry." });
+      else if (!posts || posts.length === 0) out.push({ kind: "message", id: "no-posts", text: "No posts yet." });
       else for (const post of posts as any[]) out.push({ kind: "post", id: post.id, post });
     } else if (id === "media") {
       out.push({ kind: "grid", id: "media", projects: mediaProjects });
     } else if (id === "projects") {
       if (fallbackProjects && fallbackProjects.length > 0) out.push({ kind: "grid", id: "projects", projects: fallbackProjects });
+      else if (projectsLoading) out.push({ kind: "skeleton", id: "skeleton-projects" });
       else out.push({ kind: "message", id: "no-projects", text: projectsOwnerView ? "No projects yet — publish your first one." : "No projects yet." });
     } else if (id.startsWith("type-")) {
       if (typeLoading) return [...out, { kind: "skeleton", id: "skeleton-type", projectType: activeType }];
@@ -288,7 +297,7 @@ export function ProfilePage() {
       }
     }
     return out;
-  }, [isBlocked, isPrivateLocked, tabDefs.length, activeDef?.id, posts, mediaProjects, fallbackProjects, typeProjects, typeLoading, categoryProjects, categoryGigs, categoryLoading, projectsOwnerView]);
+  }, [isBlocked, isPrivateLocked, tabDefs.length, tabsLoading, activeDef?.id, posts, postsLoading, postsError, projectsLoading, mediaProjects, fallbackProjects, typeProjects, typeLoading, categoryProjects, categoryGigs, categoryLoading, projectsOwnerView]);
 
   // ── actions ──
   function startUnfollow() {
@@ -593,6 +602,12 @@ export function ProfilePage() {
         return (
           <View className="px-4 pt-4">
             <ProjectMiniGrid projects={item.projects} />
+          </View>
+        );
+      case "postskeleton":
+        return (
+          <View className="px-5 pt-4">
+            <PostListSkeleton />
           </View>
         );
       case "skeleton":

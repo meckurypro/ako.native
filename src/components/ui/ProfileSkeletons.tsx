@@ -49,3 +49,27 @@ export function ProfilePageSkeleton() {
     </View>
   );
 }
+
+/** Placeholder rows shaped like PostCard (avatar + name line, text lines, media block). */
+export function PostListSkeleton({ count = 3 }: { count?: number }) {
+  return (
+    <View className="gap-6" accessibilityRole="progressbar" accessibilityLabel="Loading posts">
+      {Array.from({ length: count }).map((_, i) => (
+        <View key={i}>
+          <View className="flex-row items-center gap-3">
+            <Skeleton className="h-10 w-10 rounded-full" />
+            <View className="flex-1 gap-2">
+              <Skeleton className="h-3.5 w-1/3 rounded" />
+              <Skeleton className="h-3 w-1/4 rounded" />
+            </View>
+          </View>
+          <View className="mt-3 gap-2">
+            <Skeleton className="h-3.5 w-full rounded" />
+            <Skeleton className="h-3.5 w-3/4 rounded" />
+          </View>
+          {i === 0 ? <Skeleton className="mt-3 aspect-[4/3] w-full rounded-2xl" /> : null}
+        </View>
+      ))}
+    </View>
+  );
+}
