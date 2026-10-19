@@ -73,19 +73,23 @@ export function SchedulePostModal({ onClose, onConfirm }: SchedulePostModalProps
       <Text className="mb-4 font-display text-lg text-ink">Schedule post</Text>
 
       {Platform.OS === "ios" ? (
-        <View className="flex-row items-center justify-between rounded-2xl border border-border bg-canvas px-3 py-2">
-          <DateTimePicker
-            value={value}
-            mode="date"
-            display="compact"
-            themeVariant={resolvedTheme}
-            minimumDate={startOfToday()}
-            onChange={(_e: DateTimePickerEvent, d?: Date) => d && setDatePart(d)}
-          />
-          <DateTimePicker value={value} mode="time" display="compact" themeVariant={resolvedTheme} onChange={(_e: DateTimePickerEvent, d?: Date) => d && setTimePart(d)} />
+        <View className="flex-row items-center gap-3">
+          <View className="min-w-0 flex-1 items-center rounded-2xl border border-border bg-canvas px-2 py-2">
+            <DateTimePicker
+              value={value}
+              mode="date"
+              display="compact"
+              themeVariant={resolvedTheme}
+              minimumDate={startOfToday()}
+              onChange={(_e: DateTimePickerEvent, d?: Date) => d && setDatePart(d)}
+            />
+          </View>
+          <View className="min-w-0 flex-1 items-center rounded-2xl border border-border bg-canvas px-2 py-2">
+            <DateTimePicker value={value} mode="time" display="compact" themeVariant={resolvedTheme} onChange={(_e: DateTimePickerEvent, d?: Date) => d && setTimePart(d)} />
+          </View>
         </View>
       ) : (
-        <View className="flex-row gap-2">
+        <View className="flex-row gap-3">
           <Field label="Date" value={formatDate(value)} onPress={() => openAndroid("date")} />
           <Field label="Time" value={formatTime(value)} onPress={() => openAndroid("time")} />
         </View>
