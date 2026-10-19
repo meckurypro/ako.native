@@ -13,6 +13,7 @@ import {
   Gift,
   Handshake,
   Heart,
+  Lock,
   Megaphone,
   MessageCircle,
   Music2,
@@ -50,6 +51,7 @@ import { useMarkAllPageNotificationsRead, useMarkPageNotificationRead, usePageNo
 import { useActiveIdentity, usePageById } from "@/hooks/usePages";
 import { notificationAction, type NotificationAction } from "@/lib/notificationRoute";
 import { dismissPresentedWhere } from "@/lib/push";
+import { timeAgo } from "@/lib/timeAgo";
 
 const TYPE_CONFIG: Record<string, { icon: LucideIcon; verb: string }> = {
   like: { icon: Heart, verb: "liked your post" },
@@ -78,6 +80,9 @@ const TYPE_CONFIG: Record<string, { icon: LucideIcon; verb: string }> = {
   page_role_declined: { icon: UserX, verb: "declined your team invite" },
   post_tagged: { icon: Tag, verb: "tagged you in a post" },
   project_tagged: { icon: Tag, verb: "tagged you in a project" },
+  // Owner added you to a private project's access list (project_members). target_type "project",
+  // preview_text = project title, so it routes via the generic project case like project_tagged.
+  project_access_granted: { icon: Lock, verb: "gave you access to a private project" },
   collaboration_invite: { icon: Users, verb: "invited you to collaborate" },
   collaboration_accepted: { icon: UserCheck, verb: "accepted your collaboration invite" },
   collaboration_declined: { icon: UserX, verb: "declined your collaboration invite" },
@@ -110,16 +115,6 @@ const NO_ACTOR_TYPES = new Set([
 
 const PROJECT_TARGETABLE_TYPES = new Set(["like", "dislike", "share"]);
 
-function timeAgo(dateString: string): string {
-  const seconds = Math.floor((Date.now() - new Date(dateString).getTime()) / 1000);
-  if (seconds < 60) return "just now";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h`;
-  return `${Math.floor(hours / 24)}d`;
-}
-
 function verbFor(n: NotificationWithActor, verb: string): string {
   return n.target_type === "project" && PROJECT_TARGETABLE_TYPES.has(n.type) ? verb.replace("your post", "your project") : verb;
 }
@@ -134,8 +129,11 @@ const NotificationRow = memo(function NotificationRow({ n, onPress }: { n: Notif
       onPress={() => onPress(n)}
       accessibilityRole="button"
       accessibilityLabel={`${n.actor?.display_name ?? ""} ${verbFor(n, config.verb)}${unread ? ", unread" : ""}`.trim()}
-      className={`flex-row items-start gap-3 border-b border-border py-3.5 ${unread ? "-mx-4 bg-highlight px-4" : ""}`}
+      className={`relative flex-row items-start gap-3 border-b border-border px-4 py-3.5 ${unread ? "bg-highlight/50 active:bg-highlight/70" : "active:bg-accent-soft"}`}
     >
+      {/* Full-bleed row with its own padding (list has none), so the unread tint always runs edge to edge.
+          Unread is also marked by this leading bar, the dot and a semibold name - never colour alone. */}
+      {unread && <View pointerEvents="none" className="absolute inset-y-0 left-0 w-[3px] bg-accent" />}
       {showActor ? (
         <Pressable onPress={() => router.push(`/profile/${n.actor!.username}` as Href)} accessibilityRole="link" accessibilityLabel={`${n.actor!.display_name}'s profile`} className="shrink-0">
           <Avatar src={n.actor!.avatar_url} name={n.actor!.display_name} size="sm" />
@@ -148,7 +146,7 @@ const NotificationRow = memo(function NotificationRow({ n, onPress }: { n: Notif
 
       <View className="min-w-0 flex-1">
         <View className="flex-row flex-wrap items-center">
-          {showActor && <Text className="mr-1 text-sm font-medium text-ink">{n.actor!.display_name}</Text>}
+          {showActor && <Text className={`mr-1 text-sm text-ink ${unread ? "font-semibold" : "font-medium"}`}>{n.actor!.display_name}</Text>}
           {n.type === "admin_message" && <AkoMark size={44} />}
           <Text className="text-sm text-ink"> {verbFor(n, config.verb)}</Text>
         </View>
@@ -263,9 +261,9 @@ export function Notifications() {
           scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}
           refreshControl={refreshControl}
-          ListHeaderComponent={<PushPermissionCard />}
-          ListEmptyComponent={refreshing ? <RefreshSkeleton /> : <Text className="py-10 text-center text-sm text-ink-muted">Nothing yet.</Text>}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset }}
+          ListHeaderComponent={<View className="px-4"><PushPermissionCard /></View>}
+          ListEmptyComponent={refreshing ? <View className="px-3"><RefreshSkeleton /></View> : <Text className="px-4 py-10 text-center text-sm text-ink-muted">Nothing yet.</Text>}
+          contentContainerStyle={{ paddingTop: 8, paddingBottom: bottomInset }}
         />
       )}
 
