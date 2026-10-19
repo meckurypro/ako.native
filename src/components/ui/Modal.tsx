@@ -4,7 +4,8 @@
 // (Portal), dims the screen, closes on scrim tap and on Android Back.
 // Pass `bare` when the content brings its own card chrome.
 import type { ReactNode } from "react";
-import { Pressable, ScrollView } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeIn, FadeOut, ZoomIn } from "react-native-reanimated";
 
 import { useBackDismiss } from "@/hooks/useBackDismiss";
@@ -46,10 +47,17 @@ export function Modal({
 }: ModalProps) {
   useBackDismiss(onClose);
 
+  // A bottom-docked modal must clear the system navigation bar (3-button / gesture area). KeyboardAvoider's
+  // animated paddingBottom replaces any static padding class, so the clearance is a spacer instead: inset + 16px
+  // breathing room. The keyboard overlaps the inset, so it is passed as reservedBottom and not counted twice.
+  const insets = useSafeAreaInsets();
+  const docked = align === "bottom";
+
   return (
     <Portal zIndex={zIndex}>
       <KeyboardAvoider
-        className={`flex-1 items-center px-6 ${align === "bottom" ? "justify-end pb-4" : "justify-center"}`}
+        reservedBottom={docked ? insets.bottom : 0}
+        className={`flex-1 items-center px-6 ${docked ? "justify-end" : "justify-center"}`}
         accessibilityViewIsModal
         accessibilityRole={role === "alertdialog" ? "alert" : undefined}
         accessibilityLabel={ariaLabel}
@@ -84,6 +92,7 @@ export function Modal({
             )}
           </Animated.View>
         </Animated.View>
+        {docked ? <View style={{ height: insets.bottom + 16 }} /> : null}
       </KeyboardAvoider>
     </Portal>
   );
