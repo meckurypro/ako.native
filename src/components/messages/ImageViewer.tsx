@@ -15,6 +15,7 @@ import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useToast } from "@/components/ui/Toast";
 import { useBackDismiss } from "@/hooks/useBackDismiss";
+import { useSwipeDownDismiss } from "@/hooks/useSwipeDownDismiss";
 import { useMediaUrl } from "@/hooks/useMediaUrl";
 import type { MediaItem } from "@/lib/chatMedia";
 import { openChatFile } from "@/lib/downloadChatFile";
@@ -134,6 +135,7 @@ export function ImageViewer({ items, initialIndex, title, subtitle, caption, onC
   const [anyZoomed, setAnyZoomed] = useState(false);
   const listRef = useRef<FlatList<MediaItem>>(null);
   useBackDismiss(onClose, true);
+  const { gesture: dismissGesture, contentStyle, backdropStyle } = useSwipeDownDismiss(onClose, !anyZoomed);
 
   const toggleChrome = useCallback(() => setChrome((c) => !c), []);
   const onMomentumEnd = useCallback(
@@ -154,7 +156,9 @@ export function ImageViewer({ items, initialIndex, title, subtitle, caption, onC
 
   return (
     <Portal zIndex={70}>
-      <View className="flex-1 bg-black">
+      <Animated.View style={[{ flex: 1 }, backdropStyle]}>
+        <GestureDetector gesture={dismissGesture}>
+          <Animated.View style={[{ flex: 1 }, contentStyle]}>
         <FlatList
           ref={listRef}
           data={items}
@@ -168,6 +172,8 @@ export function ImageViewer({ items, initialIndex, title, subtitle, caption, onC
           onMomentumScrollEnd={onMomentumEnd}
           renderItem={({ item }) => <ZoomPage item={item} width={width} height={height} onToggleChrome={toggleChrome} onZoomChange={setAnyZoomed} />}
         />
+          </Animated.View>
+        </GestureDetector>
 
         {chrome ? (
           <Animated.View entering={FadeIn.duration(120)} exiting={FadeOut.duration(120)} pointerEvents="box-none" className="absolute inset-0">
@@ -194,7 +200,7 @@ export function ImageViewer({ items, initialIndex, title, subtitle, caption, onC
             ) : null}
           </Animated.View>
         ) : null}
-      </View>
+      </Animated.View>
     </Portal>
   );
 }

@@ -187,7 +187,7 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
   const hasReshared = !!hasResharedQuery.data;
 
   useRecordPostView(post.id, active && visible);
-  const viewCountQuery = usePostViewCount(post.id, showStats);
+  const viewCountQuery = usePostViewCount(post.id, showStats || active);
   const viewCount = viewCountQuery.data ?? 0;
 
   function openPost() {
@@ -483,6 +483,7 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
               <Text style={NO_FONT_PADDING} className="text-xs leading-[18px] text-ink-muted">
                 {timeAgo(post.created_at)}
                 {post.edited_at ? " · edited" : ""}
+                {viewCount > 0 ? ` · ${formatCompactCount(viewCount)} ${viewCount === 1 ? "view" : "views"}` : ""}
               </Text>
               {post.visibility === "public" ? <Icon as={Globe} size={11} className="text-ink-muted" /> : null}
             </View>

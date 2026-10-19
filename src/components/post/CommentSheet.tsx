@@ -17,6 +17,7 @@ import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
+import { usePostViewCount } from "@/hooks/usePosts";
 import { useCommentAncestors, useCommentReplies, useRootComments, type CommentWithAuthor } from "@/hooks/useComments";
 import { useMyCommentReactions, useToggleCommentReaction, type CommentCountDeltas, type CommentReactionState } from "@/hooks/useReactions";
 import { useReportReasons, useSubmitReport } from "@/hooks/useReports";
@@ -368,6 +369,11 @@ export function CommentSheet({
   const toggleReaction = useToggleCommentReaction(postId, knownIds.length);
 
   const totalCount = commentCount ?? rootList.length;
+  const viewCount = usePostViewCount(postId).data ?? 0;
+  const titleSuffix =
+    [totalCount > 0 ? formatCompactCount(totalCount) : null, viewCount > 0 ? `${formatCompactCount(viewCount)} ${viewCount === 1 ? "view" : "views"}` : null]
+      .filter(Boolean)
+      .join(" · ") || undefined;
 
   async function handleShare(comment: CommentWithAuthor) {
     const url = `${APP_URL}/post/${postId}#comment-${comment.id}`;
@@ -408,7 +414,7 @@ export function CommentSheet({
     <>
       <SheetFrame
         title="Comments"
-        titleSuffix={totalCount > 0 ? formatCompactCount(totalCount) : undefined}
+        titleSuffix={titleSuffix}
         onClose={onClose}
         zIndex={50}
         scrim="canvasLight"

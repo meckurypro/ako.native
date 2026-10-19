@@ -529,6 +529,35 @@ export function useHasReshared(postId: string, enabled: boolean = true) {
   });
 }
 
+// Feed cards each ask for their own view count; coalesce those asks (same tick
+// window) into one get_post_view_counts round trip instead of one RPC per card.
+type ViewCountWaiter = { resolve: (n: number) => void; reject: (e: unknown) => void };
+const viewCountQueue = new Map<string, ViewCountWaiter[]>();
+let viewCountTimer: ReturnType<typeof setTimeout> | null = null;
+
+async function flushViewCounts() {
+  viewCountTimer = null;
+  const batch = new Map(viewCountQueue);
+  viewCountQueue.clear();
+  const { data, error } = await supabase.rpc("get_post_view_counts", { p_post_ids: [...batch.keys()] });
+  if (error) {
+    batch.forEach((ws) => ws.forEach((w) => w.reject(error)));
+    return;
+  }
+  const counts = new Map(((data as { post_id: string; views: number }[] | null) ?? []).map((r) => [r.post_id, r.views]));
+  batch.forEach((ws, id) => ws.forEach((w) => w.resolve(counts.get(id) ?? 0)));
+}
+
+function fetchViewCount(postId: string): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const waiter = { resolve, reject };
+    const existing = viewCountQueue.get(postId);
+    if (existing) existing.push(waiter);
+    else viewCountQueue.set(postId, [waiter]);
+    if (!viewCountTimer) viewCountTimer = setTimeout(flushViewCounts, 25);
+  });
+}
+
 /** Total distinct viewers of a post, from the same post_views rows
  * useMarkPostSeen writes to (one row per user, author's own views excluded
  * at write-time). Only fetched when `enabled` — call sites pass their
@@ -540,9 +569,7 @@ export function usePostViewCount(postId: string, enabled: boolean = true) {
       // post_views is own-rows-only under RLS, so a client-side count only
       // ever saw the caller's row. The RPC counts unique viewers across
       // post_views, feed impressions and reactions (author excluded).
-      const { data, error } = await supabase.rpc("get_post_view_count", { p_post_id: postId });
-      if (error) throw error;
-      return (data as number | null) ?? 0;
+      return fetchViewCount(postId);
     },
     enabled: !!postId && enabled,
     staleTime: 60 * 1000,

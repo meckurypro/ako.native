@@ -1,31 +1,26 @@
 // src/components/post/MediaViewer.tsx
 // Full-screen media viewer: swipe between items, pinch / double-tap to zoom
 // images, drag down to dismiss (the backdrop fades and the media shrinks as you
-// drag). Android Back closes it. Paging is a native paging ScrollView; the zoom
+// drag, or flick). Android Back and the X button close it. Paging is a native paging ScrollView; the zoom
 // and dismiss gestures are Gesture Handler + Reanimated so they run on the UI
 // thread.
 import { useVideoPlayer, VideoView } from "expo-video";
+import { X } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ScrollView, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { Pressable, ScrollView, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import Animated, {
-  Easing,
-  interpolate,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from "react-native-reanimated";
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
 
 import { Portal } from "@/components/ui/Portal";
-import { Image } from "@/components/ui/styled";
+import { Icon, Image } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useBackDismiss } from "@/hooks/useBackDismiss";
+import { useSwipeDownDismiss } from "@/hooks/useSwipeDownDismiss";
 import { isVideoUrl } from "@/hooks/useUploadPostMedia";
 import { fadeInAndPlay, fadeOutAndPause } from "@/lib/mediaFade";
 
-const DISMISS_THRESHOLD = 120;
 const MIN_SCALE = 1;
 const ZOOM_SCALE = 2.5;
 const MAX_SCALE = 4;
@@ -49,18 +44,15 @@ interface ZoomableImageProps {
   /** True while this slide is the visible one — zoom resets when it isn't. */
   active: boolean;
   onZoomChange: (zoomed: boolean) => void;
-  onDismissProgress: (progress: number) => void;
-  onDismiss: () => void;
 }
 
-function ZoomableImage({ url, width, height, active, onZoomChange, onDismissProgress, onDismiss }: ZoomableImageProps) {
+function ZoomableImage({ url, width, height, active, onZoomChange }: ZoomableImageProps) {
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
   const tx = useSharedValue(0);
   const ty = useSharedValue(0);
   const savedTx = useSharedValue(0);
   const savedTy = useSharedValue(0);
-  const dismissY = useSharedValue(0);
   const [zoomed, setZoomed] = useState(false);
 
   const reportZoom = useCallback(
@@ -118,24 +110,6 @@ function ZoomableImage({ url, width, height, active, onZoomChange, onDismissProg
         savedTy.value = ty.value;
       });
 
-    // Un-zoomed: a vertical drag dismisses. Horizontal drags are left to the pager.
-    const dismissPan = Gesture.Pan()
-      .enabled(!zoomed)
-      .activeOffsetY([-12, 12])
-      .failOffsetX([-12, 12])
-      .onUpdate((e) => {
-        dismissY.value = Math.max(0, e.translationY);
-        scheduleOnRN(onDismissProgress, Math.min(1, dismissY.value / DISMISS_THRESHOLD));
-      })
-      .onEnd(() => {
-        if (dismissY.value > DISMISS_THRESHOLD) {
-          scheduleOnRN(onDismiss);
-        } else {
-          dismissY.value = withTiming(0, { duration: 200 });
-          scheduleOnRN(onDismissProgress, 0);
-        }
-      });
-
     const doubleTap = Gesture.Tap()
       .numberOfTaps(2)
       .maxDistance(40)
@@ -155,20 +129,12 @@ function ZoomableImage({ url, width, height, active, onZoomChange, onDismissProg
         }
       });
 
-    return Gesture.Exclusive(doubleTap, Gesture.Simultaneous(pinch, zoomPan, dismissPan));
-  }, [zoomed, width, height, scale, savedScale, tx, ty, savedTx, savedTy, dismissY, reportZoom, onDismiss, onDismissProgress]);
+    return Gesture.Exclusive(doubleTap, Gesture.Simultaneous(pinch, zoomPan));
+  }, [zoomed, width, height, scale, savedScale, tx, ty, savedTx, savedTy, reportZoom]);
 
-  const style = useAnimatedStyle(() => {
-    const dismissProgress = Math.min(1, dismissY.value / DISMISS_THRESHOLD);
-    return {
-      transform: [
-        { translateY: dismissY.value },
-        { translateX: tx.value },
-        { translateY: ty.value },
-        { scale: scale.value * (1 - dismissProgress * 0.1) },
-      ],
-    };
-  });
+  const style = useAnimatedStyle(() => ({
+    transform: [{ translateX: tx.value }, { translateY: ty.value }, { scale: scale.value }],
+  }));
 
   return (
     <GestureDetector gesture={gesture}>
@@ -196,9 +162,9 @@ export function MediaViewer({ mediaUrls, startIndex, onClose }: MediaViewerProps
   const [index, setIndex] = useState(startIndex);
   const [zoomed, setZoomed] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
-  const backdrop = useSharedValue(1);
-
   useBackDismiss(onClose);
+  // Drag down to close; off while an image is zoomed (a drag pans it then).
+  const { gesture: dismissGesture, contentStyle, backdropStyle } = useSwipeDownDismiss(onClose, !zoomed);
 
   // Open on the tapped slide without an animated scroll from the first one.
   useEffect(() => {
@@ -210,50 +176,45 @@ export function MediaViewer({ mediaUrls, startIndex, onClose }: MediaViewerProps
     setIndex(Math.round(e.nativeEvent.contentOffset.x / width));
   }
 
-  const handleDismissProgress = useCallback(
-    (p: number) => {
-      backdrop.value = 1 - p * 0.85;
-    },
-    [backdrop]
-  );
-
-  const backdropStyle = useAnimatedStyle(() => ({
-    backgroundColor: `rgba(0,0,0,${interpolate(backdrop.value, [0, 1], [0, 1])})`,
-  }));
-
   return (
     <Portal zIndex={80}>
       <Animated.View style={[{ flex: 1 }, backdropStyle]}>
-        <ScrollView
-          ref={scrollRef}
-          horizontal
-          pagingEnabled
-          scrollEnabled={!zoomed}
-          showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={onMomentumEnd}
-          decelerationRate="fast"
-          style={{ flex: 1 }}
+        <GestureDetector gesture={dismissGesture}>
+          <Animated.View style={[{ flex: 1 }, contentStyle]}>
+            <ScrollView
+              ref={scrollRef}
+              horizontal
+              pagingEnabled
+              scrollEnabled={!zoomed}
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={onMomentumEnd}
+              decelerationRate="fast"
+              style={{ flex: 1 }}
+            >
+              {mediaUrls.map((url, i) =>
+                isVideoUrl(url) ? (
+                  <ViewerVideo key={`${url}-${i}`} url={url} width={width} height={height} active={i === index} />
+                ) : (
+                  <ZoomableImage key={`${url}-${i}`} url={url} width={width} height={height} active={i === index} onZoomChange={setZoomed} />
+                )
+              )}
+            </ScrollView>
+          </Animated.View>
+        </GestureDetector>
+
+        <Pressable
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel="Close"
+          hitSlop={8}
+          className="absolute left-3 h-10 w-10 items-center justify-center rounded-full bg-black-a55"
+          style={{ top: insets.top + 8 }}
         >
-          {mediaUrls.map((url, i) =>
-            isVideoUrl(url) ? (
-              <ViewerVideo key={`${url}-${i}`} url={url} width={width} height={height} active={i === index} />
-            ) : (
-              <ZoomableImage
-                key={`${url}-${i}`}
-                url={url}
-                width={width}
-                height={height}
-                active={i === index}
-                onZoomChange={setZoomed}
-                onDismissProgress={handleDismissProgress}
-                onDismiss={onClose}
-              />
-            )
-          )}
-        </ScrollView>
+          <Icon as={X} size={20} color="#FFFFFF" />
+        </Pressable>
 
         {mediaUrls.length > 1 ? (
-          <View pointerEvents="none" className="absolute inset-x-0 items-center" style={{ top: insets.top + 16 }}>
+          <View pointerEvents="none" className="absolute inset-x-0 items-center" style={{ top: insets.top + 18 }}>
             <Text className="text-sm text-white-a80">
               {index + 1} / {mediaUrls.length}
             </Text>
