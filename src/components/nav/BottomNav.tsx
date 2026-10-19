@@ -64,12 +64,12 @@ const BADGE_TEXT = "#FFFFFF";
 export const FAB_SIZE = 56;
 export const FAB_GAP = 16;
 
-/** Solid chat bubble with a "+" knocked out of it; the square top-left corner is the bubble's tail. */
+/** Solid chat bubble with a "+" knocked out of it; the long pointed bottom-left tail is what makes it read as a speech bubble, not a bare "+". */
 function ChatPlusIcon({ size, bubble, knockout }: { size: number; bubble: string; knockout: string }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M2.5 3.5H18a3.5 3.5 0 0 1 3.5 3.5v8a3.5 3.5 0 0 1-3.5 3.5H6A3.5 3.5 0 0 1 2.5 15V3.5Z" fill={bubble} />
-      <Path d="M12 7.5v7M8.5 11h7" stroke={knockout} strokeWidth={1.9} strokeLinecap="round" />
+      <Path d="M6.5 2.5H17.5A4 4 0 0 1 21.5 6.5V12.5A4 4 0 0 1 17.5 16.5H11L3.5 22L2.5 13V6.5A4 4 0 0 1 6.5 2.5Z" fill={bubble} />
+      <Path d="M12 6.2v6.6M8.7 9.5h6.6" stroke={knockout} strokeWidth={1.8} strokeLinecap="round" />
     </Svg>
   );
 }
@@ -160,7 +160,7 @@ export function BottomNav() {
             elevation: 6,
           })}
         >
-          <ChatPlusIcon size={26} bubble={resolvedTheme === "dark" ? colors.accent : colors.canvas} knockout={resolvedTheme === "dark" ? colors.ink : colors.accent} />
+          <ChatPlusIcon size={30} bubble={resolvedTheme === "dark" ? colors.accent : colors.canvas} knockout={resolvedTheme === "dark" ? colors.ink : colors.accent} />
           {unreadCount > 0 ? (
             // Straddles the tile's top-right corner. The ring is the page colour, so it reads as cut out of the
             // button instead of a flat red dot stuck on it.

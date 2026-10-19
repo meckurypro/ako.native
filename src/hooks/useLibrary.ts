@@ -2,6 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "./useAuth";
+import { fetchRemovedProjectIds } from "./useLibraryRemovals";
 import type { ProjectType } from "./useProjects";
 
 // The reference/content half of "things I have access to" — the other
@@ -104,7 +105,12 @@ export function useLibrary() {
         });
       }
 
-      return Array.from(byProject.values()).sort(
+      // Anything the person chose to remove from their Library stays hidden (access itself is unchanged).
+      const removed = await fetchRemovedProjectIds(user!.id);
+
+      return Array.from(byProject.values())
+        .filter((i) => !removed.has(i.projectId))
+        .sort(
         (a, b) => new Date(b.acquiredAt).getTime() - new Date(a.acquiredAt).getTime()
       );
     },

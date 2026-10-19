@@ -3,17 +3,24 @@
 // "Events & meetings" / "Affiliates" Activity rows and the Messages tab
 // (messages now sit behind the floating chat button).
 import { router, type Href } from "expo-router";
-import { CalendarClock, Image as ImageIcon, TrendingUp, Users } from "lucide-react-native";
+import { CalendarClock, Image as ImageIcon, MoreHorizontal, TrendingUp, Users, X } from "lucide-react-native";
+import { useRef, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 
 import { EmptyNotice } from "@/components/activity/EmptyNotice";
 import { ThumbRow } from "@/components/activity/ThumbRow";
 import { useBottomNavInset } from "@/components/nav/BottomNav";
 import { useChromeScroll } from "@/components/nav/ChromeProvider";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { DropdownMenu } from "@/components/ui/DropdownMenu";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
+import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
+import { useToast } from "@/components/ui/Toast";
 import { useActivity, type ActivityItem } from "@/hooks/useActivity";
 import { useMyAffiliateRelationships } from "@/hooks/useAffiliates";
+import { useIsOnline } from "@/hooks/useIsOnline";
+import { useRemoveFromLibrary } from "@/hooks/useLibraryRemovals";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useTabState } from "@/hooks/useTabState";
 import { haptics } from "@/lib/haptics";
@@ -40,14 +47,63 @@ const EMPTY_COPY: Record<ConnectTab, string> = {
 };
 
 function ActivityRow({ item }: { item: ActivityItem }) {
+  const toast = useToast();
+  const online = useIsOnline();
+  const removeFromConnect = useRemoveFromLibrary();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const menuRef = useRef<View>(null);
+
+  async function removeNow() {
+    if (!online) {
+      toast("Connect to the internet to remove this.", { variant: "error" });
+      return;
+    }
+    try {
+      await removeFromConnect.mutateAsync(item.projectId);
+      toast("Removed from Connect");
+    } catch {
+      toast("Couldn't remove it. Try again.", { variant: "error" });
+    }
+  }
+
   return (
+    <View>
     <ThumbRow
       onPress={() => router.push(ROUTE_FOR[item.kind](item) as Href)}
       thumbnailUrl={item.thumbnailUrl}
       fallbackIcon={ImageIcon}
       title={item.projectTitle}
       subtitle={`${LABEL_FOR[item.kind]}${item.when ? ` · ${new Date(item.when).toLocaleString()}` : " · Date TBA"}`}
+      trailing={
+        <Pressable ref={menuRef} onPress={() => setMenuOpen(true)} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Options for ${item.projectTitle}`} className="p-1">
+          <Icon as={MoreHorizontal} size={20} className="text-ink-muted" />
+        </Pressable>
+      }
     />
+    {menuOpen ? (
+      <DropdownMenu
+        anchorRef={menuRef}
+        onClose={() => setMenuOpen(false)}
+        width={224}
+        items={[{ key: "remove", label: "Remove from Connect", icon: <Icon as={X} size={22} className="text-overlay-ink" />, onSelect: () => setConfirming(true) }]}
+      />
+    ) : null}
+    {confirming ? (
+      <ConfirmDialog
+        themed
+        danger={false}
+        title="Remove from Connect?"
+        description="This only takes it off this list. Your access doesn't change."
+        confirmLabel="Remove"
+        onConfirm={() => {
+          setConfirming(false);
+          void removeNow();
+        }}
+        onCancel={() => setConfirming(false)}
+      />
+    ) : null}
+    </View>
   );
 }
 

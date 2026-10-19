@@ -2,6 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "./useAuth";
+import { fetchRemovedProjectIds } from "./useLibraryRemovals";
 
 // One "thing you can go check on" entry — an event you have a ticket
 // for, a meeting you bought access to, or a room meeting for a room
@@ -78,7 +79,9 @@ export function useActivity() {
         });
       }
 
-      return items.sort((a, b) => {
+      // Anything the person chose to remove from Connect stays hidden (access itself is unchanged).
+      const removed = await fetchRemovedProjectIds(user!.id);
+      return items.filter((i) => !removed.has(i.projectId)).sort((a, b) => {
         if (!a.when) return 1;
         if (!b.when) return -1;
         return new Date(a.when).getTime() - new Date(b.when).getTime();

@@ -19,6 +19,7 @@ import {
   RefreshCw,
   Trash2,
   WifiOff,
+  X,
   type LucideIcon,
 } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -37,6 +38,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsOnline } from "@/hooks/useIsOnline";
 import { libraryItemRoute, type LibraryItem, type LibraryItemType } from "@/hooks/useLibrary";
+import { useRemoveFromLibrary } from "@/hooks/useLibraryRemovals";
 import { useLibraryWithDownloads, useOpenOfflineProject } from "@/hooks/useOfflineProjects";
 import { useTabState } from "@/hooks/useTabState";
 import { haptics } from "@/lib/haptics";
@@ -75,6 +77,9 @@ function LibraryRow({ item, saved, updateAvailable, highlighted, onLayoutY }: Li
   const download = useDownloadState(item.projectId);
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const [confirmRemoveFromLibrary, setConfirmRemoveFromLibrary] = useState(false);
+  const online = useIsOnline();
+  const removeFromLibrary = useRemoveFromLibrary();
   const menuRef = useRef<View>(null);
 
   const unavailable = item.status === "archived";
@@ -97,8 +102,27 @@ function LibraryRow({ item, saved, updateAvailable, highlighted, onLayoutY }: Li
     ...(updateAvailable && !updating
       ? [{ key: "update", label: "Update download", icon: <Icon as={RefreshCw} size={22} className="text-overlay-ink" />, onSelect: () => void update() } satisfies DropdownMenuItem]
       : []),
-    { key: "remove", label: "Remove download", icon: <Icon as={Trash2} size={22} className="text-overlay-ink" />, onSelect: () => setConfirmRemove(true) },
+    ...(saved
+      ? [{ key: "remove", label: "Remove download", icon: <Icon as={Trash2} size={22} className="text-overlay-ink" />, onSelect: () => setConfirmRemove(true) } satisfies DropdownMenuItem]
+      : []),
+    { key: "remove-library", label: "Remove from library", icon: <Icon as={X} size={22} className="text-overlay-ink" />, onSelect: () => setConfirmRemoveFromLibrary(true) },
   ];
+
+  async function removeFromLibraryNow() {
+    // Needs a connection: the removal is stored on the server so it holds on every device.
+    if (!online) {
+      toast("Connect to the internet to remove this from your library.", { variant: "error" });
+      return;
+    }
+    try {
+      // A downloaded copy would otherwise keep the project listed (the device's own record is merged into this list).
+      if (user && saved) await removeOfflineProject(user.id, item.projectId);
+      await removeFromLibrary.mutateAsync(item.projectId);
+      toast("Removed from library");
+    } catch {
+      toast("Couldn't remove it. Try again.", { variant: "error" });
+    }
+  }
 
   const parts = [
     LABEL_FOR[item.projectType],
@@ -119,24 +143,36 @@ function LibraryRow({ item, saved, updateAvailable, highlighted, onLayoutY }: Li
         subtitleIcon={ICON_FOR[item.projectType]}
         subtitle={parts.join(" · ")}
         trailing={
-          saved ? (
-            <View className="flex-row items-center gap-1">
-              <Icon as={CircleCheck} size={16} className="text-accent" />
-              <Pressable
-                ref={menuRef}
-                onPress={() => setMenuOpen(true)}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel={`Download options for ${item.title}`}
-                className="p-1"
-              >
-                <Icon as={MoreHorizontal} size={20} className="text-ink-muted" />
-              </Pressable>
-            </View>
-          ) : undefined
+          <View className="flex-row items-center gap-1">
+            {saved ? <Icon as={CircleCheck} size={16} className="text-accent" /> : null}
+            <Pressable
+              ref={menuRef}
+              onPress={() => setMenuOpen(true)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={`Options for ${item.title}`}
+              className="p-1"
+            >
+              <Icon as={MoreHorizontal} size={20} className="text-ink-muted" />
+            </Pressable>
+          </View>
         }
       />
       {menuOpen ? <DropdownMenu anchorRef={menuRef} onClose={() => setMenuOpen(false)} width={224} items={menuItems} /> : null}
+      {confirmRemoveFromLibrary ? (
+        <ConfirmDialog
+          themed
+          title="Remove from library?"
+          description={saved ? "This takes it off your library and deletes the copy saved on this device. Your access doesn't change." : "This only takes it off this list. Your access doesn't change."}
+          confirmLabel="Remove"
+          danger={false}
+          onConfirm={() => {
+            setConfirmRemoveFromLibrary(false);
+            void removeFromLibraryNow();
+          }}
+          onCancel={() => setConfirmRemoveFromLibrary(false)}
+        />
+      ) : null}
       {confirmRemove ? (
         <ConfirmDialog
           title="Remove this download?"
