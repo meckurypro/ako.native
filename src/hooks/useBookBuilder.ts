@@ -106,6 +106,9 @@ export interface BookChapter {
   title: string;
   content: string | null;
   sort_order: number;
+  // True for the locked "Foreword" chapter the database builds from approved forewords. It can be moved but never
+  // edited or deleted here — the writers own its words (see ForewordsSheet).
+  is_foreword_managed?: boolean;
 }
 
 /**

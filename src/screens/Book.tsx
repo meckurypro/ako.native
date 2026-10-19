@@ -8,6 +8,8 @@ import { useMemo } from "react";
 import { View } from "react-native";
 
 import { BookBuilder } from "@/components/project/book/BookBuilder";
+import { ForewordPreviewBar } from "@/components/project/ForewordPreviewBar";
+import { useForewordPreview } from "@/hooks/useForewords";
 import { BookLockedView } from "@/components/project/book/BookLockedView";
 import { OfferNudgeSheet } from "@/components/project/OfferNudgeSheet";
 import { BookReaderSkeleton } from "@/components/project/book/BookReaderSkeleton";
@@ -41,9 +43,14 @@ export function Book() {
   const isFree = !!project && isProjectFree(project);
   const hasPurchasedQuery = useHasPurchased(projectId ?? "");
   const isMemberQuery = useIsProjectMember(projectId ?? "", project?.is_private ?? false);
-  const privacyBlocked = !!project?.is_private && !isOwner && !isMemberQuery.data;
-  const hasAccess = !privacyBlocked && (isOwner || isFree || !!hasPurchasedQuery.data);
-  useRecordFreeProjectOpen(project, { isOwner: isCreator, enabled: !privacyBlocked });
+  // Someone invited to write a foreword may read the book first — a draft, a private or a paid one — while the invite
+  // is open (and after they've written). The database grants the rows; this only decides which screen to show.
+  const foreword = useForewordPreview(projectId);
+  const isPreviewer = foreword.canPreview && !isCreator;
+  const privacyBlocked = !!project?.is_private && !isOwner && !isMemberQuery.data && !isPreviewer;
+  const hasAccess = !privacyBlocked && (isOwner || isFree || !!hasPurchasedQuery.data || isPreviewer);
+  // A preview isn't a reader opening the book, so it stays out of their Library and the access count.
+  useRecordFreeProjectOpen(project, { isOwner: isCreator, enabled: !privacyBlocked && !isPreviewer });
 
   const chaptersQuery = useBookChapters(projectId);
   const chapters = chaptersQuery.data;
@@ -57,7 +64,7 @@ export function Book() {
   // Both waits are capped (see useLoadingBudget): on a dead-but-"connected" network a query reports loading until the OS
   // times the request out, and the saved-copy seeding (useSeedOfflineProject) fills the cache after a few seconds.
   // A buyer's access resolves after the project does; without this a paid book flashes its locked view first.
-  const accessPending = useLoadingBudget(!isOwner && !isFree && hasPurchasedQuery.isLoading);
+  const accessPending = useLoadingBudget(!isOwner && !isFree && (hasPurchasedQuery.isLoading || foreword.isLoading));
   const chaptersPending = useLoadingBudget(chaptersQuery.isLoading, 8000);
 
   if (!project && !online) return <OfflineUnavailable projectId={projectId} />;
@@ -100,14 +107,17 @@ export function Book() {
   if (chaptersPending) return <BookReaderSkeleton title={project.title} thumbnailUrl={project.thumbnail_url} />;
 
   return (
-    <BookReflowReader
-      projectId={project.id}
-      title={project.title}
-      chapters={ordered}
-      userId={user?.id}
-      thumbnailUrl={project.thumbnail_url}
-      shareUrl={getProjectUrl(project)}
-    />
+    <View className="flex-1">
+      <BookReflowReader
+        projectId={project.id}
+        title={project.title}
+        chapters={ordered}
+        userId={user?.id}
+        thumbnailUrl={project.thumbnail_url}
+        shareUrl={getProjectUrl(project)}
+      />
+      <ForewordPreviewBar projectId={project.id} isOwner={isOwner} />
+    </View>
   );
 }
 

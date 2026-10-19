@@ -10,6 +10,7 @@ import {
   Eye,
   FileText,
   Lock,
+  PenLine,
   Pencil,
   PlayCircle,
   Plus,
@@ -24,6 +25,9 @@ import { CourseHero } from "@/components/course/CourseHero";
 import { LessonReader } from "@/components/course/LessonReader";
 import { ResumePrompt } from "@/components/ui/ResumePrompt";
 import { ProgressBar } from "@/components/course/ProgressBar";
+import { ForewordPreviewBar } from "@/components/project/ForewordPreviewBar";
+import { ForewordsSheet } from "@/components/project/ForewordsSheet";
+import { useForewordPreview, useProjectForewords } from "@/hooks/useForewords";
 import { FeedDoorway } from "@/components/project/FeedDoorway";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
@@ -177,13 +181,21 @@ export function Course() {
   const isCreator = !!user && project?.owner_id === user.id;
   const isFree = !!project && isProjectFree(project);
   const hasPurchasedQuery = useHasPurchased(projectId ?? "");
-  const hasAccess = isOwner || isFree || !!hasPurchasedQuery.data;
-  useRecordFreeProjectOpen(project, { isOwner: isCreator });
+  // Someone invited to write a foreword may go through the whole course first, draft or paid (the database grants the
+  // rows while their invite is open, and after they've written). A preview isn't enrollment: no Library entry, no
+  // progress, no resume point.
+  const foreword = useForewordPreview(projectId);
+  const isPreviewer = foreword.canPreview && !isCreator;
+  const hasAccess = isOwner || isFree || !!hasPurchasedQuery.data || isPreviewer;
+  useRecordFreeProjectOpen(project, { isOwner: isCreator, enabled: !isPreviewer });
+  const [showForewords, setShowForewords] = useState(false);
+  const forewordsQuery = useProjectForewords(projectId, isOwner);
+  const forewordsToReview = (forewordsQuery.data ?? []).filter((f) => f.status === "submitted").length;
 
   const { data: modules } = useCourseModules(projectId);
   const progressQuery = useCourseProgress(projectId, user?.id);
   const completedIds = useMemo(() => progressQuery.data ?? new Set<string>(), [progressQuery.data]);
-  const setLessonComplete = useSetLessonComplete(projectId ?? "", user?.id);
+  const setLessonComplete = useSetLessonComplete(projectId ?? "", user?.id, !isPreviewer);
   // Where the learner stopped (lesson + how far down it / into its video), and the offer to go back there.
   const resumeQuery = useCourseResume(projectId, user?.id);
   const saveResume = useSaveCourseResume(projectId ?? "", user?.id);
@@ -227,7 +239,7 @@ export function Course() {
 
   // Offer to pick up where they stopped. Runs once, after access, progress and the saved position have all loaded.
   useEffect(() => {
-    if (offerChecked.current || isOwner || !hasAccess || !user || flatLessons.length === 0) return;
+    if (offerChecked.current || isOwner || isPreviewer || !hasAccess || !user || flatLessons.length === 0) return;
     if (progressQuery.isLoading || resumeQuery.isLoading) return;
     offerChecked.current = true;
     const saved = resumeQuery.data;
@@ -303,7 +315,7 @@ export function Course() {
     setSelectedLessonId(lesson.id);
     setView("lesson");
     // This lesson is now the place to come back to, even if they leave before scrolling.
-    if (hasAccess && user && !isOwner) saveResume.mutate({ lessonId: lesson.id, scrollFraction: 0, mediaSeconds: 0 });
+    if (hasAccess && user && !isOwner && !isPreviewer) saveResume.mutate({ lessonId: lesson.id, scrollFraction: 0, mediaSeconds: 0 });
   }
 
   function continueFromResume() {
@@ -387,10 +399,25 @@ export function Course() {
   }
 
   const modulesList = modules ?? [];
+  // The locked Foreword module sits in front of the course but isn't one of its numbered modules.
+  const moduleNumberOf = (moduleId: string): number | null => {
+    let n = 0;
+    for (const m of modulesList) {
+      if (m.is_foreword_managed) {
+        if (m.id === moduleId) return null;
+        continue;
+      }
+      n += 1;
+      if (m.id === moduleId) return n;
+    }
+    return null;
+  };
   const lessonNumberOf = (lesson: CourseLesson) => {
-    const mi = modulesList.findIndex((m) => m.id === lesson.module_id);
-    const li = mi >= 0 ? modulesList[mi].lessons.findIndex((l) => l.id === lesson.id) : 0;
-    return `${mi + 1}.${li + 1}`;
+    const n = moduleNumberOf(lesson.module_id);
+    if (n === null) return "";
+    const mod = modulesList.find((m) => m.id === lesson.module_id);
+    const li = mod ? mod.lessons.findIndex((l) => l.id === lesson.id) : 0;
+    return `${n}.${li + 1}`;
   };
 
   if (view === "lesson" && selectedLesson && canOpen(selectedLesson)) {
@@ -398,7 +425,7 @@ export function Course() {
     return (
       <LessonReader
         lesson={selectedLesson}
-        moduleNumber={mIdx + 1}
+        moduleNumber={moduleNumberOf(selectedLesson.module_id)}
         moduleTitle={mIdx >= 0 ? modulesList[mIdx].title : ""}
         lessonNumber={lessonNumberOf(selectedLesson)}
         position={selectedIndex + 1}
@@ -418,7 +445,7 @@ export function Course() {
           if (hasAccess) markComplete({ lessonId: selectedLesson.id, completed: true });
         }}
         resumeAt={resumeAt && resumeAt.lessonId === selectedLesson.id ? resumeAt : null}
-        onPosition={hasAccess && user && !isOwner ? (p) => saveResume.mutate(p) : undefined}
+        onPosition={hasAccess && user && !isOwner && !isPreviewer ? (p) => saveResume.mutate(p) : undefined}
       />
     );
   }
@@ -455,6 +482,22 @@ export function Course() {
           </View>
         )}
 
+        {isOwner && isCreator && (
+          <Pressable
+            onPress={() => setShowForewords(true)}
+            accessibilityRole="button"
+            className="mb-4 w-full flex-row items-center justify-center gap-1.5 rounded-xl border border-border py-2.5"
+          >
+            <Icon as={PenLine} size={15} className="text-ink" />
+            <Text className="text-sm font-medium text-ink">Forewords</Text>
+            {forewordsToReview > 0 && (
+              <View className="ml-1 h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5">
+                <Text className="text-[11px] text-canvas">{forewordsToReview}</Text>
+              </View>
+            )}
+          </Pressable>
+        )}
+
         {hasAccess && totalLessons > 0 && (
           <>
             <CourseHero
@@ -462,7 +505,7 @@ export function Course() {
               done={completedCount}
               total={totalLessons}
               minutesLeft={model.minutesLeft}
-              nextTitle={model.next ? `${lessonNumberOf(model.next)}  ${model.next.title}` : null}
+              nextTitle={model.next ? [lessonNumberOf(model.next), model.next.title].filter(Boolean).join("  ") : null}
               onContinue={resume}
             />
             {allComplete && courseDoorway.visible && <FeedDoorway context="course_complete" onEnter={courseDoorway.markEnteredFeed} />}
@@ -534,7 +577,7 @@ export function Course() {
                       <Icon as={collapsed ? ChevronDown : ChevronUp} size={15} className="text-ink-muted" />
                       <View className="min-w-0 flex-1">
                         <Text className="text-[10.5px] font-bold uppercase text-ink-muted" style={{ letterSpacing: 0.9 }}>
-                          Module {moduleIdx + 1}
+                          {m.is_foreword_managed ? "Foreword" : `Module ${moduleNumberOf(m.id)}`}
                         </Text>
                         <Text numberOfLines={2} className="text-[15px] font-semibold text-ink">
                           {m.title}
@@ -566,19 +609,27 @@ export function Course() {
                       >
                         <Icon as={ChevronDown} size={14} className="text-ink-muted" />
                       </Pressable>
-                      <Pressable
-                        onPress={() => {
-                          setEditingModuleId(m.id);
-                          setEditingModuleTitle(m.title);
-                        }}
-                        accessibilityLabel="Rename section"
-                        hitSlop={6}
-                      >
-                        <Icon as={Pencil} size={14} className="text-ink-muted" />
-                      </Pressable>
-                      <Pressable onPress={() => setPendingDelete({ kind: "module", id: m.id, label: m.title })} accessibilityLabel="Delete section" hitSlop={6}>
-                        <Icon as={Trash2} size={14} className="text-danger" />
-                      </Pressable>
+                      {m.is_foreword_managed ? (
+                        <Pressable onPress={() => setShowForewords(true)} accessibilityRole="button" hitSlop={6}>
+                          <Text className="text-xs font-medium text-accent">Manage</Text>
+                        </Pressable>
+                      ) : (
+                        <>
+                          <Pressable
+                            onPress={() => {
+                              setEditingModuleId(m.id);
+                              setEditingModuleTitle(m.title);
+                            }}
+                            accessibilityLabel="Rename section"
+                            hitSlop={6}
+                          >
+                            <Icon as={Pencil} size={14} className="text-ink-muted" />
+                          </Pressable>
+                          <Pressable onPress={() => setPendingDelete({ kind: "module", id: m.id, label: m.title })} accessibilityLabel="Delete section" hitSlop={6}>
+                            <Icon as={Trash2} size={14} className="text-danger" />
+                          </Pressable>
+                        </>
+                      )}
                     </View>
                   )}
                 </View>
@@ -640,12 +691,12 @@ export function Course() {
                           <Pressable onPress={() => selectLesson(l)} disabled={locked} accessibilityRole="button" accessibilityState={{ disabled: locked, selected: isSelected }} className="min-w-0 flex-1 flex-row items-center gap-1.5">
                             <Icon as={l.media_url ? PlayCircle : FileText} size={13} className="text-ink-muted" />
                             <Text numberOfLines={1} className={`shrink text-sm ${locked ? "text-ink-muted" : "text-ink"}`}>
-                              {moduleIdx + 1}.{lessonIdx + 1}  {l.title}
+                              {m.is_foreword_managed ? "" : `${moduleNumberOf(m.id)}.${lessonIdx + 1}  `}{l.title}
                             </Text>
                             <Text className="shrink-0 text-[11px] text-ink-muted">{l.media_url ? "video" : `${readMinutes(l.content)} min`}</Text>
                             {!hasAccess && l.is_free_preview && <Text className="text-[11px] font-medium text-accent">Preview</Text>}
                           </Pressable>
-                          {isOwner && (
+                          {isOwner && !m.is_foreword_managed && (
                             <View className="shrink-0 flex-row items-center gap-2.5 pr-1">
                               <Pressable onPress={() => moveLesson.mutate({ lessons: m.lessons, lessonId: l.id, direction: "up" })} disabled={lessonIdx === 0} accessibilityLabel="Move lesson up" hitSlop={6} className={lessonIdx === 0 ? "opacity-30" : ""}>
                                 <Icon as={ChevronUp} size={13} className="text-ink-muted" />
@@ -674,7 +725,7 @@ export function Course() {
                   </View>
                 )}
 
-                {isOwner && !collapsed &&
+                {isOwner && !collapsed && !m.is_foreword_managed &&
                   (lessonDraftFor === m.id ? (
                     <LessonForm
                       initial={{ title: "", content: "", mediaUrl: "", isFreePreview: m.lessons.length === 0 }}
@@ -756,13 +807,16 @@ export function Course() {
         return (
           <ResumePrompt
             kind="course"
-            where={`lesson ${lessonNumberOf(lesson)}, “${lesson.title}”`}
+            where={lessonNumberOf(lesson) ? `lesson ${lessonNumberOf(lesson)}, “${lesson.title}”` : `“${lesson.title}”`}
             percent={totalLessons > 0 ? ((idx + (resumeOffer.scrollFraction ?? 0)) / totalLessons) * 100 : null}
             onContinue={continueFromResume}
             onStartOver={startCourseOver}
           />
         );
       })()}
+
+      {showForewords && projectId ? <ForewordsSheet projectId={projectId} projectType="course" onClose={() => setShowForewords(false)} /> : null}
+      {projectId ? <ForewordPreviewBar projectId={projectId} isOwner={isOwner} /> : null}
     </KeyboardAvoider>
   );
 }

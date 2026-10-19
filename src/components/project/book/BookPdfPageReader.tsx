@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 
 import { BookLockedView } from "@/components/project/book/BookLockedView";
+import { ForewordPreviewBar } from "@/components/project/ForewordPreviewBar";
 import { OfferNudgeSheet } from "@/components/project/OfferNudgeSheet";
 import { useToast } from "@/components/ui/Toast";
 import { useOfferNudge } from "@/hooks/useOffers";
@@ -28,6 +29,7 @@ import { ResumePrompt } from "@/components/ui/ResumePrompt";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useAuth } from "@/hooks/useAuth";
+import { useForewordPreview } from "@/hooks/useForewords";
 import { bookOcrMessage, useBookOcrJob, useStartBookOcr } from "@/hooks/useBookBuilder";
 import { useBookReaderTheme } from "@/hooks/useBookReaderTheme";
 import { useProjectOwnership } from "@/hooks/useProjectOwnership";
@@ -105,6 +107,10 @@ export function BookPdfPageReader({ projectId }: { projectId: string }) {
   const privacyBlocked = !!project?.is_private && !isOwner && !isMemberQuery.data;
   const hasAccess = !privacyBlocked && (isOwner || isFree || !!hasPurchasedQuery.data);
   useRecordFreeProjectOpen(project, { isOwner: isCreator, enabled: !privacyBlocked });
+  // Someone invited to write a foreword can read authored/extracted-text books (see Book.tsx), but a page-image PDF is
+  // served through a signed link that only buyers and owners get — so for them this reader explains rather than fails.
+  const foreword = useForewordPreview(projectId);
+  const isForewordPreviewer = foreword.canPreview && !isCreator;
 
   // Owner only: turn a scan into reflowable text. Progress is the job row; when it finishes the book gains chapters
   // and BookRead swaps this reader for the reflow reader on its own.
@@ -265,6 +271,19 @@ export function BookPdfPageReader({ projectId }: { projectId: string }) {
     return (
       <View className="flex-1 items-center justify-center bg-canvas">
         <ActivityIndicator />
+      </View>
+    );
+  }
+
+  if (!hasAccess && isForewordPreviewer) {
+    return (
+      <View className="flex-1 items-center justify-center gap-3 bg-canvas px-6" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
+        <Text className="text-center text-ink">This book is a scanned PDF, so it can't be previewed in the app.</Text>
+        <Text className="max-w-xs text-center text-sm text-ink-muted">You can still write your foreword — the project page has the book's description.</Text>
+        <Button size="sm" variant="secondary" onPress={back}>
+          Back
+        </Button>
+        <ForewordPreviewBar projectId={projectId} />
       </View>
     );
   }

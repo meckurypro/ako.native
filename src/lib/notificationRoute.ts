@@ -28,6 +28,7 @@ export type NotificationAction =
   | { kind: "page-response"; pageId: string }
   | { kind: "collab-invite"; target: "post" | "project"; targetId: string }
   | { kind: "music-credit"; catalogueId: string }
+  | { kind: "foreword-invite"; projectId: string }
   | { kind: "none" };
 
 export function notificationAction(n: RoutableNotification): NotificationAction {
@@ -37,6 +38,12 @@ export function notificationAction(n: RoutableNotification): NotificationAction 
     return { kind: "collab-invite", target: n.target_type, targetId: n.target_id };
   }
   if (n.type === "music_credit_request" && n.target_id) return { kind: "music-credit", catalogueId: n.target_id };
+  // A foreword invite needs a real answer (read, decline or write), so it opens the response dialog.
+  if (n.type === "foreword_invite" && n.target_id) return { kind: "foreword-invite", projectId: n.target_id };
+  // Creator-side foreword notices land on the project page with the Forewords panel open, where the decision is made.
+  if ((n.type === "foreword_submitted" || n.type === "foreword_declined") && n.target_id) {
+    return { kind: "route", href: `/projects/${n.target_id}?forewords=1` };
+  }
 
   const href = notificationLink(n);
   return href ? { kind: "route", href } : { kind: "none" };

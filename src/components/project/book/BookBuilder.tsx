@@ -1,7 +1,7 @@
 // src/components/project/book/BookBuilder.tsx
 // Owner's view of an authored book: cover, ordered chapters / front-and-back-matter
 // sections, inline editor, publish.
-import { ChevronDown, ChevronUp, Image as ImageIcon, Pencil, Plus, Trash2 } from "lucide-react-native";
+import { ChevronDown, ChevronUp, Image as ImageIcon, Lock, Pencil, PenLine, Plus, Trash2 } from "lucide-react-native";
 import { useNavigation } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, TextInput, View } from "react-native";
@@ -30,6 +30,8 @@ import { useUploadProjectThumbnail } from "@/hooks/useUploadProjectThumbnail";
 import { haptics } from "@/lib/haptics";
 import { pickSingleImage } from "@/lib/pickImage";
 import { BOOK_COVER_HINT } from "@/lib/bookCover";
+import { ForewordsSheet } from "@/components/project/ForewordsSheet";
+import { useProjectForewords } from "@/hooks/useForewords";
 import { BookChapterEditor } from "./BookChapterEditor";
 import { useTheme } from "@/theme/ThemeProvider";
 
@@ -57,6 +59,10 @@ export function BookBuilder({ projectId, project, chapters, publishBook }: BookB
   const [error, setError] = useState<string | null>(null);
   const [addingSectionPicker, setAddingSectionPicker] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [showForewords, setShowForewords] = useState(false);
+  // Forewords waiting on the creator's decision — surfaced on the button so they aren't missed.
+  const forewordsQuery = useProjectForewords(projectId);
+  const forewordsToReview = (forewordsQuery.data ?? []).filter((f) => f.status === "submitted").length;
   const [leaveAction, setLeaveAction] = useState<unknown>(null);
 
   // Block leaving (header back, Android back, swipe back) while changes are unsaved.
@@ -77,7 +83,8 @@ export function BookBuilder({ projectId, project, chapters, publishBook }: BookB
   }
 
   const usedKinds = new Set(list.map((c) => c.kind));
-  const availableOptionalSections = OPTIONAL_SECTION_ORDER.filter((k) => !usedKinds.has(k));
+  // "Foreword" isn't a section the creator writes: it's invited (see the Forewords button) and built by the database.
+  const availableOptionalSections = OPTIONAL_SECTION_ORDER.filter((k) => k !== "foreword" && !usedKinds.has(k));
   const coverBusy = uploadThumbnail.isPending || updateProject.isPending;
 
   async function handleSave() {
@@ -113,6 +120,7 @@ export function BookBuilder({ projectId, project, chapters, publishBook }: BookB
   }
 
   function handleRemove(chapter: BookChapter) {
+    if (chapter.is_foreword_managed) return;
     if (editingId === chapter.id) setEditingId(null);
     draft.remove(chapter.id);
   }
@@ -239,19 +247,39 @@ export function BookBuilder({ projectId, project, chapters, publishBook }: BookB
                       <Icon as={ChevronDown} size={14} className="text-ink-muted" />
                     </Pressable>
                   </View>
-                  <Pressable onPress={() => setEditingId(chapter.id)} accessibilityRole="button" className="min-w-0 flex-1">
-                    <Text className="text-xs uppercase tracking-wide text-ink-muted">{chapter.kind === "chapter" ? "Chapter" : BOOK_SECTION_INFO[chapter.kind].label}</Text>
-                    <Text numberOfLines={1} className="text-sm font-medium text-ink">
-                      {chapter.title}
-                    </Text>
-                    {!chapter.content?.trim() && <Text className="text-xs text-accent">Empty — tap to write</Text>}
-                  </Pressable>
-                  <Pressable onPress={() => setEditingId(chapter.id)} accessibilityLabel="Edit" hitSlop={8} className="shrink-0">
-                    <Icon as={Pencil} size={16} className="text-ink-muted" />
-                  </Pressable>
-                  <Pressable onPress={() => handleRemove(chapter)} accessibilityLabel="Remove" hitSlop={8} className="shrink-0">
-                    <Icon as={Trash2} size={16} className="text-danger" />
-                  </Pressable>
+                  {chapter.is_foreword_managed ? (
+                    <>
+                      <View className="min-w-0 flex-1">
+                        <Text className="text-xs uppercase tracking-wide text-ink-muted">{BOOK_SECTION_INFO[chapter.kind].label}</Text>
+                        <Text numberOfLines={1} className="text-sm font-medium text-ink">
+                          {chapter.title}
+                        </Text>
+                        <View className="flex-row items-center gap-1">
+                          <Icon as={Lock} size={11} className="text-ink-muted" />
+                          <Text className="text-xs text-ink-muted">Written by the people you invited</Text>
+                        </View>
+                      </View>
+                      <Pressable onPress={() => setShowForewords(true)} accessibilityRole="button" hitSlop={8} className="shrink-0 px-1">
+                        <Text className="text-xs font-medium text-accent">Manage</Text>
+                      </Pressable>
+                    </>
+                  ) : (
+                    <>
+                      <Pressable onPress={() => setEditingId(chapter.id)} accessibilityRole="button" className="min-w-0 flex-1">
+                        <Text className="text-xs uppercase tracking-wide text-ink-muted">{chapter.kind === "chapter" ? "Chapter" : BOOK_SECTION_INFO[chapter.kind].label}</Text>
+                        <Text numberOfLines={1} className="text-sm font-medium text-ink">
+                          {chapter.title}
+                        </Text>
+                        {!chapter.content?.trim() && <Text className="text-xs text-accent">Empty — tap to write</Text>}
+                      </Pressable>
+                      <Pressable onPress={() => setEditingId(chapter.id)} accessibilityLabel="Edit" hitSlop={8} className="shrink-0">
+                        <Icon as={Pencil} size={16} className="text-ink-muted" />
+                      </Pressable>
+                      <Pressable onPress={() => handleRemove(chapter)} accessibilityLabel="Remove" hitSlop={8} className="shrink-0">
+                        <Icon as={Trash2} size={16} className="text-danger" />
+                      </Pressable>
+                    </>
+                  )}
                 </View>
               )}
             </View>
@@ -268,11 +296,25 @@ export function BookBuilder({ projectId, project, chapters, publishBook }: BookB
           <Text className="text-sm font-medium text-accent">Add chapter</Text>
         </Pressable>
 
+        <Pressable
+          onPress={() => setShowForewords(true)}
+          accessibilityRole="button"
+          className="mb-3 w-full flex-row items-center justify-center gap-1.5 rounded-xl border border-border py-3"
+        >
+          <Icon as={PenLine} size={16} className="text-ink" />
+          <Text className="text-sm font-medium text-ink">Forewords</Text>
+          {forewordsToReview > 0 && (
+            <View className="ml-1 h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5">
+              <Text className="text-[11px] text-canvas">{forewordsToReview}</Text>
+            </View>
+          )}
+        </Pressable>
+
         {availableOptionalSections.length > 0 && (
           <View>
             <Pressable onPress={() => setAddingSectionPicker((v) => !v)} accessibilityRole="button" className="w-full flex-row items-center justify-center gap-1.5 rounded-xl py-2.5">
               <Icon as={Plus} size={14} className="text-ink-muted" />
-              <Text className="text-sm font-medium text-ink-muted">Add a section (foreword, epilogue, etc.)</Text>
+              <Text className="text-sm font-medium text-ink-muted">Add a section (epilogue, afterword, etc.)</Text>
             </Pressable>
             {addingSectionPicker && (
               <View className="mt-2 flex-row flex-wrap gap-2">
@@ -286,6 +328,8 @@ export function BookBuilder({ projectId, project, chapters, publishBook }: BookB
           </View>
         )}
       </ScrollView>
+
+      {showForewords && <ForewordsSheet projectId={projectId} projectType="book" onClose={() => setShowForewords(false)} />}
 
       {confirmDiscard && (
         <ConfirmDialog

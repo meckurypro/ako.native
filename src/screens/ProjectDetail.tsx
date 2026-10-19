@@ -23,6 +23,8 @@ import { useBottomNavInset } from "@/components/nav/BottomNav";
 import { useChromeScroll } from "@/components/nav/ChromeProvider";
 import { AffiliateShareSheet } from "@/components/project/AffiliateShareSheet";
 import { EventHighlightsSection } from "@/components/project/EventHighlightsSection";
+import { ForewordInviteModal } from "@/components/project/ForewordInviteModal";
+import { ForewordsSheet } from "@/components/project/ForewordsSheet";
 import { BookReviewsSection } from "@/components/project/book/BookReviewsSection";
 import { GigFaqSection, GigReviewsSection } from "@/components/project/GigSections";
 import { ProjectCard } from "@/components/project/ProjectCard";
@@ -38,6 +40,7 @@ import { TierBadge } from "@/components/ui/TierBadge";
 import { Wordmark } from "@/components/ui/Wordmark";
 import { useAffiliateProgram } from "@/hooks/useAffiliates";
 import { useAuth } from "@/hooks/useAuth";
+import { isForewordSupportedType, isInviteOpen, useMyForeword, useProjectForewords } from "@/hooks/useForewords";
 import { usePrefetchBookChapters } from "@/hooks/useBookBuilder";
 import { useProjectOwnership } from "@/hooks/useProjectOwnership";
 import { useRecordFreeProjectOpen } from "@/hooks/useProjectAccess";
@@ -57,7 +60,7 @@ import { getProjectUrl } from "@/lib/projectLinks";
 import { openExternal } from "@/lib/openExternal";
 
 export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: string } = {}) {
-  const params = useLocalSearchParams<{ projectId?: string }>();
+  const params = useLocalSearchParams<{ projectId?: string; forewords?: string }>();
   const projectId = resolvedProjectId ?? params.projectId;
   const smartBack = useSmartBack();
   const insets = useSafeAreaInsets();
@@ -107,6 +110,15 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
     insets.top + 16
   );
   const [shareSheetOpen, setShareSheetOpen] = useState(false);
+  // Forewords: the creator's panel (also opened by ?forewords=1 from a notification) and the invitee's dialog.
+  const [forewordsOpen, setForewordsOpen] = useState(params.forewords === "1");
+  const [forewordModalOpen, setForewordModalOpen] = useState(false);
+  const forewordsEnabled = !!project && isForewordSupportedType(project.project_type);
+  const canManageForewords = forewordsEnabled && isCreator;
+  const forewordsList = useProjectForewords(project?.id, canManageForewords);
+  const forewordsToReview = (forewordsList.data ?? []).filter((f) => f.status === "submitted").length;
+  const myForewordRow = useMyForeword(forewordsEnabled && !isCreator ? project?.id : undefined).data;
+  const showForewordInvitee = !!myForewordRow && (isInviteOpen(myForewordRow) || myForewordRow.status === "submitted" || myForewordRow.status === "approved");
   const canBecomeAffiliate = !!user && !!project && !isOwner && !!affiliateProgram?.enabled && project.price_usd > 0;
   const shareUrl = project ? getProjectUrl(project) : undefined;
 
@@ -319,6 +331,28 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
               {/* The owner's publish action is a main action, not browsing info: it stays out of the folded details. */}
               {project.project_type === "media" && isOwner ? <PublishMusicButton projectId={project.id} /> : null}
 
+              {canManageForewords ? (
+                <Pressable onPress={() => setForewordsOpen(true)} accessibilityRole="button" className="mb-4 w-full flex-row items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-3">
+                  <Text className="text-sm font-semibold text-ink">Forewords</Text>
+                  {forewordsToReview > 0 ? (
+                    <View className="h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5">
+                      <Text className="text-[11px] text-canvas">{forewordsToReview}</Text>
+                    </View>
+                  ) : null}
+                </Pressable>
+              ) : null}
+              {showForewordInvitee && myForewordRow ? (
+                <Pressable onPress={() => setForewordModalOpen(true)} accessibilityRole="button" className="mb-4 w-full rounded-2xl bg-accent-soft px-4 py-3">
+                  <Text className="text-sm font-medium text-accent">
+                    {isInviteOpen(myForewordRow)
+                      ? "You've been asked to write a foreword — tap to respond"
+                      : myForewordRow.status === "submitted"
+                        ? "Your foreword is awaiting the creator's review"
+                        : "Your foreword is published — tap to edit"}
+                  </Text>
+                </Pressable>
+              ) : null}
+
               {/* Creator byline — opens the creator's profile (or the Page's, if this was posted in page mode).
                   A page-posted project shows the brand/org here; owner_id underneath is still the creating user. */}
               {!isGuest ? (
@@ -360,6 +394,18 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
           )}
         </View>
       </ScrollView>
+
+      {forewordsOpen && project && canManageForewords && (project.project_type === "book" || project.project_type === "course") ? (
+        <ForewordsSheet
+          projectId={project.id}
+          projectType={project.project_type}
+          onClose={() => {
+            setForewordsOpen(false);
+            if (params.forewords) router.setParams({ forewords: undefined });
+          }}
+        />
+      ) : null}
+      {forewordModalOpen && project ? <ForewordInviteModal projectId={project.id} onClose={() => setForewordModalOpen(false)} /> : null}
 
       {shareSheetOpen && project ? (
         <AffiliateShareSheet projectId={project.id} projectTitle={project.title} shareUrl={shareUrl} onClose={() => setShareSheetOpen(false)} />

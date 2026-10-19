@@ -17,6 +17,7 @@ import {
   Megaphone,
   MessageCircle,
   Music2,
+  PenLine,
   Quote,
   Redo2,
   Repeat2,
@@ -39,6 +40,7 @@ import { useBottomNavInset } from "@/components/nav/BottomNav";
 import { useChromeScroll } from "@/components/nav/ChromeProvider";
 import { CollaborationInviteResponseModal, MusicCreditResponseModal, PageInviteResponseModal } from "@/components/notifications/ResponseModals";
 import { PushPermissionCard } from "@/components/notifications/PushPermissionCard";
+import { ForewordInviteModal } from "@/components/project/ForewordInviteModal";
 import { AkoMark } from "@/components/ui/AkoMark";
 import { Avatar } from "@/components/ui/Avatar";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
@@ -97,6 +99,12 @@ const TYPE_CONFIG: Record<string, { icon: LucideIcon; verb: string }> = {
   withdrawal_status: { icon: Banknote, verb: "" },
   gig_created_from_collaboration: { icon: Briefcase, verb: "A Gig was started from your collaboration" },
   music_credit_request: { icon: Music2, verb: "credited you on their song" },
+  // Forewords: a creator asks someone to preview their book/course and write a few opening words. The invite needs an
+  // answer (ForewordInviteModal); the other three are plain notices that open the project.
+  foreword_invite: { icon: PenLine, verb: "asked you to write a foreword" },
+  foreword_submitted: { icon: PenLine, verb: "wrote a foreword for your project" },
+  foreword_approved: { icon: UserCheck, verb: "added your foreword to their project" },
+  foreword_declined: { icon: UserX, verb: "declined to write a foreword" },
 };
 
 /** Types with no person behind them: show the type icon, not an actor avatar. */
@@ -270,6 +278,7 @@ export function Notifications() {
       {dialog?.kind === "page-invite" && <PageInviteResponseModal pageId={dialog.pageId} onClose={closeDialog} />}
       {dialog?.kind === "collab-invite" && <CollaborationInviteResponseModal target={dialog.target} targetId={dialog.targetId} onClose={closeDialog} />}
       {dialog?.kind === "music-credit" && <MusicCreditResponseModal catalogueId={dialog.catalogueId} onClose={closeDialog} />}
+      {dialog?.kind === "foreword-invite" && <ForewordInviteModal projectId={dialog.projectId} onClose={closeDialog} />}
       {dialog?.kind === "page-response" && <PageResponseNavigator pageId={dialog.pageId} onDone={closeDialog} />}
     </View>
   );

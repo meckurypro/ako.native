@@ -21,6 +21,9 @@ export interface CourseModule {
   project_id: string;
   title: string;
   sort_order: number;
+  // True for the locked "Foreword" module the database builds from approved forewords: movable, never editable or
+  // deletable here, and its single lesson is read-only too.
+  is_foreword_managed?: boolean;
   lessons: CourseLesson[];
 }
 
@@ -288,10 +291,13 @@ export function useCourseProgress(projectId: string | undefined, userId: string 
   });
 }
 
-export function useSetLessonComplete(projectId: string, userId: string | undefined) {
+// `record` = false for someone only previewing the course (a foreword invitee): the lesson flow carries on as normal
+// but nothing is written, so a preview never turns into progress or enrollment.
+export function useSetLessonComplete(projectId: string, userId: string | undefined, record = true) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ lessonId, completed }: { lessonId: string; completed: boolean }) => {
+      if (!record) return;
       if (!userId) throw new Error("Sign in to track your progress.");
       if (completed) {
         const { error } = await supabase
