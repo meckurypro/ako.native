@@ -328,7 +328,7 @@ export function useSuggestedPages() {
  * RLS alone would also return private ones, and a private project must never
  * be discoverable.
  */
-export function useSuggestedProjects() {
+export function useSuggestedProjects(enabled = true) {
   return useQuery({
     queryKey: ["suggested-projects"],
     queryFn: async (): Promise<Project[]> => {
@@ -344,5 +344,6 @@ export function useSuggestedProjects() {
       return (data ?? []) as Project[];
     },
     staleTime: 5 * 60 * 1000,
+    enabled,
   });
 }
