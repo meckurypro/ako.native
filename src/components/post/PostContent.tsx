@@ -5,6 +5,7 @@
 import { View } from "react-native";
 
 import { Text } from "@/components/ui/Text";
+import { formatHeading } from "@/lib/headingCase";
 import { getHeadingColorDef } from "@/lib/headingColors";
 import { renderFormattedText } from "@/lib/formatText";
 import type { Palette } from "@/theme/palettes";
@@ -65,7 +66,7 @@ export function PostContent({ heading, headingColor, content }: PostContentProps
   if (heading && !hasBody) {
     return (
       <View>
-        <Paragraphs content={heading} />
+        <Paragraphs content={formatHeading(heading)} />
       </View>
     );
   }
@@ -76,7 +77,7 @@ export function PostContent({ heading, headingColor, content }: PostContentProps
     <View>
       {heading ? (
         <Text className="mb-3 font-simple text-[26px] font-semibold leading-[30px] text-post-header" style={color ? { color } : undefined}>
-          {renderFormattedText(heading, "h")}
+          {renderFormattedText(formatHeading(heading), "h")}
         </Text>
       ) : null}
       {hasBody ? <Paragraphs content={content} /> : null}

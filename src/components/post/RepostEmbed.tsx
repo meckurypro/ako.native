@@ -2,6 +2,7 @@
 // The original post under a QUOTE reshare: a bordered, truncated card with the
 // original author's details. (A plain reshare shows the original inline instead
 // — see PostCard.) Falls back to a notice when the original is deleted/archived.
+import { formatHeading } from "@/lib/headingCase";
 import { router, type Href } from "expo-router";
 import { Pressable, View } from "react-native";
 
@@ -40,7 +41,7 @@ export function RepostEmbed({ source }: { source: RepostSource | null | undefine
         <Text className="shrink-0 text-xs text-ink-muted">{timeAgo(source.created_at)}</Text>
       </View>
 
-      {source.heading ? <Text className="mt-1.5 font-display text-sm font-semibold text-ink">{source.heading}</Text> : null}
+      {source.heading ? <Text className="mt-1.5 font-display text-sm font-semibold text-ink">{formatHeading(source.heading)}</Text> : null}
       {preview ? <Text className="mt-1 text-sm text-ink">{preview}</Text> : null}
 
       {source.media_urls.length === 1 ? (
