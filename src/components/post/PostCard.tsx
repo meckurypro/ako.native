@@ -389,14 +389,14 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
       }}
     >
       {/* Restore / Delete for archived content — the tray below is frozen, so these
-          live on the card itself, top-right above everything else. */}
+          live on the card itself as their own row above the header, so they never overlap the author or content. */}
       {isArchivedFrozen ? (
-        <View className="absolute right-3 top-3 z-10 flex-row items-center gap-2">
+        <View className="mb-3 flex-row items-center justify-end gap-2">
           <Pressable
             onPress={handleToggleArchive}
             accessibilityRole="button"
             accessibilityLabel="Restore"
-            className="flex-row items-center gap-1.5 rounded-full bg-ink-a70 px-3 py-1.5"
+            className="flex-row items-center gap-1.5 rounded-full bg-ink-a70 px-3.5 py-2"
           >
             <Icon as={RotateCcw} size={14} className="text-canvas" />
             <Text className="text-xs font-medium text-canvas">Restore</Text>
@@ -405,7 +405,7 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
             onPress={() => setShowDeleteConfirm(true)}
             accessibilityRole="button"
             accessibilityLabel="Delete"
-            className="flex-row items-center gap-1.5 rounded-full bg-danger-a85 px-3 py-1.5"
+            className="flex-row items-center gap-1.5 rounded-full bg-danger-a85 px-3.5 py-2"
           >
             <Icon as={Trash2} size={14} className="text-canvas" />
             <Text className="text-xs font-medium text-canvas">Delete</Text>
@@ -416,12 +416,12 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
       {/* A plain reshare whose original is gone has an empty, frozen tray — this is
           the owner's only way left to clear it out. */}
       {reshareContentGone && isOwner && !isArchivedFrozen ? (
-        <View className="absolute right-3 top-3 z-10">
+        <View className="mb-3 flex-row items-center justify-end">
           <Pressable
             onPress={() => setShowDeleteConfirm(true)}
             accessibilityRole="button"
             accessibilityLabel="Delete"
-            className="flex-row items-center gap-1.5 rounded-full bg-danger-a85 px-3 py-1.5"
+            className="flex-row items-center gap-1.5 rounded-full bg-danger-a85 px-3.5 py-2"
           >
             <Icon as={Trash2} size={14} className="text-canvas" />
             <Text className="text-xs font-medium text-canvas">Delete</Text>
