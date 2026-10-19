@@ -537,12 +537,12 @@ export function usePostViewCount(postId: string, enabled: boolean = true) {
   return useQuery({
     queryKey: ["post-view-count", postId],
     queryFn: async () => {
-      const { count, error } = await supabase
-        .from("post_views")
-        .select("*", { count: "exact", head: true })
-        .eq("post_id", postId);
+      // post_views is own-rows-only under RLS, so a client-side count only
+      // ever saw the caller's row. The RPC counts unique viewers across
+      // post_views, feed impressions and reactions (author excluded).
+      const { data, error } = await supabase.rpc("get_post_view_count", { p_post_id: postId });
       if (error) throw error;
-      return count ?? 0;
+      return (data as number | null) ?? 0;
     },
     enabled: !!postId && enabled,
     staleTime: 60 * 1000,

@@ -46,6 +46,7 @@ import { useToast } from "@/components/ui/Toast";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import { MusicAttribution } from "@/components/music/MusicAttribution";
 import { useAuth } from "@/hooks/useAuth";
+import { useRecordPostView } from "@/hooks/useRecordPostView";
 import { useIsBookmarked, useToggleBookmark } from "@/hooks/useBookmarks";
 import { useCollaborators } from "@/hooks/useCollaboration";
 import { useEngagementOrder, type SecondaryActionKey } from "@/hooks/useEngagementOrder";
@@ -185,6 +186,7 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
   const hasResharedQuery = useHasReshared(reshareTarget.id, !isOwner && active);
   const hasReshared = !!hasResharedQuery.data;
 
+  useRecordPostView(post.id, active && visible);
   const viewCountQuery = usePostViewCount(post.id, showStats);
   const viewCount = viewCountQuery.data ?? 0;
 
