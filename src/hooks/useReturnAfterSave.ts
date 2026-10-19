@@ -23,16 +23,26 @@ interface ReturnOptions {
    * screen lives at — e.g. a new username turns /profile/old into a dead link.
    */
   replaceWith?: string;
+  /**
+   * Always land on this screen, whatever opened the editor: if it is already in the stack (e.g. the Feed, which is
+   * the stack's root) everything above it is dismissed. For saves whose result lives in a known place - a new post
+   * belongs on the Feed, not on the Notifications screen whose "+" button happened to open Compose.
+   */
+  landOn?: string;
 }
 
 export function useReturnAfterSave() {
   const queryClient = useQueryClient();
 
   return useCallback(
-    async ({ fallback = "/feed", replaceWith }: ReturnOptions = {}) => {
+    async ({ fallback = "/feed", replaceWith, landOn }: ReturnOptions = {}) => {
       // refetchType "none": mark stale only — refetching here would hit every query still mounted on the editor.
       await queryClient.invalidateQueries({ refetchType: "none" });
 
+      if (landOn) {
+        router.dismissTo(landOn as Href);
+        return;
+      }
       if (replaceWith) {
         router.replace(replaceWith as Href);
         return;

@@ -2,7 +2,7 @@
 // Posts queued to publish later: resume in Compose or cancel.
 import { router, type Href } from "expo-router";
 import { FileEdit, Send, X } from "lucide-react-native";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FlatList, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -13,6 +13,7 @@ import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useToast } from "@/components/ui/Toast";
 import { useDeleteDraftOrScheduledPost, useMyScheduledPosts } from "@/hooks/usePosts";
+import { clearJustSaved, peekJustSaved } from "@/lib/justSaved";
 
 function timeUntil(iso: string): string {
   const diffMs = new Date(iso).getTime() - Date.now();
@@ -32,6 +33,24 @@ export function ScheduledPosts() {
   const cancelScheduled = useDeleteDraftOrScheduledPost();
   const [pendingCancel, setPendingCancel] = useState<string | null>(null);
 
+  // The row Compose just added: scroll to it and flag it for a few seconds so the person sees it landed.
+  const [highlightId, setHighlightId] = useState<string | null>(() => peekJustSaved("scheduled"));
+  const listRef = useRef<FlatList>(null);
+  const scrolledRef = useRef(false);
+  useEffect(() => {
+    clearJustSaved();
+    if (!highlightId) return;
+    const t = setTimeout(() => setHighlightId(null), 8000);
+    return () => clearTimeout(t);
+  }, [highlightId]);
+  useEffect(() => {
+    if (!highlightId || scrolledRef.current || !scheduled?.length) return;
+    const index = scheduled.findIndex((p) => p.id === highlightId);
+    if (index < 0) return;
+    scrolledRef.current = true;
+    if (index > 0) setTimeout(() => listRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.15 }), 150);
+  }, [highlightId, scheduled]);
+
   function handleCancel(id: string) {
     cancelScheduled.mutate(id, {
       onSuccess: () => toast("Scheduled post cancelled."),
@@ -48,16 +67,23 @@ export function ScheduledPosts() {
         <EmptyNotice large icon={Send} title="Nothing scheduled" message={'Choose "Schedule…" instead of posting to queue something for later — it\'ll show up here.'} />
       ) : (
         <FlatList
+          ref={listRef}
+          onScrollToIndexFailed={(info) => setTimeout(() => listRef.current?.scrollToIndex({ index: info.index, animated: true }), 300)}
           data={scheduled}
           keyExtractor={(p) => p.id}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: insets.bottom + 24, gap: 12 }}
           renderItem={({ item: post }) => (
-            <View className="rounded-2xl border border-accent-a30 bg-accent-soft-a40 p-4">
+            <View className={`rounded-2xl border p-4 ${post.id === highlightId ? "border-accent bg-accent-soft-a40" : "border-accent-a30 bg-accent-soft-a40"}`}>
               <View className="mb-2 flex-row items-center justify-between">
                 <View className="flex-row items-center gap-1.5">
                   <Icon as={Send} size={12} className="text-accent" />
                   <Text className="text-xs font-medium text-accent">Publishes {post.scheduled_for ? timeUntil(post.scheduled_for) : ""}</Text>
+                  {post.id === highlightId ? (
+                    <View className="ml-1 rounded-full bg-accent px-2 py-0.5">
+                      <Text className="text-[10px] font-semibold uppercase tracking-wide text-canvas">Just scheduled</Text>
+                    </View>
+                  ) : null}
                 </View>
                 <Pressable onPress={() => setPendingCancel(post.id)} accessibilityRole="button" accessibilityLabel="Cancel scheduled post" hitSlop={10}>
                   <Icon as={X} size={16} className="text-ink-muted" />

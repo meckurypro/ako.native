@@ -2,7 +2,7 @@
 // Posts saved as drafts: resume in Compose or discard.
 import { router, type Href } from "expo-router";
 import { FileEdit, Trash2 } from "lucide-react-native";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FlatList, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -13,6 +13,7 @@ import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useToast } from "@/components/ui/Toast";
 import { useDeleteDraftOrScheduledPost, useMyDraftPosts } from "@/hooks/usePosts";
+import { clearJustSaved, peekJustSaved } from "@/lib/justSaved";
 import { RefreshSkeleton } from "@/components/ui/RefreshSkeleton";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 
@@ -23,6 +24,15 @@ export function DraftPosts() {
   const { refreshControl, refreshing } = usePullToRefresh(refetch);
   const deleteDraft = useDeleteDraftOrScheduledPost();
   const [pendingDiscard, setPendingDiscard] = useState<string | null>(null);
+
+  // The draft Compose just saved sits at the top; flag it briefly so the person sees it landed.
+  const [highlightId, setHighlightId] = useState<string | null>(() => peekJustSaved("draft"));
+  useEffect(() => {
+    clearJustSaved();
+    if (!highlightId) return;
+    const t = setTimeout(() => setHighlightId(null), 8000);
+    return () => clearTimeout(t);
+  }, [highlightId]);
 
   function handleDiscard(id: string) {
     deleteDraft.mutate(id, {
@@ -47,11 +57,16 @@ export function DraftPosts() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: insets.bottom + 24, gap: 12 }}
           renderItem={({ item: draft }) => (
-            <View className="rounded-2xl border border-dashed border-border bg-surface p-4">
+            <View className={`rounded-2xl border border-dashed bg-surface p-4 ${draft.id === highlightId ? "border-accent" : "border-border"}`}>
               <View className="mb-2 flex-row items-center gap-2">
                 <View className="rounded-full border border-border bg-canvas px-2 py-0.5">
                   <Text className="text-[11px] font-medium uppercase tracking-wide text-ink-muted">Draft</Text>
                 </View>
+                {draft.id === highlightId ? (
+                  <View className="rounded-full bg-accent px-2 py-0.5">
+                    <Text className="text-[10px] font-semibold uppercase tracking-wide text-canvas">Just saved</Text>
+                  </View>
+                ) : null}
                 {draft.category_id ? <Text className="text-[11px] text-ink-muted">{new Date(draft.created_at).toLocaleDateString()}</Text> : null}
               </View>
               {draft.heading ? (

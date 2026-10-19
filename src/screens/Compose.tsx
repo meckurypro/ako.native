@@ -15,11 +15,10 @@ import { AddMusicSheet } from "@/components/music/AddMusicSheet";
 import { HeadingColorPicker } from "@/components/post/HeadingColorPicker";
 import { MentionTextarea } from "@/components/post/MentionTextarea";
 import { MAX_TOPICS, TopicPicker } from "@/components/post/TopicPicker";
+import { SchedulePostModal } from "@/components/post/SchedulePostModal";
 import { TagProjectPicker } from "@/components/post/TagProjectPicker";
 import { Avatar } from "@/components/ui/Avatar";
-import { DateTimeField } from "@/components/ui/DateTimeField";
 import { DropdownMenu, type DropdownMenuItem } from "@/components/ui/DropdownMenu";
-import { Modal } from "@/components/ui/Modal";
 import { Icon, Image } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { TextLink } from "@/components/ui/TextLink";
@@ -32,6 +31,8 @@ import { useMyProfile } from "@/hooks/useProfile";
 import { useReturnAfterSave } from "@/hooks/useReturnAfterSave";
 import { useSmartBack } from "@/hooks/useSmartBack";
 import { setJustPosted } from "@/lib/justPosted";
+import { setJustSaved } from "@/lib/justSaved";
+import { formatScheduleShort } from "@/lib/schedulePresets";
 import { isVideoUrl, useUploadPostMedia } from "@/hooks/useUploadPostMedia";
 import { fromImagePickerAsset } from "@/lib/localFile";
 import { supabase } from "@/lib/supabase";
@@ -41,7 +42,6 @@ import { useTheme } from "@/theme/ThemeProvider";
 
 const HEADING_LIMIT = 50;
 const MAX_MEDIA_FILES = 4;
-const MIN_SCHEDULE_LEAD_MS = 5 * 60 * 1000;
 
 export function Compose() {
   const { colors } = useTheme();
@@ -78,7 +78,6 @@ export function Compose() {
   const [addMusicOpen, setAddMusicOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
-  const [scheduleValue, setScheduleValue] = useState<Date | null>(null);
   const moreButtonRef = useRef<View>(null);
 
   const createPost = useCreatePost();
@@ -182,20 +181,27 @@ export function Compose() {
       // Resuming a draft/scheduled post: the new row replaces it.
       if (resumedPostIdRef.current) deleteDraftOrScheduled.mutate(resumedPostIdRef.current);
 
+      // Every outcome lands the person where the post now lives, so they see it straight away - never back on
+      // this editor, and never on whichever screen happened to open it (e.g. Notifications' "+" button).
+      const createdId = (createdPost as { id: string }).id;
       if (status === "draft") {
+        setJustSaved("draft", createdId);
         toast("Saved to your drafts.", { variant: "success" });
         router.replace("/activity/drafts" as Href);
       } else if (status === "scheduled") {
-        toast("Scheduled — it'll post automatically.", { variant: "success" });
+        setJustSaved("scheduled", createdId);
+        toast(scheduledFor ? `Scheduled for ${formatScheduleShort(new Date(scheduledFor))}.` : "Scheduled - it'll post automatically.", { variant: "success" });
         router.replace("/activity/scheduled" as Href);
-      } else {
-        // Back to the screen Compose was opened from, refreshed (the create-post hook already refetched
-        // feed / profile / Page lists, so the new post is there as the screen slides back into view). The
-        // hint lets Feed pin this exact post at the top of "For You"; it expires on its own if we land
-        // somewhere other than the Feed. Page-mode posts skip it — a Page's own feed is already newest-first.
-        if (!postingAsPage) setJustPosted((createdPost as { id: string }).id);
+      } else if (postingAsPage) {
+        // A Page's posts live on the Page's own profile (already newest-first).
         toast("Posted.", { variant: "success" });
-        await returnAfterSave({ fallback: postingAsPage ? `/page/${postingAsPage.username}` : "/feed" });
+        router.replace(`/page/${postingAsPage.username}` as Href);
+      } else {
+        // Personal posts live on the Feed. The create-post hook already refetched feed / profile lists, and the
+        // hint lets Feed pin this exact post at the top of "For You" as it comes into view.
+        setJustPosted(createdId);
+        toast("Posted.", { variant: "success" });
+        await returnAfterSave({ landOn: "/feed" });
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Couldn't post this.";
@@ -204,10 +210,9 @@ export function Compose() {
     }
   }
 
-  function handleConfirmSchedule() {
-    if (!scheduleValue) return;
+  function handleConfirmSchedule(when: Date) {
     setScheduleModalOpen(false);
-    void submitPost("scheduled", scheduleValue.toISOString());
+    void submitPost("scheduled", when.toISOString());
   }
 
   const moreMenuItems: DropdownMenuItem[] = [
@@ -441,32 +446,7 @@ export function Compose() {
 
       {moreMenuOpen ? <DropdownMenu anchorRef={moreButtonRef} items={moreMenuItems} onClose={() => setMoreMenuOpen(false)} width={192} /> : null}
 
-      {scheduleModalOpen ? (
-        <Modal onClose={() => setScheduleModalOpen(false)} ariaLabel="Schedule post">
-          <Text className="mb-1 font-display text-lg text-overlay-ink">Schedule this post</Text>
-          <Text className="mb-4 text-sm text-overlay-ink-muted">
-            It'll post automatically at the time you pick — you can find it under Activity → Scheduled until then.
-          </Text>
-          <DateTimeField value={scheduleValue} onChange={setScheduleValue} minimumDate={new Date(Date.now() + MIN_SCHEDULE_LEAD_MS)} />
-          <View className="mt-5 flex-row items-center gap-2">
-            <Pressable
-              onPress={() => setScheduleModalOpen(false)}
-              accessibilityRole="button"
-              className="flex-1 items-center rounded-full bg-overlay-surface-raised py-2.5"
-            >
-              <Text className="text-sm font-medium text-overlay-ink">Cancel</Text>
-            </Pressable>
-            <Pressable
-              onPress={handleConfirmSchedule}
-              disabled={!scheduleValue}
-              accessibilityRole="button"
-              className={`flex-1 items-center rounded-full bg-overlay-accent py-2.5 ${scheduleValue ? "" : "opacity-50"}`}
-            >
-              <Text className="text-sm font-medium text-overlay-surface">Schedule</Text>
-            </Pressable>
-          </View>
-        </Modal>
-      ) : null}
+      {scheduleModalOpen ? <SchedulePostModal onClose={() => setScheduleModalOpen(false)} onConfirm={handleConfirmSchedule} /> : null}
     </KeyboardAvoider>
   );
 }
