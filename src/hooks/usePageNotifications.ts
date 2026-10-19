@@ -71,6 +71,24 @@ export function usePageUnreadCount(pageId: string | undefined) {
   return data?.filter((n) => !n.read_at).length ?? 0;
 }
 
+// Marks rows read in the cached list straight away (before the network round trip) so a tap is reflected
+// instantly. Rolled back if the write fails; always reconciled afterwards.
+type ReadableRow = { id: string; read_at: string | null };
+
+async function optimisticallyMarkRead(
+  queryClient: ReturnType<typeof useQueryClient>,
+  key: readonly unknown[],
+  ids: string[] | "all"
+) {
+  await queryClient.cancelQueries({ queryKey: key });
+  const previous = queryClient.getQueryData<ReadableRow[]>(key);
+  const now = new Date().toISOString();
+  queryClient.setQueryData<ReadableRow[]>(key, (old) =>
+    old?.map((n) => (!n.read_at && (ids === "all" || ids.includes(n.id)) ? { ...n, read_at: now } : n))
+  );
+  return { previous, key };
+}
+
 export function useMarkPageNotificationRead(pageId: string | undefined) {
   const queryClient = useQueryClient();
 
@@ -79,10 +97,15 @@ export function useMarkPageNotificationRead(pageId: string | undefined) {
       const { error } = await supabase
         .from("page_notifications")
         .update({ read_at: new Date().toISOString() })
-        .eq("id", notificationId);
+        .eq("id", notificationId)
+        .is("read_at", null);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onMutate: (notificationId) => optimisticallyMarkRead(queryClient, ["page-notifications", pageId], [notificationId]),
+    onError: (_err, _id, ctx) => {
+      if (ctx) queryClient.setQueryData(ctx.key, ctx.previous);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["page-notifications", pageId] });
     },
   });
@@ -101,7 +124,11 @@ export function useMarkAllPageNotificationsRead(pageId: string | undefined) {
         .is("read_at", null);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onMutate: () => optimisticallyMarkRead(queryClient, ["page-notifications", pageId], "all"),
+    onError: (_err, _vars, ctx) => {
+      if (ctx) queryClient.setQueryData(ctx.key, ctx.previous);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["page-notifications", pageId] });
     },
   });

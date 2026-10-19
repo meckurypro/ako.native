@@ -156,18 +156,43 @@ export function useUnreadCount() {
   return notifications?.filter((n) => !n.read_at).length ?? 0;
 }
 
+// Marks rows read in the cached list straight away (before the network round trip), so a tap is reflected
+// instantly and the unread badge drops with it. Rolled back if the write fails; always reconciled afterwards.
+type ReadableRow = { id: string; read_at: string | null };
+
+async function optimisticallyMarkRead<T extends ReadableRow>(
+  queryClient: ReturnType<typeof useQueryClient>,
+  key: readonly unknown[],
+  ids: string[] | "all"
+) {
+  await queryClient.cancelQueries({ queryKey: key });
+  const previous = queryClient.getQueryData<T[]>(key);
+  const now = new Date().toISOString();
+  queryClient.setQueryData<T[]>(key, (old) =>
+    old?.map((n) => (!n.read_at && (ids === "all" || ids.includes(n.id)) ? { ...n, read_at: now } : n))
+  );
+  return { previous, key };
+}
+
 export function useMarkNotificationRead() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async (notificationId: string) => {
       const { error } = await supabase
         .from("notifications")
         .update({ read_at: new Date().toISOString() })
-        .eq("id", notificationId);
+        .eq("id", notificationId)
+        .is("read_at", null);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onMutate: (notificationId) =>
+      optimisticallyMarkRead<NotificationWithActor>(queryClient, ["notifications", user?.id], [notificationId]),
+    onError: (_err, _id, ctx) => {
+      if (ctx) queryClient.setQueryData(ctx.key, ctx.previous);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
@@ -187,7 +212,11 @@ export function useMarkAllRead() {
         .is("read_at", null);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onMutate: () => optimisticallyMarkRead<NotificationWithActor>(queryClient, ["notifications", user?.id], "all"),
+    onError: (_err, _vars, ctx) => {
+      if (ctx) queryClient.setQueryData(ctx.key, ctx.previous);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
