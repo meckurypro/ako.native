@@ -18,7 +18,7 @@ export function DeleteMessageSheet({ count, allowEveryone, onDelete, onClose }: 
   const pronoun = count > 1 ? "them" : "it";
 
   return (
-    <Sheet onClose={onClose} zIndex={55} accessibilityLabel="Delete message">
+    <Sheet dismissKeyboardOnOpen onClose={onClose} zIndex={55} accessibilityLabel="Delete message">
       <SheetTitle>Delete {plural}?</SheetTitle>
       <SheetRow
         label="Delete for me"

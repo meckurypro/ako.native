@@ -90,7 +90,7 @@ function SwitcherBody() {
 
 export function AccountSwitcher({ onClose }: { onClose: () => void }) {
   return (
-    <Sheet onClose={onClose} accessibilityLabel="Switch account">
+    <Sheet dismissKeyboardOnOpen onClose={onClose} accessibilityLabel="Switch account">
       <SwitcherBody />
     </Sheet>
   );

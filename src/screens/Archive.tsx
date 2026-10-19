@@ -308,7 +308,7 @@ export function Archive() {
       {previewPost ? <ArchivedPostModal post={previewPost} onClose={() => setPreviewPost(null)} /> : null}
 
       {actionTarget ? (
-        <Sheet onClose={() => setActionTarget(null)} accessibilityLabel="Chat actions">
+        <Sheet dismissKeyboardOnOpen onClose={() => setActionTarget(null)} accessibilityLabel="Chat actions">
           <SheetCaption>{actionTarget.other_participant.display_name}</SheetCaption>
           <SheetRow
             label="Unarchive"

@@ -126,7 +126,7 @@ export function EventHighlightsSection({ projectId, isOwner }: { projectId: stri
       )}
 
       {chooserOpen ? (
-        <Sheet onClose={() => setChooserOpen(false)} accessibilityLabel="Add a highlight">
+        <Sheet dismissKeyboardOnOpen onClose={() => setChooserOpen(false)} accessibilityLabel="Add a highlight">
           <SheetRow label="Photo or video" icon={<Icon as={ImageIcon} size={18} className="text-ink" />} onPress={() => void pickPhotoOrVideo()} />
           <SheetRow label="Audio file" icon={<Icon as={MusicIcon} size={18} className="text-ink" />} onPress={() => void pickAudio()} />
           <SheetCancel />

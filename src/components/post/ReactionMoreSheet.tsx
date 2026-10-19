@@ -37,7 +37,7 @@ function Grid({ actions }: { actions: EngagementAction[] }) {
 
 export function ReactionMoreSheet({ actions, onClose }: { actions: EngagementAction[]; onClose: () => void }) {
   return (
-    <Sheet onClose={onClose} accessibilityLabel="More actions">
+    <Sheet dismissKeyboardOnOpen onClose={onClose} accessibilityLabel="More actions">
       <Grid actions={actions} />
     </Sheet>
   );

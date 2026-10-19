@@ -6,8 +6,8 @@
 //   • the message itself lifted onto a highlight, so it's obvious which one it is
 // "More" holds Select, Pin, Hide for me, Share outside app.
 import { CheckSquare, Copy, EyeOff, Forward, MoreHorizontal, Pin, Plus, Redo2, Reply, Star, Trash2, X } from "lucide-react-native";
-import { useRef, useState } from "react";
-import { Pressable, ScrollView, View, useWindowDimensions } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Keyboard, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -71,6 +71,10 @@ export function MessageActionMenu({
   onClose,
 }: MessageActionMenuProps) {
   useBackDismiss(onClose);
+  // Long-pressing a message while typing: hide the keyboard so the menu has room.
+  useEffect(() => {
+    Keyboard.dismiss();
+  }, []);
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const { width: windowW } = useWindowDimensions();

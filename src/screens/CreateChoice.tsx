@@ -102,7 +102,7 @@ export function CreateChoice() {
   return (
     <PortalHost>
       <View className="flex-1">
-        <Sheet onClose={settle} showHandle radius="3xl" accessibilityLabel="Create">
+        <Sheet dismissKeyboardOnOpen onClose={settle} showHandle radius="3xl" accessibilityLabel="Create">
           <Body onPick={onPick} />
         </Sheet>
       </View>

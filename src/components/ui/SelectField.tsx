@@ -43,7 +43,7 @@ export function SelectField({ label, value, options, onChange, placeholder = "Se
       </Pressable>
 
       {open ? (
-        <Sheet onClose={() => setOpen(false)} dragZone="handle" maxHeightRatio={0.7} accessibilityLabel={label}>
+        <Sheet dismissKeyboardOnOpen onClose={() => setOpen(false)} dragZone="handle" maxHeightRatio={0.7} accessibilityLabel={label}>
           <ScrollView style={{ flexShrink: 1 }} showsVerticalScrollIndicator={false}>
             {options.map((o) => (
               <SheetRow

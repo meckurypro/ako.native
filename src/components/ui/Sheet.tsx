@@ -17,8 +17,8 @@
 // Drag zone: by default the whole panel drags (right for short action sheets).
 // For sheets whose content scrolls, pass dragZone="handle" and only the small
 // grabber at the top starts a drag, so the inner list keeps its own scrolling.
-import { createContext, useCallback, useContext, useMemo, type ReactNode } from "react";
-import { Pressable, View, useWindowDimensions } from "react-native";
+import { createContext, useCallback, useContext, useEffect, useMemo, type ReactNode } from "react";
+import { Keyboard, Pressable, View, useWindowDimensions } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   Easing,
@@ -67,6 +67,11 @@ interface SheetProps {
    * hosting an input (search boxes, amounts, quotes), and a no-op when the keyboard is hidden.
    */
   avoidKeyboard?: boolean;
+  /**
+   * Option / action sheets (pick one, confirm, menu rows): hide the soft keyboard when the sheet opens so the
+   * options aren't crowded by it. Leave off for sheets that host an input.
+   */
+  dismissKeyboardOnOpen?: boolean;
   /** Layer tier; default 50 (modals are 60). */
   zIndex?: number;
   /** Backdrop tint, matching the web sheet it mirrors (default canvas/70). */
@@ -95,6 +100,7 @@ export function Sheet({
   heightRatio,
   radius = "2xl",
   avoidKeyboard = true,
+  dismissKeyboardOnOpen = false,
   zIndex = 50,
   scrim = "canvas",
   onBackStep,
@@ -103,6 +109,9 @@ export function Sheet({
   const insets = useSafeAreaInsets();
   const { height: windowH } = useWindowDimensions();
   const keyboard = useAnimatedKeyboard({ isStatusBarTranslucentAndroid: true });
+  useEffect(() => {
+    if (dismissKeyboardOnOpen) Keyboard.dismiss();
+  }, [dismissKeyboardOnOpen]);
 
   // 0 = fully open, panelH = fully off-screen. Start off-screen and slide in.
   const panelH = useSharedValue(windowH);

@@ -10,8 +10,8 @@
 // height of anything docked at the screen bottom (BottomNav) so "room below"
 // means room above that bar; the shell supplies it once built.
 import { VariableContextProvider } from "nativewind";
-import { useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
-import { Pressable, ScrollView, View, useWindowDimensions } from "react-native";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
+import { Keyboard, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -58,6 +58,10 @@ interface Placement {
 
 export function DropdownMenu({ anchorRef, items, onClose, width = 224, bottomInset = 0, zIndex = 50 }: DropdownMenuProps) {
   useBackDismiss(onClose);
+  // Opening a menu hides the soft keyboard so the options aren't covered or crowded by it.
+  useEffect(() => {
+    Keyboard.dismiss();
+  }, []);
   const { colors, resolvedTheme } = useTheme();
   const insets = useSafeAreaInsets();
 

@@ -2,8 +2,8 @@
 // Opened by tapping a reaction chip that is YOURS: tap it again to remove,
 // tap another emoji to replace it, or "+" for the full picker.
 import { Trash2 } from "lucide-react-native";
-import { useState } from "react";
-import { Pressable, View, useWindowDimensions } from "react-native";
+import { useEffect, useState } from "react";
+import { Keyboard, Pressable, View, useWindowDimensions } from "react-native";
 
 import { PopoverPanel } from "@/components/ui/OverlayPanel";
 import { Portal } from "@/components/ui/Portal";
@@ -35,6 +35,9 @@ interface ReactionOptionsPopoverProps {
 
 export function ReactionOptionsPopover({ target, quickEmojis, onReplace, onOpenFullPicker, onRemove, onClose }: ReactionOptionsPopoverProps) {
   useBackDismiss(onClose);
+  useEffect(() => {
+    Keyboard.dismiss();
+  }, []);
   const { width: windowW } = useWindowDimensions();
   const [size, setSize] = useState<{ width: number; height: number } | null>(null);
 

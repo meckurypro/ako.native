@@ -18,7 +18,7 @@ interface ConversationActionSheetProps {
 
 export function ConversationActionSheet({ displayName, isPinned, onTogglePin, onArchive, onDelete, onSelect, onClose }: ConversationActionSheetProps) {
   return (
-    <Sheet onClose={onClose} accessibilityLabel="Chat actions">
+    <Sheet dismissKeyboardOnOpen onClose={onClose} accessibilityLabel="Chat actions">
       <SheetCaption>{displayName}</SheetCaption>
       <SheetRow
         label={isPinned ? "Unpin from top" : "Pin to top"}
