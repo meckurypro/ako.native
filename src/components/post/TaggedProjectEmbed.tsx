@@ -41,17 +41,19 @@ export function TaggedProjectEmbed({ project }: { project: TaggedProjectSummary 
     <Pressable
       onPress={() => router.push(getProjectPath(project) as Href)}
       accessibilityRole="link"
-      className="mt-3 flex-row items-center gap-2.5 rounded-xl border border-border-a60 bg-surface-a60 px-2.5 py-2 active:bg-surface-a80"
+      className="mt-3 min-h-[72px] flex-row items-center gap-3 rounded-xl border border-border-a60 bg-surface-a60 px-3 py-2.5 active:bg-surface-a80"
     >
-      <View className={`${isBookType(project.project_type) ? "h-[66px]" : "h-11"} w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border-a50 bg-surface-a80`}>
+      <View className={`${isBookType(project.project_type) ? "h-[84px]" : "h-14"} w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border-a50 bg-surface-a80`}>
         {project.thumbnail_url ? (
           <Image source={{ uri: project.thumbnail_url }} contentFit="cover" style={{ width: "100%", height: "100%" }} />
         ) : (
           <Icon as={ImageIcon} size={16} className="text-ink-muted" />
         )}
       </View>
-      <View className="min-w-0 flex-1">
-        <Text numberOfLines={1} className="text-sm font-medium text-ink">
+      {/* Title fills the rest of the card: bold, centred both ways, wraps to
+          two lines max (ellipsis after that) so long titles stay balanced. */}
+      <View className="min-w-0 flex-1 items-center justify-center self-stretch">
+        <Text numberOfLines={2} className="text-center text-base font-bold leading-[21px] text-ink">
           {project.title}
         </Text>
       </View>
