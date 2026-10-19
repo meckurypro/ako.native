@@ -89,6 +89,8 @@ import { formatBytes, isOfflineEligible, libraryTabForType, OfflineError } from 
 import { openExternal as openExternalGuarded } from "@/lib/openExternal";
 import { useTheme } from "@/theme/ThemeProvider";
 import { AffiliateShareSheet } from "./AffiliateShareSheet";
+import { OfferNudgeSheet } from "./OfferNudgeSheet";
+import { OFFER_ELIGIBLE_TYPES, useOfferNudge } from "@/hooks/useOffers";
 import { ManageAccessSheet } from "./ManageAccessSheet";
 import { OfflineDownloadSheet } from "./OfflineDownloadSheet";
 import { MediaHeroPlayer } from "./MediaHeroPlayer";
@@ -168,6 +170,10 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
 
   const hasPurchasedQuery = useHasPurchased(project.id);
   const purchaseProject = usePurchaseProject();
+  // Offers: when this project is part of one of the creator's bundles, tapping Buy first suggests the bundle
+  // (see OfferNudgeSheet). Looked up on tap, not on render, so a feed of paid cards doesn't fire a request each.
+  const offerNudge = useOfferNudge(project.id);
+  const buyBusy = purchaseProject.isPending || offerNudge.checking;
   const bookGig = useBookGig();
   const getFileDownload = useGetProjectFile();
   const getAudioStream = useGetProjectFile();
@@ -301,7 +307,8 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
     }
   }
 
-  async function handleBuy() {
+  // The plain single-project purchase.
+  async function buyThisOnly() {
     if (!requireUser()) return;
     setError(null);
     try {
@@ -309,6 +316,16 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
     } catch (err) {
       setError(err instanceof Error ? err.message : "Purchase failed.");
     }
+  }
+
+  // Buy tap: if one of the creator's offers contains this project, suggest it first (the sheet itself offers
+  // "just this one"); otherwise buy straight away.
+  async function handleBuy() {
+    if (!requireUser()) return;
+    setError(null);
+    const suggestable = !isFree && OFFER_ELIGIBLE_TYPES.includes(project.project_type);
+    if (suggestable && (await offerNudge.offerBeforeBuy())) return;
+    await buyThisOnly();
   }
 
   function handleJoinRoom() {
@@ -571,7 +588,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
               ? `Get access for ${priceLabel}`
               : `Buy for ${priceLabel}`,
         onPress: () => void handleBuy(),
-        disabled: purchaseProject.isPending,
+        disabled: buyBusy,
       };
     }
   } else if (project.project_type === "file") {
@@ -941,7 +958,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
               {!isRoom && !isPitch && !hasAccess && !isCourseUnpublished && !isBookDraftUnpublished ? (
                 <Pressable
                   onPress={project.project_type === "gig" ? handleBookGig : handleBuy}
-                  disabled={project.project_type === "gig" ? bookGig.isPending : purchaseProject.isPending}
+                  disabled={project.project_type === "gig" ? bookGig.isPending : buyBusy}
                   accessibilityRole="button"
                   className={`ml-auto rounded-full bg-accent px-4 py-1.5 active:scale-[0.97] ${(project.project_type === "gig" ? bookGig.isPending : purchaseProject.isPending) ? "opacity-50" : ""}`}
                   style={{ elevation: 3 }}
@@ -1050,6 +1067,16 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
         />
       ) : null}
 
+      {offerNudge.offers ? (
+        <OfferNudgeSheet
+          projectId={project.id}
+          projectTitle={project.title}
+          singlePrice={effectivePrice}
+          offers={offerNudge.offers}
+          onBuySingle={() => void buyThisOnly()}
+          onClose={offerNudge.close}
+        />
+      ) : null}
       {affiliateShareOpen ? <AffiliateShareSheet projectId={project.id} projectTitle={project.title} onClose={() => setAffiliateShareOpen(false)} /> : null}
 
       {showDeleteConfirm ? (

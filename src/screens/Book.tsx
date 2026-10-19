@@ -9,10 +9,13 @@ import { View } from "react-native";
 
 import { BookBuilder } from "@/components/project/book/BookBuilder";
 import { BookLockedView } from "@/components/project/book/BookLockedView";
+import { OfferNudgeSheet } from "@/components/project/OfferNudgeSheet";
 import { BookReaderSkeleton } from "@/components/project/book/BookReaderSkeleton";
 import { BookReflowReader } from "@/components/project/book/BookReflowReader";
 import { OfflineUnavailable } from "@/components/project/OfflineUnavailable";
 import { Text } from "@/components/ui/Text";
+import { useToast } from "@/components/ui/Toast";
+import { useOfferNudge } from "@/hooks/useOffers";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsOnline } from "@/hooks/useIsOnline";
 import { useLoadingBudget } from "@/hooks/useLoadingBudget";
@@ -45,6 +48,9 @@ export function Book() {
   const chaptersQuery = useBookChapters(projectId);
   const chapters = chaptersQuery.data;
   const purchaseProject = usePurchaseProject();
+  // If this book is part of one of the creator's offers, Buy suggests the bundle first.
+  const offerNudge = useOfferNudge(projectId ?? "");
+  const toast = useToast();
 
   const ordered = useMemo(() => (chapters ?? []).slice().sort((a, b) => a.sort_order - b.sort_order), [chapters]);
 
@@ -61,15 +67,32 @@ export function Book() {
 
   if (!hasAccess) {
     return (
-      <BookLockedView
-        title={project.title}
-        thumbnailUrl={project.thumbnail_url}
-        price={getEffectivePrice(project)}
-        onBuy={async () => {
-          await purchaseProject.mutateAsync(project.id);
-        }}
-        buying={purchaseProject.isPending}
-      />
+      <>
+        <BookLockedView
+          title={project.title}
+          thumbnailUrl={project.thumbnail_url}
+          price={getEffectivePrice(project)}
+          onBuy={async () => {
+            if (await offerNudge.offerBeforeBuy()) return;
+            await purchaseProject.mutateAsync(project.id);
+          }}
+          buying={purchaseProject.isPending || offerNudge.checking}
+        />
+        {offerNudge.offers ? (
+          <OfferNudgeSheet
+            projectId={project.id}
+            projectTitle={project.title}
+            singlePrice={getEffectivePrice(project)}
+            offers={offerNudge.offers}
+            onBuySingle={() => {
+              purchaseProject
+                .mutateAsync(project.id)
+                .catch((err) => toast(err instanceof Error ? err.message : "Couldn't complete purchase.", { variant: "error" }));
+            }}
+            onClose={offerNudge.close}
+          />
+        ) : null}
+      </>
     );
   }
 

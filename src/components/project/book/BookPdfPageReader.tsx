@@ -19,6 +19,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 
 import { BookLockedView } from "@/components/project/book/BookLockedView";
+import { OfferNudgeSheet } from "@/components/project/OfferNudgeSheet";
+import { useToast } from "@/components/ui/Toast";
+import { useOfferNudge } from "@/hooks/useOffers";
 import { Sheet } from "@/components/project/book/ReaderSheets";
 import { Button } from "@/components/ui/Button";
 import { ResumePrompt } from "@/components/ui/ResumePrompt";
@@ -89,6 +92,9 @@ export function BookPdfPageReader({ projectId }: { projectId: string }) {
   const hasPurchasedQuery = useHasPurchased(projectId);
   const isMemberQuery = useIsProjectMember(projectId, project?.is_private ?? false);
   const purchaseProject = usePurchaseProject();
+  // If this book is part of one of the creator's offers, Buy suggests the bundle first.
+  const offerNudge = useOfferNudge(projectId);
+  const toast = useToast();
   const getBookFile = useGetProjectFile();
   const { data: savedProgress, isLoading: progressLoading } = usePdfReadingProgress(projectId, user?.id);
   const saveProgress = useSavePdfReadingProgress(projectId, user?.id);
@@ -265,15 +271,32 @@ export function BookPdfPageReader({ projectId }: { projectId: string }) {
 
   if (!hasAccess) {
     return (
-      <BookLockedView
-        title={project.title}
-        thumbnailUrl={project.thumbnail_url}
-        price={getEffectivePrice(project)}
-        onBuy={async () => {
-          await purchaseProject.mutateAsync(project.id);
-        }}
-        buying={purchaseProject.isPending}
-      />
+      <>
+        <BookLockedView
+          title={project.title}
+          thumbnailUrl={project.thumbnail_url}
+          price={getEffectivePrice(project)}
+          onBuy={async () => {
+            if (await offerNudge.offerBeforeBuy()) return;
+            await purchaseProject.mutateAsync(project.id);
+          }}
+          buying={purchaseProject.isPending || offerNudge.checking}
+        />
+        {offerNudge.offers ? (
+          <OfferNudgeSheet
+            projectId={project.id}
+            projectTitle={project.title}
+            singlePrice={getEffectivePrice(project)}
+            offers={offerNudge.offers}
+            onBuySingle={() => {
+              purchaseProject
+                .mutateAsync(project.id)
+                .catch((err) => toast(err instanceof Error ? err.message : "Couldn't complete purchase.", { variant: "error" }));
+            }}
+            onClose={offerNudge.close}
+          />
+        ) : null}
+      </>
     );
   }
 
