@@ -1,4 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+// src/hooks/useComments.ts
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { resolveFunctionErrorMessage } from "../lib/functionErrors";
 import { useActiveIdentity, useActivePagePermissions } from "./usePages";
@@ -10,90 +11,75 @@ export interface CommentWithAuthor extends Comment {
 
 const COMMENT_SELECT = `*, author:profiles!comments_author_id_fkey(id, username, display_name, avatar_url)`;
 
-/**
- * Top-level (root) comments only — parent_comment_id IS NULL. Replies
- * are fetched separately, per comment, only once that specific
- * comment's thread is expanded (see useCommentReplies below). Opening
- * the sheet on a post with a huge discussion used to pull down every
- * reply at every depth just to render the top level; now it only ever
- * costs what's actually rendered.
- */
-export function useRootComments(postId: string) {
-  return useQuery({
-    queryKey: ["comments", postId],
-    queryFn: async (): Promise<CommentWithAuthor[]> => {
-      const { data, error } = await supabase
-        .from("comments")
-        .select(COMMENT_SELECT)
-        .eq("post_id", postId)
-        .is("parent_comment_id", null)
-        .eq("is_deleted", false)
-        .order("created_at", { ascending: true });
+export const COMMENT_PAGE_SIZE = 25;
 
+/** "all", or one stance — the stance is always the reply's stance toward ITS parent (post or comment). */
+export type StanceFilter = "all" | Stance;
+
+/**
+ * One level of a conversation, paged: the direct replies to a post (`parentCommentId = null`, i.e. top-level
+ * comments) or to a comment. Opening a post or a comment only ever costs one page of ITS OWN children —
+ * deeper levels are fetched when (and if) someone opens the comment they belong to.
+ *
+ * Oldest-first, so a thread reads in the order it happened and a new reply lands at the end of the list.
+ */
+export function useCommentList(postId: string, parentCommentId: string | null, filter: StanceFilter = "all") {
+  return useInfiniteQuery({
+    queryKey: ["comment-list", postId, parentCommentId, filter],
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }): Promise<CommentWithAuthor[]> => {
+      let q = supabase.from("comments").select(COMMENT_SELECT).eq("post_id", postId).eq("is_deleted", false);
+      q = parentCommentId ? q.eq("parent_comment_id", parentCommentId) : q.is("parent_comment_id", null);
+      if (filter !== "all") q = q.eq("stance", filter);
+
+      const from = pageParam * COMMENT_PAGE_SIZE;
+      const { data, error } = await q
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, from + COMMENT_PAGE_SIZE - 1);
       if (error) throw error;
       return data as unknown as CommentWithAuthor[];
     },
+    getNextPageParam: (lastPage, allPages) => (lastPage.length === COMMENT_PAGE_SIZE ? allPages.length : undefined),
     enabled: !!postId,
   });
 }
 
-/**
- * A single comment's IMMEDIATE replies only — never its replies'
- * replies. `enabled` is driven by whether that comment's thread is
- * currently expanded in the UI (see CommentThread in CommentSheet.tsx),
- * so a node with 50 replies-of-replies costs nothing until each of
- * those 50 is individually opened. Each rendered reply gets its own
- * call of this same hook (keyed off its own id) for its own children —
- * the thread is walked one level at a time, comment-specific, rather
- * than the whole subtree arriving in one shot.
- */
-export function useCommentReplies(postId: string, parentCommentId: string, enabled: boolean) {
+/** A single comment, with its author — the "focal" comment of the opened-comment page. */
+export function useComment(commentId: string | undefined) {
   return useQuery({
-    queryKey: ["comment-replies", postId, parentCommentId],
-    queryFn: async (): Promise<CommentWithAuthor[]> => {
-      const { data, error } = await supabase
-        .from("comments")
-        .select(COMMENT_SELECT)
-        .eq("post_id", postId)
-        .eq("parent_comment_id", parentCommentId)
-        .eq("is_deleted", false)
-        .order("created_at", { ascending: true });
-
+    queryKey: ["comment", commentId],
+    queryFn: async (): Promise<CommentWithAuthor | null> => {
+      const { data, error } = await supabase.from("comments").select(COMMENT_SELECT).eq("id", commentId!).maybeSingle();
       if (error) throw error;
-      return data as unknown as CommentWithAuthor[];
+      return (data as unknown as CommentWithAuthor) ?? null;
     },
-    enabled: enabled && !!parentCommentId,
+    enabled: !!commentId,
   });
 }
 
 /**
- * Walks a single comment's ancestor chain (immediate parent, then its
- * parent, and so on up to the root) by id — one lightweight
- * row-per-hop lookup rather than pulling the whole tree just to find
- * a lineage. Used only to auto-expand the right nested threads when
- * arriving via a notification link that points at a reply buried a
- * few levels down (see highlightId in CommentSheet.tsx). Returns ids
- * ordered root-first, immediate-parent-last.
+ * Everything above a comment, root-first: its parent, that parent's parent, … up to the top-level comment.
+ * One RPC for the lineage (get_comment_ancestor_ids) and one query for the rows. An entry is `null` when that
+ * ancestor can't be shown (deleted, or hidden from this viewer) so the thread can say so instead of silently
+ * skipping a level.
  */
-export function useCommentAncestors(commentId: string | null | undefined) {
+export function useCommentChain(commentId: string | undefined) {
   return useQuery({
-    queryKey: ["comment-ancestors", commentId],
-    queryFn: async (): Promise<string[]> => {
-      const chain: string[] = [];
-      let currentId = commentId!;
-      // Bounded to be safe against any unexpected cyclical data —
-      // threads don't realistically nest this deep.
-      for (let i = 0; i < 50; i++) {
-        const { data, error } = await supabase
-          .from("comments")
-          .select("id, parent_comment_id")
-          .eq("id", currentId)
-          .maybeSingle();
-        if (error || !data?.parent_comment_id) break;
-        chain.push(data.parent_comment_id);
-        currentId = data.parent_comment_id;
-      }
-      return chain.reverse(); // root-first
+    queryKey: ["comment-chain", commentId],
+    queryFn: async (): Promise<(CommentWithAuthor | null)[]> => {
+      const { data: ids, error: idsError } = await supabase.rpc("get_comment_ancestor_ids", { p_comment_id: commentId! });
+      if (idsError) throw idsError;
+      const ordered: string[] = ((ids ?? []) as { id: string }[]).map((r) => r.id);
+      if (ordered.length === 0) return [];
+
+      const { data, error } = await supabase.from("comments").select(COMMENT_SELECT).in("id", ordered);
+      if (error) throw error;
+      const byId = new Map((data as unknown as CommentWithAuthor[]).map((c) => [c.id, c]));
+      return ordered.map((id) => {
+        const row = byId.get(id);
+        return row && !row.is_deleted ? row : null;
+      });
     },
     enabled: !!commentId,
   });
@@ -136,13 +122,14 @@ export function useCreateComment(postId: string) {
 
       return data.comment;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["comments", postId] });
-      // Prefix match — refreshes every currently-open reply thread for
-      // this post (["comment-replies", postId, <any parent>]) so a new
-      // reply shows up immediately in whichever panel it landed in,
-      // without eagerly touching threads nobody has expanded.
-      queryClient.invalidateQueries({ queryKey: ["comment-replies", postId] });
+    onSuccess: (_comment, input) => {
+      // Prefix match: refreshes every loaded page / stance filter of this post's reply lists, whichever level
+      // (the post's, or any opened comment's) the new reply landed in.
+      queryClient.invalidateQueries({ queryKey: ["comment-list", postId] });
+      // The post's comment_count, and — when replying to a comment — that comment's reply_count + per-stance
+      // totals, both shown as counts on the pages above.
+      queryClient.invalidateQueries({ queryKey: ["post", postId] });
+      if (input.parent_comment_id) queryClient.invalidateQueries({ queryKey: ["comment", input.parent_comment_id] });
       queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
     },
   });

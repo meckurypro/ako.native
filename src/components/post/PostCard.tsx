@@ -68,7 +68,6 @@ import { timeAgo } from "@/lib/timeAgo";
 import { useTheme } from "@/theme/ThemeProvider";
 import { isPlainReshare, isQuote, type PostWithAuthor, type Stance } from "@/types/database";
 import { CollaboratorsSheet } from "./CollaboratorsSheet";
-import { CommentSheet } from "./CommentSheet";
 import { FollowButton } from "./FollowButton";
 import { GiftPicker } from "./GiftPicker";
 import { PostCollaboratorsBadge } from "./PostCollaboratorsBadge";
@@ -115,7 +114,6 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
   const toast = useToast();
 
   const [activeStance, setActiveStance] = useState<Stance | null>(null);
-  const [showComments, setShowComments] = useState(false);
   const [showReshareSheet, setShowReshareSheet] = useState(false);
   const [showGiftPicker, setShowGiftPicker] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -209,12 +207,14 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
     router.push((postedAsPage ? identityHref : `${identityHref}?fromPost=${post.id}`) as Href);
   }
 
+  // Comments are the post's own page now, not an overlay: from a feed or a profile grid the count takes you
+  // into the post (which also counts as a view), and on the post's page it scrolls down to the replies.
   function handleCommentTap() {
     if (showStats) {
       onRequestOpenComments?.();
       return;
     }
-    setShowComments(true);
+    router.push(`/post/${post.id}` as Href);
   }
 
   async function handleShare() {
@@ -567,10 +567,6 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
           stances={isOwner ? ["support"] : undefined}
           onClose={() => setActiveStance(null)}
         />
-      ) : null}
-
-      {showComments ? (
-        <CommentSheet postId={post.id} commentCount={post.comment_count} isOwner={isOwner} onClose={() => setShowComments(false)} />
       ) : null}
 
       {showReshareSheet ? <ReshareSheet postId={reshareTarget.id} source={reshareTarget} onClose={() => setShowReshareSheet(false)} /> : null}

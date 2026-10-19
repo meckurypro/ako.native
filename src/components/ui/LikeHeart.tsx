@@ -2,7 +2,7 @@
 // Drop-in like icon. Animates only on the false→true transition (liking, never
 // un-liking, never on first mount): a quick overshoot "pop" plus a small burst
 // of sparks, so a like reads as a tiny rewarded moment rather than a colour
-// swap. Used by PostCard, ProjectCard and CommentSheet.
+// swap. Used by PostCard, ProjectCard and the comment action bar.
 import { Heart } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { View } from "react-native";

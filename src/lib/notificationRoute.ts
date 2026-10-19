@@ -2,7 +2,7 @@
 // Where does a notification lead? One pure function shared by the Notifications list (row press) and
 // the push-notification tap handler, so a push and the row it mirrors always open the same place.
 // Mirrors the web's notificationLink() + the per-type invite modals, translated to app routes
-// (the web `#comment-<id>` anchor becomes `?comment=<id>`).
+// (a comment notification opens that comment's own page, /post/<postId>/comment/<id>).
 
 export interface RoutableNotification {
   id: string;
@@ -52,14 +52,14 @@ export function notificationAction(n: RoutableNotification): NotificationAction 
 /** The plain navigation target, or null when the notification doesn't lead anywhere. */
 export function notificationLink(n: RoutableNotification): string | null {
   if (n.type === "follow_request") return "/requests";
-  if (n.target_type === "post" && n.target_id) return `/post/${n.target_id}?view=post`;
+  if (n.target_type === "post" && n.target_id) return `/post/${n.target_id}`;
   if (n.target_type === "project" && n.target_id) {
     const route = n.project_type ? PROJECT_TYPE_ROUTE[n.project_type] : undefined;
     return route ? route(n.target_id) : `/projects/${n.target_id}`;
   }
   if (n.target_type === "promotion" || n.target_type === "withdrawal") return "/wallet";
   if (n.target_type === "comment" && n.target_id) {
-    return n.comment_post_id ? `/post/${n.comment_post_id}?comment=${n.target_id}` : null;
+    return n.comment_post_id ? `/post/${n.comment_post_id}/comment/${n.target_id}` : null;
   }
   if (n.target_type === "conversation" && n.target_id) return `/messages/${n.target_id}`;
   if (n.target_type === "profile" && n.actor) return `/profile/${n.actor.username}`;

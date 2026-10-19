@@ -20,6 +20,10 @@ export interface Palette {
   border: string;
   danger: string;
   pushback: string;
+  /** Conversation stance cues (replies) — own tokens so page mode's orange accent never recolours them. */
+  stanceSupport: string;
+  stanceDisagree: string;
+  stancePushback: string;
   onlineGlow: string;
   tickBlue: string;
   presenceOnline: string;
@@ -50,6 +54,9 @@ const light: Palette = {
   border: "#E9E4D8",
   danger: "#A64B3F",
   pushback: "#B8862E",
+  stanceSupport: "#4E8A62",
+  stanceDisagree: "#B4574A",
+  stancePushback: "#B8862E",
   onlineGlow: "#FF6A00",
   tickBlue: "#53BDEB",
   presenceOnline: "#39FF6A",
@@ -80,6 +87,9 @@ const dark: Palette = {
   border: "#232220",
   danger: "#C97C6B",
   pushback: "#D9A857",
+  stanceSupport: "#5DBB89",
+  stanceDisagree: "#D68A7B",
+  stancePushback: "#D9A857",
   highlight: "#1E4B31",
   postHeader: "#7CB3FF",
   bubbleMine: "#2F4636",
@@ -164,6 +174,9 @@ export function paletteToCssVars(p: Palette): Record<`--${string}`, string> {
     "--color-border": p.border,
     "--color-danger": p.danger,
     "--color-pushback": p.pushback,
+    "--color-stance-support": p.stanceSupport,
+    "--color-stance-disagree": p.stanceDisagree,
+    "--color-stance-pushback": p.stancePushback,
     "--color-online-glow": p.onlineGlow,
     "--color-tick-blue": p.tickBlue,
     "--color-presence-online": p.presenceOnline,

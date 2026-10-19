@@ -11,6 +11,7 @@ const SHOWS_BOTTOM_NAV: RegExp[] = [
   /^\/search$/,
   /^\/hashtag\/[^/]+$/,
   /^\/post\/[^/]+$/, // PostDetail only — not /post/:id/edit
+  /^\/post\/[^/]+\/comment\/[^/]+$/, // an opened comment
   /^\/profile\/[^/]+$/, // ProfilePage only — not followers/following
   /^\/page\/[^/]+$/, // PagePage only — not team/edit
   /^\/projects\/[^/]+$/, // ProjectDetail only

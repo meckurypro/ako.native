@@ -38,3 +38,9 @@ assert.equal(r.fallbackRouteForType("withdrawal_status"), "/wallet");
 assert.equal(r.fallbackRouteForType("admin_message"), "/notifications");
 assert.equal(r.fallbackRouteForType(undefined), "/notifications");
 console.log("push logic: all checks passed");
+
+// Notification links: a comment opens its own page; a post opens plain (no overlay mode any more).
+assert.equal(r.notificationLink({ id: "n", type: "comment", target_type: "comment", target_id: "c1", actor: null, comment_post_id: "p1" }), "/post/p1/comment/c1");
+assert.equal(r.notificationLink({ id: "n", type: "comment", target_type: "comment", target_id: "c1", actor: null, comment_post_id: null }), null);
+assert.equal(r.notificationLink({ id: "n", type: "like", target_type: "post", target_id: "p1", actor: null }), "/post/p1");
+console.log("notification links: all checks passed");

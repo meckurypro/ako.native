@@ -1,62 +1,35 @@
 // src/screens/PostDetail.tsx
-// A single post (with stats) and, by default, its comments open over it.
-//   /post/:id                  → comments sheet opens automatically
-//   /post/:id?view=post        → just the post (reached from a repost badge); comments start closed
-//   /post/:id?comment=<id>     → comments open, that comment's ancestors expanded, scrolled to and flashed
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+// A post, opened. The post sits at the top (opening it counts as a view), its direct replies follow right
+// beneath it on the same page — no overlay, nothing to close. Each reply is tinted by its stance toward the
+// post; tapping one opens it as the parent of its own thread (see CommentDetail).
+//   /post/:id                  → the post with its replies below
+//   /post/:id?comment=<id>     → legacy link shape; forwarded to /post/:id/comment/<id>
+import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react-native";
-import { useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import { Redirect, useLocalSearchParams, type Href } from "expo-router";
+import { useRef, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { CommentEngagementProvider } from "@/components/comments/CommentEngagement";
+import { CommentReplies } from "@/components/comments/CommentReplies";
+import { ReplyBar } from "@/components/comments/ReplyBar";
 import { useBottomNavInset } from "@/components/nav/BottomNav";
 import { useChromeScroll } from "@/components/nav/ChromeProvider";
-import { CommentSheet } from "@/components/post/CommentSheet";
 import { PostCard } from "@/components/post/PostCard";
+import { StanceComposer } from "@/components/post/StanceComposer";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { UnavailableNotice } from "@/components/ui/UnavailableNotice";
 import { useAuth } from "@/hooks/useAuth";
 import { useMarkPostSeen } from "@/hooks/useMarkPostSeen";
+import { usePost } from "@/hooks/usePostDetail";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useSmartBack } from "@/hooks/useSmartBack";
-import { supabase } from "@/lib/supabase";
-import { PAGE_SELECT } from "@/lib/postSelects";
-import { PROFILE_ROLES_SELECT, toProfileRoles } from "@/lib/profileRoles";
-import type { PostWithAuthor } from "@/types/database";
-
-const POST_SELECT = `*, author:profiles!posts_author_id_fkey(id, username, display_name, avatar_url, tier, is_private, ${PROFILE_ROLES_SELECT}), remover:profiles!posts_deleted_by_fkey(username, display_name), ${PAGE_SELECT}`;
-
-// Unlike the feed queries, this one must also return deleted/archived rows the
-// viewer is allowed to see, so the page can say WHY a post is gone.
-interface PostDetailData extends PostWithAuthor {
-  is_deleted: boolean;
-  is_archived: boolean;
-  deleted_by: string | null;
-  remover: { username: string; display_name: string } | null;
-}
-
-function usePost(postId: string) {
-  return useQuery({
-    queryKey: ["post", postId],
-    queryFn: async (): Promise<PostDetailData | null> => {
-      const { data, error } = await supabase.from("posts").select(POST_SELECT).eq("id", postId).maybeSingle();
-      if (error) throw error;
-      if (!data) return null; // RLS hid it entirely — deleted/archived and the viewer has no special access
-
-      const raw = data as unknown as PostDetailData & { author: { profile_roles?: unknown } | null };
-      return {
-        ...raw,
-        author: raw.author ? { ...raw.author, roles: toProfileRoles(raw.author.profile_roles as never) } : raw.author,
-      } as PostDetailData;
-    },
-    enabled: !!postId,
-  });
-}
+import type { Stance } from "@/types/database";
 
 export function PostDetail() {
-  const { postId, view, comment } = useLocalSearchParams<{ postId: string; view?: string; comment?: string }>();
+  const { postId, comment: legacyCommentId } = useLocalSearchParams<{ postId: string; comment?: string }>();
   const smartBack = useSmartBack();
   const insets = useSafeAreaInsets();
   const bottomInset = useBottomNavInset();
@@ -64,19 +37,27 @@ export function PostDetail() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { data: post, isLoading: postLoading, refetch: refetchPost } = usePost(postId);
-  const { refreshControl, refreshing } = usePullToRefresh([refetchPost, () => queryClient.invalidateQueries({ queryKey: ["comments", postId] })], insets.top + 16);
-
-  const highlightId = comment ?? null;
-  const viewOnly = view === "post";
-  const [manuallyOpened, setManuallyOpened] = useState(false);
-  useEffect(() => setManuallyOpened(false), [postId]);
-  const commentsOpen = highlightId ? true : viewOnly ? manuallyOpened : true;
+  const { refreshControl, refreshing } = usePullToRefresh(
+    [refetchPost, () => queryClient.invalidateQueries({ queryKey: ["comment-list", postId] })],
+    insets.top + 16
+  );
+  const repliesY = useRef(0);
+  const [composeStance, setComposeStance] = useState<Stance | null>(null);
 
   useMarkPostSeen(postId, post?.author?.id);
 
+  // Older share links and notifications pointed at /post/{id}?comment={commentId}. Comments are pages of their
+  // own now, so those links are forwarded to the opened-comment page instead of going stale.
+  if (legacyCommentId) return <Redirect href={`/post/${postId}/comment/${legacyCommentId}` as Href} />;
+
+  // Only reachable at all (row returned despite is_deleted/is_archived) if the viewer is the author or an
+  // admin — RLS hides removed posts from everyone else. A stranger hitting a dead link gets `post === null`
+  // below instead, with no attribution since we have nothing (correctly) to tell them.
   const isOwnPost = !!user && !!post && post.author?.id === user.id;
   const removedByViewer = !!user && post?.deleted_by === user.id;
   const removerName = post?.remover?.display_name || post?.remover?.username;
+
+  const showThread = !!post && !post.is_deleted && !(post.is_archived && !isOwnPost);
 
   return (
     <View className="flex-1 bg-canvas">
@@ -85,6 +66,7 @@ export function PostDetail() {
         ref={onScroll.listRef}
         onScroll={onScroll}
         scrollEventThrottle={16}
+        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingTop: insets.top + 16, paddingHorizontal: 16, paddingBottom: bottomInset, opacity: refreshing ? 0 : 1 }}
       >
@@ -111,23 +93,42 @@ export function PostDetail() {
               </View>
             ) : null}
 
-            <PostCard post={post} showStats onRequestOpenComments={() => setManuallyOpened(true)} />
+            <PostCard
+              post={post}
+              showStats
+              onRequestOpenComments={() => onScroll.listRef.current?.scrollTo?.({ y: Math.max(0, repliesY.current - insets.top - 8), animated: true })}
+            />
           </>
         )}
-      </ScrollView>
 
-      {/* The discussion is the point of this page, so the comment sheet opens by
-          itself over the post. In ?view=post mode it starts closed, and closing it
-          returns to the post instead of leaving the page. */}
-      {post && !post.is_deleted && !(post.is_archived && !isOwnPost) && commentsOpen ? (
-        <CommentSheet
-          postId={post.id}
-          commentCount={post.comment_count}
-          isOwner={isOwnPost}
-          highlightId={highlightId}
-          onClose={viewOnly ? () => setManuallyOpened(false) : smartBack}
-        />
-      ) : null}
+        {showThread && post ? (
+          <CommentEngagementProvider key={post.id} postId={post.id}>
+            <View onLayout={(e) => (repliesY.current = e.nativeEvent.layout.y)}>
+              <ReplyBar
+                placeholder="Add your reasoning…"
+                // The post's own author can only build on their own post.
+                stances={isOwnPost ? ["support"] : undefined}
+                onOpen={setComposeStance}
+              />
+              <CommentReplies
+                postId={post.id}
+                parentCommentId={null}
+                total={post.comment_count}
+                counts={{ support: post.support_count, disagree: post.disagree_count, pushback: post.pushback_count }}
+              />
+            </View>
+
+            {composeStance ? (
+              <StanceComposer
+                postId={post.id}
+                stance={composeStance}
+                stances={isOwnPost ? ["support"] : undefined}
+                onClose={() => setComposeStance(null)}
+              />
+            ) : null}
+          </CommentEngagementProvider>
+        ) : null}
+      </ScrollView>
     </View>
   );
 }

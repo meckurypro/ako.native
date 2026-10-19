@@ -12,10 +12,13 @@ export function redirectSystemPath({ path }: { path: string; initial: boolean })
     const isWeb = (url.protocol === "https:" || url.protocol === "http:") && !!webHost && url.host === webHost;
     const isScheme = url.protocol === "ako:";
 
-    // Web comment links look like /post/<id>#comment-<commentId>; native routes carry it as ?comment=.
+    // Comments are pages of their own: /post/<id>/comment/<commentId> routes as-is. Older links used
+    // /post/<id>#comment-<commentId>; forward those to the comment page.
     const commentMatch = /^#comment-(.+)$/.exec(url.hash);
-    const withComment = (path: string, search: string) =>
-      commentMatch ? `${path}${search ? `${search}&` : "?"}comment=${commentMatch[1]}` : `${path}${search}`;
+    const withComment = (path: string, search: string) => {
+      const post = commentMatch ? /^\/post\/([^/]+)\/?$/.exec(path) : null;
+      return post ? `/post/${post[1]}/comment/${commentMatch![1]}${search}` : `${path}${search}`;
+    };
 
     if (isWeb) return withComment(url.pathname, url.search);
     if (isScheme) {

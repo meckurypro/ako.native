@@ -25,6 +25,7 @@ const PREFIX = "bg|text|border|ring|fill|stroke|shadow|from|to|via|divide|outlin
 const RUNTIME = {
   canvas: "#F7F4EF", surface: "#FDFBF6", ink: "#1F1D1A", "ink-muted": "#6B675F", accent: "#3D5A45",
   "accent-hover": "#2F4636", "accent-soft": "#E3E9E1", border: "#E9E4D8", danger: "#A64B3F", pushback: "#B8862E",
+  "stance-support": "#4E8A62", "stance-disagree": "#B4574A", "stance-pushback": "#B8862E",
   highlight: "#BFE6C6",
 };
 // …and fixed ones.

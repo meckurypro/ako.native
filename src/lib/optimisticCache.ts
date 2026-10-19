@@ -27,8 +27,15 @@ export const PROJECT_QUERY_ROOTS: ReadonlySet<string> = new Set([
   "liked-projects",
 ]);
 
-/** Comment rows (top level + replies). */
-export const COMMENT_QUERY_ROOTS: ReadonlySet<string> = new Set(["comments", "comment-replies"]);
+/** Comment rows: a post's / comment's paged reply lists, a single opened comment, and an opened comment's ancestor chain. */
+export const COMMENT_QUERY_ROOTS: ReadonlySet<string> = new Set([
+  "comment-list",
+  "comment",
+  "comment-chain",
+  // legacy roots, harmless if absent
+  "comments",
+  "comment-replies",
+]);
 
 const MAX_DEPTH = 6;
 

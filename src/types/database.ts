@@ -259,6 +259,11 @@ export interface Comment {
   like_count: number;
   dislike_count: number;
   reply_count: number;
+  // Per-stance totals of the direct replies — same trio a post carries, so a
+  // comment opened as a parent can show the same breakdown a post does.
+  support_count: number;
+  disagree_count: number;
+  pushback_count: number;
   is_deleted: boolean;
   edited_at: string | null;
   created_at: string;

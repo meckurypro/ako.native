@@ -17,7 +17,7 @@ export interface NotificationWithActor {
   // isn't a real FK (target_type/target_id is a generic polymorphic
   // pointer), so this can't be joined in the initial select — it's
   // resolved with a second query below. Lets the notification link
-  // straight to `/post/{comment_post_id}#comment-{target_id}` instead of
+  // straight to `/post/{comment_post_id}/comment/{target_id}` instead of
   // a dead link, since a bare comment id has nowhere to route to on its
   // own. null means "couldn't resolve" (e.g. the comment was deleted).
   comment_post_id?: string | null;

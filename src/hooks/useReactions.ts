@@ -176,10 +176,10 @@ type CommentReactionMap = Map<string, CommentReactionState>;
 export type CommentCountDeltas = ReadonlyMap<string, { like: number; dislike: number }>;
 const NO_DELTAS: CommentCountDeltas = new Map();
 
-// The set of comment ids CommentSheet knows about only ever grows (roots on load, plus each reply batch as a
-// thread gets expanded), so the id COUNT is a safe, cheap stand-in for "which ids" in the query key.
-function commentReactionsQueryKey(postId: string, userId: string | undefined, actingAsPageId: string | null, knownCommentCount: number) {
-  return ["my-comment-reactions", postId, userId, actingAsPageId, knownCommentCount] as const;
+// The key carries the ids themselves (sorted), not just how many there are: the opened-comment page swaps its
+// whole id set when you move from one comment to another, and two different sets can have the same size.
+function commentReactionsQueryKey(postId: string, userId: string | undefined, actingAsPageId: string | null, commentIds: string[]) {
+  return ["my-comment-reactions", postId, userId, actingAsPageId, [...commentIds].sort().join(",")] as const;
 }
 
 /**
@@ -194,7 +194,7 @@ export function useMyCommentReactions(postId: string, commentIds: string[]) {
   const hasComments = commentIds.length > 0;
 
   const query = useQuery({
-    queryKey: commentReactionsQueryKey(postId, user?.id, actingAsPageId, commentIds.length),
+    queryKey: commentReactionsQueryKey(postId, user?.id, actingAsPageId, commentIds),
     queryFn: async (): Promise<CommentReactionMap> => {
       const map: CommentReactionMap = new Map();
       if (!user || !hasComments) return map;
@@ -218,6 +218,9 @@ export function useMyCommentReactions(postId: string, commentIds: string[]) {
       return map;
     },
     enabled: !!user && hasComments,
+    // The key changes whenever more comments load (more ids). Keep showing the previous map meanwhile so
+    // hearts don't blink back to un-liked while the wider batch is fetched.
+    placeholderData: (previous) => previous,
   });
 
   const pending = useMutationState({
@@ -256,8 +259,8 @@ interface ToggleCommentReactionInput {
 }
 
 /**
- * Offline-first like/dislike on one comment. Shared across every comment in the sheet. The intent is queued
- * instantly; the sheet renders from useMyCommentReactions (overlay) and the write is replayed until it lands.
+ * Offline-first like/dislike on one comment. Shared across every comment on the page. The intent is queued
+ * instantly; the page renders from useMyCommentReactions (overlay) and the write is replayed until it lands.
  * `_knownCommentCount` is kept only for call-site compatibility — there is no per-key optimistic cache write
  * to keep in sync any more.
  */

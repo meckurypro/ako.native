@@ -21,7 +21,7 @@ export function RepostBadge({ source }: { source: RepostSource | null | undefine
       timer.current = setTimeout(() => setUnavailable(false), 2500);
       return;
     }
-    router.push(`/post/${source.id}?view=post` as Href);
+    router.push(`/post/${source.id}` as Href);
   }
 
   return (

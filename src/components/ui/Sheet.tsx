@@ -1,7 +1,7 @@
 // src/components/ui/Sheet.tsx
 // Bottom sheet — the shared shell behind every action sheet and picker
 // (ConversationActionSheet, DeleteMessageSheet, ReactionMoreSheet, GiftPicker,
-// ManageAccessSheet, CommentSheet…). Matches the web chrome: canvas scrim,
+// ManageAccessSheet, CommentReportSheet…). Matches the web chrome: canvas scrim,
 // surface panel with rounded top corners and a top border, safe-area padding.
 //
 // Native behaviour on top of that:
