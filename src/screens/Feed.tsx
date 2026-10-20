@@ -84,7 +84,11 @@ function ForYouTab({
   const pageFeed = usePageRankedFeed(isPageMode ? activePageId : undefined, page);
   const current = isPageMode ? pageFeed : personal;
   const { data: pagePosts, isLoading, isFetching, error, refetch } = current;
-  const { posts, exhausted } = useAccumulatedPages<PostWithAuthor>(pagePosts as PostWithAuthor[] | undefined, page, interestId ?? (isPageMode ? activePageId : "personal"));
+  const { posts, exhausted } = useAccumulatedPages<PostWithAuthor>(
+    pagePosts as PostWithAuthor[] | undefined,
+    page,
+    isPageMode ? pageFeedKeys.ranked(activePageId) : interestId ? feedKeys.topic(interestId) : feedKeys.ranked(user?.id)
+  );
 
   useEffect(() => setPage(0), [interestId, isPageMode]);
 
@@ -164,7 +168,11 @@ function FollowingTab({ active }: { active: boolean }) {
   const personal = useFollowingFeed(page);
   const pageFeed = usePageFollowingFeed(isPageMode ? activePageId : undefined, page);
   const { data: pagePosts, isLoading, isFetching, error, refetch } = isPageMode ? pageFeed : personal;
-  const { posts, exhausted } = useAccumulatedPages<PostWithAuthor>(pagePosts as PostWithAuthor[] | undefined, page, isPageMode ? activePageId : "personal");
+  const { posts, exhausted } = useAccumulatedPages<PostWithAuthor>(
+    pagePosts as PostWithAuthor[] | undefined,
+    page,
+    isPageMode ? pageFeedKeys.following(activePageId) : feedKeys.following(user?.id)
+  );
 
   useEffect(() => setPage(0), [isPageMode]);
 
@@ -193,7 +201,7 @@ function TopDiscussionsTab({ active }: { active: boolean }) {
   const [page, setPage] = useState(0);
   const { user } = useAuth();
   const { data: pagePosts, isLoading, isFetching, error, refetch } = useTopDiscussionsFeed(page);
-  const { posts, exhausted } = useAccumulatedPages<PostWithAuthor>(pagePosts as PostWithAuthor[] | undefined, page, "top");
+  const { posts, exhausted } = useAccumulatedPages<PostWithAuthor>(pagePosts as PostWithAuthor[] | undefined, page, feedKeys.top(user?.id));
   const onRefresh = useFeedRefresh({ prefix: feedKeys.top(user?.id), page, setPage, refetch });
 
   return (

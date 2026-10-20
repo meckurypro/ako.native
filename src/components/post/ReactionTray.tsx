@@ -35,6 +35,12 @@ interface ReactionTrayProps {
 const VISIBLE_SLOTS = 5;
 const LONG_PRESS_MS = 450;
 
+// The icon owns a fixed box in the middle of its slot and the count hangs off the box's right edge, outside the
+// layout flow. Because the count takes no part in centring, the icon sits in exactly the same place whether the
+// count is hidden (0), one digit or "1.2K" — it never shifts when the number appears, grows or disappears.
+const ICON_BOX = 24;
+const COUNT_GAP = 6;
+
 function ActionButton({
   action,
   widthPercent,
@@ -65,11 +71,18 @@ function ActionButton({
       accessibilityRole="button"
       accessibilityLabel={action.label}
       accessibilityState={{ disabled: !!disabled }}
-      className={`flex-row items-center justify-center gap-2 py-1.5 ${disabled ? "opacity-40" : ""}`}
+      className={`flex-row items-center justify-center py-1.5 ${disabled ? "opacity-40" : ""}`}
       style={{ width: `${widthPercent}%` }}
     >
-      {action.icon}
-      {action.count !== null ? <AnimatedCount value={action.count} lineHeight={18} className="text-sm font-semibold text-ink" /> : null}
+      <View style={{ width: ICON_BOX, height: ICON_BOX, alignItems: "center", justifyContent: "center" }}>{action.icon}</View>
+      {action.count !== null ? (
+        <View
+          pointerEvents="none"
+          style={{ position: "absolute", top: 0, bottom: 0, left: "50%", marginLeft: ICON_BOX / 2 + COUNT_GAP, justifyContent: "center" }}
+        >
+          <AnimatedCount value={action.count} lineHeight={18} className="text-sm font-semibold text-ink" />
+        </View>
+      ) : null}
     </Pressable>
   );
 }
