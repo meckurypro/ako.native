@@ -250,7 +250,8 @@ export function Compose() {
       <ScrollView
         ref={scrollRef}
         keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
+        // "on-drag" would dismiss the keyboard (and drop the text selection) the moment the page scrolls; keep it up while editing.
+        keyboardDismissMode="none"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingTop: insets.top + 16, paddingHorizontal: 16, paddingBottom: keyboardHeight > 0 ? 320 : 32 }}
       >
