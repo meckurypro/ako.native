@@ -195,7 +195,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
   const { data: mediaDetails } = useMediaDetails(isMedia ? project.id : undefined);
   const { data: pitchDetails } = usePitchDetails(isPitch ? project.id : undefined);
   const { data: pitchRaised } = usePitchRaised(isPitch ? project.id : undefined);
-  const { data: bookDetails } = useBookDetails(isBook ? project.id : undefined);
+  const { data: bookDetails, isLoading: bookDetailsLoading } = useBookDetails(isBook ? project.id : undefined);
   const isBookDraftUnpublished = isBook && bookDetails?.content_source === "authored" && !project.published_at;
   // The builder is reachable only from the creator's own profile lists (manageContent) — see the prop.
   const canEditBookContent = !!manageContent && isOwner && isBook && bookDetails?.content_source === "authored";
@@ -536,8 +536,8 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
   const gigBookable = project.project_type === "gig" && !isOwner && !isFree && !hasPurchased;
   const openBookReader = () => {
     if (!requireUser()) return;
-    logFreeAccessIfNeeded("stream");
     router.push(`/projects/${project.id}/read` as Href);
+    logFreeAccessIfNeeded("stream");
   };
   const downloadBook = () => void openSigned(getBookDownload, { projectId: project.id, kind: "book", action: "download" }, "Couldn't access file.");
 
@@ -619,6 +619,15 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
       icon: TypeIcon ?? LinkIcon,
       onPress: () => router.push((project.project_type === "event" && isOwner ? `/projects/${project.id}/checkin` : TYPE_ROUTE[project.project_type]!(project.id)) as Href),
     };
+  }
+
+  // Hold the CTA slot steady until the data that decides WHICH button this is has landed. Before, a buyer's own book
+  // showed "Buy for $X" (has-purchased loading) or nothing (book details loading), then swapped to "Read" under the
+  // finger — the tap hit the wrong/absent button and only the second press worked.
+  const ctaAccessPending = !!user && !isOwner && !isFree && hasPurchasedQuery.isLoading;
+  const ctaBookPending = isBook && bookDetailsLoading;
+  if (isDetailView && !isPitch && project.project_type !== "gig" && !isRoom && (ctaAccessPending || ctaBookPending)) {
+    detailCta = { label: "Loading…", onPress: () => {}, disabled: true };
   }
 
   const menuIcon = (as: LucideIcon) => <Icon as={as} size={22} className="text-overlay-ink" />;

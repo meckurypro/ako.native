@@ -1,6 +1,7 @@
 // src/hooks/useBookBuilder.ts
 import { queryOptions, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
+import { InteractionManager } from "react-native";
 import { supabase } from "../lib/supabase";
 
 // Optional named front/back-matter sections the builder offers as
@@ -142,7 +143,11 @@ export function usePrefetchBookChapters(projectId: string | undefined, enabled: 
   const queryClient = useQueryClient();
   useEffect(() => {
     if (!enabled || !projectId) return;
-    void queryClient.prefetchQuery(bookChaptersOptions(projectId));
+    // Wait for animations/touches to settle so pulling the whole book's text doesn't compete with the first Read press.
+    const task = InteractionManager.runAfterInteractions(() => {
+      void queryClient.prefetchQuery(bookChaptersOptions(projectId));
+    });
+    return () => task.cancel();
   }, [enabled, projectId, queryClient]);
 }
 
