@@ -23,7 +23,8 @@ import { useSmartBack } from "@/hooks/useSmartBack";
 import { useToast } from "@/components/ui/Toast";
 import { isVideoUrl } from "@/hooks/useUploadPostMedia";
 import { supabase } from "@/lib/supabase";
-import { CONTENT_LIMIT, contentCounterClass } from "@/lib/textLimits";
+import { contentCounterClass, postContentLimit } from "@/lib/textLimits";
+import { useMyProfile } from "@/hooks/useProfile";
 import { useTheme } from "@/theme/ThemeProvider";
 import type { PostWithAuthor } from "@/types/database";
 
@@ -66,6 +67,8 @@ export function EditPost() {
   const returnAfterSave = useReturnAfterSave();
   const toast = useToast();
   const { user } = useAuth();
+  const { data: me } = useMyProfile();
+  const contentLimit = postContentLimit(me?.is_verified);
   const { data: post, isLoading } = usePostForEdit(postId);
   const updatePost = useUpdatePost();
   const { data: collaborators } = useCollaborators("post", postId);
@@ -170,7 +173,7 @@ export function EditPost() {
             {heading.length}/{HEADING_LIMIT}
           </Text>
 
-          <MentionTextarea value={content} onChange={setContent} maxLength={CONTENT_LIMIT} rows={8} showFormatToolbar />
+          <MentionTextarea value={content} onChange={setContent} maxLength={contentLimit} rows={8} showFormatToolbar />
 
           {photos.mediaUrls.length > 0 ? (
             <View className="mt-3 flex-row flex-wrap gap-2">
@@ -203,8 +206,8 @@ export function EditPost() {
                 {photos.uploading ? "Uploading…" : photos.mediaUrls.length > 0 ? "Add another slide" : "Add photos"}
               </Text>
             </Pressable>
-            <Text className={`text-xs ${contentCounterClass(content.length)}`}>
-              {content.length}/{CONTENT_LIMIT}
+            <Text className={`text-xs ${contentCounterClass(content.length, contentLimit)}`}>
+              {content.length}/{contentLimit}
             </Text>
           </View>
 

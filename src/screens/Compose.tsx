@@ -36,7 +36,7 @@ import { formatScheduleShort } from "@/lib/schedulePresets";
 import { isVideoUrl, useUploadPostMedia } from "@/hooks/useUploadPostMedia";
 import { fromImagePickerAsset } from "@/lib/localFile";
 import { supabase } from "@/lib/supabase";
-import { CONTENT_LIMIT, contentCounterClass } from "@/lib/textLimits";
+import { CONTENT_LIMIT, contentCounterClass, postContentLimit } from "@/lib/textLimits";
 import type { MusicSearchResult } from "@/types/music";
 import { useTheme } from "@/theme/ThemeProvider";
 
@@ -116,6 +116,8 @@ export function Compose() {
   }, []);
 
   const postingAsPage = identity?.mode === "page" ? identity.page : null;
+  // Verified personal accounts get the longer cap; page posts keep the standard one.
+  const contentLimit = postingAsPage ? CONTENT_LIMIT : postContentLimit(me?.is_verified);
   const pagePerms = useActivePagePermissions();
   const canPost = heading.trim().length > 0 || content.trim().length > 0;
   const busy = !canPost || createPost.isPending;
@@ -280,7 +282,7 @@ export function Compose() {
           <MentionTextarea
             value={content}
             onChange={setContent}
-            maxLength={CONTENT_LIMIT}
+            maxLength={contentLimit}
             rows={8}
             placeholder="Add details… use @ to mention someone."
             showFormatToolbar
@@ -341,8 +343,8 @@ export function Compose() {
                 {uploadMedia.isPending ? "Uploading…" : mediaUrls.length > 0 ? "Add another slide" : "Add photos"}
               </Text>
             </Pressable>
-            <Text className={`text-xs ${contentCounterClass(content.length)}`}>
-              {content.length}/{CONTENT_LIMIT}
+            <Text className={`text-xs ${contentCounterClass(content.length, contentLimit)}`}>
+              {content.length}/{contentLimit}
             </Text>
           </View>
 

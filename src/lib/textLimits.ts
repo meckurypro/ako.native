@@ -17,6 +17,20 @@ export const CONTENT_LIMIT = 450;
 // once the user is close to the cap (matches the pattern already used
 // for post content) so the warning shows up before they actually hit
 // the hard stop the textarea's `maxLength` enforces.
-export function contentCounterClass(length: number): string {
-  return length > CONTENT_LIMIT * 0.9 ? "text-danger" : "text-ink-muted";
+export function contentCounterClass(length: number, limit: number = CONTENT_LIMIT): string {
+  return length > limit * 0.9 ? "text-danger" : "text-ink-muted";
+}
+
+// Posts get a tiered cap. Everyone gets CONTENT_LIMIT (450); users whose
+// profiles.is_verified is true get VERIFIED_POST_LIMIT (1,200). The gate is
+// is_verified — the permanent, admin-assigned status — NOT badge_visible, so
+// a verified user whose badge is hidden for missing the weekly posting streak
+// keeps the longer limit. Comments, stances and project descriptions stay at
+// CONTENT_LIMIT for everyone. The create-post and update-post edge functions
+// enforce the same two numbers server-side (and the posts_content_check DB
+// constraint is the 1,200 ceiling), so keep all of these in sync.
+export const VERIFIED_POST_LIMIT = 1200;
+
+export function postContentLimit(isVerified: boolean | null | undefined): number {
+  return isVerified ? VERIFIED_POST_LIMIT : CONTENT_LIMIT;
 }
