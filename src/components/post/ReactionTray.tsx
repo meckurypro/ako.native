@@ -6,6 +6,7 @@
 import type { ReactNode } from "react";
 import { Pressable, View } from "react-native";
 
+import { AnimatedCount } from "@/components/ui/AnimatedCount";
 import { Text } from "@/components/ui/Text";
 import { haptics } from "@/lib/haptics";
 
@@ -23,7 +24,7 @@ interface ReactionTrayProps {
   middleActions: EngagementAction[];
   rightActions: EngagementAction[];
   /** Small tappable caption under the left action (e.g. "Comments: 4"). */
-  belowLeftLabel?: { text: string; onClick: () => void };
+  belowLeftLabel?: { text: string; /** Rolling number shown after the text (e.g. the comment count). */ count?: number; onClick: () => void };
   /** Open the full "more" sheet — fired by a long-press on any button. */
   onOpenMore?: () => void;
   /** Frozen (archived / reshare whose original is gone): everything dimmed and inert. */
@@ -68,7 +69,7 @@ function ActionButton({
       style={{ width: `${widthPercent}%` }}
     >
       {action.icon}
-      {action.count !== null ? <Text className="text-sm font-semibold leading-none text-ink">{action.count}</Text> : null}
+      {action.count !== null ? <AnimatedCount value={action.count} lineHeight={18} className="text-sm font-semibold text-ink" /> : null}
     </Pressable>
   );
 }
@@ -97,7 +98,12 @@ export function ReactionTray({ leftActions, middleActions, rightActions, onOpenM
             className="mt-2 items-center"
             style={{ width: 140 }}
           >
-            <Text numberOfLines={1} className="text-xs font-medium leading-none text-ink-muted">{belowLeftLabel.text}</Text>
+            <View className="flex-row items-center justify-center gap-1">
+              <Text numberOfLines={1} className="text-xs font-medium leading-none text-ink-muted">{belowLeftLabel.text}</Text>
+              {belowLeftLabel.count !== undefined ? (
+                <AnimatedCount value={belowLeftLabel.count} showZero lineHeight={14} className="text-xs font-medium text-ink-muted" />
+              ) : null}
+            </View>
           </Pressable>
         ) : null}
       </View>

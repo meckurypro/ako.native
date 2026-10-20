@@ -1,5 +1,6 @@
 // src/hooks/useComments.ts
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { notifyManager, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { adjustCountInCaches, COMMENT_QUERY_ROOTS, POST_QUERY_ROOTS } from "../lib/optimisticCache";
 import { supabase } from "../lib/supabase";
 import { resolveFunctionErrorMessage } from "../lib/functionErrors";
 import { useActiveIdentity, useActivePagePermissions } from "./usePages";
@@ -122,15 +123,30 @@ export function useCreateComment(postId: string) {
 
       return data.comment;
     },
-    onSuccess: (_comment, input) => {
-      // Prefix match: refreshes every loaded page / stance filter of this post's reply lists, whichever level
-      // (the post's, or any opened comment's) the new reply landed in.
-      queryClient.invalidateQueries({ queryKey: ["comment-list", postId] });
-      // The post's comment_count, and — when replying to a comment — that comment's reply_count + per-stance
-      // totals, both shown as counts on the pages above.
-      queryClient.invalidateQueries({ queryKey: ["post", postId] });
-      if (input.parent_comment_id) queryClient.invalidateQueries({ queryKey: ["comment", input.parent_comment_id] });
-      queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
+    onMutate: () => ({ queuedAt: Date.now() }),
+    onSuccess: (comment: Comment | undefined, input, ctx) => {
+      const queuedAt = ctx?.queuedAt ?? Date.now();
+      const stance = comment?.stance ?? input.stance ?? null;
+      const parentId = comment?.parent_comment_id ?? input.parent_comment_id ?? null;
+      const stanceField = stance ? `${stance}_count` : null;
+
+      // Counts move the instant the reply is accepted — mirrors what the database triggers just did
+      // (update_post_stance_counts): the post's comment_count, its per-stance total for a top-level comment, and
+      // for a reply the parent comment's reply_count + per-stance total. If a live update already landed first,
+      // adjustCountInCaches notices and refetches instead of adding on top.
+      notifyManager.batch(() => {
+        adjustCountInCaches(queryClient, { roots: POST_QUERY_ROOTS, id: postId, field: "comment_count", delta: 1, queuedAt });
+        if (!parentId && stanceField) adjustCountInCaches(queryClient, { roots: POST_QUERY_ROOTS, id: postId, field: stanceField, delta: 1, queuedAt });
+        if (parentId) {
+          adjustCountInCaches(queryClient, { roots: COMMENT_QUERY_ROOTS, id: parentId, field: "reply_count", delta: 1, queuedAt });
+          if (stanceField) adjustCountInCaches(queryClient, { roots: COMMENT_QUERY_ROOTS, id: parentId, field: stanceField, delta: 1, queuedAt });
+        }
+      });
+
+      // The new reply itself: prefix match refreshes every loaded page / stance filter of this post's reply lists,
+      // whichever level (the post's, or any opened comment's) it landed in. Other people's replies arrive the same
+      // way via the live thread channel.
+      void queryClient.invalidateQueries({ queryKey: ["comment-list", postId] });
     },
   });
 }

@@ -3,12 +3,12 @@ import { Flag, Gift as GiftIcon, MessageCircle, MoreHorizontal, Share2, ThumbsDo
 import { useRef, useState } from "react";
 import { Pressable, View } from "react-native";
 
+import { AnimatedCount } from "@/components/ui/AnimatedCount";
 import { DropdownMenu, type DropdownMenuItem } from "@/components/ui/DropdownMenu";
 import { LikeHeart } from "@/components/ui/LikeHeart";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import type { CommentWithAuthor } from "@/hooks/useComments";
-import { formatCompactCount } from "@/lib/formatStats";
 import { useTheme } from "@/theme/ThemeProvider";
 import { useCommentEngagement } from "./CommentEngagement";
 
@@ -69,6 +69,7 @@ export function CommentActionBar({ comment, size = "sm" }: { comment: CommentWit
 
   const icon = size === "lg" ? 22 : 17;
   const countClass = size === "lg" ? "text-sm" : "text-xs";
+  const countLine = size === "lg" ? 20 : 16;
   const wrapperClass = size === "lg" ? "flex-row items-center justify-around py-1" : "mt-1 -ml-1.5 flex-row items-center gap-7";
   const btn = "flex-row items-center gap-1.5 p-1.5";
 
@@ -76,7 +77,7 @@ export function CommentActionBar({ comment, size = "sm" }: { comment: CommentWit
     <View className={wrapperClass}>
       <Pressable onPress={() => eng.reply(comment)} accessibilityRole="button" accessibilityLabel="Reply" className={btn}>
         <Icon as={MessageCircle} size={icon} className="text-ink-muted" />
-        {comment.reply_count > 0 ? <Text className={`${countClass} text-ink-muted`}>{formatCompactCount(comment.reply_count)}</Text> : null}
+        <AnimatedCount value={comment.reply_count} lineHeight={countLine} className={`${countClass} text-ink-muted`} />
       </Pressable>
 
       <Pressable
@@ -87,7 +88,7 @@ export function CommentActionBar({ comment, size = "sm" }: { comment: CommentWit
         className={btn}
       >
         <LikeHeart active={liked} size={icon} className={liked ? "text-danger" : "text-ink-muted"} />
-        {likeCount > 0 ? <Text className={`${countClass} ${liked ? "text-danger" : "text-ink-muted"}`}>{formatCompactCount(likeCount)}</Text> : null}
+        <AnimatedCount value={likeCount} lineHeight={countLine} className={`${countClass} ${liked ? "text-danger" : "text-ink-muted"}`} />
       </Pressable>
 
       <Pressable
@@ -98,7 +99,7 @@ export function CommentActionBar({ comment, size = "sm" }: { comment: CommentWit
         className={btn}
       >
         <ThumbsDown size={icon} color={disliked ? colors.danger : colors.inkMuted} fill={disliked ? colors.danger : "none"} />
-        {dislikeCount > 0 ? <Text className={`${countClass} ${disliked ? "text-danger" : "text-ink-muted"}`}>{formatCompactCount(dislikeCount)}</Text> : null}
+        <AnimatedCount value={dislikeCount} lineHeight={countLine} className={`${countClass} ${disliked ? "text-danger" : "text-ink-muted"}`} />
       </Pressable>
 
       {size === "lg" ? (

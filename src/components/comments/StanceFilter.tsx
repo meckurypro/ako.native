@@ -1,9 +1,9 @@
 // src/components/comments/StanceFilter.tsx
-import { Pressable, ScrollView } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 
+import { AnimatedCount } from "@/components/ui/AnimatedCount";
 import { Text } from "@/components/ui/Text";
 import type { StanceFilter as Filter } from "@/hooks/useComments";
-import { formatCompactCount } from "@/lib/formatStats";
 import type { Stance } from "@/types/database";
 import { STANCE_ORDER, STANCE_TONE } from "./stance";
 
@@ -42,9 +42,10 @@ export function StanceFilterBar({
         accessibilityState={{ selected: value === "all" }}
         className={`${tab} ${value === "all" ? "border-ink" : "border-transparent"}`}
       >
-        <Text className={`text-sm ${value === "all" ? "font-medium text-ink" : "text-ink-muted"}`}>
-          All <Text className="text-xs text-ink-muted">{formatCompactCount(total)}</Text>
-        </Text>
+        <View className="flex-row items-center gap-1">
+          <Text className={`text-sm ${value === "all" ? "font-medium text-ink" : "text-ink-muted"}`}>All</Text>
+          <AnimatedCount value={total} showZero lineHeight={16} className="text-xs text-ink-muted" />
+        </View>
       </Pressable>
       {present.map((s) => {
         const tone = STANCE_TONE[s];
@@ -57,9 +58,10 @@ export function StanceFilterBar({
             accessibilityState={{ selected: active }}
             className={`${tab} ${active ? tone.underline : "border-transparent"}`}
           >
-            <Text className={`text-sm ${active ? `font-medium ${tone.text}` : "text-ink-muted"}`}>
-              {tone.noun} <Text className={`text-xs ${active ? tone.text : "text-ink-muted"}`}>{formatCompactCount(counts[s])}</Text>
-            </Text>
+            <View className="flex-row items-center gap-1">
+              <Text className={`text-sm ${active ? `font-medium ${tone.text}` : "text-ink-muted"}`}>{tone.noun}</Text>
+              <AnimatedCount value={counts[s]} showZero lineHeight={16} className={`text-xs ${active ? tone.text : "text-ink-muted"}`} />
+            </View>
           </Pressable>
         );
       })}

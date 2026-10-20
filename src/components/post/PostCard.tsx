@@ -46,6 +46,7 @@ import { useToast } from "@/components/ui/Toast";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import { MusicAttribution } from "@/components/music/MusicAttribution";
 import { useAuth } from "@/hooks/useAuth";
+import { useLivePost } from "@/hooks/useLiveCounts";
 import { useRecordPostView } from "@/hooks/useRecordPostView";
 import { useIsBookmarked, useToggleBookmark } from "@/hooks/useBookmarks";
 import { useCollaborators } from "@/hooks/useCollaboration";
@@ -187,6 +188,8 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
   const hasReshared = !!hasResharedQuery.data;
 
   useRecordPostView(post.id, active && visible);
+  // Likes, comments, shares… follow other people's activity live while this card is on screen.
+  useLivePost(post.id, active);
   const viewCountQuery = usePostViewCount(post.id, showStats || active);
   const viewCount = viewCountQuery.data ?? 0;
 
@@ -252,42 +255,42 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
       key: "support",
       label: "Support",
       icon: mk(Handshake),
-      count: post.support_count > 0 ? post.support_count : null,
+      count: post.support_count,
       onAction: () => setActiveStance("support"),
     },
     disagree: {
       key: "disagree",
       label: "Disagree",
       icon: mk(Frown),
-      count: post.disagree_count > 0 ? post.disagree_count : null,
+      count: post.disagree_count,
       onAction: () => setActiveStance("disagree"),
     },
     pushback: {
       key: "pushback",
       label: "Pushback",
       icon: mk(Hand),
-      count: post.pushback_count > 0 ? post.pushback_count : null,
+      count: post.pushback_count,
       onAction: () => setActiveStance("pushback"),
     },
     dislike: {
       key: "dislike",
       label: isDisliked ? "Disliked" : "Dislike",
       icon: mk(ThumbsDown, { fill: isDisliked ? ink : "none" }),
-      count: dislikeCount > 0 ? dislikeCount : null,
+      count: dislikeCount,
       onAction: () => toggleDislike.mutate(isDisliked),
     },
     gift: {
       key: "gift",
       label: "Gift",
       icon: mk(GiftIcon),
-      count: post.gift_count > 0 ? post.gift_count : null,
+      count: post.gift_count,
       onAction: () => setShowGiftPicker(true),
     },
     reshare: {
       key: "reshare",
       label: "Reshare",
       icon: mk(Repeat2),
-      count: post.share_count > 0 ? post.share_count : null,
+      count: post.share_count,
       onAction: handleReshareTap,
     },
     save: {
@@ -324,7 +327,7 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
       key: "like",
       label: isLiked ? "Liked" : "Like",
       icon: <LikeHeart active={isLiked} size={ICON} className="text-danger" />,
-      count: likeCount > 0 ? likeCount : null,
+      count: likeCount,
       onClick: () => toggleLike.mutate(isLiked),
     },
   ];
@@ -562,12 +565,15 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
         </View>
       ) : null}
 
+      {/* Keyed by post: FlashList recycles cells, and a recycled cell must reset its counters, not roll from the
+          previous post's numbers to this one's. */}
       <ReactionTray
+        key={post.id}
         leftActions={leftActions}
         middleActions={middleActions}
         rightActions={rightActions}
         onOpenMore={trayFrozen ? undefined : () => setShowMoreActions(true)}
-        belowLeftLabel={{ text: `Comments: ${post.comment_count}`, onClick: handleCommentTap }}
+        belowLeftLabel={{ text: "Comments:", count: post.comment_count, onClick: handleCommentTap }}
         disabled={trayFrozen}
       />
 

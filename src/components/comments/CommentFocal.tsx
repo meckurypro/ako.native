@@ -2,6 +2,7 @@
 import { router, type Href } from "expo-router";
 import { Pressable, View } from "react-native";
 
+import { AnimatedCount } from "@/components/ui/AnimatedCount";
 import { Avatar } from "@/components/ui/Avatar";
 import { Text } from "@/components/ui/Text";
 import type { CommentWithAuthor } from "@/hooks/useComments";
@@ -13,9 +14,10 @@ import { useCommentEngagement } from "./CommentEngagement";
 
 function Stat({ value, singular, plural }: { value: number; singular: string; plural: string }) {
   return (
-    <Text className="text-sm text-ink-muted">
-      <Text className="text-sm font-semibold text-ink">{formatCompactCount(value)}</Text> {value === 1 ? singular : plural}
-    </Text>
+    <View className="flex-row items-center gap-1">
+      <AnimatedCount value={value} showZero lineHeight={20} className="text-sm font-semibold text-ink" />
+      <Text className="text-sm text-ink-muted">{value === 1 ? singular : plural}</Text>
+    </View>
   );
 }
 

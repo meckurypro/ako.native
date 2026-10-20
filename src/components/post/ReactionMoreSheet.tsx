@@ -25,7 +25,7 @@ function Grid({ actions }: { actions: EngagementAction[] }) {
             {action.icon}
             <Text className="px-0.5 text-center text-[11px] leading-tight text-ink-muted">
               {action.label}
-              {action.count !== null ? ` (${action.count})` : ""}
+              {action.count ? ` (${action.count})` : ""}
             </Text>
           </Pressable>
         ))}

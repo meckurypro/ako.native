@@ -5,6 +5,7 @@ import { Share } from "react-native";
 import { GiftPicker } from "@/components/post/GiftPicker";
 import { StanceComposer } from "@/components/post/StanceComposer";
 import { useAuth } from "@/hooks/useAuth";
+import { useLiveThread } from "@/hooks/useLiveCounts";
 import type { CommentWithAuthor } from "@/hooks/useComments";
 import { useMyCommentReactions, useToggleCommentReaction, type CommentCountDeltas, type CommentReactionState } from "@/hooks/useReactions";
 import { APP_URL } from "@/lib/config";
@@ -45,6 +46,8 @@ export function commentUrl(postId: string, commentId: string): string {
  */
 export function CommentEngagementProvider({ postId, children }: { postId: string; children: ReactNode }) {
   const { user } = useAuth();
+  // Everyone's reactions and replies in this conversation arrive live (counts roll, new replies appear).
+  useLiveThread(postId);
 
   const knownRef = useRef<Set<string>>(new Set());
   const [knownIds, setKnownIds] = useState<string[]>([]);
