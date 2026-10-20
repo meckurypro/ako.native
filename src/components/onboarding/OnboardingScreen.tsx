@@ -28,7 +28,7 @@ export function OnboardingScreen({ children, footer, centered = false, maxWidth 
       <KeyboardAvoider className="flex-1">
         <ScrollView
           keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
+          keyboardDismissMode="none"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{
             flexGrow: 1,

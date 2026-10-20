@@ -19,7 +19,7 @@ export function AuthScreen({ children }: { children: ReactNode }) {
       <KeyboardAvoider className="flex-1">
         <ScrollView
           keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
+          keyboardDismissMode="none"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{
             flexGrow: 1,

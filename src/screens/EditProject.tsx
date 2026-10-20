@@ -422,7 +422,7 @@ export function EditProject() {
   return (
     <KeyboardAvoider className="flex-1 bg-canvas">
       <ScreenHeader title="Edit project" />
-      <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }}>
+      <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="none" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }}>
         <View className="w-full max-w-md self-center">
           <View className="mb-6">
             <Text className="mb-1.5 text-sm font-medium text-ink-muted">Status</Text>

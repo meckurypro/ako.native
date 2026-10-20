@@ -221,7 +221,7 @@ export function PromoteComposer() {
     <KeyboardAvoider className="flex-1 bg-canvas">
       <ScrollView
         keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
+        keyboardDismissMode="none"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingTop: insets.top + 16, paddingHorizontal: 16, paddingBottom: insets.bottom + 48 }}
       >

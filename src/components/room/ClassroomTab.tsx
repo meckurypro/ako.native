@@ -171,7 +171,7 @@ export function ClassroomTab({ projectId, isHost }: { projectId: string; isHost:
 
   return (
     <View className="flex-1">
-      <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}>
+      <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="none" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}>
         {isHost && (
           <Pressable onPress={() => setShowPollComposer((s) => !s)} accessibilityRole="button" className="mb-3 flex-row items-center gap-1 self-start">
             <Icon as={BarChart3} size={13} className="text-accent" />

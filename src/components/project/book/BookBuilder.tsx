@@ -185,7 +185,7 @@ export function BookBuilder({ projectId, project, chapters, publishBook }: BookB
         />
       </View>
       {draft.isDirty && <Text className="bg-accent-soft px-4 py-1.5 text-xs text-accent">Unsaved changes — tap Save to apply them.</Text>}
-      <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: insets.bottom + 96 }}>
+      <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="none" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: insets.bottom + 96 }}>
         <Pressable
           onPress={handleCover}
           disabled={coverBusy}

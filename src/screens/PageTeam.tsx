@@ -163,7 +163,7 @@ export function PageTeam() {
   return (
     <KeyboardAvoider className="flex-1 bg-canvas">
       <ScreenHeader title={`${page.name} team`} />
-      <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }}>
+      <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="none" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }}>
         <View className="w-full max-w-md self-center">
           <View className="mb-6 gap-3 rounded-2xl bg-surface p-4">
             <Text className="text-xs font-medium uppercase tracking-wide text-ink-muted">Invite someone</Text>

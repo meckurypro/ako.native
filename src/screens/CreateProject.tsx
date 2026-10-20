@@ -352,7 +352,7 @@ export function CreateProject() {
   return (
     <KeyboardAvoider className="flex-1 bg-canvas">
       <ScreenHeader title="New project" />
-      <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }}>
+      <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="none" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }}>
         <View className="w-full max-w-md self-center">
           {/* Thumbnail — the frame takes the uploaded image's own aspect ratio (16:9 only as the empty placeholder). */}
           <Pressable

@@ -144,7 +144,7 @@ export function EditPage() {
   return (
     <KeyboardAvoider className="flex-1 bg-canvas">
       <ScreenHeader title="Edit page" />
-      <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }}>
+      <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="none" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }}>
         <View className="w-full max-w-md gap-5 self-center">
           {/* Cover */}
           <Pressable
