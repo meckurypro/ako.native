@@ -15,6 +15,7 @@ import { ScrollToTopButton } from "@/components/nav/ScrollToTopButton";
 import { useAuth } from "@/hooks/useAuth";
 import { isGuestProjectPath } from "@/lib/guestRoutes";
 import { usePersistedQueries } from "@/hooks/usePersistedQueries";
+import { usePostRealtime } from "@/hooks/usePostRealtime";
 import { usePushLifecycle } from "@/hooks/usePushLifecycle";
 import { useRouteMemory } from "@/hooks/useRouteMemory";
 import { useTheme } from "@/theme/ThemeProvider";
@@ -35,6 +36,7 @@ function RouteMemory() {
 /** Holds the signed-in shell for the few ms it takes to restore the encrypted offline cache. */
 function PersistGate({ children }: { children: React.ReactNode }) {
   const restored = usePersistedQueries();
+  usePostRealtime(); // live post edits from other devices / authors
   return restored ? <>{children}</> : <View style={{ flex: 1 }} />;
 }
 

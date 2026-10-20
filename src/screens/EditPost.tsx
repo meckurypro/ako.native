@@ -31,7 +31,7 @@ const HEADING_LIMIT = 50;
 
 function usePostForEdit(postId: string) {
   return useQuery({
-    queryKey: ["post", postId],
+    queryKey: ["post-for-edit", postId],
     queryFn: async (): Promise<PostWithAuthor> => {
       const { data, error } = await supabase
         .from("posts")

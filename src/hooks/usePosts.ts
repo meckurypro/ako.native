@@ -8,6 +8,7 @@ import { PROFILE_ROLES_SELECT, toProfileRoles } from "../lib/profileRoles";
 import { PAGE_SELECT } from "../lib/postSelects";
 import type { PostWithAuthor, RepostSource } from "../types/database";
 import { DEBUG_DISABLE_PER_CARD_QUERIES } from "../lib/debugFlags";
+import { EDITABLE_POST_FIELDS, patchFieldsInCaches, pickFields, POST_QUERY_ROOTS, restorePatched } from "../lib/optimisticCache";
 
 const PAGE_SIZE = 15;
 export const POST_EDIT_WINDOW_MS = 15 * 60 * 1000;
@@ -603,13 +604,31 @@ export function useUpdatePost() {
       if (data?.error) throw new Error(data.error);
       return data.post;
     },
-    onSuccess: async (post) => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["feed-posts"], refetchType: "all" }),
-        queryClient.invalidateQueries({ queryKey: ["user-posts"], refetchType: "all" }),
-        queryClient.invalidateQueries({ queryKey: ["post", post.id], refetchType: "all" }),
-        queryClient.invalidateQueries({ queryKey: ["post-topics", post.id], refetchType: "all" }),
-      ]);
+    // Show the edit everywhere it is cached the moment the person taps Save — the UI reads the cache, so this is
+    // what makes the change appear instantly instead of after the server round trip + a refetch of every list.
+    onMutate: async (input) => {
+      const heading = input.heading?.trim() || null;
+      const previous = patchFieldsInCaches(queryClient, POST_QUERY_ROOTS, input.post_id, {
+        heading,
+        heading_color: heading ? input.heading_color ?? null : null,
+        content: input.content.trim(),
+        ...(input.media_urls ? { media_urls: input.media_urls } : {}),
+      });
+      return { previous };
+    },
+    // Moderation rejected it / offline / server error: put the old text back.
+    onError: (_err, _input, ctx) => {
+      if (ctx) restorePatched(queryClient, ctx.previous);
+    },
+    onSuccess: (post) => {
+      // Replace the optimistic guess with the row the server actually stored (all copies: feeds, detail, reshare embeds).
+      patchFieldsInCaches(queryClient, POST_QUERY_ROOTS, post.id, pickFields(post, EDITABLE_POST_FIELDS));
+      // Reconcile ordering / topic membership in the background. NOT awaited: the editor closes right away, and only
+      // queries that are on screen refetch now (the rest are marked stale and refetch when next opened).
+      void queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
+      void queryClient.invalidateQueries({ queryKey: ["user-posts"] });
+      void queryClient.invalidateQueries({ queryKey: ["page-posts"] });
+      void queryClient.invalidateQueries({ queryKey: ["post-topics", post.id] });
     },
   });
 }
