@@ -100,8 +100,9 @@ function Shell() {
   // Same ceiling as the AuthGate: a hung account check may delay the splash by seconds, never hold it up indefinitely.
   const graceOver = useBootGrace(4000);
 
-  // Ask for notification permission on the very first launch, right after the splash lifts (signed in or not).
-  useLaunchPushAsk(appReady && !showSplash);
+  // Ask for notification permission once per install, right after sign-in: as soon as the splash has lifted AND an
+  // account is signed in (so never on the welcome / login screen, and not for a signed-out guest opening a shared link).
+  useLaunchPushAsk(appReady && !showSplash && !!user);
 
   // The native splash (background-only) stays up until the first frame of this tree — AppSplash included — has
   // laid out, so the branded splash is already on screen when it goes. Hiding it any earlier would flash the app.

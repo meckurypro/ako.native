@@ -1,5 +1,5 @@
 // src/components/notifications/PushPermissionCard.tsx
-// Fallback ask for notification permission (the first-launch prompt is useLaunchPushAsk) — for anyone who said
+// Fallback ask for notification permission (the upfront, after-sign-in prompt is useLaunchPushAsk) — for anyone who said
 // no, or whose prompt never showed. Three states: not yet asked → explain, then the OS prompt; denied but askable (Android) →
 // ask again; blocked (iOS after one denial, or "Don't ask again") → only system Settings can change it.
 import { Bell } from "lucide-react-native";

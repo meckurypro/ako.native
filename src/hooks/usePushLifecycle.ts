@@ -1,6 +1,6 @@
 // src/hooks/usePushLifecycle.ts
 // Everything push-related that must run while a user is signed in; mounted once in the (app) layout.
-//   • (first-run ask lives at the app root now — see hooks/useLaunchPushAsk)
+//   • (the upfront permission ask runs right after sign-in, from the app root — see hooks/useLaunchPushAsk)
 //   • registration   – mint the Expo token and attach it to the account (only once the OS permission is granted)
 //   • tap routing    – open the right screen when a notification is tapped (background, killed, or tray);
 //                      also runs the Reply / Mark as read buttons when the app is open (see lib/pushActions)

@@ -1,14 +1,18 @@
 // src/hooks/useLaunchPushAsk.ts
-// First-launch notification prompt. Mounted at the ROOT (not behind sign-in), so a brand-new install is asked
-// as soon as the branded splash lifts — on the welcome / login screen, before an account even exists —
-// instead of waiting for the user to sign in and then find a card on the Notifications page.
+// Upfront notification prompt, shown right AFTER SIGN-IN. Mounted at the ROOT (so it isn't tied to one screen
+// group) but gated by the caller on a signed-in user: a brand-new install is asked the moment the person has
+// signed in and the branded splash has lifted — not on the welcome / login screen, and never for a signed-out
+// guest — instead of leaving them to find a card on the Notifications page and miss their first messages.
+// One OS request covers everything push needs: alerts, badge and sound on iOS, POST_NOTIFICATIONS on Android 13+
+// (the Android channels are created first — see askForPushPermission).
 //
 //   • asks once per install: the flag is written only AFTER the OS has actually answered, so a prompt that
-//     couldn't show (app not in the foreground, OS hiccup) is retried on the next launch
+//     couldn't show (app not in the foreground, OS hiccup) is retried on the next launch. The permission belongs
+//     to the device, not the account, so signing in as someone else never asks twice
 //   • never asks again if the user already answered, or if the OS won't show the prompt any more
 //     (later asks live in the Notifications card / Settings)
-//   • the push TOKEN is still minted and attached to the account after sign-in (usePushRegistration reacts
-//     to the shared permission store), so granting here works even though nobody is signed in yet
+//   • the push TOKEN is minted and attached to the account by usePushRegistration, which reacts to the shared
+//     permission store — so it registers the moment the person taps Allow
 import { useEffect } from "react";
 import { AppState } from "react-native";
 
@@ -17,7 +21,7 @@ import { askForPushPermission, usePushPermission } from "../lib/pushPermissionSt
 const ASKED_KEY = "ako-push-first-ask-done";
 const LAUNCH_ASK_DELAY_MS = 800;
 
-/** @param active false while the splash / boot UI is still covering the screen. */
+/** @param active false while the splash / boot UI is still covering the screen, or while nobody is signed in. */
 export function useLaunchPushAsk(active: boolean) {
   const { status, canAskAgain, loaded } = usePushPermission();
 
