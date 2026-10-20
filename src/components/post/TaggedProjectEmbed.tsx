@@ -1,5 +1,5 @@
 // src/components/post/TaggedProjectEmbed.tsx
-// Subtle project tag at the bottom of a post: thumbnail + title, tap to open it.
+// Project tag at the bottom of a post: a title strip with an oversized, perspective-tilted thumbnail resting on it. Tap to open.
 import { isBookType } from "@/lib/bookCover";
 import { ImageIcon } from "lucide-react-native";
 import { router, type Href } from "expo-router";
@@ -37,25 +37,55 @@ export function TaggedProjectEmbed({ project }: { project: TaggedProjectSummary 
     );
   }
 
+  // The strip is only as tall as the title needs; the thumbnail is deliberately oversized, overflows it above
+  // and below, and is tilted in perspective like a physical card resting on the post. The Pressable's own height
+  // holds the whole thumbnail, so the overflow reserves its space and stays tappable.
+  const book = isBookType(project.project_type);
+  const thumbW = book ? 84 : 96;
+  const thumbH = book ? 120 : 96;
+  const outerH = thumbH + 8;
+
   return (
     <Pressable
       onPress={() => router.push(getProjectPath(project) as Href)}
       accessibilityRole="link"
-      className="mt-3 min-h-[72px] flex-row items-center gap-3 rounded-xl border border-border-a60 bg-surface-a60 px-3 py-2.5 active:bg-surface-a80"
+      accessibilityLabel={project.title}
+      className="mt-3 justify-center active:opacity-80"
+      style={{ height: outerH }}
     >
-      <View className={`${isBookType(project.project_type) ? "h-[84px]" : "h-14"} w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border-a50 bg-surface-a80`}>
-        {project.thumbnail_url ? (
-          <Image source={{ uri: project.thumbnail_url }} contentFit="cover" style={{ width: "100%", height: "100%" }} />
-        ) : (
-          <Icon as={ImageIcon} size={16} className="text-ink-muted" />
-        )}
-      </View>
-      {/* Title fills the rest of the card: bold, centred both ways, wraps to
-          two lines max (ellipsis after that) so long titles stay balanced. */}
-      <View className="min-w-0 flex-1 items-center justify-center self-stretch">
-        <Text numberOfLines={2} className="text-center text-base font-bold leading-[21px] text-ink">
+      <View
+        className="min-h-[60px] w-full flex-row items-center justify-center rounded-xl border border-border-a60 bg-surface-a60 py-2 pr-4"
+        style={{ paddingLeft: thumbW + 24 }}
+      >
+        {/* Bold, centred, two lines max. */}
+        <Text numberOfLines={2} className="flex-1 text-center text-base font-bold leading-[21px] text-ink">
           {project.title}
         </Text>
+      </View>
+
+      <View
+        pointerEvents="none"
+        className="absolute rounded-lg bg-surface"
+        style={{
+          left: 12,
+          top: (outerH - thumbH) / 2,
+          width: thumbW,
+          height: thumbH,
+          transform: [{ perspective: 600 }, { rotateY: "16deg" }, { rotateX: "4deg" }, { rotateZ: "-6deg" }],
+          shadowColor: "#000",
+          shadowOpacity: 0.35,
+          shadowRadius: 9,
+          shadowOffset: { width: 0, height: 7 },
+          elevation: 8,
+        }}
+      >
+        <View className="h-full w-full items-center justify-center overflow-hidden rounded-lg border border-white-a25">
+          {project.thumbnail_url ? (
+            <Image source={{ uri: project.thumbnail_url }} contentFit="cover" style={{ width: "100%", height: "100%" }} />
+          ) : (
+            <Icon as={ImageIcon} size={22} className="text-ink-muted" />
+          )}
+        </View>
       </View>
     </Pressable>
   );

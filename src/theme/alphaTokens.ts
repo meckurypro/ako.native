@@ -53,7 +53,6 @@ export const ALPHA_TOKENS: Record<string, number[]> = {
   ],
   "border": [
     40,
-    50,
     60
   ],
   "danger": [
