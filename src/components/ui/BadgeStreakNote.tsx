@@ -8,8 +8,14 @@
 import { View } from "react-native";
 
 import { Text } from "./Text";
+import { useVerifiedColors } from "./VerifiedBadge";
+
+// Filled bars are shades of the Verified badge's blue: lightest first, each step more saturated,
+// the 4th at full strength == the badge itself.
+const STEP_OPACITY = [0.35, 0.55, 0.78, 1];
 
 export function BadgeStreakNote({ visible, streak }: { visible: boolean; streak: number }) {
+  const verified = useVerifiedColors();
   const copy = visible
     ? "Post at least once every week to keep your badge."
     : "Badge hidden. Post every week for 4 weeks to bring it back.";
@@ -18,7 +24,11 @@ export function BadgeStreakNote({ visible, streak }: { visible: boolean; streak:
     <View className="mt-1.5 flex-row items-center gap-2" accessibilityRole="text" accessibilityLabel={`${streak} of 4 weeks. ${copy}`}>
       <View className="flex-row gap-1">
         {[0, 1, 2, 3].map((i) => (
-          <View key={i} className={`h-1.5 w-4 rounded-full ${i < streak ? "bg-accent" : "bg-border"}`} />
+          <View
+            key={i}
+            className={`h-1.5 w-4 rounded-full ${i < streak ? "" : "bg-border"}`}
+            style={i < streak ? { backgroundColor: verified.to, opacity: STEP_OPACITY[i] } : undefined}
+          />
         ))}
       </View>
       <Text className="flex-shrink text-xs text-ink-muted">{copy}</Text>
