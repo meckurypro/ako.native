@@ -132,7 +132,7 @@ export function EditPost() {
 
   if (isLoading || !post) return <Notice message="Loading…" />;
   if (post.author_id !== user?.id) return <Notice message="You can only edit your own posts." />;
-  if (!canEditPost(post)) return <Notice message="The 15-minute edit window for this post has passed." onBack={smartBack} />;
+  if (!canEditPost(post)) return <Notice message="The 7-day edit window for this post has passed." onBack={smartBack} />;
   if (hasAcceptedCollaborators) {
     return <Notice message="Posts with a collaborator can't be edited — you can still delete it instead." onBack={smartBack} />;
   }

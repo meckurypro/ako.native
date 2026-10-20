@@ -56,6 +56,13 @@ export interface Profile {
   // account_status/KYC/founding status. Never set directly by
   // clients (see admin_set_verified()/admin_bulk_set_verified()).
   is_verified: boolean;
+  // Computed (Postgres computed columns) — only present when selected.
+  // badge_visible: is_verified AND (admin OR posted in each of the last
+  // four 7-day windows). This, not is_verified, decides whether the badge
+  // renders. badge_streak: 0–4 consecutive weeks, returned only to the
+  // account owner (null for everyone else, and for admins).
+  badge_visible?: boolean;
+  badge_streak?: number | null;
 }
 
 // ------------------------------------------------------------
@@ -148,7 +155,7 @@ export interface ProfileWithRoles extends Profile {
 
 // Enough of a profile to render an author byline anywhere in the app
 // (post card, comment, message, notification).
-export type AuthorSummary = Pick<Profile, "id" | "username" | "display_name" | "avatar_url" | "tier" | "is_private" | "is_verified"> & {
+export type AuthorSummary = Pick<Profile, "id" | "username" | "display_name" | "avatar_url" | "tier" | "is_private" | "is_verified" | "badge_visible"> & {
   roles: ProfileRole[];
 };
 

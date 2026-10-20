@@ -38,6 +38,7 @@ export function CommentRow({ comment, tinted = true }: { comment: CommentWithAut
             {comment.author.display_name}
           </Text>
           <Text className="flex-shrink-0 text-xs text-ink-muted">· {timeAgoCompact(comment.created_at)}</Text>
+          {comment.edited_at ? <Text className="flex-shrink-0 text-xs text-ink-muted">· edited</Text> : null}
           {tone ? <Text className={`flex-shrink-0 text-[11px] font-medium ${tone.text}`}>· {tone.label}</Text> : null}
           <View className="ml-auto flex-shrink-0 pl-2">
             <CommentMoreMenu comment={comment} />

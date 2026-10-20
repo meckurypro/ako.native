@@ -57,6 +57,7 @@ import { Text } from "@/components/ui/Text";
 import { TierBadge } from "@/components/ui/TierBadge";
 import { useToast } from "@/components/ui/Toast";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
+import { BadgeStreakNote } from "@/components/ui/BadgeStreakNote";
 import { MediaViewer } from "@/components/post/MediaViewer";
 import { useIsRestricted } from "@/hooks/useAccountAccess";
 import { useAuth } from "@/hooks/useAuth";
@@ -535,7 +536,10 @@ export function ProfilePage() {
                 <TierBadge tier={profile.tier} />
               </View>
 
-              {profile.is_verified ? <VerifiedBadge size={15} label className="mt-1" /> : null}
+              {profile.badge_visible ? <VerifiedBadge size={15} label className="mt-1" /> : null}
+              {showOwnerView && profile.badge_streak != null ? (
+                <BadgeStreakNote visible={!!profile.badge_visible} streak={profile.badge_streak} />
+              ) : null}
               {profile.roles.length > 0 ? <RoleTags roles={profile.roles} className="mt-0.5 text-xs text-ink-muted" /> : null}
 
               <Text className="mt-0.5 text-sm text-ink-muted">

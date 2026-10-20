@@ -157,7 +157,7 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
   const identityHref = postedAsPage ? `/page/${postedAsPage.username}` : `/profile/${post.author.username}`;
   const identityName = postedAsPage ? postedAsPage.name : post.author.display_name;
   const identityAvatar = postedAsPage ? postedAsPage.avatar_url : post.author.avatar_url;
-  const identityVerified = !!(postedAsPage ? postedAsPage.is_verified : post.author.is_verified);
+  const identityVerified = !!(postedAsPage ? postedAsPage.is_verified : post.author.badge_visible);
 
   const isBookmarkedQuery = useIsBookmarked(post.id, active);
   const toggleBookmark = useToggleBookmark(post.id);

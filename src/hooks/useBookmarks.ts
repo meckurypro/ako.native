@@ -76,7 +76,7 @@ export function useBookmarkedPosts() {
       const { data, error } = await supabase
         .from("bookmarks")
         .select(
-          `post:posts!bookmarks_post_id_fkey(*, author:profiles!posts_author_id_fkey(id, username, display_name, avatar_url, tier, is_private, is_verified, ${PROFILE_ROLES_SELECT}), ${PAGE_SELECT})`
+          `post:posts!bookmarks_post_id_fkey(*, author:profiles!posts_author_id_fkey(id, username, display_name, avatar_url, tier, is_private, is_verified, badge_visible, ${PROFILE_ROLES_SELECT}), ${PAGE_SELECT})`
         )
         .order("created_at", { ascending: false });
       if (error) throw error;

@@ -150,3 +150,68 @@ export function useCreateComment(postId: string) {
     },
   });
 }
+
+/**
+ * A comment is editable until anyone engages with it. This is the cheap client-side read of that rule off the
+ * stored counts; gifts aren't counted here, so update-comment (and the comments_enforce_edit_rules trigger)
+ * stay the authority and answer with a clear error if someone has engaged in a way the counts don't show.
+ */
+export function canEditComment(c: Pick<Comment, "like_count" | "dislike_count" | "reply_count">): boolean {
+  return c.like_count + c.dislike_count + c.reply_count === 0;
+}
+
+/** Edits a comment's text via update-comment (moderated; refused once anyone has engaged). */
+export function useUpdateComment(postId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    meta: { blocking: true },
+    mutationFn: async (input: { comment_id: string; content: string }) => {
+      const { data, error } = await supabase.functions.invoke("update-comment", { body: input });
+      if (error) throw new Error(await resolveFunctionErrorMessage(error, "Couldn't save your edit."));
+      if (data?.error) throw new Error(data.error);
+      return data.comment as Comment | undefined;
+    },
+    onSettled: (_data, _err, input) => {
+      // Settled, not just success: if the edit was refused because someone engaged, the refetch also
+      // refreshes the stored counts so the Edit option disappears.
+      void queryClient.invalidateQueries({ queryKey: ["comment-list", postId] });
+      void queryClient.invalidateQueries({ queryKey: ["comment", input.comment_id] });
+    },
+  });
+}
+
+/**
+ * Authors can always delete their own comment. A soft delete — the comment_soft_delete_counts trigger moves the
+ * counters, so this mirrors it locally (same approach as useCreateComment) and refetches only the thread.
+ */
+export function useDeleteComment(postId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    meta: { blocking: true },
+    mutationFn: async (comment: { id: string; parent_comment_id: string | null; stance: Comment["stance"] }) => {
+      const { error } = await supabase.from("comments").update({ is_deleted: true }).eq("id", comment.id);
+      if (error) throw error;
+    },
+    onMutate: () => ({ queuedAt: Date.now() }),
+    onSuccess: (_d, comment, ctx) => {
+      const queuedAt = ctx?.queuedAt ?? Date.now();
+      const parentId = comment.parent_comment_id;
+      const stanceField = comment.stance ? `${comment.stance}_count` : null;
+
+      notifyManager.batch(() => {
+        adjustCountInCaches(queryClient, { roots: POST_QUERY_ROOTS, id: postId, field: "comment_count", delta: -1, queuedAt });
+        if (!parentId && stanceField) adjustCountInCaches(queryClient, { roots: POST_QUERY_ROOTS, id: postId, field: stanceField, delta: -1, queuedAt });
+        if (parentId) {
+          adjustCountInCaches(queryClient, { roots: COMMENT_QUERY_ROOTS, id: parentId, field: "reply_count", delta: -1, queuedAt });
+          if (stanceField) adjustCountInCaches(queryClient, { roots: COMMENT_QUERY_ROOTS, id: parentId, field: stanceField, delta: -1, queuedAt });
+        }
+      });
+
+      // The comment leaves every list it was in; its own detail query resolves to "gone".
+      void queryClient.invalidateQueries({ queryKey: ["comment-list", postId] });
+      void queryClient.invalidateQueries({ queryKey: ["comment", comment.id] });
+    },
+  });
+}

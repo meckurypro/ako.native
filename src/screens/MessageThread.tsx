@@ -118,7 +118,7 @@ function useConversationHeader(conversationId: string) {
 
       const { data, error } = await supabase
         .from("conversation_participants")
-        .select("profile:profiles!conversation_participants_user_id_fkey(id, username, display_name, avatar_url, last_seen_at, is_verified)")
+        .select("profile:profiles!conversation_participants_user_id_fkey(id, username, display_name, avatar_url, last_seen_at, badge_visible)")
         .eq("conversation_id", conversationId)
         .neq("user_id", user!.id)
         .maybeSingle();
@@ -127,7 +127,7 @@ function useConversationHeader(conversationId: string) {
       return {
         is_group: false as const,
         team_page: null,
-        other_participant: data?.profile as { id: string; username: string; display_name: string; avatar_url: string | null; last_seen_at: string | null; is_verified: boolean } | undefined,
+        other_participant: data?.profile as { id: string; username: string; display_name: string; avatar_url: string | null; last_seen_at: string | null; badge_visible: boolean } | undefined,
       };
     },
     enabled: !!conversationId && !!user,
@@ -713,7 +713,7 @@ export function MessageThread() {
               <Text numberOfLines={1} className="shrink font-medium text-ink">
                 {otherParticipant.display_name}
               </Text>
-              {otherParticipant.is_verified ? <VerifiedBadge size={14} className="shrink-0" /> : null}
+              {otherParticipant.badge_visible ? <VerifiedBadge size={14} className="shrink-0" /> : null}
             </View>
             <View className="flex-row items-center gap-2">
               <PresenceDot lastSeenAt={otherParticipant.last_seen_at} size={12} />

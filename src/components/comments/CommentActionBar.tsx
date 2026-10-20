@@ -1,5 +1,5 @@
 // src/components/comments/CommentActionBar.tsx
-import { Flag, Gift as GiftIcon, MessageCircle, MoreHorizontal, Share2, ThumbsDown } from "lucide-react-native";
+import { Flag, Gift as GiftIcon, MessageCircle, MoreHorizontal, Pencil, Share2, ThumbsDown, Trash2 } from "lucide-react-native";
 import { useRef, useState } from "react";
 import { Pressable, View } from "react-native";
 
@@ -8,11 +8,11 @@ import { DropdownMenu, type DropdownMenuItem } from "@/components/ui/DropdownMen
 import { LikeHeart } from "@/components/ui/LikeHeart";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
-import type { CommentWithAuthor } from "@/hooks/useComments";
+import { canEditComment, type CommentWithAuthor } from "@/hooks/useComments";
 import { useTheme } from "@/theme/ThemeProvider";
 import { useCommentEngagement } from "./CommentEngagement";
 
-/** "…" menu for one comment: share, and — for other people's comments — gift and report. */
+/** "…" menu for one comment: share; for your own — edit (until anyone engages) and delete; for others' — gift and report. */
 export function CommentMoreMenu({ comment, iconSize = 16 }: { comment: CommentWithAuthor; iconSize?: number }) {
   const eng = useCommentEngagement();
   const [open, setOpen] = useState(false);
@@ -22,7 +22,19 @@ export function CommentMoreMenu({ comment, iconSize = 16 }: { comment: CommentWi
   const items: DropdownMenuItem[] = [
     { key: "share", label: "Share", icon: <Icon as={Share2} size={22} className="text-overlay-ink" />, onSelect: () => eng.share(comment) },
     ...(isMine
-      ? []
+      ? [
+          // Editable only until anyone engages; deletable any time.
+          ...(canEditComment(comment)
+            ? [{ key: "edit", label: "Edit", icon: <Icon as={Pencil} size={22} className="text-overlay-ink" />, onSelect: () => eng.edit(comment) }]
+            : []),
+          {
+            key: "delete",
+            label: "Delete",
+            icon: <Icon as={Trash2} size={22} className="text-overlay-danger" />,
+            variant: "danger" as const,
+            onSelect: () => eng.remove(comment),
+          },
+        ]
       : [
           { key: "gift", label: "Send a gift", icon: <Icon as={GiftIcon} size={22} className="text-overlay-ink" />, onSelect: () => eng.gift(comment) },
           {
