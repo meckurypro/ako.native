@@ -117,6 +117,7 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
   const [showReshareSheet, setShowReshareSheet] = useState(false);
   const [showGiftPicker, setShowGiftPicker] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [metaWrapped, setMetaWrapped] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [showTagSheet, setShowTagSheet] = useState(false);
   const [showCollaboratorsSheet, setShowCollaboratorsSheet] = useState(false);
@@ -481,7 +482,18 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
             ) : null}
 
             <View className="flex-row items-center gap-1">
-              <Text style={NO_FONT_PADDING} className="text-xs leading-[18px] text-ink-muted">
+              {/* The line must never break ("just" / "now" on two rows). A shrink-wrapped Text is given exactly its
+                  measured width, and on Android a hair of difference between that measure and the drawn glyphs makes
+                  it wrap at the space. So if it ever lays out on more than one line, let it fill the row instead
+                  (flex-1, one line) — then it can't wrap whatever the measure said. */}
+              <Text
+                style={NO_FONT_PADDING}
+                numberOfLines={metaWrapped ? 1 : undefined}
+                onTextLayout={(e) => {
+                  if (!metaWrapped && e.nativeEvent.lines.length > 1) setMetaWrapped(true);
+                }}
+                className={`text-xs leading-[18px] text-ink-muted ${metaWrapped ? "flex-1" : ""}`}
+              >
                 {timeAgo(post.created_at)}
                 {post.edited_at ? " · edited" : ""}
                 {viewCount > 0 ? ` · ${formatCompactCount(viewCount)} ${viewCount === 1 ? "view" : "views"}` : ""}
