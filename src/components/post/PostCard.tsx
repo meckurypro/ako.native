@@ -155,6 +155,7 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
   const identityHref = postedAsPage ? `/page/${postedAsPage.username}` : `/profile/${post.author.username}`;
   const identityName = postedAsPage ? postedAsPage.name : post.author.display_name;
   const identityAvatar = postedAsPage ? postedAsPage.avatar_url : post.author.avatar_url;
+  const identityVerified = !!(postedAsPage ? postedAsPage.is_verified : post.author.is_verified);
 
   const isBookmarkedQuery = useIsBookmarked(post.id, active);
   const toggleBookmark = useToggleBookmark(post.id);
@@ -435,7 +436,14 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
         <View className="flex-row items-start gap-3 border-b border-border pb-3.5">
           <Pressable onPress={openIdentity} accessibilityRole="link" accessibilityLabel={`${identityName}'s profile`} className="relative">
             <Avatar src={identityAvatar} name={identityName} size="md" />
-            <PostCollaboratorsBadge target="post" targetId={post.id} />
+            {/* Verified mark rides the avatar's lower-right circumference (centre on the rim), so it sits
+                half outside the photo instead of covering it. The collaborators badge yields to the left. */}
+            {identityVerified ? (
+              <View pointerEvents="none" style={{ position: "absolute", right: -3, bottom: -3 }}>
+                <VerifiedBadge size={16} />
+              </View>
+            ) : null}
+            <PostCollaboratorsBadge target="post" targetId={post.id} side={identityVerified ? "left" : "right"} />
           </Pressable>
 
           <View className="min-w-0 flex-1 gap-0.5">
@@ -454,14 +462,7 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
                 >
                   {identityName}
                 </Text>
-                {postedAsPage ? (
-                  postedAsPage.is_verified ? <VerifiedBadge className="shrink-0" /> : null
-                ) : (
-                  <>
-                    {post.author.is_verified ? <VerifiedBadge className="shrink-0" /> : null}
-                    <TierBadge tier={post.author.tier} />
-                  </>
-                )}
+                {!postedAsPage ? <TierBadge tier={post.author.tier} /> : null}
               </View>
               {!isArchivedFrozen ? (
                 <View className="shrink-0 pl-2">

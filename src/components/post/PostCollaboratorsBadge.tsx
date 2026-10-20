@@ -16,7 +16,16 @@ import { useCollaborators, type CollaborationTarget } from "@/hooks/useCollabora
 
 const PANEL_WIDTH = 224; // w-56
 
-export function PostCollaboratorsBadge({ target, targetId }: { target: CollaborationTarget; targetId: string }) {
+export function PostCollaboratorsBadge({
+  target,
+  targetId,
+  side = "right",
+}: {
+  target: CollaborationTarget;
+  targetId: string;
+  /** Which bottom corner of the avatar it sits on — "left" when another mark (Verified) takes the right. */
+  side?: "left" | "right";
+}) {
   const { data: collaborators } = useCollaborators(target, targetId);
   const accepted = (collaborators ?? []).filter((c) => c.status === "accepted");
   const { width: windowW } = useWindowDimensions();
@@ -42,7 +51,7 @@ export function PostCollaboratorsBadge({ target, targetId }: { target: Collabora
         onPress={openPopover}
         accessibilityRole="button"
         accessibilityLabel={`Posted with ${accepted.length} ${accepted.length === 1 ? "collaborator" : "collaborators"}`}
-        className="absolute -bottom-1 -right-1 h-5 w-5 items-center justify-center rounded-full border-2 border-surface bg-accent"
+        className={`absolute -bottom-1 ${side === "left" ? "-left-1" : "-right-1"} h-5 w-5 items-center justify-center rounded-full border-2 border-surface bg-accent`}
       >
         <Icon as={Users} size={11} strokeWidth={2.5} className="text-canvas" />
       </Pressable>
