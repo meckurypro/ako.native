@@ -9,7 +9,12 @@ import { Icon } from "@/components/ui/styled";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { Text } from "@/components/ui/Text";
 import { useAuth } from "@/hooks/useAuth";
-import { useFollowers, useFollowing, useProfileByUsername } from "@/hooks/useProfile";
+import { useFollowers, useFollowing, useFollowingPages, useProfileByUsername } from "@/hooks/useProfile";
+import { PageRow } from "@/components/post/PageRow";
+import type { PageSearchResult } from "@/hooks/useSearch";
+import type { Profile } from "@/types/database";
+
+type FollowItem = { kind: "person"; person: Profile } | { kind: "page"; page: PageSearchResult };
 
 export function FollowListPage({ type }: { type: "followers" | "following" }) {
   const { username } = useLocalSearchParams<{ username: string }>();
@@ -24,8 +29,19 @@ export function FollowListPage({ type }: { type: "followers" | "following" }) {
   const followersQuery = useFollowers(!isHidden ? profile?.id ?? "" : "");
   const followingQuery = useFollowing(!isHidden ? profile?.id ?? "" : "");
 
-  const list = type === "followers" ? followersQuery.data : followingQuery.data;
-  const isLoading = profileLoading || (!isHidden && (type === "followers" ? followersQuery.isLoading : followingQuery.isLoading));
+  // Pages someone follows live in page_follows; list them after the people.
+  const pagesQuery = useFollowingPages(!isHidden && type === "following" ? profile?.id ?? "" : "");
+
+  const people = type === "followers" ? followersQuery.data : followingQuery.data;
+  const list: FollowItem[] | undefined = people
+    ? [
+        ...people.map((person): FollowItem => ({ kind: "person", person })),
+        ...(type === "following" ? (pagesQuery.data ?? []).map((page): FollowItem => ({ kind: "page", page })) : []),
+      ]
+    : undefined;
+  const isLoading =
+    profileLoading ||
+    (!isHidden && (type === "followers" ? followersQuery.isLoading : followingQuery.isLoading || pagesQuery.isLoading));
 
   return (
     <View className="flex-1 bg-canvas">
@@ -44,25 +60,31 @@ export function FollowListPage({ type }: { type: "followers" | "following" }) {
       ) : (
         <FlatList
           data={list}
-          keyExtractor={(p) => p.id}
+          keyExtractor={(item) => (item.kind === "person" ? `p-${item.person.id}` : `g-${item.page.id}`)}
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 24 }}
-          renderItem={({ item: person }) => (
+          renderItem={({ item }) =>
+            item.kind === "page" ? (
+              <View className="border-b border-border">
+                <PageRow page={item.page} />
+              </View>
+            ) : (
             <Pressable
-              onPress={() => router.push(`/profile/${person.username}` as Href)}
+              onPress={() => router.push(`/profile/${item.person.username}` as Href)}
               accessibilityRole="link"
               className="flex-row items-center gap-3 border-b border-border py-3 active:opacity-70"
             >
-              <Avatar src={person.avatar_url} name={person.display_name} />
+              <Avatar src={item.person.avatar_url} name={item.person.display_name} />
               <View className="min-w-0 flex-1">
                 <Text numberOfLines={1} className="font-medium text-ink">
-                  {person.display_name}
+                  {item.person.display_name}
                 </Text>
                 <Text numberOfLines={1} className="text-sm text-ink-muted">
-                  @{person.username}
+                  @{item.person.username}
                 </Text>
               </View>
             </Pressable>
-          )}
+            )
+          }
         />
       )}
     </View>

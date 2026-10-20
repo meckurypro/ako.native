@@ -681,6 +681,9 @@ export function useTogglePageFollow(pageId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["is-following-page", pageId] });
       queryClient.invalidateQueries({ queryKey: ["page"] });
+      // Following a page changes the follower's own Following count and list.
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      queryClient.invalidateQueries({ queryKey: ["following"] });
     },
   });
 }

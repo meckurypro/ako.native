@@ -5,6 +5,7 @@ import { useSound } from "./useSound";
 import { useActiveIdentity } from "./usePages";
 import { PROFILE_ROLES_SELECT, toProfileRoles } from "../lib/profileRoles";
 import type { Profile, ProfileWithRoles } from "../types/database";
+import type { PageSearchResult } from "./useSearch";
 
 export function useProfileByUsername(username: string) {
   return useQuery({
@@ -300,6 +301,32 @@ export function useFollowing(userId: string) {
         .eq("follower_id", userId);
       if (error) throw error;
       return data.map((row: any) => row.following) as Profile[];
+    },
+    enabled: !!userId,
+  });
+}
+
+/**
+ * Pages a person follows (page_follows). Shown after the people in their
+ * Following list, and counted in profiles.following_count. Key sits under
+ * ["following"] so a follow/unfollow invalidates it with the people list.
+ */
+export function useFollowingPages(userId: string) {
+  return useQuery({
+    queryKey: ["following", "pages", userId],
+    queryFn: async () => {
+      const { data: rows, error } = await supabase.from("page_follows").select("page_id").eq("follower_id", userId);
+      if (error) throw error;
+      const ids = (rows ?? []).map((r: { page_id: string }) => r.page_id);
+      if (ids.length === 0) return [] as PageSearchResult[];
+      const { data, error: pagesError } = await supabase
+        .from("pages")
+        .select("id, name, username, tagline, avatar_url, page_type, is_verified, follower_count")
+        .in("id", ids)
+        .eq("is_active", true)
+        .order("follower_count", { ascending: false });
+      if (pagesError) throw pagesError;
+      return (data ?? []) as PageSearchResult[];
     },
     enabled: !!userId,
   });
