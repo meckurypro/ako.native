@@ -35,6 +35,14 @@ interface MentionTextareaProps {
   className?: string;
   autoFocus?: boolean;
   showFormatToolbar?: boolean;
+  /**
+   * Cap the input's height (px). Past the cap the text scrolls INSIDE the input, where the OS keeps the
+   * caret in view and a tap puts the caret exactly where you touched. Without a cap a long text grows
+   * the input past the keyboard and the caret ends up hidden behind it.
+   */
+  maxInputHeight?: number;
+  onFocus?: () => void;
+  onBlur?: () => void;
   returnKeyType?: TextInputProps["returnKeyType"];
 }
 
@@ -42,7 +50,7 @@ const MENTION_TRIGGER = /(?:^|\s)@(\w*)$/;
 const LINE_HEIGHT = 22;
 
 export const MentionTextarea = forwardRef<TextInput, MentionTextareaProps>(function MentionTextarea(
-  { value, onChange, placeholder, rows = 8, maxLength, className = "", autoFocus, showFormatToolbar },
+  { value, onChange, placeholder, rows = 8, maxLength, className = "", autoFocus, showFormatToolbar, maxInputHeight, onFocus, onBlur },
   forwardedRef
 ) {
   const { colors } = useTheme();
@@ -108,6 +116,8 @@ export const MentionTextarea = forwardRef<TextInput, MentionTextareaProps>(funct
         value={value}
         onChangeText={handleChangeText}
         onSelectionChange={handleSelectionChange}
+        onFocus={onFocus}
+        onBlur={onBlur}
         selection={forced}
         maxLength={maxLength}
         multiline
@@ -118,8 +128,15 @@ export const MentionTextarea = forwardRef<TextInput, MentionTextareaProps>(funct
         cursorColor={colors.accent}
         textAlignVertical="top"
         scrollEnabled
+        textBreakStrategy="simple"
         className={`text-base text-ink ${className}`}
-        style={{ fontFamily: "Inter_400Regular", minHeight: rows * LINE_HEIGHT + 24, lineHeight: LINE_HEIGHT }}
+        style={{
+          fontFamily: "Inter_400Regular",
+          // Never let the minimum exceed the cap, or the cap would be ignored.
+          minHeight: maxInputHeight ? Math.min(rows * LINE_HEIGHT + 24, maxInputHeight) : rows * LINE_HEIGHT + 24,
+          maxHeight: maxInputHeight,
+          lineHeight: LINE_HEIGHT,
+        }}
       />
 
       {mentionQuery !== null && suggestions.length > 0 ? (

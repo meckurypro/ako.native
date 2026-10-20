@@ -7,7 +7,7 @@ import { Image as ImageIcon, Link2, Music as MusicIcon, MoreHorizontal, X } from
 import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams, type Href } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { Pressable, ScrollView, TextInput, View } from "react-native";
+import { Keyboard, Pressable, ScrollView, TextInput, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { KeyboardAvoider } from "@/components/ui/KeyboardAvoider";
@@ -46,6 +46,25 @@ const MAX_MEDIA_FILES = 4;
 export function Compose() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
+  const scrollRef = useRef<ScrollView>(null);
+  const detailsY = useRef(0);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  useEffect(() => {
+    const show = Keyboard.addListener("keyboardDidShow", (e) => setKeyboardHeight(e.endCoordinates.height));
+    const hide = Keyboard.addListener("keyboardDidHide", () => setKeyboardHeight(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+  // With the keyboard up, the details box gets exactly the room between the top of the screen and the
+  // action bar above the keyboard (minus the formatting toolbar and some breathing room) and scrolls
+  // internally past that — so the caret is never hidden and tapping places it where you touch.
+  // Hidden keyboard → no cap, the box simply grows and the page scrolls as before.
+  const ACTION_BAR = 64 + Math.max(insets.bottom, 12) - 12;
+  const detailsMaxHeight =
+    keyboardHeight > 0 ? Math.max(140, windowHeight - keyboardHeight - insets.top - ACTION_BAR - 56 - 24) : undefined;
   const smartBack = useSmartBack();
   const returnAfterSave = useReturnAfterSave();
   const toast = useToast();
@@ -229,10 +248,11 @@ export function Compose() {
   return (
     <KeyboardAvoider className="flex-1 bg-canvas">
       <ScrollView
+        ref={scrollRef}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: insets.top + 16, paddingHorizontal: 16, paddingBottom: 32 }}
+        contentContainerStyle={{ paddingTop: insets.top + 16, paddingHorizontal: 16, paddingBottom: keyboardHeight > 0 ? 320 : 32 }}
       >
         <View className="w-full max-w-xl self-center">
           {/* Who this posts as — reflects account mode. Not editable from here on purpose:
@@ -279,14 +299,19 @@ export function Compose() {
             {heading.length}/{HEADING_LIMIT}
           </Text>
 
+          <View onLayout={(e) => (detailsY.current = e.nativeEvent.layout.y)}>
           <MentionTextarea
             value={content}
             onChange={setContent}
             maxLength={contentLimit}
             rows={8}
+            maxInputHeight={detailsMaxHeight}
+            // Bring the toolbar + box to the top of the visible area so the whole space above the keyboard is the editor.
+            onFocus={() => setTimeout(() => scrollRef.current?.scrollTo({ y: Math.max(0, detailsY.current + insets.top + 16 - 8), animated: true }), 120)}
             placeholder="Add details… use @ to mention someone."
             showFormatToolbar
           />
+          </View>
 
           {mediaUrls.length > 0 ? (
             <View className="mt-3 flex-row flex-wrap gap-2">
