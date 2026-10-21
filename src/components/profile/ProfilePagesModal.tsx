@@ -8,6 +8,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Modal } from "@/components/ui/Modal";
 import { Text } from "@/components/ui/Text";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
+import { runAfterDismiss } from "@/hooks/useBackDismiss";
 import type { ProfilePageAffiliation } from "@/hooks/usePages";
 
 export function ProfilePagesModal({ pages, onClose }: { pages: ProfilePageAffiliation[]; onClose: () => void }) {
@@ -18,10 +19,7 @@ export function ProfilePagesModal({ pages, onClose }: { pages: ProfilePageAffili
         {pages.map((p) => (
           <Pressable
             key={p.page_id}
-            onPress={() => {
-              onClose();
-              router.push(`/page/${p.username}` as Href);
-            }}
+            onPress={() => runAfterDismiss(onClose, () => router.push(`/page/${p.username}` as Href))}
             accessibilityRole="button"
             accessibilityLabel={`${p.name}, ${p.role_label}`}
             className="flex-row items-center gap-3 rounded-2xl px-2 py-3 active:bg-overlay-surface-raised"
