@@ -338,6 +338,7 @@ interface UpdateProfileInput {
   bio?: string;
   avatar_url?: string;
   website_url?: string;
+  website_urls?: string[];
   username?: string;
 }
 

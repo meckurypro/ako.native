@@ -199,6 +199,8 @@ export function ProfilePage() {
   const profilePagesQuery = useProfilePages(profile?.id ?? "");
   const [pagesOpen, setPagesOpen] = useState(false);
   const showOwnerView = isOwnProfile && !previewingAsVisitor;
+  // Up to 3 websites; website_url mirrors the first for rows written before website_urls existed.
+  const websites = profile?.website_urls?.length ? profile.website_urls : profile?.website_url ? [profile.website_url] : [];
   // Projects on this profile are the PERSON's. While acting as a Page, the
   // Page is a different account, so they read as another user's content: no
   // owner controls and no drafts/archived — same as any visitor.
@@ -585,18 +587,23 @@ export function ProfilePage() {
 
           {profile.bio ? <Text className="mt-5 text-[15px] leading-relaxed text-ink">{profile.bio}</Text> : null}
 
-          {profile.website_url ? (
-            <Pressable
-              onPress={() => void openExternal(getWebsiteHref(profile.website_url!))}
-              accessibilityRole="link"
-              accessibilityLabel={`Website ${getWebsiteDomain(profile.website_url)}`}
-              className="mt-3 flex-row items-center gap-1.5 self-start rounded-full bg-accent-soft px-3 py-1.5"
-            >
-              <Icon as={Link2} size={14} className="text-accent" />
-              <Text numberOfLines={1} className="shrink text-sm font-medium text-accent">
-                {getWebsiteDomain(profile.website_url)}
-              </Text>
-            </Pressable>
+          {websites.length > 0 ? (
+            <View className="mt-3 flex-row flex-wrap gap-2">
+              {websites.map((url) => (
+                <Pressable
+                  key={url}
+                  onPress={() => void openExternal(getWebsiteHref(url))}
+                  accessibilityRole="link"
+                  accessibilityLabel={`Website ${getWebsiteDomain(url)}`}
+                  className="max-w-full flex-row items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1.5"
+                >
+                  <Icon as={Link2} size={14} className="text-accent" />
+                  <Text numberOfLines={1} className="shrink text-sm font-medium text-accent">
+                    {getWebsiteDomain(url)}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
           ) : null}
 
           {/* Action row — icon-led. The owner gets quick actions; a visitor gets the one follow control that

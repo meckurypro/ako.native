@@ -7,10 +7,12 @@ import { ActivityIndicator, Pressable, View } from "react-native";
 import { MentionTextarea } from "@/components/post/MentionTextarea";
 import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
+import { WebsiteUrlsField, MAX_WEBSITES } from "@/components/settings/WebsiteUrlsField";
 import { SettingsSection } from "@/components/ui/SettingsSection";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsRestricted } from "@/hooks/useAccountAccess";
 import { useOwnProfile } from "@/hooks/useOwnProfile";
 import { useUpdateProfile, useUpdateProfileRoles } from "@/hooks/useProfile";
 import { useReturnAfterSave } from "@/hooks/useReturnAfterSave";
@@ -47,7 +49,14 @@ export function ProfileSection({ open, onToggle, photoRequest = 0, onAvatarChang
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
-  const [websiteUrl, setWebsiteUrl] = useState("");
+  const [websiteUrls, setWebsiteUrls] = useState<string[]>([]);
+  // More than one website: verified AND unrestricted accounts only (the DB enforces it too).
+  const restricted = useIsRestricted();
+  const canAddMoreWebsites = !!profile?.is_verified && !restricted;
+  const websiteUrlsToSave = websiteUrls
+    .map((u) => u.trim())
+    .filter(Boolean)
+    .slice(0, canAddMoreWebsites ? MAX_WEBSITES : 1);
   const [avatarUrl, setAvatarUrl] = useState("");
   const [roleIds, setRoleIds] = useState<string[]>([]);
   const [profileError, setProfileError] = useState<string | null>(null);
@@ -62,7 +71,7 @@ export function ProfileSection({ open, onToggle, photoRequest = 0, onAvatarChang
     setDisplayName(profile.display_name ?? "");
     setUsername(profile.username ?? "");
     setBio(profile.bio ?? "");
-    setWebsiteUrl(profile.website_url ?? "");
+    setWebsiteUrls(profile.website_urls?.length ? profile.website_urls : profile.website_url ? [profile.website_url] : []);
     setAvatarUrl(profile.avatar_url ?? "");
     const sorted = [...(profile.profile_roles ?? [])].sort((a: any, b: any) => a.position - b.position);
     setRoleIds(sorted.map((r: any) => r.role.id));
@@ -160,7 +169,7 @@ export function ProfileSection({ open, onToggle, photoRequest = 0, onAvatarChang
         updateProfile.mutateAsync({
           display_name: displayName,
           bio,
-          website_url: websiteUrl,
+          website_urls: websiteUrlsToSave,
           avatar_url: avatarUrl,
           ...(usernameChanged ? { username: normalizedUsername } : {}),
         }),
@@ -225,7 +234,7 @@ export function ProfileSection({ open, onToggle, photoRequest = 0, onAvatarChang
         <Text className="mt-1 text-xs text-ink-muted">{bio.length}/280</Text>
       </View>
 
-      <FormField label="Website" value={websiteUrl} onChangeText={setWebsiteUrl} placeholder="https://" keyboardType="url" autoCapitalize="none" autoCorrect={false} textContentType="URL" />
+      <WebsiteUrlsField values={websiteUrls} onChange={setWebsiteUrls} canAddMore={canAddMoreWebsites} showVerifiedHint={!restricted} />
 
       {roles && roles.length > 0 && (
         <View className="mb-6">

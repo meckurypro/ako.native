@@ -28,6 +28,8 @@ export interface Profile {
   bio: string | null;
   avatar_url: string | null;
   website_url: string | null;
+  // Up to 3 (extras need a verified, unrestricted account); website_url mirrors the first.
+  website_urls?: string[];
   tier: Tier;
   follower_count: number;
   following_count: number;
