@@ -1,5 +1,5 @@
 // src/screens/EditPage.tsx
-// Edit a Page's cover, avatar, name, tagline, bio, website and topics (admins only).
+// Edit a Page's banner, avatar, name, tagline, bio, website, topics and hero slides (admins, or members allowed to edit).
 import { Camera, Trash2 } from "lucide-react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
@@ -10,6 +10,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { KeyboardAvoider } from "@/components/ui/KeyboardAvoider";
 import { MentionTextarea } from "@/components/post/MentionTextarea";
 import { MAX_TOPICS, TopicPicker } from "@/components/post/TopicPicker";
+import { PageHeroEditor } from "@/components/page/PageHeroEditor";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
@@ -28,7 +29,9 @@ import {
   useResolvePageOwner,
   useUpdatePage,
 } from "@/hooks/usePages";
+import { BANNER_ASPECT, normalizeWebsite } from "@/hooks/usePageLanding";
 import { useUploadAvatar } from "@/hooks/useUploadAvatar";
+import { cropToAspect } from "@/lib/cropImage";
 import { pickSingleImage } from "@/lib/pickImage";
 
 export function EditPage() {
@@ -97,12 +100,14 @@ export function EditPage() {
   }
 
   async function chooseImage(kind: "avatar" | "cover") {
-    const file = await pickSingleImage({ aspect: kind === "avatar" ? [1, 1] : [3, 1] });
-    if (!file) return;
+    const picked = await pickSingleImage({ aspect: kind === "avatar" ? [1, 1] : [8, 3] });
+    if (!picked) return;
     setError(null);
     const setBusy = kind === "avatar" ? setUploadingAvatar : setUploadingCover;
     setBusy(true);
     try {
+      // The banner is cropped to its exact shape first, so what's previewed is what visitors see.
+      const file = kind === "cover" ? await cropToAspect(picked, BANNER_ASPECT, { maxWidth: 1600 }) : picked;
       const url = await uploadAvatar.mutateAsync(file);
       if (kind === "avatar") setAvatarUrl(url);
       else setCoverUrl(url);
@@ -118,16 +123,20 @@ export function EditPage() {
     if (!page) return;
     if (!name.trim()) return setError("Name is required.");
 
+    // A page has exactly one website. Blank clears it; anything else must be a real address.
+    const website = normalizeWebsite(websiteUrl);
+    if (websiteUrl.trim() && !website) return setError("That website address doesn't look right. Try something like yourwebsite.com.");
+
     try {
       await updatePage.mutateAsync({
         page_id: page.id,
         name: name.trim(),
-        tagline: tagline.trim() || undefined,
-        bio: bio.trim() || undefined,
-        website_url: websiteUrl.trim() || undefined,
+        tagline: tagline.trim() || null,
+        bio: bio.trim() || null,
+        website_url: website,
         topic_ids: Array.from(topicIds),
         avatar_url: avatarUrl ?? undefined,
-        cover_url: coverUrl ?? undefined,
+        cover_url: coverUrl,
       });
       toast("Page updated.", { variant: "success" });
       await returnAfterSave({ fallback: `/page/${page.username}` });
@@ -161,24 +170,37 @@ export function EditPage() {
       <ScreenHeader title="Edit page" />
       <ScrollView showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="none" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }}>
         <View className="w-full max-w-md gap-5 self-center">
-          {/* Cover */}
-          <Pressable
-            onPress={() => void chooseImage("cover")}
-            accessibilityRole="button"
-            accessibilityLabel="Change cover photo"
-            className="relative aspect-[3/1] w-full items-center justify-center overflow-hidden rounded-2xl bg-surface"
-          >
-            {coverUrl ? (
-              <Image source={{ uri: coverUrl }} contentFit="cover" style={{ width: "100%", height: "100%" }} />
-            ) : (
-              <Text className="text-xs text-ink-muted">{uploadingCover ? "Uploading…" : "Add a cover photo"}</Text>
-            )}
-            <View className="absolute bottom-2 right-2 h-8 w-8 items-center justify-center rounded-full bg-canvas-a80">
-              <Icon as={Camera} size={14} className="text-ink" />
+          {/* Banner — like a YouTube / Facebook cover: a wide image across the top of the page. */}
+          <View>
+            <View className="mb-1 flex-row items-center justify-between">
+              <Text className="text-xs font-medium text-ink-muted">Banner</Text>
+              {coverUrl ? (
+                <Pressable onPress={() => setCoverUrl(null)} accessibilityRole="button" accessibilityLabel="Remove banner" hitSlop={8} className="flex-row items-center gap-1">
+                  <Icon as={Trash2} size={12} className="text-danger" />
+                  <Text className="text-xs text-danger">Remove</Text>
+                </Pressable>
+              ) : null}
             </View>
-          </Pressable>
+            <Pressable
+              onPress={() => void chooseImage("cover")}
+              accessibilityRole="button"
+              accessibilityLabel="Change banner"
+              className="relative w-full items-center justify-center overflow-hidden rounded-2xl bg-surface"
+              style={{ aspectRatio: BANNER_ASPECT }}
+            >
+              {coverUrl ? (
+                <Image source={{ uri: coverUrl }} contentFit="cover" style={{ width: "100%", height: "100%" }} />
+              ) : (
+                <Text className="text-xs text-ink-muted">{uploadingCover ? "Uploading…" : "Add a banner"}</Text>
+              )}
+              <View className="absolute bottom-2 right-2 h-8 w-8 items-center justify-center rounded-full bg-canvas-a80">
+                <Icon as={Camera} size={14} className="text-ink" />
+              </View>
+            </Pressable>
+            <Text className="mt-1 text-xs text-ink-muted">Wide image, cropped to fit. Around 1600 × 600 works best.</Text>
+          </View>
 
-          {/* Avatar — overlaps the cover slightly, like most profile-edit screens. */}
+          {/* Avatar — overlaps the banner slightly, like most profile-edit screens. */}
           <View className="-mt-12 ml-1 self-start">
             <Pressable onPress={() => void chooseImage("avatar")} accessibilityRole="button" accessibilityLabel="Change photo" className="relative">
               <Avatar src={avatarUrl} name={name || page.name} size="xl" />
@@ -214,6 +236,11 @@ export function EditPage() {
           <Button onPress={handleSubmit} loading={updatePage.isPending} disabled={uploadingAvatar || uploadingCover}>
             Save changes
           </Button>
+
+          {/* Every change here saves by itself — separate from the page details above. */}
+          <View className="mt-4 border-t border-border pt-6">
+            <PageHeroEditor page={page} />
+          </View>
 
           {isOwnerOfPage ? (
             <View className="mt-10 border-t border-border pt-6">

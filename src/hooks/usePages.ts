@@ -34,7 +34,9 @@ import type {
   PendingPageInvite,
 } from "../types/database";
 
-const PAGE_SELECT = "id, page_type, name, username, tagline, bio, avatar_url, cover_url, website_url, category_id, parent_organization_id, created_by, is_verified, is_active, follower_count, created_at, updated_at";
+const PAGE_SELECT_BASE = "id, page_type, name, username, tagline, bio, avatar_url, cover_url, website_url, category_id, parent_organization_id, created_by, is_verified, is_active, follower_count, created_at, updated_at";
+// The hero slideshow settings live on the page row (see ako_page_landing_revamp.sql).
+const PAGE_SELECT = `${PAGE_SELECT_BASE}, hero_autoplay, hero_interval_seconds, hero_direction`;
 
 /** Minimal page lookup by id — used where only a page_id is on hand
  * (e.g. resolving a page_role_accepted notification's target to a
@@ -65,11 +67,21 @@ export function usePageByUsername(username: string) {
         .select(PAGE_SELECT)
         .eq("username", username)
         .single();
-      if (error) throw error;
+      let page: Page;
+      if (!error) {
+        page = data as unknown as Page;
+      } else {
+        // "No such page" is a real answer. Anything else may just be the hero columns not
+        // existing yet (migration not run) — retry without them so the page still opens.
+        if (error.code === "PGRST116") throw error;
+        const legacy = await supabase.from("pages").select(PAGE_SELECT_BASE).eq("username", username).single();
+        if (legacy.error) throw legacy.error;
+        page = legacy.data as unknown as Page;
+      }
       // delete_page is a soft delete (is_active = false). RLS keeps a deleted page away from non-admins,
       // but its old admins can still read the row — to them it must read as gone too.
-      if (data.is_active === false) throw new Error("Page not found");
-      return data;
+      if (page.is_active === false) throw new Error("Page not found");
+      return page;
     },
     enabled: !!username,
   });
@@ -180,7 +192,7 @@ export function useActiveIdentity() {
 
       const { data: membership, error: memberError } = await supabase
         .from("page_members")
-        .select(`role_label, is_admin, page:pages(${PAGE_SELECT})`)
+        .select(`role_label, is_admin, page:pages(${PAGE_SELECT_BASE})`)
         .eq("page_id", profile.active_page_id)
         .eq("user_id", user!.id)
         .eq("status", "active")
@@ -434,11 +446,12 @@ export function useTransferPageOwnership(pageId: string) {
 interface UpdatePageInput {
   page_id: string;
   name?: string;
-  bio?: string;
-  tagline?: string;
+  // null clears the field (undefined leaves it alone).
+  bio?: string | null;
+  tagline?: string | null;
   avatar_url?: string;
-  cover_url?: string;
-  website_url?: string;
+  cover_url?: string | null;
+  website_url?: string | null;
   category_id?: string | null;
   // Omit to leave topics untouched; pass an array (including empty,
   // to clear them all) to replace the full set — same contract as
@@ -490,7 +503,7 @@ export function usePageMembers(pageId: string) {
     queryFn: async (): Promise<PageMemberWithProfile[]> => {
       const { data, error } = await supabase
         .from("page_members")
-        .select(`*, profile:profiles!page_members_user_id_fkey(id, username, display_name, avatar_url)`)
+        .select(`*, profile:profiles!page_members_user_id_fkey(id, username, display_name, avatar_url, bio)`)
         .eq("page_id", pageId)
         .order("created_at", { ascending: true });
       if (error) throw error;

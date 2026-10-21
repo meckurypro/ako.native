@@ -1,7 +1,7 @@
 // src/screens/PageTeam.tsx
 // Manage a Page's team (admins only): invite people with a role, cancel pending
 // invites, promote / demote admins, remove members.
-import { Check, ChevronDown, Search, ShieldCheck, X } from "lucide-react-native";
+import { ArrowDown, ArrowUp, Check, ChevronDown, Eye, EyeOff, Search, ShieldCheck, X } from "lucide-react-native";
 import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, TextInput, View } from "react-native";
@@ -18,6 +18,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { PagePermissionsEditor } from "@/components/page/PagePermissionsEditor";
 import { useInvitePageMember, usePageByUsername, usePageMembers, useRemovePageMember, useSetPageMemberPermissions, useUpdatePageMemberRole } from "@/hooks/usePages";
+import { MAX_FEATURED_MEMBERS, useReorderFeaturedMembers, useSetMemberFeatured } from "@/hooks/usePageLanding";
 import { LEGACY_MEMBER_PERMISSIONS, resolvePagePermissions, samePermissions, type PagePermissions } from "@/lib/pagePermissions";
 import { useSearchPeople } from "@/hooks/useSearch";
 import { useTheme } from "@/theme/ThemeProvider";
@@ -99,6 +100,8 @@ export function PageTeam() {
   const invite = useInvitePageMember();
   const remove = useRemovePageMember();
   const updateRole = useUpdatePageMemberRole();
+  const setFeatured = useSetMemberFeatured(page?.id ?? "");
+  const reorderFeatured = useReorderFeaturedMembers(page?.id ?? "");
   const toast = useToast();
 
   const [query, setQuery] = useState("");
@@ -116,6 +119,28 @@ export function PageTeam() {
   const isAdmin = !!myMembership?.is_admin;
   const active = (members ?? []).filter((m) => m.status === "active");
   const pending = (members ?? []).filter((m) => m.status === "invited");
+  // Who visitors see in "Meet the team", in the order the admin chose.
+  const featuredMembers = active.filter((m) => m.show_on_page).sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+  const featuredFull = featuredMembers.length >= MAX_FEATURED_MEMBERS;
+
+  function toggleFeatured(m: PageMemberWithProfile) {
+    setFeatured.mutate(
+      { user_id: m.user_id, featured: !m.show_on_page },
+      {
+        onSuccess: () => toast(m.show_on_page ? `${m.profile.display_name} is hidden from the page.` : `${m.profile.display_name} now shows on the page.`, { variant: "success" }),
+        onError: (err) => toast(err instanceof Error ? err.message : "Couldn't update that.", { variant: "error" }),
+      }
+    );
+  }
+
+  function moveFeatured(userId: string, delta: -1 | 1) {
+    const ids = featuredMembers.map((m) => m.user_id);
+    const from = ids.indexOf(userId);
+    const to = from + delta;
+    if (from < 0 || to < 0 || to >= ids.length) return;
+    [ids[from], ids[to]] = [ids[to], ids[from]];
+    reorderFeatured.mutate(ids, { onError: () => toast("Couldn't reorder.", { variant: "error" }) });
+  }
   const existingIds = new Set([...active, ...pending].map((m) => m.user_id));
   const results = (searchResults ?? []).filter((p) => !existingIds.has(p.id));
 
@@ -302,6 +327,52 @@ export function PageTeam() {
             </View>
           ) : null}
 
+          <View className="mb-6 rounded-2xl bg-surface p-4">
+            <Text className="text-xs font-medium uppercase tracking-wide text-ink-muted">Shown on the page</Text>
+            <Text className="mt-1 text-xs text-ink-muted">
+              Visitors never see how big the team is — only the people you choose here, with their photo, name, role and bio, in this order. Up to {MAX_FEATURED_MEMBERS}.
+            </Text>
+            {featuredMembers.length === 0 ? (
+              <Text className="mt-3 text-sm text-ink-muted">No one yet. Use “Show on page” on a team member below.</Text>
+            ) : (
+              <View className="mt-3">
+                {featuredMembers.map((m, i) => (
+                  <View key={m.id} className={`flex-row items-center gap-3 py-2.5 ${i > 0 ? "border-t border-border" : ""}`}>
+                    <Avatar src={m.profile.avatar_url} name={m.profile.display_name} size="sm" />
+                    <View className="min-w-0 flex-1">
+                      <Text numberOfLines={1} className="text-sm text-ink">
+                        {m.profile.display_name}
+                      </Text>
+                      <Text numberOfLines={1} className="text-xs text-ink-muted">
+                        {m.role_label}
+                      </Text>
+                    </View>
+                    <Pressable
+                      onPress={() => moveFeatured(m.user_id, -1)}
+                      disabled={i === 0 || reorderFeatured.isPending}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Move ${m.profile.display_name} earlier`}
+                      hitSlop={6}
+                      className={`p-2 ${i === 0 || reorderFeatured.isPending ? "opacity-30" : ""}`}
+                    >
+                      <Icon as={ArrowUp} size={16} className="text-ink-muted" />
+                    </Pressable>
+                    <Pressable
+                      onPress={() => moveFeatured(m.user_id, 1)}
+                      disabled={i === featuredMembers.length - 1 || reorderFeatured.isPending}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Move ${m.profile.display_name} later`}
+                      hitSlop={6}
+                      className={`p-2 ${i === featuredMembers.length - 1 || reorderFeatured.isPending ? "opacity-30" : ""}`}
+                    >
+                      <Icon as={ArrowDown} size={16} className="text-ink-muted" />
+                    </Pressable>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+
           <Text className="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-ink-muted">Team ({active.length})</Text>
           <View className="overflow-hidden rounded-2xl bg-surface">
             {active.map((m, i) => (
@@ -350,6 +421,19 @@ export function PageTeam() {
                     </View>
                   ) : null}
                 </Person>
+                <View className="px-4 pb-3">
+                  <Pressable
+                    onPress={() => toggleFeatured(m)}
+                    disabled={setFeatured.isPending || (!m.show_on_page && featuredFull)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: !!m.show_on_page }}
+                    hitSlop={6}
+                    className={`flex-row items-center gap-1.5 self-start ${setFeatured.isPending || (!m.show_on_page && featuredFull) ? "opacity-40" : ""}`}
+                  >
+                    <Icon as={m.show_on_page ? Eye : EyeOff} size={13} className={m.show_on_page ? "text-accent" : "text-ink-muted"} />
+                    <Text className={`text-xs ${m.show_on_page ? "font-medium text-accent" : "text-ink-muted"}`}>{m.show_on_page ? "Shown on page" : "Show on page"}</Text>
+                  </Pressable>
+                </View>
                 {m.user_id !== user?.id ? <MemberPermissions pageId={page.id} member={m} /> : null}
               </View>
             ))}

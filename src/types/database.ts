@@ -96,6 +96,26 @@ export interface Page {
   follower_count: number;
   created_at: string;
   updated_at: string;
+  // Hero slideshow settings (see ako_page_landing_revamp.sql). Optional so a page
+  // read from a database that hasn't had that migration yet still type-checks.
+  hero_autoplay?: boolean;
+  hero_interval_seconds?: number;
+  hero_direction?: HeroDirection;
+}
+
+// Which way the hero slideshow advances on its own.
+export type HeroDirection = "forward" | "backward";
+
+// One slide of a page's hero. All of a page's slides share one aspect ratio (16:9) —
+// the editor crops to it on upload — so they can sit in one frame.
+export interface PageHeroSlide {
+  id: string;
+  page_id: string;
+  image_url: string;
+  title: string | null;
+  caption: string | null;
+  position: number;
+  created_at: string;
 }
 
 // Enough of a page to render a byline/avatar anywhere a page can
@@ -122,10 +142,14 @@ export interface PageMember {
   invited_at: string;
   responded_at: string | null;
   created_at: string;
+  // Chosen by a page admin: whether this person is shown to visitors in the page's
+  // "Meet the team" section, and where (lowest first).
+  show_on_page?: boolean;
+  display_order?: number;
 }
 
 export interface PageMemberWithProfile extends PageMember {
-  profile: Pick<Profile, "id" | "username" | "display_name" | "avatar_url">;
+  profile: Pick<Profile, "id" | "username" | "display_name" | "avatar_url" | "bio">;
 }
 
 // A page in the "pages I can switch into" list — the page plus my own
