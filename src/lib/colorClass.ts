@@ -30,6 +30,7 @@ function paletteTokens(p: Palette): Record<string, string> {
     danger: p.danger,
     pushback: p.pushback,
     "online-glow": p.onlineGlow,
+    "brand-orange": p.brandOrange,
     "tick-blue": p.tickBlue,
     "presence-online": p.presenceOnline,
     highlight: p.highlight,

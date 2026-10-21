@@ -25,6 +25,7 @@ export interface Palette {
   stanceDisagree: string;
   stancePushback: string;
   onlineGlow: string;
+  brandOrange: string; // the orange in the Akọ logo — pages/organisation affordances
   tickBlue: string;
   presenceOnline: string;
   highlight: string;
@@ -58,6 +59,7 @@ const light: Palette = {
   stanceDisagree: "#B4574A",
   stancePushback: "#B8862E",
   onlineGlow: "#FF6A00",
+  brandOrange: "#FD5200",
   tickBlue: "#53BDEB",
   presenceOnline: "#39FF6A",
   highlight: "#BFE6C6",
@@ -178,6 +180,7 @@ export function paletteToCssVars(p: Palette): Record<`--${string}`, string> {
     "--color-stance-disagree": p.stanceDisagree,
     "--color-stance-pushback": p.stancePushback,
     "--color-online-glow": p.onlineGlow,
+    "--color-brand-orange": p.brandOrange,
     "--color-tick-blue": p.tickBlue,
     "--color-presence-online": p.presenceOnline,
     "--color-highlight": p.highlight,

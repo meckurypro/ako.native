@@ -615,6 +615,43 @@ export function useProfileAffiliations(userId: string) {
   });
 }
 
+/** A page a person is actively affiliated with, plus their role on it — powers the profile's
+ * "Pages" modal (avatar, name, role). Active memberships on active pages only. */
+export interface ProfilePageAffiliation {
+  page_id: string;
+  username: string;
+  name: string;
+  avatar_url: string | null;
+  is_verified: boolean;
+  role_label: string;
+}
+
+export function useProfilePages(userId: string) {
+  return useQuery({
+    queryKey: ["profile-pages", userId],
+    queryFn: async (): Promise<ProfilePageAffiliation[]> => {
+      const { data, error } = await supabase
+        .from("page_members")
+        .select("role_label, page:pages(id, username, name, avatar_url, is_verified, is_active)")
+        .eq("user_id", userId)
+        .eq("status", "active");
+      if (error) throw error;
+      return (data as any[])
+        .filter((r) => r.page && r.page.is_active !== false)
+        .map((r) => ({
+          page_id: r.page.id,
+          username: r.page.username,
+          name: r.page.name,
+          avatar_url: r.page.avatar_url ?? null,
+          is_verified: !!r.page.is_verified,
+          role_label: r.role_label,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+    },
+    enabled: !!userId,
+  });
+}
+
 export function useIsFollowingPage(pageId: string) {
   const { user } = useAuth();
 

@@ -52,6 +52,7 @@ import { ProjectMiniCard, ProjectMiniGrid } from "@/components/post/ProjectMiniC
 import { ProjectCardList } from "@/components/project/ProjectCardList";
 import { AccountSwitcher } from "@/components/account/AccountSwitcher";
 import { ProfileAdSlot } from "@/components/profile/ProfileAdSlot";
+import { ProfilePagesModal } from "@/components/profile/ProfilePagesModal";
 import { ProfileShareScreen } from "@/components/profile/ProfileShareScreen";
 import { ReportModal } from "@/components/profile/ReportModal";
 import { ShareProfileSheet } from "@/components/profile/ShareProfileSheet";
@@ -74,6 +75,7 @@ import { useProjectOwnership } from "@/hooks/useProjectOwnership";
 import { useContactNickname } from "@/hooks/useContactNicknames";
 import { useCancelFollowRequest, useHasPendingFollowRequest, useIncomingFollowRequestCount, useSendFollowRequest } from "@/hooks/useFollowRequests";
 import { useStartConversation } from "@/hooks/useMessaging";
+import { useProfilePages } from "@/hooks/usePages";
 import {
   useCategorizedProjectIds,
   useCollaboratorMediaProjects,
@@ -195,6 +197,8 @@ export function ProfilePage() {
   const { data: nickname } = useContactNickname(profile?.id ?? "");
 
   const isOwnProfile = user?.id === profile?.id;
+  const profilePagesQuery = useProfilePages(profile?.id ?? "");
+  const [pagesOpen, setPagesOpen] = useState(false);
   const showOwnerView = isOwnProfile && !previewingAsVisitor;
   // Projects on this profile are the PERSON's. While acting as a Page, the
   // Page is a different account, so they read as another user's content: no
@@ -209,6 +213,8 @@ export function ProfilePage() {
   const displayName = nickname || profile?.display_name || "";
   const firstName = profile?.display_name?.trim().split(/\s+/)[0] ?? "";
   const isPrivateLocked = !!profile?.is_private && !showOwnerView && !isFollowing;
+  // Pages icon: orange + tappable only when there is something to show; hidden behind a private lock.
+  const hasPages = !isPrivateLocked && (profilePagesQuery.data?.length ?? 0) > 0;
 
   const accountId = isPrivateLocked ? undefined : profile?.id;
   const { data: projects, isLoading: projectsLoading, refetch: refetchProjects } = useUserProjects(isPrivateLocked ? "" : profile?.id ?? "", projectsOwnerView);
@@ -531,16 +537,6 @@ export function ProfilePage() {
               ) : null}
               {profile.roles.length > 0 ? <RoleTags roles={profile.roles} className="mt-1 text-xs text-ink-muted" /> : null}
 
-              <View className="mt-5 flex-row items-center gap-7">
-                <Pressable onPress={() => router.push(`/profile/${profile.username}/following` as Href)} accessibilityRole="link" accessibilityLabel={`${profile.following_count} following`}>
-                  <Text className="text-xl font-semibold text-ink">{profile.following_count}</Text>
-                  <Text className="mt-1 text-sm text-ink-muted">Following</Text>
-                </Pressable>
-                <Pressable onPress={() => router.push(`/profile/${profile.username}/followers` as Href)} accessibilityRole="link" accessibilityLabel={`${profile.follower_count} followers`}>
-                  <Text className="text-xl font-semibold text-ink">{profile.follower_count}</Text>
-                  <Text className="mt-1 text-sm text-ink-muted">Followers</Text>
-                </Pressable>
-              </View>
             </View>
 
             <View className="shrink-0">
@@ -564,6 +560,30 @@ export function ProfilePage() {
                 </Pressable>
               ) : null}
             </View>
+          </View>
+
+          {/* Stats row — Following / Followers on the left, Pages on the right (under the avatar). */}
+          <View className="mt-5 flex-row items-center justify-between gap-4">
+            <View className="flex-row items-center gap-7">
+              <Pressable onPress={() => router.push(`/profile/${profile.username}/following` as Href)} accessibilityRole="link" accessibilityLabel={`${profile.following_count} following`}>
+                <Text className="text-xl font-semibold text-ink">{profile.following_count}</Text>
+                <Text className="mt-1 text-sm text-ink-muted">Following</Text>
+              </Pressable>
+              <Pressable onPress={() => router.push(`/profile/${profile.username}/followers` as Href)} accessibilityRole="link" accessibilityLabel={`${profile.follower_count} followers`}>
+                <Text className="text-xl font-semibold text-ink">{profile.follower_count}</Text>
+                <Text className="mt-1 text-sm text-ink-muted">Followers</Text>
+              </Pressable>
+            </View>
+            <Pressable
+              disabled={!hasPages}
+              onPress={() => setPagesOpen(true)}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !hasPages }}
+              accessibilityLabel={hasPages ? "View pages" : "Not affiliated with any pages"}
+              className={`mr-1 h-11 w-11 shrink-0 items-center justify-center rounded-full ${hasPages ? "active:scale-95" : "opacity-40"}`}
+            >
+              <Icon as={Building2} size={26} strokeWidth={2} className={hasPages ? "text-brand-orange" : "text-ink-muted"} />
+            </Pressable>
           </View>
 
           {profile.bio ? <Text className="mt-5 text-[15px] leading-relaxed text-ink">{profile.bio}</Text> : null}
@@ -805,6 +825,8 @@ export function ProfilePage() {
           onClose={() => setShareSheetOpen(false)}
         />
       ) : null}
+
+      {pagesOpen && hasPages ? <ProfilePagesModal pages={profilePagesQuery.data ?? []} onClose={() => setPagesOpen(false)} /> : null}
 
       {reportContentOpen ? <ReportModal profileId={profile.id} onClose={() => setReportContentOpen(false)} /> : null}
 
