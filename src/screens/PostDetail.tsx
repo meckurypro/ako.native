@@ -20,7 +20,9 @@ import { PostCard } from "@/components/post/PostCard";
 import { StanceComposer } from "@/components/post/StanceComposer";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
+import { RestrictedPostNotice } from "@/components/ui/RestrictedPostNotice";
 import { UnavailableNotice } from "@/components/ui/UnavailableNotice";
+import { useIsRestricted } from "@/hooks/useAccountAccess";
 import { useAuth } from "@/hooks/useAuth";
 import { useMarkPostSeen } from "@/hooks/useMarkPostSeen";
 import { usePost } from "@/hooks/usePostDetail";
@@ -36,7 +38,10 @@ export function PostDetail() {
   const onScroll = useChromeScroll();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { data: post, isLoading: postLoading, refetch: refetchPost } = usePost(postId);
+  // Restricted (consumer-only) accounts can't use posts yet. A shared post link must not tell them the post
+  // "doesn't exist" — it does — so skip the fetch entirely and explain, with a way to Discover.
+  const restricted = useIsRestricted();
+  const { data: post, isLoading: postLoading, refetch: refetchPost } = usePost(restricted ? undefined : postId);
   const { refreshControl, refreshing } = usePullToRefresh(
     [refetchPost, () => queryClient.invalidateQueries({ queryKey: ["comment-list", postId] })],
     insets.top + 16
@@ -44,7 +49,7 @@ export function PostDetail() {
   const repliesY = useRef(0);
   const [composeStance, setComposeStance] = useState<Stance | null>(null);
 
-  useMarkPostSeen(postId, post?.author?.id);
+  useMarkPostSeen(postId, restricted ? undefined : post?.author?.id);
 
   // Older share links and notifications pointed at /post/{id}?comment={commentId}. Comments are pages of their
   // own now, so those links are forwarded to the opened-comment page instead of going stale.
@@ -74,7 +79,9 @@ export function PostDetail() {
           <Icon as={ArrowLeft} size={22} className="text-ink-muted" />
         </Pressable>
 
-        {postLoading ? (
+        {restricted ? (
+          <RestrictedPostNotice />
+        ) : postLoading ? (
           <Text className="text-ink-muted">Loading…</Text>
         ) : !post ? (
           <UnavailableNotice kind="post" />

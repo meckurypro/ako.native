@@ -91,7 +91,9 @@ export function useAccountAccess() {
 
 /**
  * True while the signed-in user is in restricted (consumer-only) mode.
- * Silent by design: callers just hide/redirect, never explain. Resolves
+ * Mostly silent by design: callers hide/redirect without explaining. The one exception is a
+ * shared link to a post or comment, which shows RestrictedPostNotice (gentle explanation + Discover CTA)
+ * rather than implying the content doesn't exist. Resolves
  * to false until the access query has data (RequireAuth/AuthGate always
  * resolve it before rendering protected screens, so in practice it is
  * already cached by the time any screen reads it).

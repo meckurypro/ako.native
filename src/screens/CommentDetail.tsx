@@ -21,7 +21,9 @@ import { useBottomNavInset } from "@/components/nav/BottomNav";
 import { useChromeScroll } from "@/components/nav/ChromeProvider";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
+import { RestrictedPostNotice } from "@/components/ui/RestrictedPostNotice";
 import { UnavailableNotice } from "@/components/ui/UnavailableNotice";
+import { useIsRestricted } from "@/hooks/useAccountAccess";
 import { useComment, useCommentChain, type CommentWithAuthor } from "@/hooks/useComments";
 import { useRecordCommentView } from "@/hooks/useCommentViews";
 import { useMarkPostSeen } from "@/hooks/useMarkPostSeen";
@@ -90,9 +92,11 @@ export function CommentDetail() {
   const bottomInset = useBottomNavInset();
   const onScroll = useChromeScroll();
   const queryClient = useQueryClient();
-  const { data: comment, isLoading: commentLoading, refetch: refetchComment } = useComment(commentId);
-  const { data: chain, isLoading: chainLoading } = useCommentChain(commentId);
-  const { data: post, isLoading: postLoading } = usePost(postId);
+  // Restricted accounts can't use posts yet: skip every fetch and explain instead of implying the link is dead.
+  const restricted = useIsRestricted();
+  const { data: comment, isLoading: commentLoading, refetch: refetchComment } = useComment(restricted ? undefined : commentId);
+  const { data: chain, isLoading: chainLoading } = useCommentChain(restricted ? undefined : commentId);
+  const { data: post, isLoading: postLoading } = usePost(restricted ? undefined : postId);
   const { refreshControl, refreshing } = usePullToRefresh(
     [refetchComment, () => queryClient.invalidateQueries({ queryKey: ["comment-list", postId] })],
     insets.top + 16
@@ -103,7 +107,7 @@ export function CommentDetail() {
 
   useRecordCommentView(comment?.id, comment?.author.id);
   // Opening a comment is also being in that post's conversation — keep the post's "seen" bookkeeping honest.
-  useMarkPostSeen(postId, post?.author?.id);
+  useMarkPostSeen(postId, restricted ? undefined : post?.author?.id);
 
   const ready = !!comment && !!chain && !postLoading;
 
@@ -143,7 +147,9 @@ export function CommentDetail() {
           <Text className="font-display text-base text-ink">Comment</Text>
         </View>
 
-        {commentLoading || chainLoading ? (
+        {restricted ? (
+          <RestrictedPostNotice />
+        ) : commentLoading || chainLoading ? (
           <Text className="py-6 text-ink-muted">Loading…</Text>
         ) : !comment || comment.is_deleted ? (
           <View>
