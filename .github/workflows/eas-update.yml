@@ -64,6 +64,11 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # A bundle built without the Supabase variables crash-loops every phone that downloads it. This runs the check
+      # with the same EAS environment variables `eas update` is about to bake in, and stops the job before publishing.
+      - name: Check publish environment variables
+        run: eas env:exec "$CHANNEL" "node scripts/check-publish-env.mjs" --non-interactive
+
       - name: Publish update
         run: |
           MSG="$(printf '%s' "$COMMIT_MESSAGE" | head -n 1 | cut -c1-120)"
