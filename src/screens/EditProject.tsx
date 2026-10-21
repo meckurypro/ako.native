@@ -452,7 +452,6 @@ export function EditProject() {
 {project?.project_type === "file" ? (
             <View className="mb-4 overflow-hidden rounded-xl border border-border bg-surface">
               <FileFolderHero />
-              <Text className="px-4 pb-3 text-center text-xs text-ink-muted">Files use a folder icon — no thumbnail needed.</Text>
             </View>
           ) : (
             <>
