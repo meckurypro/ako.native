@@ -10,25 +10,34 @@
 //
 import {
   Activity as ActivityIcon,
+  Ban,
   Bell,
   BellOff,
   Briefcase,
   Building2,
   ChevronDown,
+  Clock,
   Eye,
-  Globe,
+  LayoutGrid,
+  Layers,
+  Link2,
   Lock,
+  Menu,
   MessageCircle,
   MoreHorizontal,
+  Pencil,
   Plus,
   Redo2,
-  Send,
+  RefreshCw,
   Settings,
+  Share2,
   Undo2,
   UserCheck,
   UserMinus,
+  UserPlus,
   Wallet,
   X,
+  type LucideIcon,
 } from "lucide-react-native";
 import { router, useLocalSearchParams, type Href } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -88,9 +97,11 @@ import { useTabState } from "@/hooks/useTabState";
 import { APP_URL } from "@/lib/config";
 import { haptics } from "@/lib/haptics";
 import { openExternal } from "@/lib/openExternal";
+import { profileTabIcon } from "@/lib/profileTabIcons";
 import { useTheme } from "@/theme/ThemeProvider";
 
-const MAX_EQUAL_TABS = 4;
+// Tabs are icon-only now, so a lot more of them fit in equal-width cells than text labels did.
+const MAX_EQUAL_TABS = 9;
 const TYPE_CATEGORY_TYPES = new Set<ProjectType>(["book", "course", "event", "room", "file"]);
 
 function getWebsiteHref(url: string): string {
@@ -118,10 +129,18 @@ type Row =
   | { kind: "skeleton"; id: string; projectType?: ProjectType }
   | { kind: "postskeleton"; id: string }
   | { kind: "gigs"; id: string; gigs: Project[] }
-  | { kind: "message"; id: string; text: string };
+  | { kind: "message"; id: string; text: string; icon?: LucideIcon };
 
-function Message({ text }: { text: string }) {
-  return <Text className="px-4 py-10 text-center text-sm text-ink-muted">{text}</Text>;
+// Icon-led empty / blocked / error state, same shape as the private-account notice.
+function Message({ text, icon = Layers }: { text: string; icon?: LucideIcon }) {
+  return (
+    <View className="items-center px-6 py-14">
+      <View className="mb-3 h-14 w-14 items-center justify-center rounded-full bg-accent-soft">
+        <Icon as={icon} size={22} className="text-accent" />
+      </View>
+      <Text className="max-w-xs text-center text-sm text-ink-muted">{text}</Text>
+    </View>
+  );
 }
 
 export function ProfilePage() {
@@ -263,7 +282,7 @@ export function ProfilePage() {
 
   const rows = useMemo<Row[]>(() => {
     const base: Row[] = [{ kind: "header" }];
-    if (isBlocked) return [...base, { kind: "message", id: "blocked", text: "You've blocked this account. Unblock to see their content." }];
+    if (isBlocked) return [...base, { kind: "message", id: "blocked", icon: Ban, text: "You've blocked this account. Unblock to see their content." }];
     if (isPrivateLocked) return base;
 
     // Restricted account with no projects → no tab bar, just the empty message.
@@ -277,8 +296,8 @@ export function ProfilePage() {
 
     if (id === "posts") {
       if (postsLoading) out.push({ kind: "postskeleton", id: "skeleton-posts" });
-      else if (postsError && (!posts || posts.length === 0)) out.push({ kind: "message", id: "posts-error", text: "Couldn't load posts. Pull down to retry." });
-      else if (!posts || posts.length === 0) out.push({ kind: "message", id: "no-posts", text: "No posts yet." });
+      else if (postsError && (!posts || posts.length === 0)) out.push({ kind: "message", id: "posts-error", icon: RefreshCw, text: "Couldn't load posts. Pull down to retry." });
+      else if (!posts || posts.length === 0) out.push({ kind: "message", id: "no-posts", icon: LayoutGrid, text: "No posts yet." });
       else for (const post of posts as any[]) out.push({ kind: "post", id: post.id, post });
     } else if (id === "media") {
       out.push({ kind: "grid", id: "media", projects: mediaProjects });
@@ -358,29 +377,31 @@ export function ProfilePage() {
   }));
 
   function renderTabs() {
+    const cell = tabBarWidth / Math.max(tabDefs.length, 1);
     return (
-      <View className="bg-canvas" style={{ shadowColor: `rgb(${colors.shadowInkRgb})`, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 }}>
+      <View className="bg-canvas" style={{ shadowColor: `rgb(${colors.shadowInkRgb})`, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 }}>
         <View className="px-4">
-          <View className="relative flex-row items-stretch border-b border-border" onLayout={(e) => setTabBarWidth(e.nativeEvent.layout.width)}>
-            {tabDefs.map((tab, i) => (
-              <Pressable
-                key={tab.id}
-                onPress={() => switchTab(i)}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: activeTab === tab.id }}
-                className={`items-center py-3 ${equalTabs ? "flex-1" : "px-4"} ${!equalTabs && activeTab === tab.id ? "border-b-2 border-accent" : ""}`}
-              >
-                <Text numberOfLines={1} className={`text-sm font-medium ${activeTab === tab.id ? "text-accent" : "text-ink-muted"}`}>
-                  {tab.label}
-                </Text>
-              </Pressable>
-            ))}
+          <View accessibilityRole="tablist" className="relative flex-row items-stretch border-b border-border" onLayout={(e) => setTabBarWidth(e.nativeEvent.layout.width)}>
+            {tabDefs.map((tab, i) => {
+              const TabIcon = profileTabIcon(tab.id, tab.label);
+              const isActive = activeTab === tab.id;
+              return (
+                <Pressable
+                  key={tab.id}
+                  onPress={() => switchTab(i)}
+                  accessibilityRole="tab"
+                  accessibilityLabel={tab.label}
+                  accessibilityState={{ selected: isActive }}
+                  className={`h-12 items-center justify-center ${equalTabs ? "flex-1" : "px-3"} ${!equalTabs && isActive ? "border-b-[3px] border-accent" : ""}`}
+                >
+                  <Icon as={TabIcon} size={24} strokeWidth={isActive ? 2.25 : 1.75} className={isActive ? "text-accent" : "text-ink-muted"} />
+                </Pressable>
+              );
+            })}
             {equalTabs ? (
-              <Animated.View
-                pointerEvents="none"
-                className="absolute bottom-0 left-0 h-[2px] rounded-full bg-accent"
-                style={[{ width: tabBarWidth / Math.max(tabDefs.length, 1) }, indicatorStyle]}
-              />
+              <Animated.View pointerEvents="none" className="absolute bottom-0 left-0 h-[3px] items-center" style={[{ width: cell }, indicatorStyle]}>
+                <View className="h-full w-9 rounded-full bg-accent" />
+              </Animated.View>
             ) : null}
           </View>
         </View>
@@ -424,78 +445,46 @@ export function ProfilePage() {
   function renderToolbar() {
     if (!profile) return null;
     return (
-      <View className="h-14 flex-row items-center px-4">
+      <View className="h-14 flex-row items-center gap-1 px-3">
         {showOwnerView ? (
-          <View className="w-full flex-row items-center gap-2">
-            <ProfileAdSlot className="min-w-0 flex-1" />
+          <>
+            <Pressable onPress={() => router.push("/settings/profile")} accessibilityRole="button" accessibilityLabel="Edit profile" className="h-10 w-10 items-center justify-center rounded-full">
+              <Icon as={Pencil} size={22} className="text-ink" />
+            </Pressable>
+            <ProfileAdSlot className="mx-1 min-w-0 flex-1" />
             {!restricted ? (
-              <Pressable onPress={() => router.push("/create")} accessibilityRole="button" accessibilityLabel="Create" hitSlop={8} className="shrink-0 p-2">
-                <Icon as={Plus} size={22} className="text-ink-muted" />
+              <Pressable onPress={() => router.push("/create")} accessibilityRole="button" accessibilityLabel="Create" className="h-10 w-10 items-center justify-center rounded-full">
+                <Icon as={Plus} size={26} className="text-ink" />
               </Pressable>
             ) : null}
             <View ref={ownerMenuButtonRef} collapsable={false}>
-              <Pressable onPress={() => setOwnerMenuOpen(true)} accessibilityRole="button" accessibilityLabel="Profile options" className="relative p-2">
-                <Icon as={MoreHorizontal} size={20} className="text-ink-muted" />
+              <Pressable onPress={() => setOwnerMenuOpen(true)} accessibilityRole="button" accessibilityLabel="Profile options" className="relative h-10 w-10 items-center justify-center rounded-full">
+                <Icon as={Menu} size={24} className="text-ink" />
                 {incomingRequestCount > 0 ? (
-                  <View className="absolute right-0.5 top-0.5 h-4 w-4 items-center justify-center rounded-full bg-danger">
+                  <View className="absolute right-1 top-1 h-4 w-4 items-center justify-center rounded-full bg-danger">
                     <Text className="text-[10px] font-medium text-canvas">{incomingRequestCount > 9 ? "9+" : incomingRequestCount}</Text>
                   </View>
                 ) : null}
               </Pressable>
             </View>
-          </View>
+          </>
         ) : isOwnProfile ? (
           <View className="w-full flex-row items-center justify-end">
-            <Pressable onPress={() => setPreviewingAsVisitor(false)} accessibilityRole="button" className="flex-row items-center gap-1 px-2 py-1.5">
+            <Pressable onPress={() => setPreviewingAsVisitor(false)} accessibilityRole="button" className="flex-row items-center gap-1.5 rounded-full bg-accent-soft px-3 py-2">
               <Icon as={X} size={14} className="text-accent" />
               <Text className="text-sm font-medium text-accent">Exit preview</Text>
             </Pressable>
           </View>
-        ) : isFollowing ? (
-          <View className="w-full flex-row items-center justify-end gap-2">
-            <View ref={relationshipMenuButtonRef} collapsable={false}>
-              <Pressable
-                onPress={() => setRelationshipMenuOpen(true)}
-                disabled={isBlocked}
-                accessibilityRole="button"
-                className={`flex-row items-center gap-1.5 rounded-full bg-accent-soft py-2 pl-4 pr-3 ${isBlocked ? "opacity-40" : ""}`}
-              >
-                <Icon as={UserCheck} size={16} className="text-accent" />
-                <Text className="text-sm font-medium text-accent">Following</Text>
-                <Icon as={ChevronDown} size={14} className="text-accent" />
-              </Pressable>
-            </View>
-            <Pressable onPress={() => setShareSheetOpen(true)} accessibilityRole="button" accessibilityLabel="More options" hitSlop={8} className="p-2">
-              <Icon as={MoreHorizontal} size={18} className="text-ink-muted" />
-            </Pressable>
-          </View>
         ) : (
-          <View className="w-full flex-row items-center justify-end gap-2">
-            <Pressable
-              onPress={() => void handleMessage()}
-              disabled={startConversation.isPending || isBlocked}
-              accessibilityRole="button"
-              className={`flex-row items-center gap-1.5 rounded-full border border-border px-4 py-2 ${startConversation.isPending || isBlocked ? "opacity-40" : ""}`}
-            >
-              <Icon as={MessageCircle} size={16} className="text-ink-muted" />
-              <Text className="text-sm text-ink-muted">Message</Text>
+          <>
+            <View className="flex-1" />
+            <Pressable onPress={() => setQrShareOpen(true)} accessibilityRole="button" accessibilityLabel="Share profile" className="h-10 w-10 items-center justify-center rounded-full">
+              <Icon as={Share2} size={22} className="text-ink" />
             </Pressable>
-            <Pressable
-              onPress={handleFollowClick}
-              disabled={toggleFollow.isPending || sendFollowRequest.isPending || cancelFollowRequest.isPending || isBlocked}
-              accessibilityRole="button"
-              className={`rounded-full px-5 py-2 ${
-                toggleFollow.isPending || sendFollowRequest.isPending || cancelFollowRequest.isPending || isBlocked ? "opacity-40" : ""
-              } ${hasPendingRequest ? "bg-accent-soft" : isFollowedByUser ? "bg-pushback-a15" : "bg-ink-a10"}`}
-            >
-              <Text className={`text-sm font-medium ${hasPendingRequest ? "text-accent" : isFollowedByUser ? "text-pushback" : "text-ink"}`}>
-                {hasPendingRequest ? "Requested" : isFollowedByUser ? "Follow back" : "Follow"}
-              </Text>
+            <Pressable onPress={() => setShareSheetOpen(true)} accessibilityRole="button" accessibilityLabel="More options" className="h-10 w-10 items-center justify-center rounded-full">
+              <Icon as={MoreHorizontal} size={22} className="text-ink" />
             </Pressable>
-            <Pressable onPress={() => setShareSheetOpen(true)} accessibilityRole="button" accessibilityLabel="More options" hitSlop={8} className="p-2">
-              <Icon as={MoreHorizontal} size={18} className="text-ink-muted" />
-            </Pressable>
-          </View>
+          </>
         )}
       </View>
     );
@@ -503,11 +492,12 @@ export function ProfilePage() {
 
   function renderHeader() {
     if (!profile) return null;
+    const followBusy = toggleFollow.isPending || sendFollowRequest.isPending || cancelFollowRequest.isPending || isBlocked;
     return (
       <View onLayout={(e) => (headerHeightRef.current = e.nativeEvent.layout.height)} className="bg-canvas">
         {renderToolbar()}
 
-        <View className="px-4 pt-4">
+        <View className="px-4 pt-2">
           {isOwnProfile && previewingAsVisitor ? (
             <View className="mb-4 flex-row items-center gap-1.5 rounded-xl bg-accent-soft px-4 py-2.5">
               <Icon as={Eye} size={14} className="text-accent" />
@@ -515,62 +505,142 @@ export function ProfilePage() {
             </View>
           ) : null}
 
-          <View className="flex-row items-start gap-4">
-            {profile.avatar_url ? (
-              <Pressable onPress={() => setAvatarOpen(true)} accessibilityRole="imagebutton" accessibilityLabel="View profile photo" className="shrink-0">
-                <Avatar src={profile.avatar_url} name={profile.display_name} size="lg" />
-              </Pressable>
-            ) : (
-              <Avatar src={profile.avatar_url} name={profile.display_name} size="lg" />
-            )}
-
+          <View className="flex-row items-start justify-between gap-4">
             <View className="min-w-0 flex-1 pt-1">
               <View className="flex-row flex-wrap items-center gap-2">
                 {showOwnerView ? (
-                  <Pressable onPress={() => setAccountSwitcherOpen(true)} accessibilityRole="button" accessibilityLabel="Switch account">
-                    <Text className="text-lg font-medium text-ink">{profile.display_name}</Text>
+                  <Pressable onPress={() => setAccountSwitcherOpen(true)} accessibilityRole="button" accessibilityLabel="Switch account" className="shrink flex-row items-center gap-1">
+                    <Text className="shrink text-[28px] font-bold leading-tight tracking-tight text-ink">{profile.display_name}</Text>
+                    <Icon as={ChevronDown} size={18} className="mt-1 text-ink-muted" />
                   </Pressable>
                 ) : (
-                  <Text className="text-lg font-medium text-ink">{displayName}</Text>
+                  <Text className="shrink text-[28px] font-bold leading-tight tracking-tight text-ink">{displayName}</Text>
                 )}
                 <TierBadge tier={profile.tier} />
               </View>
+
+              <Text numberOfLines={1} className="mt-0.5 text-base text-ink-muted">
+                @{profile.username}
+              </Text>
 
               {profile.badge_visible ? <VerifiedBadge size={15} label className="mt-1" /> : null}
               {showOwnerView && profile.badge_streak != null ? (
                 <BadgeStreakNote visible={!!profile.badge_visible} streak={profile.badge_streak} />
               ) : null}
-              {profile.roles.length > 0 ? <RoleTags roles={profile.roles} className="mt-0.5 text-xs text-ink-muted" /> : null}
+              {profile.roles.length > 0 ? <RoleTags roles={profile.roles} className="mt-1 text-xs text-ink-muted" /> : null}
 
-              <Text className="mt-0.5 text-sm text-ink-muted">
-                @{profile.username}
-                {profile.website_url ? (
-                  <>
-                    {" / "}
-                    <Text className="text-accent" accessibilityRole="link" onPress={() => void openExternal(getWebsiteHref(profile.website_url!))}>
-                      {getWebsiteDomain(profile.website_url)}
-                    </Text>
-                  </>
-                ) : null}
-              </Text>
+              <View className="mt-5 flex-row items-center gap-7">
+                <Pressable onPress={() => router.push(`/profile/${profile.username}/following` as Href)} accessibilityRole="link" accessibilityLabel={`${profile.following_count} following`}>
+                  <Text className="text-xl font-semibold text-ink">{profile.following_count}</Text>
+                  <Text className="mt-1 text-sm text-ink-muted">Following</Text>
+                </Pressable>
+                <Pressable onPress={() => router.push(`/profile/${profile.username}/followers` as Href)} accessibilityRole="link" accessibilityLabel={`${profile.follower_count} followers`}>
+                  <Text className="text-xl font-semibold text-ink">{profile.follower_count}</Text>
+                  <Text className="mt-1 text-sm text-ink-muted">Followers</Text>
+                </Pressable>
+              </View>
+            </View>
+
+            <View className="shrink-0">
+              <View className="rounded-full border-2 border-border p-[3px]">
+                {profile.avatar_url ? (
+                  <Pressable onPress={() => setAvatarOpen(true)} accessibilityRole="imagebutton" accessibilityLabel="View profile photo">
+                    <Avatar src={profile.avatar_url} name={profile.display_name} size="2xl" />
+                  </Pressable>
+                ) : (
+                  <Avatar src={profile.avatar_url} name={profile.display_name} size="2xl" />
+                )}
+              </View>
+              {showOwnerView ? (
+                <Pressable
+                  onPress={() => router.push("/settings/profile")}
+                  accessibilityRole="button"
+                  accessibilityLabel="Change profile photo"
+                  className="absolute -bottom-1 -right-1 h-9 w-9 items-center justify-center rounded-full border-[3px] border-canvas bg-accent"
+                >
+                  <Icon as={Plus} size={18} strokeWidth={2.75} className="text-white" />
+                </Pressable>
+              ) : null}
             </View>
           </View>
 
-          {profile.bio ? <Text className="mt-4 text-ink">{profile.bio}</Text> : null}
+          {profile.bio ? <Text className="mt-5 text-[15px] leading-relaxed text-ink">{profile.bio}</Text> : null}
 
-          <View className="mb-4 mt-4 flex-row flex-wrap items-center gap-5">
-            <Pressable onPress={() => router.push(`/profile/${profile.username}/following` as Href)} accessibilityRole="link">
-              <Text className="text-sm">
-                <Text className="font-medium text-ink">{profile.following_count}</Text>
-                <Text className="text-ink-muted"> Following</Text>
+          {profile.website_url ? (
+            <Pressable
+              onPress={() => void openExternal(getWebsiteHref(profile.website_url!))}
+              accessibilityRole="link"
+              accessibilityLabel={`Website ${getWebsiteDomain(profile.website_url)}`}
+              className="mt-3 flex-row items-center gap-1.5 self-start rounded-full bg-accent-soft px-3 py-1.5"
+            >
+              <Icon as={Link2} size={14} className="text-accent" />
+              <Text numberOfLines={1} className="shrink text-sm font-medium text-accent">
+                {getWebsiteDomain(profile.website_url)}
               </Text>
             </Pressable>
-            <Pressable onPress={() => router.push(`/profile/${profile.username}/followers` as Href)} accessibilityRole="link">
-              <Text className="text-sm">
-                <Text className="font-medium text-ink">{profile.follower_count}</Text>
-                <Text className="text-ink-muted"> Followers</Text>
-              </Text>
-            </Pressable>
+          ) : null}
+
+          {/* Action row — icon-led. The owner gets quick actions; a visitor gets the one follow control that
+              matches the relationship (follow / follow back / requested / following) plus message. */}
+          <View className="mb-4 mt-5 flex-row items-center gap-2">
+            {showOwnerView ? (
+              <>
+                <Pressable onPress={() => setQrShareOpen(true)} accessibilityRole="button" accessibilityLabel="Share profile" className="h-11 flex-1 items-center justify-center rounded-xl border border-border bg-surface">
+                  <Icon as={Share2} size={20} className="text-ink" />
+                </Pressable>
+                <Pressable onPress={() => setPreviewingAsVisitor(true)} accessibilityRole="button" accessibilityLabel="View as visitor" className="h-11 flex-1 items-center justify-center rounded-xl border border-border bg-surface">
+                  <Icon as={Eye} size={20} className="text-ink" />
+                </Pressable>
+                <Pressable onPress={() => router.push("/activity")} accessibilityRole="button" accessibilityLabel="Activity" className="h-11 flex-1 items-center justify-center rounded-xl border border-border bg-surface">
+                  <Icon as={ActivityIcon} size={20} className="text-ink" />
+                </Pressable>
+              </>
+            ) : isOwnProfile ? null : (
+              <>
+                {isFollowing ? (
+                  <View ref={relationshipMenuButtonRef} collapsable={false} className="flex-1">
+                    <Pressable
+                      onPress={() => setRelationshipMenuOpen(true)}
+                      disabled={isBlocked}
+                      accessibilityRole="button"
+                      accessibilityLabel="Following — open options"
+                      className={`h-11 flex-row items-center justify-center gap-2 rounded-xl bg-accent-soft ${isBlocked ? "opacity-40" : ""}`}
+                    >
+                      <Icon as={UserCheck} size={19} className="text-accent" />
+                      <Text className="text-[15px] font-semibold text-accent">Following</Text>
+                      <Icon as={ChevronDown} size={16} className="text-accent" />
+                    </Pressable>
+                  </View>
+                ) : (
+                  <Pressable
+                    onPress={handleFollowClick}
+                    disabled={followBusy}
+                    accessibilityRole="button"
+                    className={`h-11 flex-1 flex-row items-center justify-center gap-2 rounded-xl ${followBusy ? "opacity-40" : ""} ${
+                      hasPendingRequest ? "bg-accent-soft" : isFollowedByUser ? "bg-pushback-a15" : "bg-accent"
+                    }`}
+                  >
+                    <Icon
+                      as={hasPendingRequest ? Clock : UserPlus}
+                      size={19}
+                      className={hasPendingRequest ? "text-accent" : isFollowedByUser ? "text-pushback" : "text-white"}
+                    />
+                    <Text className={`text-[15px] font-semibold ${hasPendingRequest ? "text-accent" : isFollowedByUser ? "text-pushback" : "text-white"}`}>
+                      {hasPendingRequest ? "Requested" : isFollowedByUser ? "Follow back" : "Follow"}
+                    </Text>
+                  </Pressable>
+                )}
+                <Pressable
+                  onPress={() => void handleMessage()}
+                  disabled={startConversation.isPending || isBlocked}
+                  accessibilityRole="button"
+                  accessibilityLabel="Message"
+                  className={`h-11 w-12 shrink-0 items-center justify-center rounded-xl border border-border bg-surface ${startConversation.isPending || isBlocked ? "opacity-40" : ""}`}
+                >
+                  <Icon as={MessageCircle} size={20} className="text-ink" />
+                </Pressable>
+              </>
+            )}
           </View>
         </View>
 
@@ -634,7 +704,7 @@ export function ProfilePage() {
           </View>
         );
       case "message":
-        return <Message text={item.text} />;
+        return <Message text={item.text} icon={item.icon} />;
     }
   }
 
@@ -700,7 +770,6 @@ export function ProfilePage() {
           onClose={() => setRelationshipMenuOpen(false)}
           width={224}
           items={[
-            { key: "message", label: "Message", icon: <Icon as={Send} size={22} className="text-overlay-ink" />, disabled: startConversation.isPending, onSelect: () => void handleMessage() },
             {
               key: "mute",
               label: isMuted ? "Unmute" : "Mute their updates",

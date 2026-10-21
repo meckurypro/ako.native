@@ -9,12 +9,12 @@ import { Text } from "./Text";
 interface AvatarProps {
   src?: string | null;
   name: string;
-  size?: "sm" | "md" | "vn" | "lg" | "xl";
+  size?: "sm" | "md" | "vn" | "lg" | "xl" | "2xl";
 }
 
 // Pixel sizes (w-8 / w-10 / w-16 / w-20). Applied as inline style so the avatar
 // can never stretch with its row, whatever the image's intrinsic size is.
-const PX = { sm: 32, md: 40, vn: 48, xl: 64, lg: 80 } as const;
+const PX = { sm: 32, md: 40, vn: 48, xl: 64, lg: 80, "2xl": 112 } as const;
 
 const TEXT = {
   sm: "text-xs",
@@ -22,6 +22,7 @@ const TEXT = {
   vn: "text-base",
   xl: "text-xl",
   lg: "text-2xl",
+  "2xl": "text-4xl",
 } as const;
 
 export function Avatar({ src, name, size = "md" }: AvatarProps) {

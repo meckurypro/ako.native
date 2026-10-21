@@ -36,20 +36,25 @@ export function ProfilePageSkeleton() {
   const insets = useSafeAreaInsets();
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
-      <View className="h-14 border-b border-border-a60 bg-canvas" />
-      <View className="px-4 pt-4" accessibilityRole="progressbar" accessibilityLabel="Loading profile">
-        <View className="flex-row items-center gap-4">
-          <Skeleton className="h-20 w-20 rounded-full" />
-          <View className="flex-1 gap-2.5">
-            <Skeleton className="h-5 w-2/5 rounded" />
-            <Skeleton className="h-3.5 w-1/3 rounded" />
+      <View className="h-14 bg-canvas" />
+      <View className="px-4 pt-2" accessibilityRole="progressbar" accessibilityLabel="Loading profile">
+        <View className="flex-row items-start justify-between gap-4">
+          <View className="flex-1 gap-2.5 pt-1">
+            <Skeleton className="h-7 w-3/5 rounded" />
+            <Skeleton className="h-4 w-2/5 rounded" />
+            <View className="mt-5 flex-row gap-7">
+              <Skeleton className="h-9 w-16 rounded" />
+              <Skeleton className="h-9 w-16 rounded" />
+            </View>
           </View>
+          <Skeleton className="h-28 w-28 rounded-full" />
         </View>
         <View className="mt-5 gap-2">
           <Skeleton className="h-3.5 w-full rounded" />
           <Skeleton className="h-3.5 w-4/5 rounded" />
         </View>
-        <Skeleton className="mt-6 h-10 w-full rounded" />
+        <Skeleton className="mt-5 h-11 w-full rounded-xl" />
+        <Skeleton className="mt-4 h-12 w-full rounded" />
         <View className="mt-4">
           <PostListSkeleton count={2} />
         </View>
