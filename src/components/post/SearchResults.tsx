@@ -5,7 +5,7 @@
 // capped server-side).
 import { Search as SearchIcon } from "lucide-react-native";
 import type { ReactNode } from "react";
-import { Pressable, View } from "react-native";
+import { Pressable, View, useWindowDimensions } from "react-native";
 
 import { Icon } from "@/components/ui/styled";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -113,6 +113,9 @@ export function SearchResults({
   scope?: SearchScope;
 }) {
   const { user } = useAuth();
+  // The swipe area has to reach well down the screen, not just wrap the results: with a few results (or none) a
+  // swipe that started below them hit nothing and the tabs felt like they didn't swipe.
+  const { height: windowHeight } = useWindowDimensions();
   const [tab, setTab] = useSearchTab(scope);
   const visibleTabs = scope === "discover" ? DISCOVER_TABS : TABS;
   const activeIndex = Math.max((visibleTabs as readonly SearchTab[]).indexOf(tab), 0);
@@ -203,7 +206,7 @@ export function SearchResults({
         index={activeIndex}
         count={visibleTabs.length}
         onIndexChange={(i) => setTab(visibleTabs[i])}
-        style={{ minHeight: 360 }}
+        style={{ minHeight: Math.max(360, Math.round(windowHeight * 0.7)) }}
       >
         {tab === "people" ? renderPeople() : null}
         {tab === "pages" ? renderPages() : null}
