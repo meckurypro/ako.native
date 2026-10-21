@@ -193,7 +193,7 @@ export function ContentsSheet({
           ]}
         />
       </View>
-      <ScrollView ref={scrollRef} style={{ flexGrow: 0 }} contentContainerStyle={{ paddingBottom: 16 }} showsVerticalScrollIndicator={false}>
+      <ScrollView showsHorizontalScrollIndicator={false} ref={scrollRef} style={{ flexGrow: 0 }} contentContainerStyle={{ paddingBottom: 16 }} showsVerticalScrollIndicator={false}>
         {tab === "contents" ? (
           chapters.map((c, i) => {
             const active = c.id === currentId;
@@ -320,7 +320,7 @@ export function SearchSheet({
           ) : null}
         </View>
       </View>
-      <ScrollView style={{ flexGrow: 0 }} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 16 }} showsVerticalScrollIndicator={false}>
+      <ScrollView showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 16 }} showsVerticalScrollIndicator={false}>
         {debounced.trim().length < 2 ? (
           <Text className="px-8 py-10 text-center text-[13px]" style={{ color: theme.muted }}>
             Type at least two letters to search every chapter.
@@ -423,7 +423,7 @@ export function SettingsSheet({
         </Pressable>
       }
     >
-      <ScrollView style={{ flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 20 }} showsVerticalScrollIndicator={false}>
+      <ScrollView showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 20 }} showsVerticalScrollIndicator={false}>
         <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
           {/* Text size. Hold the thumb and the sheet turns see-through so you can watch the page reflow. */}
           <View

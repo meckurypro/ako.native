@@ -84,7 +84,7 @@ export function EventCheckIn() {
   return (
     <KeyboardAvoider className="flex-1 bg-canvas">
       <ScreenHeader title="Scan tickets" />
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
+      <ScrollView showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
         <Text className="mb-1 text-sm text-ink-muted">{project.title}</Text>
         <View className="mb-4 flex-row items-center gap-1.5">
           <Icon as={Users} size={14} className="text-ink-muted" />

@@ -5,7 +5,7 @@
 //
 // Screens attach `useChromeScroll()` to their scroll view / list:
 //   const onScroll = useChromeScroll();
-//   <FlashList ref={onScroll.listRef} onScroll={onScroll} scrollEventThrottle={16} … />
+//   <FlashList showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} ref={onScroll.listRef} onScroll={onScroll} scrollEventThrottle={16} … />
 // `hidden` is a shared value, so toggling it never re-renders React.
 // Passing `ref={onScroll.listRef}` also lets the app-wide scroll-to-top arrow
 // (ScrollToTopButton) scroll that list; screens that already own a ref can pass

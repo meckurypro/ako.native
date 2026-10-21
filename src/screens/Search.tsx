@@ -33,7 +33,7 @@ export function Search() {
         </View>
       </View>
 
-      <ScrollView
+      <ScrollView showsHorizontalScrollIndicator={false}
         ref={onScroll.listRef}
         onScroll={onScroll}
         scrollEventThrottle={16}

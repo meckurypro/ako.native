@@ -219,7 +219,7 @@ export function PromoteComposer() {
 
   return (
     <KeyboardAvoider className="flex-1 bg-canvas">
-      <ScrollView
+      <ScrollView showsHorizontalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="none"
         showsVerticalScrollIndicator={false}

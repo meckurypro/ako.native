@@ -69,7 +69,7 @@ export function MeetingsTab({ projectId, isHost }: { projectId: string; isHost: 
   const activeCall = list.find((m) => m.id === activeCallMeetingId);
 
   return (
-    <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="none" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }}>
+    <ScrollView showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="none" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }}>
       {activeCall ? (
         <RoomCallView roomMeeting={activeCall} isHost={isHost} onLeave={() => setActiveCallMeetingId(null)} />
       ) : (

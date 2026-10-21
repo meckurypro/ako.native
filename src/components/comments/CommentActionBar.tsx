@@ -60,7 +60,7 @@ export function CommentMoreMenu({ comment, iconSize = 16 }: { comment: CommentWi
       >
         <Icon as={MoreHorizontal} size={iconSize} className="text-ink-muted" />
       </Pressable>
-      {open ? <DropdownMenu anchorRef={buttonRef} onClose={() => setOpen(false)} items={items} width={176} /> : null}
+      {open ? <DropdownMenu title="Comment options" anchorRef={buttonRef} onClose={() => setOpen(false)} items={items} width={176} /> : null}
     </View>
   );
 }

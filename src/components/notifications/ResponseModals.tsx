@@ -147,7 +147,7 @@ export function PageInviteResponseModal({ pageId, onClose }: { pageId: string; o
   }
 
   return (
-    <Modal onClose={onClose}>
+    <Modal onClose={onClose} title="Page invite">
       {isLoading ? (
         <Loading />
       ) : !invite ? (

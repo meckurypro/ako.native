@@ -80,7 +80,7 @@ export function RoomChat({ projectId, conversationId, canPost, cantPostReason }:
         {list.length === 0 ? (
           <Text className="mt-6 text-center text-sm text-ink-muted">No messages yet — say hello.</Text>
         ) : (
-          <FlashList
+          <FlashList showsHorizontalScrollIndicator={false}
             ref={listRef}
             data={list}
             keyExtractor={(m) => m.id}

@@ -74,7 +74,7 @@ export function SlideCarousel({ mediaUrls, onTap, frameHeight }: SlideCarouselPr
         onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
       >
         <GestureDetector gesture={lock}>
-          <ScrollView
+          <ScrollView showsVerticalScrollIndicator={false}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}

@@ -8,11 +8,13 @@ import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeIn, FadeOut, ZoomIn } from "react-native-reanimated";
 
+import { useAnchoredPanel } from "@/hooks/useAnchoredPanel";
 import { useBackDismiss } from "@/hooks/useBackDismiss";
 import { GlassScrim } from "./GlassScrim";
 import { KeyboardAvoider } from "./KeyboardAvoider";
 import { OverlayPanel, PopoverPanel, SCRIM_BOX } from "./OverlayPanel";
 import { Portal } from "./Portal";
+import { Text } from "./Text";
 
 interface ModalProps {
   onClose: () => void;
@@ -31,6 +33,8 @@ interface ModalProps {
   scrim?: "black" | "canvas";
   /** Follow the app theme (light panel + dark text, or dark panel + light text) instead of the fixed dark glass. */
   themed?: boolean;
+  /** Heading shown at the top of the card. Every modal has one; it stays pinned while the body scrolls. */
+  title?: string;
 }
 
 export function Modal({
@@ -44,6 +48,7 @@ export function Modal({
   zIndex = 60,
   scrim = "black",
   themed = false,
+  title,
 }: ModalProps) {
   useBackDismiss(onClose);
 
@@ -53,48 +58,77 @@ export function Modal({
   const insets = useSafeAreaInsets();
   const docked = align === "bottom";
 
+  // Centred cards: centred on open, then the top edge stays put and the card grows downward until it nears the bottom
+  // nav, after which the body scrolls (see useAnchoredPanel). Bottom-docked composers keep their own placement.
+  const anchored = useAnchoredPanel();
+
+  const header = title ? (
+    <Text className="px-6 pb-3 pt-6 text-lg font-semibold text-overlay-ink">{title}</Text>
+  ) : null;
+  const body = (
+    <ScrollView showsHorizontalScrollIndicator={false}
+      bounces={false}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      style={{ flexShrink: 1 }}
+      contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 24, paddingTop: title ? 0 : 24 }}
+    >
+      {children}
+    </ScrollView>
+  );
+  const card = bare ? (
+    <ScrollView showsHorizontalScrollIndicator={false} bounces={false} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={{ flexShrink: 1 }}>
+      {children}
+    </ScrollView>
+  ) : themed ? (
+    <PopoverPanel className="rounded-[28px]" style={{ flexShrink: 1, overflow: "hidden" }}>
+      {header}
+      {body}
+    </PopoverPanel>
+  ) : (
+    <OverlayPanel className="rounded-[28px]" style={{ flexShrink: 1, overflow: "hidden" }}>
+      {header}
+      {body}
+    </OverlayPanel>
+  );
+
   return (
     <Portal zIndex={zIndex}>
       <KeyboardAvoider
         reservedBottom={docked ? insets.bottom : 0}
-        className={`flex-1 items-center px-6 ${docked ? "justify-end" : "justify-center"}`}
+        className={`flex-1 items-center px-6 ${docked ? "justify-end" : "justify-start"}`}
         accessibilityViewIsModal
         accessibilityRole={role === "alertdialog" ? "alert" : undefined}
-        accessibilityLabel={ariaLabel}
+        accessibilityLabel={ariaLabel ?? title}
       >
         <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(120)} style={SCRIM_BOX}>
           <GlassScrim tone={scrim === "canvas" ? "canvas" : "black"} />
           <Pressable className="flex-1" onPress={onClose} accessibilityLabel="Close" accessibilityRole="button" />
         </Animated.View>
 
-        <Animated.View
-          entering={FadeIn.duration(180)}
-          exiting={FadeOut.duration(120)}
-          style={{ width: "100%", maxWidth, maxHeight: "85%" }}
-        >
-          <Animated.View entering={ZoomIn.duration(180).withInitialValues({ transform: [{ scale: 0.96 }] })}>
-            {bare ? (
-              <ScrollView bounces={false} keyboardShouldPersistTaps="handled">
-                {children}
-              </ScrollView>
-            ) : themed ? (
-                <PopoverPanel className="rounded-[28px]">
-                  <ScrollView bounces={false} keyboardShouldPersistTaps="handled" contentContainerClassName="p-6">
-                    {children}
-                  </ScrollView>
-                </PopoverPanel>
-            ) : (
-              <OverlayPanel className="rounded-[28px]">
-                <ScrollView bounces={false} keyboardShouldPersistTaps="handled" contentContainerClassName="p-6">
-                  {children}
-                </ScrollView>
-              </OverlayPanel>
-            )}
+        {docked ? (
+          <Animated.View
+            entering={FadeIn.duration(180)}
+            exiting={FadeOut.duration(120)}
+            style={{ width: "100%", maxWidth, maxHeight: "85%" }}
+          >
+            <Animated.View entering={ZoomIn.duration(180).withInitialValues({ transform: [{ scale: 0.96 }] })} style={{ flexShrink: 1 }}>
+              {card}
+            </Animated.View>
           </Animated.View>
-        </Animated.View>
+        ) : (
+          <Animated.View style={[{ width: "100%", maxWidth }, anchored.style]} onLayout={anchored.onLayout}>
+            <Animated.View
+              entering={ZoomIn.duration(180).withInitialValues({ transform: [{ scale: 0.96 }] })}
+              exiting={FadeOut.duration(120)}
+              style={{ flexShrink: 1 }}
+            >
+              {card}
+            </Animated.View>
+          </Animated.View>
+        )}
         {docked ? <View style={{ height: insets.bottom + 16 }} /> : null}
       </KeyboardAvoider>
     </Portal>
   );
 }
-

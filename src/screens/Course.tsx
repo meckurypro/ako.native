@@ -453,7 +453,7 @@ export function Course() {
   return (
     <KeyboardAvoider className="flex-1 bg-canvas">
       <ScreenHeader title={project.title} />
-      <ScrollView
+      <ScrollView showsHorizontalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="none"
         showsVerticalScrollIndicator={false}

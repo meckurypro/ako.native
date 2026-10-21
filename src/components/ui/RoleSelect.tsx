@@ -68,7 +68,7 @@ function RolePicker({ title, value, onChange, onClose }: { title: string; value:
           />
         </View>
 
-        <FlatList
+        <FlatList showsHorizontalScrollIndicator={false}
           data={rows}
           keyExtractor={(row) => (row.kind === "custom" ? "__custom" : row.label)}
           keyboardShouldPersistTaps="handled"

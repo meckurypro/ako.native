@@ -26,8 +26,8 @@ function Body({ onPick }: { onPick: (to: string) => void }) {
 
   return (
     <>
-      <View className="flex-row items-center justify-between px-5 pb-2 pt-1">
-        <Text className="font-display text-xl text-ink">Create</Text>
+      <View className="flex-row items-center justify-between px-6 pb-2 pt-6">
+        <Text className="text-lg font-semibold text-ink">Create</Text>
         <Pressable onPress={close} accessibilityRole="button" accessibilityLabel="Close" hitSlop={10} className="p-1">
           <Icon as={X} size={22} className="text-ink-muted" />
         </Pressable>
@@ -48,7 +48,7 @@ function Body({ onPick }: { onPick: (to: string) => void }) {
               <Icon as={icon} size={20} className="text-accent" />
             </View>
             <View className="min-w-0 flex-1">
-              <Text className="text-[15px] font-medium text-ink">{label}</Text>
+              <Text className="text-[15px] font-semibold text-ink">{label}</Text>
               <Text numberOfLines={1} className="text-xs text-ink-muted">
                 {description}
               </Text>
@@ -68,7 +68,7 @@ function Body({ onPick }: { onPick: (to: string) => void }) {
 // only records its target; the single navigation happens in onClose, after the
 // slide-out, and replaces back(). The timer is a safety net in case the animation
 // callback never fires; `settled` guarantees only one of the two runs.
-const SLIDE_OUT_MS = 240; // Sheet's SLIDE_MS
+const SLIDE_OUT_MS = 140; // Sheet's exit animation (ANIM_MS - 40)
 const FALLBACK_MS = SLIDE_OUT_MS + 200;
 
 export function CreateChoice() {
@@ -102,7 +102,7 @@ export function CreateChoice() {
   return (
     <PortalHost>
       <View className="flex-1">
-        <Sheet dismissKeyboardOnOpen onClose={settle} showHandle radius="3xl" accessibilityLabel="Create">
+        <Sheet dismissKeyboardOnOpen onClose={settle} accessibilityLabel="Create">
           <Body onPick={onPick} />
         </Sheet>
       </View>

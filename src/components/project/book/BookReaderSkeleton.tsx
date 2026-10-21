@@ -15,7 +15,7 @@ export function BookReaderSkeleton({ title, thumbnailUrl }: { title?: string; th
   return (
     <View className="flex-1 bg-canvas">
       <ScreenHeader title={title ?? ""} bar />
-      <ScrollView scrollEnabled={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 32 }}>
+      <ScrollView showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} scrollEnabled={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 32 }}>
         <View className="items-center gap-3 pb-6 pt-8" accessibilityRole="progressbar" accessibilityLabel="Loading book">
           {thumbnailUrl ? (
             <Image source={{ uri: thumbnailUrl }} style={{ width: 144, aspectRatio: 2 / 3, borderRadius: 8 }} contentFit="cover" />

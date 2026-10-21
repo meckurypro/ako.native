@@ -2,13 +2,11 @@
 // Lightweight "sign into another account" dialog (email + password). The
 // switcher itself uses the full login screen in add mode; this modal is kept
 // for callers that want to stay in place.
-import { X } from "lucide-react-native";
 import { useRef, useState } from "react";
-import { Pressable, TextInput, View } from "react-native";
+import { TextInput, View } from "react-native";
 
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
-import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useAddAccount } from "@/hooks/useAccountSwitcher";
 import { useTheme } from "@/theme/ThemeProvider";
@@ -38,13 +36,7 @@ export function AddAccountModal({ onClose, onAdded }: AddAccountModalProps) {
   }
 
   return (
-    <Modal onClose={onClose} ariaLabel="Add account">
-      <View className="mb-4 flex-row items-center justify-between">
-        <Text className="font-display text-lg text-overlay-ink">Add account</Text>
-        <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close" hitSlop={10}>
-          <Icon as={X} size={20} className="text-overlay-ink-muted" />
-        </Pressable>
-      </View>
+    <Modal onClose={onClose} title="Add account">
 
       <Text className="mb-4 text-sm text-overlay-ink-muted">
         Sign into another personal account. Your current account stays saved on this device — switch back to it anytime

@@ -87,7 +87,7 @@ function CodeBlock({ text }: { text: string }) {
 
   return (
     <View className="overflow-hidden rounded-xl border border-border bg-ink-a10">
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingLeft: 14, paddingRight: 52, paddingVertical: 12 }}>
+      <ScrollView showsVerticalScrollIndicator={false} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingLeft: 14, paddingRight: 52, paddingVertical: 12 }}>
         <Text selectable className="text-ink" style={{ fontFamily: MONO_FONT, fontSize: 12.5, lineHeight: 19 }}>
           {text}
         </Text>

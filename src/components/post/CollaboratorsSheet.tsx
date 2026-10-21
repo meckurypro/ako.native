@@ -45,7 +45,7 @@ function RolePickerSheet({
 }) {
   return (
     <Sheet dismissKeyboardOnOpen onClose={onClose} dragZone="handle" zIndex={70} maxHeightRatio={0.7} accessibilityLabel="Choose a role">
-      <ScrollView style={{ flexShrink: 1 }} showsVerticalScrollIndicator={false}>
+      <ScrollView showsHorizontalScrollIndicator={false} style={{ flexShrink: 1 }} showsVerticalScrollIndicator={false}>
         <SheetRow label="No role" onPress={() => onSelect("")} icon={value === "" ? <Icon as={Check} size={16} className="text-accent" /> : undefined} />
         {[...groups.entries()].map(([category, roles]) => (
           <View key={category}>

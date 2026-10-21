@@ -69,8 +69,7 @@ export function SchedulePostModal({ onClose, onConfirm }: SchedulePostModalProps
   }
 
   return (
-    <Modal onClose={onClose} ariaLabel="Schedule post" maxWidth={380} themed>
-      <Text className="mb-4 font-display text-lg text-ink">Schedule post</Text>
+    <Modal onClose={onClose} title="Schedule post" maxWidth={380} themed>
 
       {Platform.OS === "ios" ? (
         <View className="flex-row items-center gap-3">

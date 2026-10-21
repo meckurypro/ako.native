@@ -39,14 +39,14 @@ interface SheetFrameProps {
 function Header({ title, titleSuffix, subtitle, onBack, headerRight }: Pick<SheetFrameProps, "title" | "titleSuffix" | "subtitle" | "onBack" | "headerRight">) {
   const { close } = useSheet();
   return (
-    <View className="shrink-0 flex-row items-center justify-between border-b border-border px-4 pb-3 pt-1">
+    <View className="shrink-0 flex-row items-center justify-between border-b border-border px-4 pb-3 pt-4">
       {onBack ? (
         <Pressable onPress={onBack} accessibilityRole="button" accessibilityLabel="Back" hitSlop={10} className="-ml-1 p-1">
           <Icon as={ArrowLeft} size={20} className="text-ink-muted" />
         </Pressable>
       ) : (
         <View className="min-w-0 flex-1 pr-3">
-          <Text className="font-display text-lg text-ink">
+          <Text className="text-lg font-semibold text-ink">
             {title}
             {titleSuffix ? <Text className="font-body text-sm font-normal text-ink-muted">{`  ${titleSuffix}`}</Text> : null}
           </Text>
@@ -94,7 +94,7 @@ export function SheetFrame({
     >
       <Header title={title} titleSuffix={titleSuffix} subtitle={subtitle} onBack={onBack} headerRight={headerRight} />
       {bodyScroll ? (
-        <ScrollView
+        <ScrollView showsHorizontalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           style={heightRatio ? { flex: 1 } : { flexGrow: 0, flexShrink: 1 }}

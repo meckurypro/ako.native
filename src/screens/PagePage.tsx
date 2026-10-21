@@ -308,7 +308,7 @@ export function PagePage() {
         {activeMembers.length > 0 ? (
           <View className="mt-5">
             <Text className="mb-2 text-xs font-medium uppercase tracking-wide text-ink-muted">Team</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-3">
+            <ScrollView showsVerticalScrollIndicator={false} horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-3">
               {activeMembers.slice(0, 8).map((m) => (
                 <StripAvatar key={m.id} src={m.profile.avatar_url} name={m.profile.display_name} label={m.role_label} onPress={() => router.push(`/profile/${m.profile.username}` as Href)} />
               ))}
@@ -319,7 +319,7 @@ export function PagePage() {
         {subsidiaries && subsidiaries.length > 0 ? (
           <View className="mt-5">
             <Text className="mb-2 text-xs font-medium uppercase tracking-wide text-ink-muted">Subsidiaries</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-3">
+            <ScrollView showsVerticalScrollIndicator={false} horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-3">
               {subsidiaries.map((s) => (
                 <StripAvatar key={s.id} src={s.avatar_url} name={s.name} label={s.name} onPress={() => router.push(`/page/${s.username}` as Href)} />
               ))}
@@ -352,7 +352,7 @@ export function PagePage() {
   return (
     <View className="flex-1 bg-canvas">
       <SwipeToSwitch index={activeIndex} count={TABS.length} onIndexChange={(i) => setActiveTab(TABS[i])}>
-        <FlashList
+        <FlashList showsHorizontalScrollIndicator={false}
           data={rows}
           keyExtractor={(r) => (r.kind === "header" || r.kind === "tabs" ? r.kind : r.id)}
           getItemType={(r) => r.kind}
@@ -387,10 +387,10 @@ export function PagePage() {
         />
       </SwipeToSwitch>
 
-      {menuOpen ? <DropdownMenu anchorRef={menuButtonRef} onClose={() => setMenuOpen(false)} width={240} items={menuItems} bottomInset={bottomInset} /> : null}
+      {menuOpen ? <DropdownMenu title="Page options" anchorRef={menuButtonRef} onClose={() => setMenuOpen(false)} width={240} items={menuItems} bottomInset={bottomInset} /> : null}
 
       {nameMenuOpen ? (
-        <DropdownMenu
+        <DropdownMenu title="Switch page"
           anchorRef={nameButtonRef}
           onClose={() => setNameMenuOpen(false)}
           width={224}

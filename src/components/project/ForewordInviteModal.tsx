@@ -127,7 +127,7 @@ export function ForewordInviteModal({ projectId, onClose }: { projectId: string;
   return (
     <Modal onClose={onClose} bare scrim="canvas" align={mode === "compose" ? "bottom" : "center"}>
       <View className="max-h-full rounded-2xl border border-border bg-surface p-5">
-        <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ScrollView showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           {isLoading ? (
             <Text className="py-6 text-center text-sm text-ink-muted">Loading…</Text>
           ) : !foreword || !open ? (

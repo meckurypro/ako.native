@@ -173,7 +173,7 @@ export function CreatePage() {
   return (
     <KeyboardAvoider className="flex-1 bg-canvas">
       <ScreenHeader title={title} />
-      <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="none" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }}>
+      <ScrollView showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="none" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }}>
         <View className="w-full max-w-md gap-5 self-center">
           <View className="flex-row gap-2">
             {TYPES.map((t) => (

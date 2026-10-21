@@ -157,7 +157,7 @@ export function Room() {
         )}
 
         {showSettings && isHost && (
-          <ScrollView className="mx-4" style={{ maxHeight: 320, flexGrow: 0 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          <ScrollView showsHorizontalScrollIndicator={false} className="mx-4" style={{ maxHeight: 320, flexGrow: 0 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <HostSettingsPanel projectId={project.id} />
           </ScrollView>
         )}

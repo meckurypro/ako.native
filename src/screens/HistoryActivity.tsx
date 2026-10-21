@@ -51,7 +51,7 @@ export function HistoryActivity() {
       ) : !items || items.length === 0 ? (
         <EmptyNotice icon={HistoryIcon} message="Posts and projects you open will show up here, most recent first." />
       ) : (
-        <FlashList
+        <FlashList showsHorizontalScrollIndicator={false}
           data={refreshing ? [] : items}
           refreshControl={refreshControl}
           ListEmptyComponent={refreshing ? <RefreshSkeleton /> : null}

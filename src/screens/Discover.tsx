@@ -40,7 +40,7 @@ function FullDiscover() {
     <>
       {topics.length > 0 ? (
         // Bleeds to the screen edges (negative margin cancels the page padding) so chips scroll off cleanly.
-        <ScrollView
+        <ScrollView showsVerticalScrollIndicator={false}
           horizontal
           showsHorizontalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"

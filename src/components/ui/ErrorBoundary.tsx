@@ -58,7 +58,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
           <Pressable onPress={this.recover} accessibilityRole="button" className="rounded-full bg-accent px-5 py-2 active:bg-accent-hover">
             <Text className="text-sm font-medium text-canvas">Back to feed</Text>
           </Pressable>
-          <ScrollView className="max-h-64 w-full" contentContainerStyle={{ paddingVertical: 8 }}>
+          <ScrollView showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} className="max-h-64 w-full" contentContainerStyle={{ paddingVertical: 8 }}>
             <Text selectable className="text-[11px] leading-snug text-ink-muted">
               {`${describe(this.state.error)}${this.state.componentStack ? `\n\nIn:\n${this.state.componentStack}` : ""}\n\nBundle: ${bundleLabel()}`}
             </Text>

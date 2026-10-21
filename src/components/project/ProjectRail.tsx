@@ -16,7 +16,7 @@ export function ProjectRail({ title, projects }: { title: string; projects: Proj
       <Text className="mb-3 font-display text-lg font-semibold tracking-tight text-ink">{title}</Text>
       {/* Bleeds to the screen edges so the shelf scrolls off-screen naturally. */}
       {/* One horizontal swipe shelf — never a stacked list. Fixed card width + snapping, card to card. */}
-      <ScrollView
+      <ScrollView showsVerticalScrollIndicator={false}
         horizontal
         showsHorizontalScrollIndicator={false}
         nestedScrollEnabled

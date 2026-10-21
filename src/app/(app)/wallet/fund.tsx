@@ -104,7 +104,7 @@ export default function FundWalletScreen() {
   return (
     <View className="flex-1 bg-canvas">
       <ScreenHeader title="Fund your wallet" />
-      <ScrollView
+      <ScrollView showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 32 }}
         keyboardShouldPersistTaps="handled"
       >

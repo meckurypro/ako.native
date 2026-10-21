@@ -767,7 +767,7 @@ export function MessageThread() {
         ) : !visibleMessages || visibleMessages.length === 0 ? (
           <Text className="py-10 text-center text-sm text-ink-muted">Say hello.</Text>
         ) : (
-          <FlashList
+          <FlashList showsHorizontalScrollIndicator={false}
             ref={listRef}
             data={items}
             keyExtractor={(i) => i.key}
@@ -1006,7 +1006,7 @@ export function MessageThread() {
       {mediaDraft ? <MediaComposeModal kind={mediaDraft.kind} files={mediaDraft.files} onClose={() => setMediaDraft(null)} onSend={handleSendMedia} /> : null}
 
       {headerMenuOpen ? (
-        <DropdownMenu
+        <DropdownMenu title="Chat options"
           anchorRef={headerMenuRef}
           onClose={() => setHeaderMenuOpen(false)}
           width={192}

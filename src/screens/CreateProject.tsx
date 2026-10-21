@@ -505,7 +505,7 @@ export function CreateProject() {
   return (
     <KeyboardAvoider className="flex-1 bg-canvas">
       <ScreenHeader title="New project" />
-      <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="none" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }}>
+      <ScrollView showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="none" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }}>
         <View className="w-full max-w-md self-center">
           {restoredDraftNotice ? (
             <View className="mb-5 flex-row items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-3">

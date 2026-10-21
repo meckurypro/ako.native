@@ -22,14 +22,13 @@ interface ResumePromptProps {
 export function ResumePrompt({ where, percent, onContinue, onStartOver, kind = "book" }: ResumePromptProps) {
   const title = kind === "course" ? "Continue where you stopped?" : "Continue reading?";
   return (
-    <Modal onClose={onContinue} ariaLabel={title}>
+    <Modal onClose={onContinue} title={title}>
       <View className="flex-row items-start gap-4">
         <View className="h-10 w-10 shrink-0 items-center justify-center rounded-full bg-overlay-surface-raised">
           <Icon as={BookOpen} size={19} className="text-overlay-accent" />
         </View>
         <View className="min-w-0 flex-1 pt-0.5">
-          <Text className="text-[15px] font-medium leading-snug text-overlay-ink">{title}</Text>
-          <Text className="mt-2 text-sm leading-relaxed text-overlay-ink-muted">
+          <Text className="text-sm leading-relaxed text-overlay-ink-muted">
             You were at {where}
             {percent != null ? ` (${Math.round(percent)}% through)` : ""}.
           </Text>

@@ -32,7 +32,7 @@ export function ProjectList({ projects, isLoading, emptyMessage, header, onRefre
   if (!projects || projects.length === 0) return <Text className="px-4 py-10 text-center text-sm text-ink-muted">{emptyMessage}</Text>;
 
   return (
-    <FlashList
+    <FlashList showsHorizontalScrollIndicator={false}
       data={refreshing ? [] : projects}
       refreshControl={onRefresh ? refreshControl : undefined}
       keyExtractor={(p) => p.id}

@@ -49,7 +49,7 @@ export function DraftPosts() {
       ) : !drafts?.length ? (
         <EmptyNotice large icon={FileEdit} title="No drafts yet" message={'Start a post and choose "Save as draft" instead of posting — it\'ll show up here.'} />
       ) : (
-        <FlatList
+        <FlatList showsHorizontalScrollIndicator={false}
           data={refreshing ? [] : drafts}
           refreshControl={refreshControl}
           ListEmptyComponent={refreshing ? <RefreshSkeleton /> : null}

@@ -42,7 +42,7 @@ export function Activity() {
   return (
     <View className="flex-1 bg-canvas">
       <ScreenHeader title="Activity" />
-      <ScrollView ref={onScroll.listRef} refreshControl={refreshControl} onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset, opacity: refreshing ? 0 : 1 }}>
+      <ScrollView showsHorizontalScrollIndicator={false} ref={onScroll.listRef} refreshControl={refreshControl} onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset, opacity: refreshing ? 0 : 1 }}>
         {ROWS.map(({ to, icon, label, description, countFrom }) => {
           const count = countFor(countFrom);
           return (

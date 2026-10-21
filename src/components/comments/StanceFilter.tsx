@@ -29,7 +29,7 @@ export function StanceFilterBar({
 
   const tab = "-mb-px border-b-2 py-2.5";
   return (
-    <ScrollView
+    <ScrollView showsVerticalScrollIndicator={false}
       horizontal
       showsHorizontalScrollIndicator={false}
       accessibilityRole="tablist"

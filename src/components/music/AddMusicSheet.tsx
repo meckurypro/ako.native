@@ -79,7 +79,7 @@ export function AddMusicSheet({ onSelect, onClose }: AddMusicSheetProps) {
         </View>
       </View>
 
-      <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerClassName="px-4 py-3">
+      <ScrollView showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerClassName="px-4 py-3">
         {isLoading ? <Text className="py-8 text-center text-sm text-ink-muted">Searching…</Text> : null}
         {!isLoading && list.length === 0 ? (
           <Text className="py-8 text-center text-sm text-ink-muted">

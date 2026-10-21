@@ -740,7 +740,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
               <Icon as={MoreHorizontal} size={16} className="text-ink-muted" />
             </Pressable>
           </View>
-          {menuOpen ? <DropdownMenu anchorRef={menuButtonRef} onClose={() => setMenuOpen(false)} width={224} items={ownerMenuItems} /> : null}
+          {menuOpen ? <DropdownMenu title="Project options" anchorRef={menuButtonRef} onClose={() => setMenuOpen(false)} width={224} items={ownerMenuItems} /> : null}
         </View>
       ) : null}
 
@@ -1050,7 +1050,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
                   </View>
                 </View>
                 {(isCourseUnpublished || isBookDraftUnpublished) && isOwner ? <Text className="mt-2 text-sm text-ink-muted">Not published yet</Text> : null}
-                {menuOpen ? <DropdownMenu anchorRef={menuButtonRef} onClose={() => setMenuOpen(false)} width={224} items={detailMenuItems} /> : null}
+                {menuOpen ? <DropdownMenu title="Project options" anchorRef={menuButtonRef} onClose={() => setMenuOpen(false)} width={224} items={detailMenuItems} /> : null}
               </>
             ) : (
               <View className="mt-1 border-t border-border-a60 pt-3">

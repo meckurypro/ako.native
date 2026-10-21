@@ -128,7 +128,7 @@ function PostListInner<T extends PostListItem>(
   }
 
   return (
-    <FlashList
+    <FlashList showsHorizontalScrollIndicator={false}
       ref={setListRef}
       data={refreshing ? [] : posts}
       keyExtractor={(p) => p.id}

@@ -17,8 +17,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Collapsible } from "@/components/ui/Collapsible";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
-import { Sheet } from "@/components/ui/Sheet";
-import { SheetCancel, SheetCaption, SheetRow } from "@/components/ui/SheetParts";
+import { OptionsModal } from "@/components/ui/OptionsModal";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useAuth } from "@/hooks/useAuth";
@@ -223,7 +222,7 @@ export function Archive() {
     <View className="flex-1 bg-canvas">
       {header}
 
-      <ScrollView ref={onScroll.listRef} refreshControl={refreshControl} onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset, opacity: refreshing ? 0 : 1 }}>
+      <ScrollView showsHorizontalScrollIndicator={false} ref={onScroll.listRef} refreshControl={refreshControl} onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset, opacity: refreshing ? 0 : 1 }}>
         <View className="w-full max-w-xl self-center">
           {isLoading ? (
             <Text className="py-10 text-center text-ink-muted">Loading…</Text>
@@ -308,24 +307,34 @@ export function Archive() {
       {previewPost ? <ArchivedPostModal post={previewPost} onClose={() => setPreviewPost(null)} /> : null}
 
       {actionTarget ? (
-        <Sheet dismissKeyboardOnOpen onClose={() => setActionTarget(null)} accessibilityLabel="Chat actions">
-          <SheetCaption>{actionTarget.other_participant.display_name}</SheetCaption>
-          <SheetRow
-            label="Unarchive"
-            icon={<Icon as={ArchiveRestore} size={18} className="text-ink" />}
-            onPress={() => updateConversationState.mutate({ conversationId: actionTarget.id, archived_at: null })}
-          />
-          <SheetRow
-            label="Select chats"
-            icon={<Icon as={CheckSquare} size={18} className="text-ink" />}
-            onPress={() => {
-              setSelectMode(true);
-              setSelectedIds(new Set([actionTarget.id]));
-            }}
-          />
-          <SheetRow label="Delete chat" danger icon={<Icon as={Trash2} size={18} className="text-danger" />} onPress={() => setDeleteTarget({ ids: [actionTarget.id], label: "this chat" })} />
-          <SheetCancel />
-        </Sheet>
+        <OptionsModal
+          title={actionTarget.other_participant.display_name || "Chat options"}
+          onClose={() => setActionTarget(null)}
+          items={[
+            {
+              key: "unarchive",
+              label: "Unarchive",
+              icon: <Icon as={ArchiveRestore} size={22} className="text-overlay-ink" />,
+              onSelect: () => updateConversationState.mutate({ conversationId: actionTarget.id, archived_at: null }),
+            },
+            {
+              key: "select",
+              label: "Select chats",
+              icon: <Icon as={CheckSquare} size={22} className="text-overlay-ink" />,
+              onSelect: () => {
+                setSelectMode(true);
+                setSelectedIds(new Set([actionTarget.id]));
+              },
+            },
+            {
+              key: "delete",
+              label: "Delete chat",
+              variant: "danger",
+              icon: <Icon as={Trash2} size={22} className="text-overlay-danger" />,
+              onSelect: () => setDeleteTarget({ ids: [actionTarget.id], label: "this chat" }),
+            },
+          ]}
+        />
       ) : null}
 
       {deleteTarget ? (

@@ -75,7 +75,7 @@ export function PageMessageThread() {
         ) : items.length === 0 ? (
           <Text className="py-10 text-center text-sm text-ink-muted">Say hello.</Text>
         ) : (
-          <FlashList
+          <FlashList showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false}
             ref={listRef}
             data={items}
             keyExtractor={(i) => i.key}

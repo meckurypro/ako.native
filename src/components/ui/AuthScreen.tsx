@@ -17,7 +17,7 @@ export function AuthScreen({ children }: { children: ReactNode }) {
     <View className="flex-1 overflow-hidden bg-canvas">
       <AuthPattern />
       <KeyboardAvoider className="flex-1">
-        <ScrollView
+        <ScrollView showsHorizontalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="none"
           showsVerticalScrollIndicator={false}

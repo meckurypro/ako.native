@@ -34,7 +34,7 @@ export function FollowRequests() {
       ) : !requests || requests.length === 0 ? (
         <Text className="py-10 text-center text-sm text-ink-muted">No pending requests.</Text>
       ) : (
-        <FlatList
+        <FlatList showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false}
           data={requests}
           keyExtractor={(r) => r.id}
           ref={onScroll.listRef}

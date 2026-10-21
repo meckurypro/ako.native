@@ -58,7 +58,7 @@ export function FollowListPage({ type }: { type: "followers" | "following" }) {
       ) : !list || list.length === 0 ? (
         <Text className="py-10 text-center text-sm text-ink-muted">{type === "followers" ? "No followers yet." : "Not following anyone yet."}</Text>
       ) : (
-        <FlatList
+        <FlatList showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false}
           data={list}
           keyExtractor={(item) => (item.kind === "person" ? `p-${item.person.id}` : `g-${item.page.id}`)}
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 24 }}

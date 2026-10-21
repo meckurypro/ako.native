@@ -721,7 +721,7 @@ export function ProfilePage() {
       case "gigs":
         return (
           <View className="px-4 pt-4">
-            <Animated.ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 4 }}>
+            <Animated.ScrollView showsVerticalScrollIndicator={false} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 4 }}>
               {item.gigs.map((gig) => (
                 <ProjectMiniCard key={gig.id} project={gig} />
               ))}
@@ -752,7 +752,7 @@ export function ProfilePage() {
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
       <SwipeToSwitch index={activeIndex} count={tabDefs.length} onIndexChange={switchTab} enabled={!isPrivateLocked && !isBlocked && tabDefs.length > 1}>
-        <FlashList
+        <FlashList showsHorizontalScrollIndicator={false}
           ref={listRef}
           data={listRows}
           refreshControl={refreshControl}
@@ -787,10 +787,10 @@ export function ProfilePage() {
         ) : null}
       </View>
 
-      {ownerMenuOpen ? <DropdownMenu anchorRef={ownerMenuButtonRef} onClose={() => setOwnerMenuOpen(false)} width={256} items={ownerMenuItems} bottomInset={bottomInset} /> : null}
+      {ownerMenuOpen ? <DropdownMenu title="Menu" anchorRef={ownerMenuButtonRef} onClose={() => setOwnerMenuOpen(false)} width={256} items={ownerMenuItems} bottomInset={bottomInset} /> : null}
 
       {relationshipMenuOpen ? (
-        <DropdownMenu
+        <DropdownMenu title="Following"
           anchorRef={relationshipMenuButtonRef}
           onClose={() => setRelationshipMenuOpen(false)}
           width={224}

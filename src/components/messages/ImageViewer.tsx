@@ -159,7 +159,7 @@ export function ImageViewer({ items, initialIndex, title, subtitle, caption, onC
       <Animated.View style={[{ flex: 1 }, backdropStyle]}>
         <GestureDetector gesture={dismissGesture}>
           <Animated.View style={[{ flex: 1 }, contentStyle]}>
-        <FlatList
+        <FlatList showsVerticalScrollIndicator={false}
           ref={listRef}
           data={items}
           horizontal

@@ -3,7 +3,7 @@
 // up to 4 photos, optional tagged project / music, up to 5 topics. Posts as you
 // or — in Page mode — as the active Page (not switchable mid-draft on purpose).
 // "…" offers Save as draft / Schedule. Can resume a draft or scheduled post.
-import { Image as ImageIcon, Link2, Music as MusicIcon, MoreHorizontal, X } from "lucide-react-native";
+import { CalendarClock, FileText, Image as ImageIcon, Link2, Music as MusicIcon, MoreHorizontal, X } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams, type Href } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -315,8 +315,8 @@ export function Compose() {
   }
 
   const moreMenuItems: DropdownMenuItem[] = [
-    { key: "draft", label: "Save as draft", onSelect: () => void submitPost("draft"), disabled: !canPost },
-    { key: "schedule", label: "Schedule…", onSelect: () => setScheduleModalOpen(true), disabled: !canPost },
+    { key: "draft", label: "Save as draft", icon: <Icon as={FileText} size={22} className="text-overlay-ink" />, onSelect: () => void submitPost("draft"), disabled: !canPost },
+    { key: "schedule", label: "Schedule…", icon: <Icon as={CalendarClock} size={22} className="text-overlay-ink" />, onSelect: () => setScheduleModalOpen(true), disabled: !canPost },
   ];
 
   if (postingAsPage && !pagePerms.loading && !pagePerms.can("create_posts")) {
@@ -325,7 +325,7 @@ export function Compose() {
 
   return (
     <KeyboardAvoider className="flex-1 bg-canvas">
-      <ScrollView
+      <ScrollView showsHorizontalScrollIndicator={false}
         ref={scrollRef}
         keyboardShouldPersistTaps="handled"
         // "on-drag" would dismiss the keyboard (and drop the text selection) the moment the page scrolls; keep it up while editing.
@@ -550,7 +550,7 @@ export function Compose() {
         />
       ) : null}
 
-      {moreMenuOpen ? <DropdownMenu anchorRef={moreButtonRef} items={moreMenuItems} onClose={() => setMoreMenuOpen(false)} width={192} /> : null}
+      {moreMenuOpen ? <DropdownMenu title="Post options" anchorRef={moreButtonRef} items={moreMenuItems} onClose={() => setMoreMenuOpen(false)} width={192} /> : null}
 
       {pagesOpen ? <ProfilePagesModal mode="owner" navigateOnSwitch={false} onClose={() => setPagesOpen(false)} /> : null}
 

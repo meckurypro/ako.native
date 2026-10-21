@@ -14,6 +14,7 @@ import { PostCard } from "./PostCard";
 export function ArchivedPostModal({ post, onClose }: { post: PostWithAuthor; onClose: () => void }) {
   return (
     <Modal onClose={onClose} ariaLabel="Archived post preview" maxWidth={576} bare zIndex={40}>
+      <Text className="mb-2 px-1 text-lg font-semibold text-canvas">Archived post</Text>
       <Pressable
         onPress={onClose}
         accessibilityRole="button"

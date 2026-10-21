@@ -252,7 +252,7 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
 
   return (
     <KeyboardAvoider className="flex-1 bg-canvas">
-      <ScrollView
+      <ScrollView showsHorizontalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         refreshControl={refreshControl}
         ref={onScroll.listRef}

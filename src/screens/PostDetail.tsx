@@ -69,7 +69,7 @@ export function PostDetail() {
 
   return (
     <View className="flex-1 bg-canvas">
-      <ScrollView
+      <ScrollView showsHorizontalScrollIndicator={false}
         refreshControl={refreshControl}
         ref={onScroll.listRef}
         onScroll={onScroll}

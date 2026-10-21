@@ -113,7 +113,7 @@ export function BookChapterEditor({
 
       {mode === "write" ? (
         <>
-          <ScrollView horizontal keyboardShouldPersistTaps="always" showsHorizontalScrollIndicator={false} contentContainerStyle={{ alignItems: "center", gap: 2 }}>
+          <ScrollView showsVerticalScrollIndicator={false} horizontal keyboardShouldPersistTaps="always" showsHorizontalScrollIndicator={false} contentContainerStyle={{ alignItems: "center", gap: 2 }}>
             {TOOLS.map(({ op, label, text, icon }) => (
               <Pressable
                 key={op}

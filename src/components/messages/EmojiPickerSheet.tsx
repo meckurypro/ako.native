@@ -43,7 +43,7 @@ function useGridRows(): GridRow[] {
 function Grid({ onSelect }: { onSelect: (emoji: string) => void }) {
   const rows = useGridRows();
   return (
-    <FlashList
+    <FlashList showsHorizontalScrollIndicator={false}
       data={rows}
       keyExtractor={(r) => r.key}
       getItemType={(r) => r.kind}

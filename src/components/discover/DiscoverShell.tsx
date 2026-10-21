@@ -115,7 +115,7 @@ export function DiscoverShell({
   if (phase === "browse") {
     return (
       <View className="flex-1 bg-canvas">
-        <ScrollView
+        <ScrollView showsHorizontalScrollIndicator={false}
           refreshControl={refreshControl}
           ref={onScroll.listRef}
           onScroll={onScroll}
@@ -173,7 +173,7 @@ export function DiscoverShell({
         </View>
       </View>
 
-      <ScrollView
+      <ScrollView showsHorizontalScrollIndicator={false}
         ref={onScroll.listRef}
         onScroll={onScroll}
         scrollEventThrottle={16}

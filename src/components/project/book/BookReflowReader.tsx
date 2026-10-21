@@ -449,7 +449,7 @@ export function BookReflowReader({ projectId, title, chapters, userId, thumbnail
     return (
       <View className="flex-1 bg-canvas">
         <ScreenHeader title={title} bar />
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 32 }} showsVerticalScrollIndicator={false}>
+        <ScrollView showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 32 }} showsVerticalScrollIndicator={false}>
           <View className="items-center gap-3 pb-6 pt-8">
             {thumbnailUrl ? (
               <Image source={{ uri: thumbnailUrl }} style={{ width: 144, aspectRatio: 2 / 3, borderRadius: 8 }} contentFit="cover" />
@@ -528,7 +528,7 @@ export function BookReflowReader({ projectId, title, chapters, userId, thumbnail
     <View style={{ flex: 1, backgroundColor: theme.bg }}>
       <StatusBar style={theme.dark ? "light" : "dark"} />
 
-      <ScrollView
+      <ScrollView showsHorizontalScrollIndicator={false}
         // Remount per chapter so scroll offset and layout start clean.
         key={current.id}
         ref={scrollRef}

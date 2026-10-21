@@ -33,7 +33,7 @@ export function HiddenMessages() {
           Nothing hidden here. Messages you hide from a chat show up in this list, only for you.
         </Text>
       ) : (
-        <FlatList
+        <FlatList showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false}
           data={hidden}
           keyExtractor={(m) => m.id}
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: insets.bottom + 24 }}

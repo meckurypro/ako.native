@@ -34,7 +34,7 @@ export function ConfirmDialog({
   onCancel,
 }: ConfirmDialogProps) {
   return (
-    <Modal onClose={onCancel} role="alertdialog" ariaLabel={title} themed={themed}>
+    <Modal onClose={onCancel} role="alertdialog" title={title} themed={themed}>
       <View className="flex-row items-start gap-4">
         {danger && (
           <View className="h-10 w-10 shrink-0 items-center justify-center rounded-full bg-overlay-danger-soft">
@@ -42,8 +42,7 @@ export function ConfirmDialog({
           </View>
         )}
         <View className="min-w-0 flex-1 pt-0.5">
-          <Text className={`text-[15px] font-medium leading-snug ${themed ? "text-ink" : "text-overlay-ink"}`}>{title}</Text>
-          <Text className={`mt-2 text-sm leading-relaxed ${themed ? "text-ink-muted" : "text-overlay-ink-muted"}`}>{description}</Text>
+          <Text className={`text-sm leading-relaxed ${themed ? "text-ink-muted" : "text-overlay-ink-muted"}`}>{description}</Text>
         </View>
       </View>
 

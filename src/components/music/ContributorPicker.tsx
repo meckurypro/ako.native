@@ -41,7 +41,7 @@ function RoleSelect({ value, onChange }: { value: ContributorDraft["role"]; onCh
 
       {open ? (
         <Sheet onClose={() => setOpen(false)} dragZone="handle" maxHeightRatio={0.7} zIndex={65} accessibilityLabel="Contributor role">
-          <ScrollView style={{ flexShrink: 1 }} showsVerticalScrollIndicator={false}>
+          <ScrollView showsHorizontalScrollIndicator={false} style={{ flexShrink: 1 }} showsVerticalScrollIndicator={false}>
             {CONTRIBUTOR_ROLE_OPTIONS.map((role) => (
               <SheetRow
                 key={role}

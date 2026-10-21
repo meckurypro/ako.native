@@ -3,10 +3,9 @@
 // opens a bottom sheet of options.
 import { Check, ChevronDown } from "lucide-react-native";
 import { useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { Pressable, View } from "react-native";
 
-import { Sheet } from "./Sheet";
-import { SheetCancel, SheetRow } from "./SheetParts";
+import { OptionsModal } from "./OptionsModal";
 import { Icon } from "./styled";
 import { Text } from "./Text";
 
@@ -43,19 +42,16 @@ export function SelectField({ label, value, options, onChange, placeholder = "Se
       </Pressable>
 
       {open ? (
-        <Sheet dismissKeyboardOnOpen onClose={() => setOpen(false)} dragZone="handle" maxHeightRatio={0.7} accessibilityLabel={label}>
-          <ScrollView style={{ flexShrink: 1 }} showsVerticalScrollIndicator={false}>
-            {options.map((o) => (
-              <SheetRow
-                key={o.value || "__none"}
-                label={o.label}
-                onPress={() => onChange(o.value)}
-                icon={o.value === value ? <Icon as={Check} size={16} className="text-accent" /> : undefined}
-              />
-            ))}
-          </ScrollView>
-          <SheetCancel />
-        </Sheet>
+        <OptionsModal
+          title={label}
+          onClose={() => setOpen(false)}
+          items={options.map((o) => ({
+            key: o.value || "__none",
+            label: o.label,
+            icon: o.value === value ? <Icon as={Check} size={22} className="text-overlay-accent" /> : undefined,
+            onSelect: () => onChange(o.value),
+          }))}
+        />
       ) : null}
     </View>
   );

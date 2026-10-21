@@ -160,7 +160,7 @@ export function MessageActionMenu({
             <Icon as={MoreHorizontal} size={19} className="text-ink" />
           </Pressable>
         </View>
-        {moreOpen ? <DropdownMenu anchorRef={moreButtonRef} onClose={() => setMoreOpen(false)} width={208} zIndex={62} items={moreItems} /> : null}
+        {moreOpen ? <DropdownMenu title="Message options" anchorRef={moreButtonRef} onClose={() => setMoreOpen(false)} width={208} zIndex={62} items={moreItems} /> : null}
       </View>
 
       {/* Reaction strip */}
@@ -174,7 +174,7 @@ export function MessageActionMenu({
             className="rounded-full border border-border bg-surface"
             style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 8 }}
           >
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="items-center gap-1.5 px-2.5 py-2" keyboardShouldPersistTaps="always">
+            <ScrollView showsVerticalScrollIndicator={false} horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="items-center gap-1.5 px-2.5 py-2" keyboardShouldPersistTaps="always">
               {emojis.map((emoji) => (
                 <Pressable
                   key={emoji}

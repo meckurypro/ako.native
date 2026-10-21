@@ -84,7 +84,7 @@ export function ReviewSheet({
       }
       onClose={onClose}
     >
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 20, gap: 16 }}>
+      <ScrollView showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 20, gap: 16 }}>
         <View style={{ alignItems: "center", gap: 6, paddingVertical: 4 }}>
           <StarPicker
             value={rating}

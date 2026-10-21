@@ -57,7 +57,7 @@ export function MyGigs() {
   return (
     <View className="flex-1 bg-canvas">
       <ScreenHeader title="Your Gigs" />
-      <ScrollView ref={onScroll.listRef} onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: bottomInset }}>
+      <ScrollView showsHorizontalScrollIndicator={false} ref={onScroll.listRef} onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: bottomInset }}>
         <Text className="mb-6 text-sm text-ink-muted">Every professional identity on your account — one Gig per role.</Text>
 
         {isLoading ? (

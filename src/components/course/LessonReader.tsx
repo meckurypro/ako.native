@@ -148,7 +148,7 @@ export function LessonReader(props: LessonReaderProps) {
 
       {/* key remounts the scroller per lesson: every lesson opens at the top, with a soft fade. */}
       <Animated.View key={lesson.id} entering={FadeIn.duration(220)} className="flex-1">
-        <ScrollView
+        <ScrollView showsHorizontalScrollIndicator={false}
           ref={scrollRef}
           showsVerticalScrollIndicator={false}
           onScroll={handleScroll}

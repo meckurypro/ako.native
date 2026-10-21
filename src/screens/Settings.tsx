@@ -75,7 +75,7 @@ export function Settings() {
   return (
     <KeyboardAvoider className="flex-1 bg-canvas">
       <ScreenHeader title="Settings" />
-      <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="none" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: insets.bottom + 40 }}>
+      <ScrollView showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="none" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: insets.bottom + 40 }}>
         {/* Hero — same shape as the top of the profile: big name + handle + stacked stats on the left, large
             ringed avatar on the right with a round change-photo badge. */}
         <View className="mb-6">

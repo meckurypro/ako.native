@@ -66,7 +66,7 @@ export function ScheduledPosts() {
       ) : !scheduled?.length ? (
         <EmptyNotice large icon={Send} title="Nothing scheduled" message={'Choose "Schedule…" instead of posting to queue something for later — it\'ll show up here.'} />
       ) : (
-        <FlatList
+        <FlatList showsHorizontalScrollIndicator={false}
           ref={listRef}
           onScrollToIndexFailed={(info) => setTimeout(() => listRef.current?.scrollToIndex({ index: info.index, animated: true }), 300)}
           data={scheduled}

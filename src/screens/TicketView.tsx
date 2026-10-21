@@ -63,7 +63,7 @@ export function TicketView() {
   return (
     <View className="flex-1 bg-canvas">
       <ScreenHeader title={project.title} />
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
+      <ScrollView showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
         {eventDetails?.event_date && (
           <Text className="mb-6 text-sm text-ink-muted">
             {new Date(eventDetails.event_date).toLocaleString()} — {eventDetails.location_type === "physical" ? eventDetails.location_value : "Online"}

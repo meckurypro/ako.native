@@ -24,7 +24,7 @@ function TargetList({ isLoading, emptyLabel, items, onPick }: { isLoading: boole
   if (isLoading) return <Text className="py-6 text-center text-sm text-overlay-ink-muted">Loading…</Text>;
   if (items.length === 0) return <Text className="py-6 text-center text-sm text-overlay-ink-muted">{emptyLabel}</Text>;
   return (
-    <ScrollView style={{ maxHeight: 288 }} nestedScrollEnabled>
+    <ScrollView showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} style={{ maxHeight: 288 }} nestedScrollEnabled>
       <View className="gap-1.5">
         {items.map((item) => (
           <Pressable

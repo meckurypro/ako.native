@@ -51,7 +51,7 @@ export function ProjectImageCarousel({ images, fit = "cover" }: { images: string
       accessibilityLabel={`Project images, ${index + 1} of ${count}`}
     >
       {size.width > 0 ? (
-        <FlatList
+        <FlatList showsVerticalScrollIndicator={false}
           ref={listRef}
           data={images}
           keyExtractor={(src, i) => `${i}-${src}`}

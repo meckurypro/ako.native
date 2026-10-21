@@ -141,7 +141,7 @@ export const MentionTextarea = forwardRef<TextInput, MentionTextareaProps>(funct
 
       {mentionQuery !== null && suggestions.length > 0 ? (
         <View className="mt-1 max-h-56 overflow-hidden rounded-xl border border-border bg-canvas py-1">
-          <ScrollView keyboardShouldPersistTaps="always" nestedScrollEnabled>
+          <ScrollView showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="always" nestedScrollEnabled>
             {suggestions.map((person) => (
               <Pressable
                 key={`${person.kind}-${person.id}`}

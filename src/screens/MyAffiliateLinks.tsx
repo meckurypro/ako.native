@@ -93,7 +93,7 @@ export function MyAffiliateLinks() {
       ) : list.length === 0 ? (
         <EmptyNotice icon={TrendingUp} message={'Projects you fork to earn a commission on will show up here — look for "Share & earn" on any project that has affiliate forking turned on.'} />
       ) : (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: insets.bottom + 24 }}>
+        <ScrollView showsHorizontalScrollIndicator={false} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: insets.bottom + 24 }}>
           {list.map((r) => (
             <AffiliateLinkRow key={r.id} relationship={r} />
           ))}

@@ -229,7 +229,7 @@ export function ConversationList() {
       ) : filtered && filtered.length === 0 ? (
         <Text className="py-10 text-center text-sm text-ink-muted">No conversations match your search.</Text>
       ) : (
-        <FlashList
+        <FlashList showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false}
           data={refreshing ? [] : items}
           refreshControl={refreshControl}
           ListEmptyComponent={refreshing ? <RefreshSkeleton /> : null}

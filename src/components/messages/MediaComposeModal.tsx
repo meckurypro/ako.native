@@ -85,7 +85,7 @@ export function MediaComposeModal({ kind, files: initialFiles, onClose, onSend }
         </View>
 
         {files.length > 1 ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="max-h-[68px] grow-0" contentContainerClassName="gap-2 px-3 py-2">
+          <ScrollView showsVerticalScrollIndicator={false} horizontal showsHorizontalScrollIndicator={false} className="max-h-[68px] grow-0" contentContainerClassName="gap-2 px-3 py-2">
             {files.map((f, i) => (
               <Pressable key={`${f.uri}-${i}`} onPress={() => setIndex(i)} accessibilityRole="button" accessibilityLabel={`Photo ${i + 1}`}>
                 <Image

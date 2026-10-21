@@ -269,7 +269,7 @@ export function Notifications() {
       {isLoading ? (
         <Text className="py-10 text-center text-ink-muted">Loading…</Text>
       ) : (
-        <FlashList
+        <FlashList showsHorizontalScrollIndicator={false}
           data={refreshing ? [] : (notifications ?? [])}
           keyExtractor={(n) => n.id}
           renderItem={({ item }) => <NotificationRow n={item} onPress={activate} />}

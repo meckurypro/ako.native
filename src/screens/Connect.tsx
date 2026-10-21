@@ -82,7 +82,7 @@ function ActivityRow({ item }: { item: ActivityItem }) {
       }
     />
     {menuOpen ? (
-      <DropdownMenu
+      <DropdownMenu title="Options"
         anchorRef={menuRef}
         onClose={() => setMenuOpen(false)}
         width={224}

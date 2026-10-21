@@ -180,7 +180,7 @@ export function AssignmentsTab({ projectId, isHost }: { projectId: string; isHos
   const list = assignments ?? [];
 
   return (
-    <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="none" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }}>
+    <ScrollView showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="none" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }}>
       {isHost && (
         <View className="mb-2 items-end">
           <Pressable onPress={() => setShowForm((s) => !s)} accessibilityRole="button" hitSlop={8}>

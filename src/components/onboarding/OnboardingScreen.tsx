@@ -26,7 +26,7 @@ export function OnboardingScreen({ children, footer, centered = false, maxWidth 
     <View className="flex-1 overflow-hidden bg-canvas">
       <AuthPattern />
       <KeyboardAvoider className="flex-1">
-        <ScrollView
+        <ScrollView showsHorizontalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="none"
           showsVerticalScrollIndicator={false}

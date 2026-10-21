@@ -1,28 +1,21 @@
 // src/components/ui/Sheet.tsx
-// Bottom sheet — the shared shell behind every action sheet and picker
-// (ConversationActionSheet, DeleteMessageSheet, ReactionMoreSheet, GiftPicker,
-// ManageAccessSheet, CommentReportSheet…). Matches the web chrome: canvas scrim,
-// surface panel with rounded top corners and a top border, safe-area padding.
+// The shared shell behind every picker / form sheet (GiftPicker, ManageAccessSheet, CommentReportSheet, SheetFrame…).
 //
-// Native behaviour on top of that:
-//   • slides up / down, tracks the finger, swipe down (or flick) to dismiss
-//   • Android Back and scrim tap dismiss, always through the slide-out
+// No longer a bottom-docked panel: it is a centred card, the same family as Modal and OptionsModal. It opens centred
+// on the screen from its natural height, and then its TOP EDGE STAYS PUT — if the content grows the card extends
+// downward until it nears the bottom nav, after which the body scrolls (see useAnchoredPanel). Sheets with a fixed
+// `heightRatio` (comments) are simply centred at that height.
+//
+//   • fades / scales in and out; Android Back and scrim tap dismiss, always through the exit animation
 //   • keeps content above the keyboard and shrinks to the room it leaves (sheets with inputs)
 //
 // Render conditionally — `{open && <Sheet … />}` — like every overlay.
-// Children can call `useSheet().close()` to dismiss WITH the animation (use it
-// from row handlers); calling the parent's onClose directly also works, it just
-// skips the slide-out.
-//
-// Drag zone: by default the whole panel drags (right for short action sheets).
-// For sheets whose content scrolls, pass dragZone="handle" and only the small
-// grabber at the top starts a drag, so the inner list keeps its own scrolling.
+// Children can call `useSheet().close()` to dismiss WITH the animation (use it from row handlers); calling the
+// parent's onClose directly also works, it just skips the exit animation.
 import { createContext, useCallback, useContext, useEffect, useMemo, type ReactNode } from "react";
-import { Keyboard, Pressable, View, useWindowDimensions } from "react-native";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { Keyboard, Pressable, useWindowDimensions } from "react-native";
 import Animated, {
   Easing,
-  interpolate,
   useAnimatedKeyboard,
   useAnimatedStyle,
   useSharedValue,
@@ -31,6 +24,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
 
+import { useAnchoredPanel } from "@/hooks/useAnchoredPanel";
 import { useBackDismiss } from "@/hooks/useBackDismiss";
 import { GlassScrim } from "./GlassScrim";
 import type { ScrimTone } from "./OverlayPanel";
@@ -52,15 +46,15 @@ export function useSheet(): SheetContextValue {
 interface SheetProps {
   onClose: () => void;
   children: ReactNode;
-  /** "sheet" (default): the whole panel drags. "handle": only the grabber drags. */
+  /** Ignored — sheets are centred cards now and no longer drag. Kept so existing call sites compile. */
   dragZone?: "sheet" | "handle";
-  /** Show the little grabber bar (always shown when dragZone is "handle"). */
+  /** Ignored — there is no grabber on a centred card. Kept so existing call sites compile. */
   showHandle?: boolean;
   /** Fraction of the screen height the panel may occupy (default 0.9). */
   maxHeightRatio?: number;
   /** Fixed panel height as a fraction of the screen (comments: 0.82). Content then fills it. */
   heightRatio?: number;
-  /** Corner radius of the top edge. */
+  /** Ignored — every card uses the same radius. Kept so existing call sites compile. */
   radius?: "2xl" | "3xl";
   /**
    * Lift above the keyboard and shrink to the room it leaves. On by default — any sheet can end up
@@ -85,20 +79,15 @@ interface SheetProps {
   accessibilityLabel?: string;
 }
 
-const MAX_WIDTH = 576; // max-w-xl
-const DISMISS_VELOCITY = 800; // px/s flick
-const DISMISS_RATIO = 0.3; // drag past 30% of the panel height
-const SLIDE_MS = 240;
+const MAX_WIDTH = 448;
+const ANIM_MS = 180;
 const EASE = Easing.bezier(0.16, 1, 0.3, 1);
 
 export function Sheet({
   onClose,
   children,
-  dragZone = "sheet",
-  showHandle = false,
-  maxHeightRatio = 0.9,
   heightRatio,
-  radius = "2xl",
+  maxHeightRatio = 0.9,
   avoidKeyboard = true,
   dismissKeyboardOnOpen = false,
   zIndex = 50,
@@ -113,87 +102,46 @@ export function Sheet({
     if (dismissKeyboardOnOpen) Keyboard.dismiss();
   }, [dismissKeyboardOnOpen]);
 
-  // 0 = fully open, panelH = fully off-screen. Start off-screen and slide in.
-  const panelH = useSharedValue(windowH);
-  const translateY = useSharedValue(windowH);
+  // 0 = hidden, 1 = shown.
+  const progress = useSharedValue(0);
   const closing = useSharedValue(false);
+  useEffect(() => {
+    progress.value = withTiming(1, { duration: ANIM_MS, easing: EASE });
+  }, [progress]);
 
   const finish = useCallback(() => onClose(), [onClose]);
 
   const close = useCallback(() => {
     if (closing.value) return;
     closing.value = true;
-    translateY.value = withTiming(panelH.value, { duration: SLIDE_MS, easing: EASE }, (done) => {
+    progress.value = withTiming(0, { duration: ANIM_MS - 40, easing: EASE }, (done) => {
       if (done) scheduleOnRN(finish);
     });
-  }, [closing, finish, panelH, translateY]);
+  }, [closing, finish, progress]);
 
   useBackDismiss(onBackStep ?? close);
 
-  const pan = useMemo(
-    () =>
-      Gesture.Pan()
-        .activeOffsetY([-8, 8])
-        .failOffsetX([-24, 24])
-        .onUpdate((e) => {
-          if (closing.value) return;
-          // Dragging down follows the finger 1:1; dragging up resists.
-          translateY.value = e.translationY > 0 ? e.translationY : e.translationY / 6;
-        })
-        .onEnd((e) => {
-          if (closing.value) return;
-          const shouldDismiss = e.velocityY > DISMISS_VELOCITY || translateY.value > panelH.value * DISMISS_RATIO;
-          if (shouldDismiss) {
-            closing.value = true;
-            translateY.value = withTiming(panelH.value, { duration: SLIDE_MS, easing: EASE }, (done) => {
-              if (done) scheduleOnRN(finish);
-            });
-          } else {
-            translateY.value = withTiming(0, { duration: 220, easing: EASE });
-          }
-        }),
-    [closing, finish, panelH, translateY]
-  );
+  // Centred and top-anchored placement (variable-height sheets); fixed-height sheets are plainly centred.
+  const anchored = useAnchoredPanel();
 
-  const panelStyle = useAnimatedStyle(() => ({ transform: [{ translateY: translateY.value }] }));
-  // The keyboard overlaps the bottom of the window (edge-to-edge): pad the host by its height so the
-  // panel docks on top of it, and cap the panel to what's left so its header can't be pushed off-screen.
+  const scrimStyle = useAnimatedStyle(() => ({ opacity: progress.value }));
   const hostStyle = useAnimatedStyle(() => ({ paddingBottom: avoidKeyboard ? keyboard.height.value : 0 }));
-  const sizeStyle = useAnimatedStyle(() => {
-    const room = windowH - (avoidKeyboard ? keyboard.height.value : 0) - insets.top - 12;
+  const fixedSizeStyle = useAnimatedStyle(() => {
+    const room = windowH - (avoidKeyboard ? keyboard.height.value : 0) - insets.top - insets.bottom - 32;
     return heightRatio ? { height: Math.min(windowH * heightRatio, room) } : { maxHeight: Math.min(windowH * maxHeightRatio, room) };
   });
-  // The keyboard already clears the bottom edge, so the safe-area padding is dropped while it is up.
-  const safeBottomStyle = useAnimatedStyle(() => ({ paddingBottom: avoidKeyboard && keyboard.height.value > 0 ? 0 : insets.bottom }));
-  const scrimStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(translateY.value, [0, Math.max(panelH.value, 1)], [1, 0], "clamp"),
+  const cardAnim = useAnimatedStyle(() => ({
+    opacity: progress.value,
+    transform: [{ scale: 0.96 + 0.04 * progress.value }],
   }));
-
-  const grabber = (
-    <View className="items-center pb-1 pt-2.5" accessibilityElementsHidden importantForAccessibility="no">
-      <View className="h-1 w-9 rounded-full bg-ink-muted-a30" />
-    </View>
-  );
-  const handleVisible = showHandle || dragZone === "handle";
 
   const panel = (
     <Animated.View
-      onLayout={(e) => {
-        const h = e.nativeEvent.layout.height;
-        const first = panelH.value === windowH && translateY.value === windowH;
-        panelH.value = h;
-        if (first) translateY.value = withTiming(0, { duration: SLIDE_MS, easing: EASE });
-      }}
-      style={[
-        { width: "100%", maxWidth: MAX_WIDTH },
-        sizeStyle,
-        panelStyle,
-      ]}
-      className={`border-t border-border bg-surface ${radius === "3xl" ? "rounded-t-3xl" : "rounded-t-2xl"}`}
+      style={[{ width: "100%", maxWidth: MAX_WIDTH, flexShrink: 1 }, heightRatio ? fixedSizeStyle : anchored.style, cardAnim]}
+      onLayout={heightRatio ? undefined : anchored.onLayout}
+      className="overflow-hidden rounded-[28px] border border-border bg-surface"
     >
-      {handleVisible && dragZone === "handle" ? <GestureDetector gesture={pan}>{grabber}</GestureDetector> : null}
-      {handleVisible && dragZone === "sheet" ? grabber : null}
-      <Animated.View style={[{ flex: heightRatio ? 1 : undefined, flexShrink: 1 }, safeBottomStyle]}>{children}</Animated.View>
+      <Animated.View style={{ flex: heightRatio ? 1 : undefined, flexShrink: 1 }}>{children}</Animated.View>
     </Animated.View>
   );
 
@@ -203,7 +151,7 @@ export function Sheet({
     <Portal zIndex={zIndex}>
       <SheetContext.Provider value={ctx}>
         <Animated.View
-          className="flex-1 items-center justify-end"
+          className={`flex-1 items-center px-6 ${heightRatio ? "justify-center" : "justify-start"}`}
           style={hostStyle}
           accessibilityViewIsModal
           accessibilityLabel={accessibilityLabel}
@@ -213,10 +161,9 @@ export function Sheet({
             <Pressable className="flex-1" onPress={close} accessibilityRole="button" accessibilityLabel="Close" />
           </Animated.View>
 
-          {dragZone === "sheet" ? <GestureDetector gesture={pan}>{panel}</GestureDetector> : panel}
+          {panel}
         </Animated.View>
       </SheetContext.Provider>
     </Portal>
   );
 }
-

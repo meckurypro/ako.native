@@ -184,7 +184,7 @@ function Body(props: ShareProfileSheetProps & { mode: Mode; setMode: (m: Mode) =
         <Button onPress={close}>Done</Button>
       </View>
     ) : (
-      <ScrollView style={{ flexShrink: 1 }} keyboardShouldPersistTaps="handled" contentContainerClassName="p-5">
+      <ScrollView showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} style={{ flexShrink: 1 }} keyboardShouldPersistTaps="handled" contentContainerClassName="p-5">
         <Text className="mb-1 text-sm font-medium text-ink">Report {profile.display_name}</Text>
         <Text className="mb-4 text-xs text-ink-muted">What's wrong with this account?</Text>
         <View className="mb-3 gap-1">
@@ -249,7 +249,7 @@ function Body(props: ShareProfileSheetProps & { mode: Mode; setMode: (m: Mode) =
   ];
 
   return (
-    <ScrollView style={{ flexShrink: 1 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+    <ScrollView showsHorizontalScrollIndicator={false} style={{ flexShrink: 1 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
       <View className="flex-row items-center justify-between px-4 pb-3 pt-1">
         <View className="w-7" />
         <Text className="text-sm font-medium text-ink">Send to</Text>
@@ -276,7 +276,7 @@ function Body(props: ShareProfileSheetProps & { mode: Mode; setMode: (m: Mode) =
       </View>
 
       {recentContacts.length > 0 ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-4 px-4 pb-4">
+        <ScrollView showsVerticalScrollIndicator={false} horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-4 px-4 pb-4">
           {recentContacts.map((contact) => {
             const sent = sentIds.has(contact.id);
             return (
@@ -307,7 +307,7 @@ function Body(props: ShareProfileSheetProps & { mode: Mode; setMode: (m: Mode) =
 
       <View className="border-t border-border" />
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-4 px-4 py-4">
+      <ScrollView showsVerticalScrollIndicator={false} horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-4 px-4 py-4">
         <ExternalTarget label="WhatsApp" onPress={() => openExternal(`https://wa.me/?text=${encodeURIComponent(`${shareText} ${profileUrl}`)}`)}>
           <WhatsAppGlyph />
         </ExternalTarget>

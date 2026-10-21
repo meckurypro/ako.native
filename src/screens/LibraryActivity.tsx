@@ -159,7 +159,7 @@ function LibraryRow({ item, saved, updateAvailable, highlighted, onLayoutY }: Li
           </View>
         }
       />
-      {menuOpen ? <DropdownMenu anchorRef={menuRef} onClose={() => setMenuOpen(false)} width={224} items={menuItems} /> : null}
+      {menuOpen ? <DropdownMenu title="Library options" anchorRef={menuRef} onClose={() => setMenuOpen(false)} width={224} items={menuItems} /> : null}
       {confirmRemoveFromLibrary ? (
         <ConfirmDialog
           themed
@@ -280,7 +280,7 @@ export function LibraryActivity() {
       ) : rows.length === 0 ? (
         <EmptyNotice icon={LibraryBig} message={emptyMessage} />
       ) : (
-        <ScrollView ref={onScroll.listRef} onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset }}>
+        <ScrollView showsHorizontalScrollIndicator={false} ref={onScroll.listRef} onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset }}>
           <View className="gap-2">
             {rows.map((item) => (
               <LibraryRow

@@ -250,7 +250,7 @@ export function Offers() {
   return (
     <View className="flex-1 bg-canvas">
       <ScreenHeader title="Offers" right={<Text className="text-xs text-ink-muted">{`${count} of ${MAX_OFFERS}`}</Text>} />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: insets.bottom + 24 }}>
+      <ScrollView showsHorizontalScrollIndicator={false} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: insets.bottom + 24 }}>
         <Text className="mb-4 text-sm text-ink-muted">
           Bundle two or more of your paid projects at one price. Buying an offer unlocks everything in it, and people about to buy one of its projects are
           shown the offer.

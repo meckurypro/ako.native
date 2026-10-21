@@ -181,7 +181,7 @@ export function MediaViewer({ mediaUrls, startIndex, onClose }: MediaViewerProps
       <Animated.View style={[{ flex: 1 }, backdropStyle]}>
         <GestureDetector gesture={dismissGesture}>
           <Animated.View style={[{ flex: 1 }, contentStyle]}>
-            <ScrollView
+            <ScrollView showsVerticalScrollIndicator={false}
               ref={scrollRef}
               horizontal
               pagingEnabled

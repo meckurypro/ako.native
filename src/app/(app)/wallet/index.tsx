@@ -162,6 +162,8 @@ export default function WalletScreen() {
     <View className="flex-1 bg-canvas">
       <ScreenHeader title="Wallet" icon={WalletIcon} back={false} bar />
       <FlatList<Txn>
+        showsVerticalScrollIndicator={false}
+        showsHorizontalScrollIndicator={false}
         data={refreshing ? [] : ((transactions as Txn[] | undefined) ?? [])}
         keyExtractor={(t) => t.id}
         refreshControl={refreshControl}

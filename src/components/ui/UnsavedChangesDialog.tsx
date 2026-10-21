@@ -14,9 +14,8 @@ interface UnsavedChangesDialogProps {
 
 export function UnsavedChangesDialog({ saving, onSave, onDiscard, onStay }: UnsavedChangesDialogProps) {
   return (
-    <Modal onClose={onStay} role="alertdialog" ariaLabel="Unsaved changes">
-      <Text className="text-[15px] font-medium leading-snug text-overlay-ink">You have unsaved changes</Text>
-      <Text className="mt-2 text-sm leading-relaxed text-overlay-ink-muted">
+    <Modal onClose={onStay} role="alertdialog" title="You have unsaved changes">
+      <Text className="text-sm leading-relaxed text-overlay-ink-muted">
         Moves, deletions and edits only take effect once you save. Leave now and they're lost.
       </Text>
       <View className="mt-6 gap-2">

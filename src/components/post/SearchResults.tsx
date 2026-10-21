@@ -187,7 +187,7 @@ export function SearchResults({
 
   return (
     <View>
-      <ScrollView
+      <ScrollView showsVerticalScrollIndicator={false}
         horizontal
         showsHorizontalScrollIndicator={false}
         accessibilityRole="tablist"

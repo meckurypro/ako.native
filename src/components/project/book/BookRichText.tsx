@@ -166,7 +166,7 @@ function BookTable({
     </View>
   );
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: paraGap }} nestedScrollEnabled>
+    <ScrollView showsVerticalScrollIndicator={false} horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: paraGap }} nestedScrollEnabled>
       <View>
         <View style={{ flexDirection: "row" }}>{head.map((h, c) => cell(h, c, `h${c}`, true, c === head.length - 1))}</View>
         {rows.map((row, r) => (

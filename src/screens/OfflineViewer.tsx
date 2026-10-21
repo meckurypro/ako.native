@@ -160,7 +160,7 @@ export function OfflineViewer() {
         // The OS can purge app storage under pressure; say so plainly rather than show a broken player.
         <Missing message="Part of this download is missing from your device. Remove it, then download it again." onRemove={() => setConfirmRemove(true)} />
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }} showsVerticalScrollIndicator={false}>
+        <ScrollView showsHorizontalScrollIndicator={false} contentContainerStyle={{ padding: 16, gap: 16 }} showsVerticalScrollIndicator={false}>
           {files.map(({ file, uri }) => {
             if (!uri) return null;
             switch (file.kind) {
