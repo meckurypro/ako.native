@@ -9,6 +9,7 @@ import { Linking, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { KeyboardAvoider } from "@/components/ui/KeyboardAvoider";
+import { AppUpdateCard } from "@/components/settings/AppUpdateCard";
 import { AdvancedSection } from "@/components/settings/AdvancedSection";
 import { AppearanceSection } from "@/components/settings/AppearanceSection";
 import { NotificationsSection } from "@/components/settings/NotificationsSection";
@@ -70,6 +71,8 @@ export function Settings() {
       <ScreenHeader title="Settings" />
       <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="none" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: insets.bottom + 40 }}>
         <View className="gap-3">
+          {/* Android-only, sideloaded-only, and only when the admin has published a newer APK. */}
+          <AppUpdateCard />
           <ProfileSection open={openSection === "profile"} onToggle={() => toggle("profile")} />
           <SecuritySection open={openSection === "security"} onToggle={() => toggle("security")} />
           <PrivacySection open={openSection === "privacy"} onToggle={() => toggle("privacy")} />
