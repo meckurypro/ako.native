@@ -25,7 +25,6 @@ import {
   Menu,
   MessageCircle,
   MoreHorizontal,
-  Pencil,
   Plus,
   Redo2,
   RefreshCw,
@@ -57,6 +56,7 @@ import { ProfileShareScreen } from "@/components/profile/ProfileShareScreen";
 import { ReportModal } from "@/components/profile/ReportModal";
 import { ShareProfileSheet } from "@/components/profile/ShareProfileSheet";
 import { Avatar } from "@/components/ui/Avatar";
+import { AkoMark } from "@/components/ui/AkoMark";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { DropdownMenu, type DropdownMenuItem } from "@/components/ui/DropdownMenu";
 import { Icon } from "@/components/ui/styled";
@@ -448,9 +448,11 @@ export function ProfilePage() {
       <View className="h-14 flex-row items-center gap-1 px-3">
         {showOwnerView ? (
           <>
-            <Pressable onPress={() => router.push("/settings/profile")} accessibilityRole="button" accessibilityLabel="Edit profile" className="h-10 w-10 items-center justify-center rounded-full">
-              <Icon as={Pencil} size={22} className="text-ink" />
-            </Pressable>
+            {/* Brand mark (transparent; AkoMark picks the light/dark artwork from the theme).
+                Editing lives on the avatar's + badge. */}
+            <View className="ml-1 shrink-0 justify-center">
+              <AkoMark size={52} />
+            </View>
             <ProfileAdSlot className="mx-1 min-w-0 flex-1" />
             {!restricted ? (
               <Pressable onPress={() => router.push("/create")} accessibilityRole="button" accessibilityLabel="Create" className="h-10 w-10 items-center justify-center rounded-full">
