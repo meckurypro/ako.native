@@ -8,6 +8,7 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withSequence, withT
 import { Text } from "@/components/ui/Text";
 import { useTheme } from "@/theme/ThemeProvider";
 import { useHasPendingFollowRequest, useSendFollowRequest } from "@/hooks/useFollowRequests";
+import { useCanFollow } from "@/hooks/useAccountAccess";
 import { useIsFollowedByUser, useIsFollowingAsActiveIdentity, useToggleFollowAsActiveIdentity } from "@/hooks/useProfile";
 
 interface FollowButtonProps {
@@ -26,7 +27,7 @@ function StatusPill({ label, pop }: { label: string; pop: boolean }) {
   const scale = useSharedValue(1);
   useEffect(() => {
     if (pop) {
-      scale.value = withSequence(withTiming(1.12, { duration: 120, easing: Easing.out(Easing.quad) }), withTiming(1, { duration: 160 }));
+      scale.value = withSequence(withTiming(1.05, { duration: 110, easing: Easing.out(Easing.quad) }), withTiming(1, { duration: 150 }));
     }
   }, [pop, scale]);
   const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
@@ -45,6 +46,8 @@ export function FollowButton({ authorId, isPrivate }: FollowButtonProps) {
   const hasPendingQuery = useHasPendingFollowRequest(authorId);
   const toggleFollow = useToggleFollowAsActiveIdentity(authorId);
   const sendRequest = useSendFollowRequest(authorId);
+  // Accounts still under review can't follow yet (the server rejects it) — don't offer a control that can only fail.
+  const canFollow = useCanFollow();
 
   const isFollowing = !!isFollowingQuery.data;
   const isFollowedByUser = !!isFollowedByUserQuery.data;
@@ -66,21 +69,18 @@ export function FollowButton({ authorId, isPrivate }: FollowButtonProps) {
     prevEstablished.current = established;
   }, [loading, isFollowing, hasPendingRequest]);
 
-  if (loading) return null;
+  if (loading || !canFollow) return null;
 
   if (isFollowing) return <StatusPill label={isFollowedByUser ? "Friends" : "Following"} pop={justArrived} />;
   if (hasPendingRequest) return <StatusPill label="Requested" pop={justArrived} />;
 
-  const disabled = toggleFollow.isPending || sendRequest.isPending;
-
   return (
     <Pressable
       onPress={() => (isPrivate ? sendRequest.mutate() : toggleFollow.mutate(false))}
-      disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={isFollowedByUser ? "Follow back" : "Follow"}
       hitSlop={6}
-      style={[PILL, { backgroundColor: isFollowedByUser ? `${colors.pushback}26` : `${colors.ink}1A`, opacity: disabled ? 0.5 : 1 }]}
+      style={[PILL, { backgroundColor: isFollowedByUser ? `${colors.pushback}26` : `${colors.ink}1A` }]}
     >
       <View>
         <Text className={`text-[11px] font-semibold leading-[14px] ${isFollowedByUser ? "text-pushback" : "text-ink"}`}>Follow</Text>

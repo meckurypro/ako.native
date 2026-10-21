@@ -297,9 +297,8 @@ export function PagePage() {
               haptics.selection();
               toggleFollow.mutate(isFollowing);
             }}
-            disabled={toggleFollow.isPending}
             accessibilityRole="button"
-            className={`mt-4 w-full items-center rounded-xl py-2.5 ${isFollowing ? "bg-surface" : "bg-accent"} ${toggleFollow.isPending ? "opacity-60" : ""}`}
+            className={`mt-4 w-full items-center rounded-xl py-2.5 ${isFollowing ? "bg-surface" : "bg-accent"}`}
           >
             <Text className={`text-sm font-medium ${isFollowing ? "text-ink" : "text-canvas"}`}>{isFollowing ? "Following" : "Follow"}</Text>
           </Pressable>

@@ -1,6 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "./useAuth";
+import { useSound } from "./useSound";
+import { useToast } from "@/components/ui/Toast";
+import {
+  adjustProfileCount,
+  friendlyFollowError,
+  restoreSnapshot,
+  retryTransientOnly,
+  setCached,
+  setInPeopleList,
+  type FollowSnapshot,
+} from "@/lib/followCache";
 import type { Profile } from "../types/database";
 
 export function useIsBlocked(targetUserId: string) {
@@ -113,8 +124,15 @@ export function useToggleMute(targetUserId: string) {
 export function useRemoveFollower(targetUserId: string) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { play } = useSound();
+  const toast = useToast();
+  const mutationKey = ["remove-follower", targetUserId] as const;
 
-  return useMutation({
+  // Instant like the follow toggles (lib/followCache.ts): the follower disappears from the counter and list on tap.
+  return useMutation<void, Error, void, { snap: FollowSnapshot }>({
+    mutationKey,
+    scope: { id: `remove-follower:${user?.id ?? ""}:${targetUserId}` },
+    retry: retryTransientOnly,
     mutationFn: async () => {
       if (!user) throw new Error("Not signed in");
       const { error } = await supabase
@@ -124,9 +142,27 @@ export function useRemoveFollower(targetUserId: string) {
         .eq("following_id", user.id);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onMutate: () => {
+      play("unfollow");
+      const snap: FollowSnapshot = [];
+      if (!user || !targetUserId) return { snap };
+      void queryClient.cancelQueries({ queryKey: ["is-followed-by", targetUserId] });
+      setCached(queryClient, snap, ["is-followed-by", targetUserId, user.id], false);
+      adjustProfileCount(queryClient, snap, user.id, "follower_count", -1);
+      adjustProfileCount(queryClient, snap, targetUserId, "following_count", -1);
+      setInPeopleList(queryClient, snap, "followers", user.id, undefined, targetUserId, false);
+      setInPeopleList(queryClient, snap, "following", targetUserId, undefined, user.id, false);
+      return { snap };
+    },
+    onError: (error, _v, context) => {
+      restoreSnapshot(queryClient, context?.snap);
+      play("error");
+      toast(friendlyFollowError(error, "Couldn't remove that follower. Please try again."), { variant: "error" });
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["is-followed-by", targetUserId] });
       queryClient.invalidateQueries({ queryKey: ["followers"] });
+      queryClient.invalidateQueries({ queryKey: ["following"] });
       queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
   });

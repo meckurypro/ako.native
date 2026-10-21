@@ -67,7 +67,9 @@ import { useToast } from "@/components/ui/Toast";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import { BadgeStreakNote } from "@/components/ui/BadgeStreakNote";
 import { MediaViewer } from "@/components/post/MediaViewer";
-import { useIsRestricted } from "@/hooks/useAccountAccess";
+import { useCanFollow, useIsRestricted } from "@/hooks/useAccountAccess";
+import { useFollowSwap } from "@/hooks/useFollowSwap";
+import { AnimatedCount } from "@/components/ui/AnimatedCount";
 import { useAuth } from "@/hooks/useAuth";
 import { useProjectOwnership } from "@/hooks/useProjectOwnership";
 import { useContactNickname } from "@/hooks/useContactNicknames";
@@ -147,6 +149,8 @@ export function ProfilePage() {
   const { username, fromPost } = useLocalSearchParams<{ username: string; fromPost?: string }>();
   const { user } = useAuth();
   const restricted = useIsRestricted();
+  // Accounts still under review can't follow yet (the server rejects it) — don't offer a control that can only fail.
+  const canFollow = useCanFollow();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const bottomInset = useBottomNavInset();
@@ -209,6 +213,7 @@ export function ProfilePage() {
   const isFollowing = !!isFollowingQuery.data;
   const isFollowedByUser = !!isFollowedByUserQuery.data;
   const hasPendingRequest = !!hasPendingRequestQuery.data;
+  const followSwap = useFollowSwap(isFollowing ? "following" : hasPendingRequest ? "requested" : "follow");
   const isBlocked = !!isBlockedQuery.data;
   const isMuted = !!isMutedQuery.data;
   const displayName = nickname || profile?.display_name || "";
@@ -494,7 +499,9 @@ export function ProfilePage() {
 
   function renderHeader() {
     if (!profile) return null;
-    const followBusy = toggleFollow.isPending || sendFollowRequest.isPending || cancelFollowRequest.isPending || isBlocked;
+    // Not disabled while a write is in flight: the tap already updated the screen and taps are queued in order
+    // (lib/followCache.ts), so a second tap is safe instead of silently ignored.
+    const followBusy = isBlocked;
     return (
       <View className="bg-canvas">
         {renderToolbar()}
@@ -560,11 +567,11 @@ export function ProfilePage() {
           <View className="mt-5 flex-row items-center justify-between gap-4">
             <View className="flex-row items-center gap-7">
               <Pressable onPress={() => router.push(`/profile/${profile.username}/following` as Href)} accessibilityRole="link" accessibilityLabel={`${profile.following_count} following`}>
-                <Text className="text-xl font-semibold text-ink">{profile.following_count}</Text>
+                <AnimatedCount value={profile.following_count} showZero lineHeight={28} className="text-xl font-semibold text-ink" />
                 <Text className="mt-1 text-sm text-ink-muted">Following</Text>
               </Pressable>
               <Pressable onPress={() => router.push(`/profile/${profile.username}/followers` as Href)} accessibilityRole="link" accessibilityLabel={`${profile.follower_count} followers`}>
-                <Text className="text-xl font-semibold text-ink">{profile.follower_count}</Text>
+                <AnimatedCount value={profile.follower_count} showZero lineHeight={28} className="text-xl font-semibold text-ink" />
                 <Text className="mt-1 text-sm text-ink-muted">Followers</Text>
               </Pressable>
             </View>
@@ -620,6 +627,7 @@ export function ProfilePage() {
               <>
                 {isFollowing ? (
                   <View ref={relationshipMenuButtonRef} collapsable={false} className="flex-1">
+                    <Animated.View style={followSwap}>
                     <Pressable
                       onPress={() => setRelationshipMenuOpen(true)}
                       disabled={isBlocked}
@@ -631,13 +639,15 @@ export function ProfilePage() {
                       <Text className="text-[15px] font-semibold text-accent">Following</Text>
                       <Icon as={ChevronDown} size={16} className="text-accent" />
                     </Pressable>
+                    </Animated.View>
                   </View>
-                ) : (
+                ) : canFollow || hasPendingRequest ? (
+                  <Animated.View style={[{ flex: 1 }, followSwap]}>
                   <Pressable
                     onPress={handleFollowClick}
                     disabled={followBusy}
                     accessibilityRole="button"
-                    className={`h-11 flex-1 flex-row items-center justify-center gap-2 rounded-xl ${followBusy ? "opacity-40" : ""} ${
+                    className={`h-11 flex-row items-center justify-center gap-2 rounded-xl ${followBusy ? "opacity-40" : ""} ${
                       hasPendingRequest ? "bg-accent-soft" : isFollowedByUser ? "bg-pushback-a15" : "bg-accent"
                     }`}
                   >
@@ -650,7 +660,8 @@ export function ProfilePage() {
                       {hasPendingRequest ? "Requested" : isFollowedByUser ? "Follow back" : "Follow"}
                     </Text>
                   </Pressable>
-                )}
+                  </Animated.View>
+                ) : null}
                 <Pressable
                   onPress={() => void handleMessage()}
                   disabled={startConversation.isPending || isBlocked}
@@ -798,7 +809,7 @@ export function ProfilePage() {
               onSelect: () => toggleMute.mutate(isMuted),
             },
             "divider",
-            { key: "unfollow", label: "Unfollow", icon: <Icon as={UserMinus} size={22} className="text-overlay-danger" />, variant: "danger", disabled: toggleFollow.isPending, onSelect: startUnfollow },
+            { key: "unfollow", label: "Unfollow", icon: <Icon as={UserMinus} size={22} className="text-overlay-danger" />, variant: "danger", onSelect: startUnfollow },
           ]}
         />
       ) : null}

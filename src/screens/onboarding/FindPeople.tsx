@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Text } from "@/components/ui/Text";
 import { Wordmark } from "@/components/ui/Wordmark";
 import { useOnboardingRecommendations, type OnboardingRecommendation } from "@/hooks/useOnboarding";
+import { useCanFollow } from "@/hooks/useAccountAccess";
 import { useIsFollowing, useToggleFollow } from "@/hooks/useProfile";
 import { useTheme } from "@/theme/ThemeProvider";
 
@@ -77,7 +78,6 @@ function SuggestedPersonRow({
           toggleFollow.mutate(isFollowing);
         }}
         disabled={isFollowingQuery.isLoading}
-        loading={toggleFollow.isPending}
         className="shrink-0"
       >
         {isFollowing ? "Following" : "Follow"}
@@ -89,6 +89,9 @@ function SuggestedPersonRow({
 export function FindPeople() {
   const { data: recommendations, isLoading, error, refetch } = useOnboardingRecommendations(MAX_SUGGESTIONS);
   const [followedCount, setFollowedCount] = useState(0);
+  // New accounts are still under review, and the server rejects every follow from them — so the step quietly
+  // behaves like "no suggestions" (same copy, still continuable) instead of offering buttons that can only fail.
+  const canFollow = useCanFollow();
 
   return (
     <OnboardingScreen
@@ -120,7 +123,7 @@ export function FindPeople() {
             Try again
           </Button>
         </View>
-      ) : !recommendations || recommendations.length === 0 ? (
+      ) : !canFollow || !recommendations || recommendations.length === 0 ? (
         <Text className="py-16 text-center text-sm text-ink-muted">
           We couldn't find anyone to suggest just yet — you can always find people to follow from Discover once you're in.
         </Text>

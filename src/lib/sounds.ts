@@ -16,6 +16,8 @@ export type SoundEvent =
   | "notification-generic"
   | "like"
   | "follow"
+  | "unfollow"
+  | "request-sent"
   | "gift-sent"
   | "gift-received"
   | "unlock-success"
@@ -55,6 +57,16 @@ export const SOUND_REGISTRY: Record<SoundEvent, SoundDef> = {
     source: require("../../assets/sounds/confirm-follow.wav"),
     family: "confirm",
     description: "You followed someone.",
+  },
+  unfollow: {
+    source: require("../../assets/sounds/presence-leave.wav"),
+    family: "confirm",
+    description: "You unfollowed someone, cancelled a request, or removed a follower.",
+  },
+  "request-sent": {
+    source: require("../../assets/sounds/confirm-message-sent.wav"),
+    family: "confirm",
+    description: "You sent a follow request to a private account.",
   },
   "gift-sent": {
     source: require("../../assets/sounds/reward-gift-sent.wav"),

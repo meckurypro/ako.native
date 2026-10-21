@@ -104,6 +104,31 @@ export function useIsRestricted(): boolean {
 }
 
 /**
+ * May this account FOLLOW right now? Mirrors the database rule on follows INSERT (fn_can_access_feature with
+ * 'probational_follow_enabled'): approved accounts, and everyone while the review gate is off, always can; a pending
+ * account can only while the admin flag is on. Used to hide Follow controls that would otherwise be rejected by the
+ * server every time (silent by design, like the other restricted-mode hides). Fails closed while the flag loads.
+ */
+export function useCanFollow(): boolean {
+  const restricted = useIsRestricted();
+  const { data: flagOn } = useQuery({
+    queryKey: ["feature-flag", "probational_follow_enabled"],
+    queryFn: async (): Promise<boolean> => {
+      const { data, error } = await supabase
+        .from("feature_flags")
+        .select("enabled")
+        .eq("key", "probational_follow_enabled")
+        .maybeSingle();
+      if (error) throw error;
+      return data?.enabled ?? false;
+    },
+    enabled: restricted,
+    staleTime: 60_000,
+  });
+  return restricted ? flagOn === true : true;
+}
+
+/**
  * Where a restricted user lands instead of the Feed — after login, after
  * onboarding, and when they hit a full-access-only route. Discover
  * (projects and pages) is their home and the first tab in their nav.

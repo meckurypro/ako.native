@@ -2,6 +2,18 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "./useAuth";
+import { useSound } from "./useSound";
+import { useToast } from "@/components/ui/Toast";
+import {
+  adjustPageFollowers,
+  adjustProfileCount,
+  friendlyFollowError,
+  restoreSnapshot,
+  retryTransientOnly,
+  setCached,
+  UNIQUE_VIOLATION,
+  type FollowSnapshot,
+} from "@/lib/followCache";
 import { useTheme } from "../theme/ThemeProvider";
 import { PAGE_AFFILIATION_SELECT, PAGE_WITH_MEMBERSHIP_SELECT, sortRoleLabels, toPageAffiliations } from "../lib/pageRoles";
 import {
@@ -684,32 +696,49 @@ export function useIsFollowingPage(pageId: string) {
 export function useTogglePageFollow(pageId: string) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { play } = useSound();
+  const toast = useToast();
+  const mutationKey = ["follow-page", pageId] as const;
 
-  return useMutation({
+  // Instant like the person-follow toggles (lib/followCache.ts). A page never follows a page and a team member never
+  // follows the page they run — the guard_page_follow trigger enforces both and its message is shown as written.
+  return useMutation<void, Error, boolean, { snap: FollowSnapshot }>({
+    mutationKey,
+    scope: { id: `follow-page:${user?.id ?? ""}:${pageId}` },
+    retry: retryTransientOnly,
     mutationFn: async (currentlyFollowing: boolean) => {
       if (!user) throw new Error("Not signed in");
 
-      // A page never follows a page, and a team member never follows the
-      // page they run (the server enforces both; this just fails fast).
-      const { data: me } = await supabase.from("profiles").select("active_page_id").eq("id", user.id).single();
-      if (me?.active_page_id) throw new Error("Pages can't follow other pages. Switch to your personal account to follow.");
-
       if (currentlyFollowing) {
-        const { error } = await supabase
-          .from("page_follows")
-          .delete()
-          .eq("follower_id", user.id)
-          .eq("page_id", pageId);
+        const { error } = await supabase.from("page_follows").delete().eq("follower_id", user.id).eq("page_id", pageId);
         if (error) throw error;
       } else {
         const { error } = await supabase.from("page_follows").insert({ follower_id: user.id, page_id: pageId });
-        if (error) throw error;
+        if (error && error.code !== UNIQUE_VIOLATION) throw error;
       }
     },
-    onSuccess: () => {
+    onMutate: (currentlyFollowing: boolean) => {
+      const follow = !currentlyFollowing;
+      play(follow ? "follow" : "unfollow");
+      const snap: FollowSnapshot = [];
+      if (!user || !pageId) return { snap };
+      void queryClient.cancelQueries({ queryKey: ["is-following-page", pageId] });
+      setCached(queryClient, snap, ["is-following-page", pageId, user.id], follow);
+      adjustPageFollowers(queryClient, snap, pageId, follow ? 1 : -1);
+      // Following a page changes the follower's own Following count too (the DB trigger moves it).
+      adjustProfileCount(queryClient, snap, user.id, "following_count", follow ? 1 : -1);
+      return { snap };
+    },
+    onError: (error, _v, context) => {
+      if (queryClient.isMutating({ mutationKey }) <= 1) restoreSnapshot(queryClient, context?.snap);
+      play("error");
+      toast(friendlyFollowError(error, "Couldn't update follow. Please try again."), { variant: "error" });
+    },
+    onSettled: () => {
+      if (queryClient.isMutating({ mutationKey }) > 1) return;
       queryClient.invalidateQueries({ queryKey: ["is-following-page", pageId] });
       queryClient.invalidateQueries({ queryKey: ["page"] });
-      // Following a page changes the follower's own Following count and list.
+      queryClient.invalidateQueries({ queryKey: ["page-by-id", pageId] });
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       queryClient.invalidateQueries({ queryKey: ["following"] });
     },

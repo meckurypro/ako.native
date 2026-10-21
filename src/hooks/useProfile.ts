@@ -2,6 +2,18 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "./useAuth";
 import { useSound } from "./useSound";
+import { useToast } from "@/components/ui/Toast";
+import {
+  adjustProfileCount,
+  findCachedProfile,
+  friendlyFollowError,
+  restoreSnapshot,
+  retryTransientOnly,
+  setCached,
+  setInPeopleList,
+  UNIQUE_VIOLATION,
+  type FollowSnapshot,
+} from "@/lib/followCache";
 import { useActiveIdentity } from "./usePages";
 import { PROFILE_ROLES_SELECT, toProfileRoles } from "../lib/profileRoles";
 import type { Profile, ProfileWithRoles } from "../types/database";
@@ -118,6 +130,109 @@ export function useIsFollowedByUser(targetUserId: string) {
 }
 
 /**
+ * One implementation behind both follow toggles (personal-only and active-identity-aware).
+ *
+ * INSTANT: on tap — before any network — the sound plays and the expected result is written into every cached
+ * copy (button state, profile Followers/Following counters, the Followers/Following lists). If the write is
+ * rejected, the snapshot is restored and a short message is shown, so a failure reads as "tried, didn't work",
+ * never as a button that silently did nothing.
+ *
+ * RELIABLE: mutations for one target share a `scope`, so rapid follow → unfollow → follow taps replay strictly in
+ * order. Both writes are idempotent — a duplicate insert (double-tap, a retry after a dropped response) is a
+ * success, and deleting a row that's already gone is a no-op — and only transient network errors are retried.
+ */
+function useFollowMutation(targetUserId: string, actingAsPageId: string | null) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const { play } = useSound();
+  const toast = useToast();
+  const mutationKey = ["follow", targetUserId] as const;
+
+  return useMutation<void, Error, boolean, { snap: FollowSnapshot }>({
+    mutationKey,
+    scope: { id: `follow:${user?.id ?? ""}:${targetUserId}:${actingAsPageId ?? "self"}` },
+    retry: retryTransientOnly,
+    mutationFn: async (currentlyFollowing: boolean) => {
+      if (!user) throw new Error("Not signed in");
+
+      if (actingAsPageId) {
+        if (currentlyFollowing) {
+          const { error } = await supabase
+            .from("page_follows_target")
+            .delete()
+            .eq("page_id", actingAsPageId)
+            .eq("followed_profile_id", targetUserId);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from("page_follows_target")
+            .insert({ page_id: actingAsPageId, followed_profile_id: targetUserId });
+          if (error && error.code !== UNIQUE_VIOLATION) throw error;
+        }
+        return;
+      }
+
+      if (currentlyFollowing) {
+        const { error } = await supabase
+          .from("follows")
+          .delete()
+          .eq("follower_id", user.id)
+          .eq("following_id", targetUserId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("follows").insert({ follower_id: user.id, following_id: targetUserId });
+        if (error && error.code !== UNIQUE_VIOLATION) throw error;
+      }
+    },
+    onMutate: (currentlyFollowing: boolean) => {
+      const follow = !currentlyFollowing;
+      play(follow ? "follow" : "unfollow"); // on the tap itself, like reactions
+      const snap: FollowSnapshot = [];
+      if (!user || !targetUserId) return { snap };
+
+      // A refetch already in flight would land after this and overwrite it with the pre-tap answer.
+      void queryClient.cancelQueries({ queryKey: ["is-following-as-identity", targetUserId] });
+      void queryClient.cancelQueries({ queryKey: ["is-following", targetUserId] });
+
+      if (actingAsPageId) {
+        // A page's follow lives in page_follows_target: no profile counters or people-lists move for it.
+        setCached(queryClient, snap, ["is-following-as-identity", targetUserId, user.id, actingAsPageId], follow);
+        return { snap };
+      }
+
+      setCached(queryClient, snap, ["is-following-as-identity", targetUserId, user.id, null], follow);
+      setCached(queryClient, snap, ["is-following", targetUserId, user.id], follow);
+      adjustProfileCount(queryClient, snap, targetUserId, "follower_count", follow ? 1 : -1);
+      adjustProfileCount(queryClient, snap, user.id, "following_count", follow ? 1 : -1);
+      setInPeopleList(queryClient, snap, "followers", targetUserId, findCachedProfile(queryClient, user.id), user.id, follow);
+      setInPeopleList(queryClient, snap, "following", user.id, findCachedProfile(queryClient, targetUserId), targetUserId, follow);
+      return { snap };
+    },
+    onError: (error, _currentlyFollowing, context) => {
+      // If a later tap on this same target is still queued, restoring OUR snapshot would undo ITS optimistic state;
+      // the reconcile in onSettled (server truth) sorts it out instead.
+      if (queryClient.isMutating({ mutationKey }) <= 1) restoreSnapshot(queryClient, context?.snap);
+      play("error");
+      toast(friendlyFollowError(error, "Couldn't update follow. Please try again."), { variant: "error" });
+    },
+    onSettled: () => {
+      // Taps still in flight reconcile when THEY settle — refetching now would flash a half-applied state.
+      if (queryClient.isMutating({ mutationKey }) > 1) return;
+      queryClient.invalidateQueries({ queryKey: ["is-following-as-identity", targetUserId] });
+      queryClient.invalidateQueries({ queryKey: ["is-following", targetUserId] });
+      queryClient.invalidateQueries({ queryKey: ["is-followed-by", targetUserId] });
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      queryClient.invalidateQueries({ queryKey: ["followers"] });
+      queryClient.invalidateQueries({ queryKey: ["following"] });
+      if (actingAsPageId) {
+        queryClient.invalidateQueries({ queryKey: ["page", actingAsPageId] });
+        queryClient.invalidateQueries({ queryKey: ["my-pages"] });
+      }
+    },
+  });
+}
+
+/**
  * Toggles a follow on/off for the SIGNED-IN PERSON — always writes to
  * `follows`, never page_follows_target, regardless of active identity.
  * Kept around for flows that are unambiguously personal (see
@@ -131,38 +246,7 @@ export function useIsFollowedByUser(targetUserId: string) {
  * of which one you happen to tap.
  */
 export function useToggleFollow(targetUserId: string) {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const { play } = useSound();
-
-  return useMutation({
-    mutationFn: async (currentlyFollowing: boolean) => {
-      if (!user) throw new Error("Not signed in");
-
-      if (currentlyFollowing) {
-        const { error } = await supabase
-          .from("follows")
-          .delete()
-          .eq("follower_id", user.id)
-          .eq("following_id", targetUserId);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("follows")
-          .insert({ follower_id: user.id, following_id: targetUserId });
-        if (error) throw error;
-      }
-    },
-    onSuccess: (_data, currentlyFollowing) => {
-      if (!currentlyFollowing) play("follow");
-
-      queryClient.invalidateQueries({ queryKey: ["is-following", targetUserId] });
-      queryClient.invalidateQueries({ queryKey: ["is-followed-by", targetUserId] });
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
-      queryClient.invalidateQueries({ queryKey: ["followers"] });
-      queryClient.invalidateQueries({ queryKey: ["following"] });
-    },
-  });
+  return useFollowMutation(targetUserId, null);
 }
 
 /**
@@ -220,61 +304,9 @@ export function useIsFollowingAsActiveIdentity(targetUserId: string) {
  * the moment you switch back to it.
  */
 export function useToggleFollowAsActiveIdentity(targetUserId: string) {
-  const { user } = useAuth();
   const { data: identity } = useActiveIdentity();
   const actingAsPageId = identity?.mode === "page" ? identity.page.id : null;
-  const queryClient = useQueryClient();
-  const { play } = useSound();
-
-  return useMutation({
-    mutationFn: async (currentlyFollowing: boolean) => {
-      if (!user) throw new Error("Not signed in");
-
-      if (actingAsPageId) {
-        if (currentlyFollowing) {
-          const { error } = await supabase
-            .from("page_follows_target")
-            .delete()
-            .eq("page_id", actingAsPageId)
-            .eq("followed_profile_id", targetUserId);
-          if (error) throw error;
-        } else {
-          const { error } = await supabase
-            .from("page_follows_target")
-            .insert({ page_id: actingAsPageId, followed_profile_id: targetUserId });
-          if (error) throw error;
-        }
-        return;
-      }
-
-      if (currentlyFollowing) {
-        const { error } = await supabase
-          .from("follows")
-          .delete()
-          .eq("follower_id", user.id)
-          .eq("following_id", targetUserId);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("follows")
-          .insert({ follower_id: user.id, following_id: targetUserId });
-        if (error) throw error;
-      }
-    },
-    onSuccess: (_data, currentlyFollowing) => {
-      if (!currentlyFollowing) play("follow");
-
-      queryClient.invalidateQueries({ queryKey: ["is-following-as-identity", targetUserId] });
-      queryClient.invalidateQueries({ queryKey: ["is-following", targetUserId] });
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
-      queryClient.invalidateQueries({ queryKey: ["followers"] });
-      queryClient.invalidateQueries({ queryKey: ["following"] });
-      if (actingAsPageId) {
-        queryClient.invalidateQueries({ queryKey: ["page", actingAsPageId] });
-        queryClient.invalidateQueries({ queryKey: ["my-pages"] });
-      }
-    },
-  });
+  return useFollowMutation(targetUserId, actingAsPageId);
 }
 
 export function useFollowers(userId: string) {
