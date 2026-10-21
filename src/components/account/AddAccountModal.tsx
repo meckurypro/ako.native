@@ -59,7 +59,7 @@ export function AddAccountModal({ onClose, onAdded }: AddAccountModalProps) {
           onSubmitEditing={() => passwordRef.current?.focus()}
           submitBehavior="submit"
           accessibilityLabel="Email"
-          className="w-full rounded-xl bg-surface px-4 py-3 text-sm text-ink"
+          className="w-full rounded-xl bg-overlay-surface-raised px-4 py-3 text-sm text-overlay-ink"
           style={{ fontFamily: "Inter_400Regular" }}
         />
         <TextInput
@@ -75,7 +75,7 @@ export function AddAccountModal({ onClose, onAdded }: AddAccountModalProps) {
           returnKeyType="go"
           onSubmitEditing={handleSubmit}
           accessibilityLabel="Password"
-          className="w-full rounded-xl bg-surface px-4 py-3 text-sm text-ink"
+          className="w-full rounded-xl bg-overlay-surface-raised px-4 py-3 text-sm text-overlay-ink"
           style={{ fontFamily: "Inter_400Regular" }}
         />
       </View>

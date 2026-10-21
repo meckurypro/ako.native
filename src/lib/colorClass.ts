@@ -4,18 +4,7 @@
 // Tailwind colour classes (`text-danger`, `text-accent-a60`, `text-white`…)
 // against the live palette so call sites can keep the same class strings the
 // web code uses and still follow dark mode / page mode.
-import { overlay, type Palette } from "@/theme/palettes";
-
-const OVERLAY_TOKENS: Record<string, string> = {
-  "overlay-surface": overlay.surface,
-  "overlay-surface-raised": overlay.surfaceRaised,
-  "overlay-ink": overlay.ink,
-  "overlay-ink-muted": overlay.inkMuted,
-  "overlay-danger": overlay.danger,
-  "overlay-danger-soft": overlay.dangerSoft,
-  "overlay-accent": overlay.accent,
-  "overlay-accent-soft": overlay.accentSoft,
-};
+import type { Palette } from "@/theme/palettes";
 
 function paletteTokens(p: Palette): Record<string, string> {
   return {
@@ -46,7 +35,14 @@ function paletteTokens(p: Palette): Record<string, string> {
     "heading-graphite": p.headingGraphite,
     white: "#FFFFFF",
     black: "#000000",
-    ...OVERLAY_TOKENS,
+    "overlay-surface": p.overlaySurface,
+    "overlay-surface-raised": p.overlaySurfaceRaised,
+    "overlay-ink": p.overlayInk,
+    "overlay-ink-muted": p.overlayInkMuted,
+    "overlay-danger": p.overlayDanger,
+    "overlay-danger-soft": p.overlayDangerSoft,
+    "overlay-accent": p.overlayAccent,
+    "overlay-accent-soft": p.overlayAccentSoft,
   };
 }
 

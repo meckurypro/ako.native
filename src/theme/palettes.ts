@@ -39,6 +39,16 @@ export interface Palette {
   headingPetrol: string;
   headingEspresso: string;
   headingGraphite: string;
+  /** Popover / modal / sheet chrome. Follows the theme: light card + dark text in light, dark card + light text in dark. */
+  overlaySurface: string;
+  overlaySurfaceRaised: string;
+  overlayInk: string;
+  overlayInkMuted: string;
+  overlayBorder: string;
+  overlayDanger: string;
+  overlayDangerSoft: string;
+  overlayAccent: string;
+  overlayAccentSoft: string;
   /** rgb triplets for manually-built shadows/glows ("r, g, b") */
   shadowInkRgb: string;
   accentRgb: string;
@@ -73,6 +83,15 @@ const light: Palette = {
   headingPetrol: "#0E5F63",
   headingEspresso: "#5C3A1E",
   headingGraphite: "#2B2B2E",
+  overlaySurface: "#FDFBF6",
+  overlaySurfaceRaised: "#F0EBDF",
+  overlayInk: "#1F1D1A",
+  overlayInkMuted: "#6B675F",
+  overlayBorder: "#1F1D1A1F",
+  overlayDanger: "#A64B3F",
+  overlayDangerSoft: "#F4E1DD",
+  overlayAccent: "#3D5A45",
+  overlayAccentSoft: "#E3E9E1",
   shadowInkRgb: "31, 29, 26",
   accentRgb: "61, 90, 69",
 };
@@ -103,6 +122,15 @@ const dark: Palette = {
   headingPetrol: "#5FD6DC",
   headingEspresso: "#D9A876",
   headingGraphite: "#DAD6CC",
+  overlaySurface: "#1C1C1E",
+  overlaySurfaceRaised: "#2C2C2E",
+  overlayInk: "#F5F5F7",
+  overlayInkMuted: "#98989D",
+  overlayBorder: "#FFFFFF1F",
+  overlayDanger: "#D6968A",
+  overlayDangerSoft: "#4A2E2A",
+  overlayAccent: "#8FB89C",
+  overlayAccentSoft: "#263831",
   shadowInkRgb: "0, 0, 0",
   accentRgb: "76, 174, 124",
 };
@@ -149,7 +177,7 @@ export function getPalette(scheme: ColorScheme, pageMode: boolean): Palette {
   return scheme === "dark" ? dark : light;
 }
 
-/** Overlay chrome is theme-independent (fixed dark glass), exactly like web. */
+/** The DARK overlay values only. Overlay chrome now follows the theme — read it from the active palette (useTheme().colors.overlay*). */
 export const overlay = {
   surface: "#1C1C1E",
   surfaceRaised: "#2C2C2E",
@@ -168,6 +196,15 @@ export function paletteToCssVars(p: Palette): Record<`--${string}`, string> {
   const vars: Record<`--${string}`, string> = {
     "--color-canvas": p.canvas,
     "--color-surface": p.surface,
+    "--color-overlay-surface": p.overlaySurface,
+    "--color-overlay-surface-raised": p.overlaySurfaceRaised,
+    "--color-overlay-ink": p.overlayInk,
+    "--color-overlay-ink-muted": p.overlayInkMuted,
+    "--color-overlay-border": p.overlayBorder,
+    "--color-overlay-danger": p.overlayDanger,
+    "--color-overlay-danger-soft": p.overlayDangerSoft,
+    "--color-overlay-accent": p.overlayAccent,
+    "--color-overlay-accent-soft": p.overlayAccentSoft,
     "--color-ink": p.ink,
     "--color-ink-muted": p.inkMuted,
     "--color-accent": p.accent,

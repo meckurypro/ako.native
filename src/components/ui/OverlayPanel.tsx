@@ -1,14 +1,13 @@
 // src/components/ui/OverlayPanel.tsx
-// The fixed dark-glass chrome shared by every dismissible surface (Modal,
-// DropdownMenu, bottom sheets) — port of .ako-overlay-panel. Deliberately
-// theme-independent: a confirmation looks identical in light, dark and page
-// mode, with light text on a near-black panel.
+// The chrome shared by every dismissible surface (Modal, DropdownMenu, bottom
+// sheets) — port of .ako-overlay-panel. It follows the theme: a light card with
+// dark text/icons in light mode, a near-black card with light text/icons in dark.
 import { View, type ViewProps } from "react-native";
 
-import { overlay } from "@/theme/palettes";
 import { useTheme } from "@/theme/ThemeProvider";
 
 export function OverlayPanel({ style, className = "", ...rest }: ViewProps & { className?: string }) {
+  const { colors, resolvedTheme } = useTheme();
   return (
     <View
       className={className}
@@ -17,12 +16,12 @@ export function OverlayPanel({ style, className = "", ...rest }: ViewProps & { c
           // Inline, not bg-overlay-surface/95: opacity-modified colour classes
           // resolved to NO background on device, so panels rendered see-through.
           // Web: rgba(overlay-surface, 0.96) + 1px overlay-border.
-          backgroundColor: `${overlay.surface}F5`,
+          backgroundColor: `${colors.overlaySurface}F5`,
           borderWidth: 1,
-          borderColor: overlay.border,
+          borderColor: colors.overlayBorder,
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 20 },
-          shadowOpacity: 0.5,
+          shadowOpacity: resolvedTheme === "dark" ? 0.5 : 0.18,
           shadowRadius: 24,
           elevation: 24,
         },
@@ -75,9 +74,9 @@ export function PopoverPanel({
       className={className}
       style={[
         {
-          backgroundColor: glass ? overlay.surface : tone === "canvas" ? colors.canvas : colors.surface,
+          backgroundColor: glass ? colors.overlaySurface : tone === "canvas" ? colors.canvas : colors.surface,
           borderWidth: 1,
-          borderColor: glass ? overlay.border : colors.border,
+          borderColor: glass ? colors.overlayBorder : colors.border,
           // shadow-lg
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 10 },

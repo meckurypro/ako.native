@@ -36,16 +36,16 @@
   --color-bubble-mine: #3D5A45;
   --color-bubble-theirs: #FFFFFF;
 
-  /* Overlay chrome — theme-independent fixed dark glass */
-  --color-overlay-surface: #1C1C1E;
-  --color-overlay-surface-raised: #2C2C2E;
-  --color-overlay-ink: #F5F5F7;
-  --color-overlay-ink-muted: #98989D;
-  --color-overlay-border: #FFFFFF1F;
-  --color-overlay-danger: #D6968A;
-  --color-overlay-danger-soft: #4A2E2A;
-  --color-overlay-accent: #8FB89C;
-  --color-overlay-accent-soft: #263831;
+  /* Overlay chrome — follows the theme at runtime (ThemeProvider overrides these); light values here as the fallback */
+  --color-overlay-surface: #FDFBF6;
+  --color-overlay-surface-raised: #F0EBDF;
+  --color-overlay-ink: #1F1D1A;
+  --color-overlay-ink-muted: #6B675F;
+  --color-overlay-border: #1F1D1A1F;
+  --color-overlay-danger: #A64B3F;
+  --color-overlay-danger-soft: #F4E1DD;
+  --color-overlay-accent: #3D5A45;
+  --color-overlay-accent-soft: #E3E9E1;
 
   /* Selectable post heading colors (light values) */
   --color-heading-emerald: #08633F;
