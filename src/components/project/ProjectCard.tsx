@@ -4,6 +4,8 @@
 // download a file, open a link, read a book, view a ticket, join a course /
 // room / meeting — or the Buy / Book / Support control when you don't. Owners
 // get a menu to edit, publish, archive, manage access, push to feed, or delete.
+import { FileFolderHero } from "@/components/project/FileFolderArt";
+import { useDownloadProjectFile, } from "@/hooks/useDownloadProjectFile";
 import { PurchaseError } from "@/components/wallet/PurchaseError";
 import {
   Archive,
@@ -175,7 +177,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
   const offerNudge = useOfferNudge(project.id);
   const buyBusy = purchaseProject.isPending || offerNudge.checking;
   const bookGig = useBookGig();
-  const getFileDownload = useGetProjectFile();
+  const downloadProjectFile = useDownloadProjectFile();
   const getAudioStream = useGetProjectFile();
   const getVideoStream = useGetProjectFile();
   const getImageStream = useGetProjectFile();
@@ -375,6 +377,18 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
       logFreeAccessIfNeeded("download");
     } catch (err) {
       setError(await resolveFunctionErrorMessage(err, fallback));
+    }
+  }
+
+  /** File projects download in-app so the download only counts once every byte is on the device. */
+  async function handleDownloadFile() {
+    if (!requireUser()) return;
+    setError(null);
+    try {
+      await downloadProjectFile.mutateAsync({ projectId: project.id, title: project.title, filePath: project.file_path });
+      logFreeAccessIfNeeded("download");
+    } catch (err) {
+      setError(await resolveFunctionErrorMessage(err, "Couldn't download the file."));
     }
   }
 
@@ -593,10 +607,10 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
     }
   } else if (project.project_type === "file") {
     detailCta = {
-      label: getFileDownload.isPending ? "Preparing…" : "Download",
+      label: downloadProjectFile.isPending ? (downloadProjectFile.progress != null ? `Downloading ${downloadProjectFile.progress}%` : "Preparing…") : "Download",
       icon: Download,
-      onPress: () => void openSigned(getFileDownload, { projectId: project.id, kind: "file" }, "Couldn't access file."),
-      disabled: getFileDownload.isPending,
+      onPress: () => void handleDownloadFile(),
+      disabled: downloadProjectFile.isPending,
     };
   } else if (project.project_type === "url") {
     detailCta = { label: "Open link", icon: LinkIcon, onPress: () => openExternal(project.external_url) };
@@ -678,6 +692,9 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
             visible={visible}
             fit={thumb.fit}
           />
+        ) : project.project_type === "file" ? (
+          // File projects never use a thumbnail: the folder stands in, with the download count under it.
+          <FileFolderHero downloadCount={project.download_count ?? 0} />
         ) : project.thumbnail_url && isDetailView && galleryImages.length > 1 ? (
           <ProjectImageCarousel images={galleryImages} fit={thumb.fit} />
         ) : project.thumbnail_url ? (
@@ -904,9 +921,9 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
                 hasAccess ? (
                   <LinkAction
                     icon={Download}
-                    label={getFileDownload.isPending ? "Preparing…" : "Download"}
-                    disabled={getFileDownload.isPending}
-                    onPress={() => void openSigned(getFileDownload, { projectId: project.id, kind: "file" }, "Couldn't access file.")}
+                    label={downloadProjectFile.isPending ? (downloadProjectFile.progress != null ? `Downloading ${downloadProjectFile.progress}%` : "Preparing…") : "Download"}
+                    disabled={downloadProjectFile.isPending}
+                    onPress={() => void handleDownloadFile()}
                   />
                 ) : (
                   <LockedNote />

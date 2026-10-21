@@ -2,6 +2,8 @@
 // A creator's offers: bundles of their own paid projects at one price. Buying an offer unlocks every project in it,
 // and shoppers about to buy one of them get the offer suggested (see OfferNudgeSheet). Rules live in
 // supabase/ako_offers.sql (web repo); max MAX_OFFERS each.
+import { isFileType } from "@/lib/fileProject";
+import { FileFolderIcon } from "@/components/project/FileFolderArt";
 import { Check, Image as ImageIcon, Pencil, Plus, Tag, Trash2 } from "lucide-react-native";
 import { useMemo, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
@@ -28,10 +30,10 @@ import {
 import { PROJECT_TYPE_LABELS } from "@/hooks/useProjects";
 import { formatUsd } from "@/lib/money";
 
-function Thumb({ url, size }: { url: string | null; size: number }) {
+function Thumb({ url, size, isFile }: { url: string | null; size: number; isFile?: boolean }) {
   return (
     <View className="shrink-0 items-center justify-center overflow-hidden rounded-lg bg-canvas" style={{ width: size, height: size }}>
-      {url ? <Image source={url} contentFit="cover" className="h-full w-full" /> : <Icon as={ImageIcon} size={14} className="text-ink-muted" />}
+      {isFile ? <FileFolderIcon /> : url ? <Image source={url} contentFit="cover" className="h-full w-full" /> : <Icon as={ImageIcon} size={14} className="text-ink-muted" />}
     </View>
   );
 }
@@ -42,7 +44,7 @@ function OfferRow({ offer, onEdit, onDelete }: { offer: Offer; onEdit: () => voi
       <View className="mb-3 gap-2">
         {offer.items.map((item) => (
           <View key={item.id} className="flex-row items-center gap-3">
-            <Thumb url={item.thumbnail_url} size={36} />
+            <Thumb url={item.thumbnail_url} size={36} isFile={isFileType(item.project_type)} />
             <Text numberOfLines={1} className={`min-w-0 flex-1 text-sm ${item.available ? "text-ink" : "text-ink-muted line-through"}`}>
               {item.title}
             </Text>
@@ -187,7 +189,7 @@ function OfferEditorSheet({ offer, onClose }: { offer: Offer | null; onClose: ()
                 accessibilityState={{ checked: on }}
                 className={`flex-row items-center gap-3 rounded-xl border p-2 ${on ? "border-accent/50 bg-accent-soft" : "border-border bg-canvas"}`}
               >
-                <Thumb url={r.thumbnail_url} size={40} />
+                <Thumb url={r.thumbnail_url} size={40} isFile={isFileType(r.type)} />
                 <View className="min-w-0 flex-1">
                   <Text numberOfLines={1} className="text-sm text-ink">
                     {r.title}

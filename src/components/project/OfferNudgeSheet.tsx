@@ -3,6 +3,8 @@
 // creator's offers. A suggestion, never a wall: the bundle leads, each project's own price sits next to the offer
 // price so the saving is obvious, and "just this one" is always one quiet tap away. Only ever opened by a caller
 // that already checked the viewer is a signed-in, non-owner buyer with no access yet.
+import { isFileType } from "@/lib/fileProject";
+import { FileFolderIcon } from "@/components/project/FileFolderArt";
 import { Image as ImageIcon } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, View } from "react-native";
@@ -50,7 +52,9 @@ function OfferCard({
         {offer.items.map((item) => (
           <View key={item.id} className="flex-row items-center gap-3">
             <View className="h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-canvas">
-              {item.thumbnail_url ? (
+              {isFileType(item.project_type) ? (
+                <FileFolderIcon />
+              ) : item.thumbnail_url ? (
                 <Image source={item.thumbnail_url} contentFit="cover" className="h-full w-full" />
               ) : (
                 <Icon as={ImageIcon} size={14} className="text-ink-muted" />

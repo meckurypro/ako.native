@@ -1,5 +1,7 @@
 // src/components/post/ProjectMiniCard.tsx
 // Compact project tile for shelves and grids (profile Projects tab, "more from…").
+import { isFileType } from "@/lib/fileProject";
+import { FileFolderIcon } from "@/components/project/FileFolderArt";
 import { thumbBoxAspectClass } from "@/lib/bookCover";
 import { ImageIcon } from "lucide-react-native";
 import { router, type Href } from "expo-router";
@@ -43,7 +45,9 @@ export function ProjectMiniCard({ project, showStatus = false, width }: { projec
             <Text className="text-[11px] font-medium text-canvas">{statusLabel}</Text>
           </View>
         ) : null}
-        {project.thumbnail_url ? (
+        {isFileType(project.project_type) ? (
+          <FileFolderIcon />
+        ) : project.thumbnail_url ? (
           <Image source={{ uri: project.thumbnail_url }} contentFit="cover" transition={150} style={{ width: "100%", height: "100%" }} />
         ) : (
           <Icon as={ImageIcon} size={24} className="text-ink-muted" />

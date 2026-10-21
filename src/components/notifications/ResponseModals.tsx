@@ -2,6 +2,7 @@
 // The three "answer this request" dialogs opened from a notification: a Page team invite, a collaboration
 // invite (on a post or project), and a music credit. Each looks the pending request up so a stale tap
 // (already answered elsewhere) says so instead of failing.
+import { FileFolderIcon } from "@/components/project/FileFolderArt";
 import { router, type Href } from "expo-router";
 import { useState, type ReactNode } from "react";
 import { Pressable, View } from "react-native";
@@ -108,8 +109,15 @@ function Preview({ children, light }: { children: ReactNode; light?: boolean }) 
   return <View className={`${light ? "mt-3" : "mt-4"} rounded-xl px-3.5 py-3 ${TONE[light ? "light" : "dark"].preview}`}>{children}</View>;
 }
 
-function Thumb({ url, light, tall }: { url: string | null | undefined; light?: boolean; tall?: boolean }) {
+function Thumb({ url, light, tall, isFile }: { url: string | null | undefined; light?: boolean; tall?: boolean; isFile?: boolean }) {
   const h = tall ? "h-[72px]" : "h-12";
+  if (isFile) {
+    return (
+      <View className="h-12 w-12 shrink-0 overflow-hidden rounded-lg">
+        <FileFolderIcon />
+      </View>
+    );
+  }
   return url ? (
     <Image source={url} contentFit="cover" className={`${h} w-12 shrink-0 rounded-lg ${light ? "border border-border" : ""}`} />
   ) : (
@@ -224,7 +232,7 @@ export function CollaborationInviteResponseModal({ target, targetId, onClose }: 
           ) : (
             <Preview light>
               <View className="flex-row items-center gap-3">
-                <Thumb light url={content.thumbnail_url} tall={content.project_type === "book"} />
+                <Thumb light url={content.thumbnail_url} tall={content.project_type === "book"} isFile={content.project_type === "file"} />
                 <View className="min-w-0 flex-1">
                   <Text numberOfLines={1} className="font-display text-sm font-semibold text-ink">
                     {content.title}

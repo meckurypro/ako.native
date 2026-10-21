@@ -1,5 +1,7 @@
 // src/components/post/TaggedProjectEmbed.tsx
 // Project tag at the bottom of a post: a title strip with an oversized, perspective-tilted thumbnail resting on it. Tap to open.
+import { isFileType } from "@/lib/fileProject";
+import { FileFolderIcon } from "@/components/project/FileFolderArt";
 import { isBookType } from "@/lib/bookCover";
 import { ImageIcon } from "lucide-react-native";
 import { router, type Href } from "expo-router";
@@ -80,7 +82,9 @@ export function TaggedProjectEmbed({ project }: { project: TaggedProjectSummary 
         }}
       >
         <View className="h-full w-full items-center justify-center overflow-hidden rounded-lg border border-white-a25">
-          {project.thumbnail_url ? (
+          {isFileType(project.project_type) ? (
+            <FileFolderIcon />
+          ) : project.thumbnail_url ? (
             <Image source={{ uri: project.thumbnail_url }} contentFit="cover" style={{ width: "100%", height: "100%" }} />
           ) : (
             <Icon as={ImageIcon} size={22} className="text-ink-muted" />

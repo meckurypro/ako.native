@@ -3,6 +3,7 @@
 // its own details table and member data); everything else — status, thumbnail,
 // text, topics, the type's own fields, price/promo, affiliate program, custom
 // URL, privacy and access — can change.
+import { FileFolderHero } from "@/components/project/FileFolderArt";
 import { BOOK_COVER_ERROR, BOOK_COVER_HINT, BOOK_COVER_RATIO, isBookCoverRatio } from "@/lib/bookCover";
 import { Image as ImageIcon } from "lucide-react-native";
 import { router, useLocalSearchParams } from "expo-router";
@@ -274,11 +275,12 @@ export function EditProject() {
         project_type: t,
         external_url: t === "url" ? urlFields.url.trim() || null : project.external_url,
         file_path: t === "file" ? fileFields.file_path : project.file_path,
-        thumbnail_url: thumbnailUrl,
-        thumbnail_width: thumbnailRatio?.width ?? null,
-        thumbnail_height: thumbnailRatio?.height ?? null,
+        // File projects never carry a thumbnail (the folder icon stands in) — editing one clears any old one.
+        thumbnail_url: t === "file" ? null : thumbnailUrl,
+        thumbnail_width: t === "file" ? null : (thumbnailRatio?.width ?? null),
+        thumbnail_height: t === "file" ? null : (thumbnailRatio?.height ?? null),
         // Supporting images hang off the thumbnail — removing it clears them too.
-        supporting_image_urls: thumbnailUrl ? supportingImageUrls : [],
+        supporting_image_urls: t !== "file" && thumbnailUrl ? supportingImageUrls : [],
         price_usd: price,
         promo_price_usd: promoPrice,
         status,
@@ -447,7 +449,14 @@ export function EditProject() {
             </View>
           </View>
 
-          <Pressable
+{project?.project_type === "file" ? (
+            <View className="mb-4 overflow-hidden rounded-xl border border-border bg-surface">
+              <FileFolderHero />
+              <Text className="px-4 pb-3 text-center text-xs text-ink-muted">Files use a folder icon — no thumbnail needed.</Text>
+            </View>
+          ) : (
+            <>
+                      <Pressable
             onPress={() => void handleThumbnailSelect()}
             accessibilityRole="button"
             accessibilityLabel="Change thumbnail"
@@ -466,6 +475,8 @@ export function EditProject() {
           {isBook ? <Text className="mb-4 text-center text-xs text-ink-muted">{BOOK_COVER_HINT}</Text> : null}
 
           <SupportingImagesField urls={supportingImageUrls} onChange={setSupportingImageUrls} hasThumbnail={!!thumbnailUrl} />
+            </>
+          )}
 
           <FormField label="Title" value={title} onChangeText={setTitle} />
 

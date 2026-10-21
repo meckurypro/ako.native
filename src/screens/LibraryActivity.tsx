@@ -138,6 +138,7 @@ function LibraryRow({ item, saved, updateAvailable, highlighted, onLayoutY }: Li
         onPress={() => (saved ? void openSaved(saved) : router.push(libraryItemRoute(item) as Href))}
         thumbnailUrl={item.thumbnailUrl}
         tall={item.projectType === "book"}
+        isFile={item.projectType === "file"}
         fallbackIcon={ImageIcon}
         title={item.title}
         subtitleIcon={ICON_FOR[item.projectType]}

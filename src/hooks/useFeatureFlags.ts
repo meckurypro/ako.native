@@ -199,11 +199,26 @@ export function useToggleFeatureFlag() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ key, enabled }: { key: string; enabled: boolean }) => {
-      const { error } = await supabase
+      const def = FEATURE_FLAG_DEFS.find((d) => d.key === key);
+      // Upsert, not update: a bare UPDATE on a flag whose row was never seeded matches 0 rows and returns no
+      // error, so the toggle looked like it "refused" to turn off (the read side falls back to ON).
+      const { data, error } = await supabase
         .from("feature_flags")
-        .update({ enabled, updated_at: new Date().toISOString(), updated_by: user?.id })
-        .eq("key", key);
+        .upsert(
+          {
+            key,
+            enabled,
+            label: def?.label ?? key,
+            description: def?.description ?? "",
+            updated_at: new Date().toISOString(),
+            updated_by: user?.id,
+          },
+          { onConflict: "key" },
+        )
+        .select("key, enabled")
+        .single();
       if (error) throw error;
+      if (!data || data.enabled !== enabled) throw new Error("Flag change was not saved");
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["feature-flags"] }),
   });

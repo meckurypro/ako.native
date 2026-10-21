@@ -6,6 +6,7 @@ import { Pressable, View } from "react-native";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useUploadProjectFile } from "@/hooks/useUploadProjectFile";
+import { MAX_PROJECT_FILE_BYTES, MAX_PROJECT_FILE_LABEL } from "@/lib/fileProject";
 import { fromDocumentPickerAsset } from "@/lib/localFile";
 
 export interface FileFieldsValue {
@@ -22,7 +23,7 @@ interface FileFieldsProps {
 }
 
 export function FileFields({ value, onChange, onError }: FileFieldsProps) {
-  const uploadFile = useUploadProjectFile();
+  const uploadFile = useUploadProjectFile({ maxBytes: MAX_PROJECT_FILE_BYTES });
 
   async function handleChoose() {
     try {
@@ -48,7 +49,7 @@ export function FileFields({ value, onChange, onError }: FileFieldsProps) {
         <Icon as={FileUp} size={16} className="text-ink-muted" />
         <Text numberOfLines={1} className="flex-1 text-sm text-ink-muted">
           {uploadFile.isPending
-            ? "Uploading…"
+            ? `Uploading… ${uploadFile.progress}%`
             : value.file_name
               ? value.file_name
               : value.file_path // editing an existing File project: path is already set
@@ -56,7 +57,7 @@ export function FileFields({ value, onChange, onError }: FileFieldsProps) {
                 : "Choose file"}
         </Text>
       </Pressable>
-      <Text className="mt-1 text-xs text-ink-muted">Hosted here — no external link is stored. Visitors with access download it with one tap.</Text>
+      <Text className="mt-1 text-xs text-ink-muted">Up to {MAX_PROJECT_FILE_LABEL}. Hosted here — no external link is stored. Visitors with access download it with one tap.</Text>
     </View>
   );
 }

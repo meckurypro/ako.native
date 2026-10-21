@@ -340,6 +340,8 @@ export interface Project {
   // rails. See useUserProjects/useSimilarProjects below.
   is_private: boolean;
   like_count: number;
+  // File projects: completed downloads by people other than the creator (see complete_file_download).
+  download_count: number;
   // Public link alias — see src/lib/projectLinks.ts. Never the
   // canonical identity (id always is); null until the owner sets one
   // in the "Custom URL" section of Edit. Globally unique.

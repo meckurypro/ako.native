@@ -4,6 +4,7 @@
 // → privacy → publish. Which types you see depends on personal vs Page mode,
 // admin switches and your eligibility. Course / authored Book / Room are
 // created as drafts you finish building afterwards.
+import { FileFolderHero } from "@/components/project/FileFolderArt";
 import { BOOK_COVER_ERROR, BOOK_COVER_HINT, BOOK_COVER_RATIO, isBookCoverRatio } from "@/lib/bookCover";
 import { extractBookPdf } from "@/hooks/useBookBuilder";
 import { Image as ImageIcon } from "lucide-react-native";
@@ -250,10 +251,10 @@ export function CreateProject() {
         posted_as_page_id: postingAsPage?.id,
         external_url: projectType === "url" ? urlFields.url.trim() : undefined,
         file_path: projectType === "file" ? (fileFields.file_path ?? undefined) : undefined,
-        thumbnail_url: thumbnailUrl ?? undefined,
-        thumbnail_width: thumbnailRatio?.width,
-        thumbnail_height: thumbnailRatio?.height,
-        supporting_image_urls: thumbnailUrl ? supportingImageUrls : undefined,
+        thumbnail_url: projectType === "file" ? undefined : (thumbnailUrl ?? undefined),
+        thumbnail_width: projectType === "file" ? undefined : thumbnailRatio?.width,
+        thumbnail_height: projectType === "file" ? undefined : thumbnailRatio?.height,
+        supporting_image_urls: projectType !== "file" && thumbnailUrl ? supportingImageUrls : undefined,
         price_usd: price,
         promo_price_usd: promoPrice,
         is_private: isPrivate,
@@ -354,7 +355,14 @@ export function CreateProject() {
       <ScreenHeader title="New project" />
       <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="none" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }}>
         <View className="w-full max-w-md self-center">
-          {/* Thumbnail — the frame takes the uploaded image's own aspect ratio (16:9 only as the empty placeholder). */}
+          {projectType === "file" ? (
+            <View className="mb-4 overflow-hidden rounded-xl border border-border bg-surface">
+              <FileFolderHero />
+              <Text className="px-4 pb-3 text-center text-xs text-ink-muted">Files use a folder icon — no thumbnail needed.</Text>
+            </View>
+          ) : (
+            <>
+            {/* Thumbnail — the frame takes the uploaded image's own aspect ratio (16:9 only as the empty placeholder). */}
           <Pressable
             onPress={() => void handleThumbnailSelect()}
             accessibilityRole="button"
@@ -374,6 +382,8 @@ export function CreateProject() {
           {isBook ? <Text className="mb-4 text-center text-xs text-ink-muted">{BOOK_COVER_HINT}</Text> : null}
 
           <SupportingImagesField urls={supportingImageUrls} onChange={setSupportingImageUrls} hasThumbnail={!!thumbnailUrl} />
+            </>
+          )}
 
           <View className="mb-4 flex-row items-center gap-2">
             <Avatar src={postingAsPage ? postingAsPage.avatar_url : me?.avatar_url} name={postingAsPage ? postingAsPage.name : (me?.display_name ?? "You")} size="sm" />

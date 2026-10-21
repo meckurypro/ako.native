@@ -6,6 +6,7 @@ import { FlashList } from "@shopify/flash-list";
 import { router, useLocalSearchParams, type Href } from "expo-router";
 import {
   AtSign,
+  Download,
   Banknote,
   Bell,
   Briefcase,
@@ -91,6 +92,9 @@ const TYPE_CONFIG: Record<string, { icon: LucideIcon; verb: string }> = {
   // Owner added you to a private project's access list (project_members). target_type "project",
   // preview_text = project title, so it routes via the generic project case like project_tagged.
   project_access_granted: { icon: Lock, verb: "gave you access to a private project" },
+  // Someone finished downloading your File project (complete_file_download). target_type "project",
+  // preview_text = project title; routes via the generic project case.
+  file_downloaded: { icon: Download, verb: "downloaded your file" },
   collaboration_invite: { icon: Users, verb: "invited you to collaborate" },
   collaboration_accepted: { icon: UserCheck, verb: "accepted your collaboration invite" },
   collaboration_declined: { icon: UserX, verb: "declined your collaboration invite" },

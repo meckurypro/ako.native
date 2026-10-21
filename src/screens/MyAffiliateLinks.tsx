@@ -1,6 +1,8 @@
 // src/screens/MyAffiliateLinks.tsx
 // Projects you've forked to earn a commission on: your link, clicks, sales, pending and paid commission.
 // Mounted at both /activity/affiliates and /wallet/affiliate-links.
+import { isFileType } from "@/lib/fileProject";
+import { FileFolderIcon } from "@/components/project/FileFolderArt";
 import { router, type Href } from "expo-router";
 import { Image as ImageIcon, Share2, TrendingUp } from "lucide-react-native";
 import { Pressable, ScrollView, Share, View } from "react-native";
@@ -49,7 +51,7 @@ export function AffiliateLinkRow({ relationship }: { relationship: AffiliateRela
     <View className="mb-3 rounded-2xl border border-border bg-surface p-4">
       <View className="mb-3 flex-row items-center gap-3">
         <Pressable onPress={open} accessibilityRole="link" accessibilityLabel={project.title} className={`${project.project_type === "book" ? "h-[72px]" : "h-12"} w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-canvas`}>
-          {project.thumbnail_url ? <Image source={project.thumbnail_url} contentFit="cover" className="h-full w-full" /> : <Icon as={ImageIcon} size={18} className="text-ink-muted" />}
+          {isFileType(project.project_type) ? <FileFolderIcon /> : project.thumbnail_url ? <Image source={project.thumbnail_url} contentFit="cover" className="h-full w-full" /> : <Icon as={ImageIcon} size={18} className="text-ink-muted" />}
         </Pressable>
         <Pressable onPress={open} accessibilityRole="link" className="min-w-0 flex-1">
           <Text numberOfLines={1} className="text-sm font-medium text-ink">
