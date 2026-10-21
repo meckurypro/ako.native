@@ -9,7 +9,6 @@ import {
   Pencil,
   Plus,
   Redo2,
-  Trash2,
   UserCog,
   Users,
 } from "lucide-react-native";
@@ -23,7 +22,6 @@ import { useChromeScroll } from "@/components/nav/ChromeProvider";
 import { PostCard } from "@/components/post/PostCard";
 import { ProjectCardList } from "@/components/project/ProjectCardList";
 import { Avatar } from "@/components/ui/Avatar";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { DropdownMenu, type DropdownMenuItem } from "@/components/ui/DropdownMenu";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { Icon } from "@/components/ui/styled";
@@ -35,7 +33,6 @@ import { useIsRestricted } from "@/hooks/useAccountAccess";
 import { useFeatureFlag } from "@/hooks/useFeatureFlags";
 import {
   useActiveIdentity,
-  useDeletePage,
   useIsFollowingPage,
   useMyPagePermissions,
   useMyPages,
@@ -43,7 +40,6 @@ import {
   usePageByUsername,
   usePageMembers,
   usePageSubsidiaries,
-  useResolvePageOwner,
   useSwitchActiveMode,
   useTogglePageFollow,
 } from "@/hooks/usePages";
@@ -93,7 +89,6 @@ export function PagePage() {
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [nameMenuOpen, setNameMenuOpen] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const menuButtonRef = useRef<View>(null);
   const nameButtonRef = useRef<View>(null);
 
@@ -117,14 +112,11 @@ export function PagePage() {
   const { data: parentPage } = usePageById(page?.parent_organization_id ?? "", !!page?.parent_organization_id);
   const { data: subsidiaries } = usePageSubsidiaries(page?.id);
   const subsidiariesEnabled = useFeatureFlag("subsidiaries_enabled");
-  const deletePage = useDeletePage();
 
   const isFollowing = !!isFollowingQuery.data;
   const myMembership = members?.find((m) => m.user_id === user?.id && m.status === "active");
   const isMember = !!myMembership;
   const isAdmin = !!myMembership?.is_admin;
-  const { data: pageOwnerId } = useResolvePageOwner(page?.id ?? "", isAdmin);
-  const isOwnerOfPage = isAdmin && !!user && pageOwnerId === user.id;
   // Admins can always edit; other members only if an admin granted "edit page details".
   const { data: myPagePerms } = useMyPagePermissions(page?.id);
   const canEditPage = isAdmin || !!myPagePerms?.permissions.edit_page;
@@ -222,10 +214,6 @@ export function PagePage() {
       : []),
     ...(isAdmin && subsidiariesEnabled && !restricted
       ? [{ key: "subsidiary", label: "Add Subsidiary", icon: <Icon as={Building2} size={22} className="text-overlay-ink" />, onSelect: () => router.push(`/pages/new?parent=${page.id}` as Href) } satisfies DropdownMenuItem]
-      : []),
-    // Only the resolved owner sees this at all (creator, or the longest-standing admin if the creator is gone).
-    ...(isAdmin && isOwnerOfPage
-      ? [{ key: "delete", label: "Delete page", variant: "danger" as const, icon: <Icon as={Trash2} size={22} className="text-overlay-danger" />, onSelect: () => setShowDeleteConfirm(true) } satisfies DropdownMenuItem]
       : []),
   ];
 
@@ -412,19 +400,6 @@ export function PagePage() {
             icon: <Avatar src={p.avatar_url} name={p.name} size="sm" />,
             onSelect: () => handleSwitchTo(p.id, `/page/${p.username}`),
           }))}
-        />
-      ) : null}
-
-      {showDeleteConfirm ? (
-        <ConfirmDialog
-          title="Delete this page?"
-          description={`${page.name} will disappear from search and everyone's feed. This can't be undone from here.`}
-          confirmLabel="Delete"
-          onConfirm={() => {
-            deletePage.mutate(page.id, { onSuccess: () => router.replace("/pages") });
-            setShowDeleteConfirm(false);
-          }}
-          onCancel={() => setShowDeleteConfirm(false)}
         />
       ) : null}
     </View>

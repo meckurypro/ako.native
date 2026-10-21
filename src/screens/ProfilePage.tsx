@@ -215,6 +215,9 @@ export function ProfilePage() {
   const isPrivateLocked = !!profile?.is_private && !showOwnerView && !isFollowing;
   // Pages icon: orange + tappable only when there is something to show; hidden behind a private lock.
   const hasPages = !isPrivateLocked && (profilePagesQuery.data?.length ?? 0) > 0;
+  // The owner can always open the modal: with pages it lists them (tap to switch into one), without any it
+  // explains pages and offers to set one up. A visitor only gets it when there's something to see.
+  const pagesIconEnabled = showOwnerView || hasPages;
 
   const accountId = isPrivateLocked ? undefined : profile?.id;
   const { data: projects, isLoading: projectsLoading, refetch: refetchProjects } = useUserProjects(isPrivateLocked ? "" : profile?.id ?? "", projectsOwnerView);
@@ -439,7 +442,7 @@ export function ProfilePage() {
           ? []
           : ([
               { key: "gigs", label: "Your Gigs", icon: <Icon as={Briefcase} size={22} className="text-overlay-ink" />, onSelect: () => router.push("/gigs") },
-              { key: "page", label: "Page", icon: <Icon as={Building2} size={22} className="text-overlay-ink" />, onSelect: () => router.push("/pages") },
+              { key: "page", label: "Page", icon: <Icon as={Building2} size={22} className="text-overlay-ink" />, onSelect: () => setPagesOpen(true) },
             ] satisfies DropdownMenuItem[])),
         { key: "wallet", label: "Wallet", icon: <Icon as={Wallet} size={22} className="text-overlay-ink" />, onSelect: () => router.push("/wallet") },
         { key: "view-as-visitor", label: "View as visitor", icon: <Icon as={Eye} size={22} className="text-overlay-ink" />, onSelect: () => setPreviewingAsVisitor(true) },
@@ -575,14 +578,14 @@ export function ProfilePage() {
               </Pressable>
             </View>
             <Pressable
-              disabled={!hasPages}
+              disabled={!pagesIconEnabled}
               onPress={() => setPagesOpen(true)}
               accessibilityRole="button"
-              accessibilityState={{ disabled: !hasPages }}
-              accessibilityLabel={hasPages ? "View pages" : "Not affiliated with any pages"}
-              className={`mr-1 h-11 w-11 shrink-0 items-center justify-center rounded-full ${hasPages ? "active:scale-95" : "opacity-40"}`}
+              accessibilityState={{ disabled: !pagesIconEnabled }}
+              accessibilityLabel={pagesIconEnabled ? "View pages" : "Not affiliated with any pages"}
+              className={`mr-1 h-11 w-11 shrink-0 items-center justify-center rounded-full ${pagesIconEnabled ? "active:scale-95" : "opacity-40"}`}
             >
-              <Icon as={Building2} size={26} strokeWidth={2} className={hasPages ? "text-brand-orange" : "text-ink-muted"} />
+              <Icon as={Building2} size={26} strokeWidth={2} className={pagesIconEnabled ? "text-brand-orange" : "text-ink-muted"} />
             </Pressable>
           </View>
 
@@ -826,7 +829,10 @@ export function ProfilePage() {
         />
       ) : null}
 
-      {pagesOpen && hasPages ? <ProfilePagesModal pages={profilePagesQuery.data ?? []} onClose={() => setPagesOpen(false)} /> : null}
+      {pagesOpen && showOwnerView ? <ProfilePagesModal mode="owner" onClose={() => setPagesOpen(false)} /> : null}
+      {pagesOpen && !showOwnerView && hasPages ? (
+        <ProfilePagesModal mode="visitor" pages={profilePagesQuery.data ?? []} onClose={() => setPagesOpen(false)} />
+      ) : null}
 
       {reportContentOpen ? <ReportModal profileId={profile.id} onClose={() => setReportContentOpen(false)} /> : null}
 

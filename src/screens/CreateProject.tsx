@@ -34,6 +34,7 @@ import { PrivacyToggle } from "@/components/ui/PrivacyToggle";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { SelectField } from "@/components/ui/SelectField";
 import { Icon, Image } from "@/components/ui/styled";
+import { ProfilePagesModal } from "@/components/profile/ProfilePagesModal";
 import { SaveProgressDialog } from "@/components/ui/SaveProgressDialog";
 import { Text } from "@/components/ui/Text";
 import { TextLink } from "@/components/ui/TextLink";
@@ -84,6 +85,7 @@ export function CreateProject() {
   const uploadThumbnail = useUploadProjectThumbnail();
   const projectsEnabled = useFeatureFlag("projects_enabled");
 
+  const [pagesOpen, setPagesOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [projectType, setProjectType] = useState<ProjectType>("file");
@@ -550,7 +552,7 @@ export function CreateProject() {
               {!postingAsPage ? (
                 <>
                   {" · "}
-                  <TextLink href="/pages" className="text-accent">
+                  <TextLink onPress={() => setPagesOpen(true)} className="text-accent">
                     switch
                   </TextLink>
                 </>
@@ -667,6 +669,8 @@ export function CreateProject() {
           </Button>
         </View>
       </ScrollView>
+
+      {pagesOpen ? <ProfilePagesModal mode="owner" navigateOnSwitch={false} onClose={() => setPagesOpen(false)} /> : null}
 
       {leaveGuard.isBlocked ? (
         <SaveProgressDialog

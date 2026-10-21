@@ -10,12 +10,12 @@ import type { PageAffiliation, PageMemberStatus } from "../types/database";
 export const PAGE_WITH_MEMBERSHIP_SELECT =
   "role_label, is_admin, page:pages(id, page_type, name, username, tagline, bio, avatar_url, cover_url, website_url, category_id, parent_organization_id, created_by, is_verified, is_active, follower_count, created_at, updated_at)";
 
-export const PAGE_AFFILIATION_SELECT = "role_label, page:pages(id, username, name)";
+export const PAGE_AFFILIATION_SELECT = "role_label, page:pages(id, username, name, is_active)";
 
 export function toPageAffiliations(rows: any[] | null | undefined): PageAffiliation[] {
   if (!rows) return [];
   return rows
-    .filter((r) => r.page)
+    .filter((r) => r.page && r.page.is_active !== false)
     .map((r) => ({
       page_id: r.page.id,
       page_username: r.page.username,

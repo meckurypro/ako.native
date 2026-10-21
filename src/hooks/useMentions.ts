@@ -53,6 +53,7 @@ export function useMentionSuggestions(query: string) {
           ? supabase
               .from("pages")
               .select("id, username, name, avatar_url")
+              .eq("is_active", true)
               .or(`username.ilike.%${query}%,name.ilike.%${query}%`)
               .limit(8)
           : Promise.resolve({ data: [], error: null }),

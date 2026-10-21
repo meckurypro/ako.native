@@ -1,11 +1,12 @@
 // src/screens/EditPage.tsx
 // Edit a Page's cover, avatar, name, tagline, bio, website and topics (admins only).
-import { Camera } from "lucide-react-native";
-import { useLocalSearchParams } from "expo-router";
+import { Camera, Trash2 } from "lucide-react-native";
+import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { KeyboardAvoider } from "@/components/ui/KeyboardAvoider";
 import { MentionTextarea } from "@/components/post/MentionTextarea";
 import { MAX_TOPICS, TopicPicker } from "@/components/post/TopicPicker";
@@ -18,7 +19,15 @@ import { Text } from "@/components/ui/Text";
 import { useAuth } from "@/hooks/useAuth";
 import { useReturnAfterSave } from "@/hooks/useReturnAfterSave";
 import { useToast } from "@/components/ui/Toast";
-import { useMyPagePermissions, usePageByUsername, usePageMembers, usePageTopics, useUpdatePage } from "@/hooks/usePages";
+import {
+  useDeletePage,
+  useMyPagePermissions,
+  usePageByUsername,
+  usePageMembers,
+  usePageTopics,
+  useResolvePageOwner,
+  useUpdatePage,
+} from "@/hooks/usePages";
 import { useUploadAvatar } from "@/hooks/useUploadAvatar";
 import { pickSingleImage } from "@/lib/pickImage";
 
@@ -52,6 +61,12 @@ export function EditPage() {
   // Admins, or a member an admin granted "edit page details" to.
   const { data: myPagePerms, isLoading: permsLoading } = useMyPagePermissions(page?.id);
   const canEdit = isAdmin || !!myPagePerms?.permissions.edit_page;
+  // Deleting a page is deliberately tucked away down here, not on the page itself. Only the resolved owner
+  // (the creator, or their successor) can do it — the RPC enforces the same.
+  const { data: pageOwnerId } = useResolvePageOwner(page?.id ?? "", isAdmin);
+  const isOwnerOfPage = isAdmin && !!user && pageOwnerId === user.id;
+  const deletePage = useDeletePage();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     if (page && !hydrated) {
@@ -199,8 +214,40 @@ export function EditPage() {
           <Button onPress={handleSubmit} loading={updatePage.isPending} disabled={uploadingAvatar || uploadingCover}>
             Save changes
           </Button>
+
+          {isOwnerOfPage ? (
+            <View className="mt-10 border-t border-border pt-6">
+              <Text className="mb-1 text-xs font-medium uppercase tracking-wide text-ink-muted">Danger zone</Text>
+              <Text className="mb-3 text-xs text-ink-muted">
+                Deleting {page.name} removes it from search and everyone's feed.
+              </Text>
+              <Pressable
+                onPress={() => setShowDeleteConfirm(true)}
+                disabled={deletePage.isPending}
+                accessibilityRole="button"
+                accessibilityLabel="Delete page"
+                className="flex-row items-center justify-center gap-2 rounded-xl border border-danger/40 py-3 active:opacity-70"
+              >
+                <Icon as={Trash2} size={16} className="text-danger" />
+                <Text className="text-sm font-medium text-danger">Delete page</Text>
+              </Pressable>
+            </View>
+          ) : null}
         </View>
       </ScrollView>
+
+      {showDeleteConfirm ? (
+        <ConfirmDialog
+          title="Delete this page?"
+          description={`${page.name} will disappear from search and everyone's feed. This can't be undone from here.`}
+          confirmLabel="Delete"
+          onConfirm={() => {
+            setShowDeleteConfirm(false);
+            deletePage.mutate(page.id, { onSuccess: () => router.replace("/me") });
+          }}
+          onCancel={() => setShowDeleteConfirm(false)}
+        />
+      ) : null}
     </KeyboardAvoider>
   );
 }

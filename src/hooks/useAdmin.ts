@@ -611,7 +611,7 @@ export function useSetModerationBlocklist() {
 // (see useFeatureFlags.ts and /admin/feature-flags) rather than
 // moderation_settings — kept as its own named hook pair (rather than
 // folded into the generic useFeatureFlag/useToggleFeatureFlag) so
-// AdminPageSettings.tsx, AccountModeSwitcher, CreatePage, and Pages
+// AdminPageSettings.tsx, ProfilePagesModal, CreatePage, and the Pages entry points
 // didn't need to change. This only ever gates the "create a page"
 // entry points and the /pages/new route itself; pages that already
 // exist, and everything about acting as one, are untouched by this.

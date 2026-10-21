@@ -16,6 +16,7 @@ import { HeadingColorPicker } from "@/components/post/HeadingColorPicker";
 import { MentionTextarea } from "@/components/post/MentionTextarea";
 import { MAX_TOPICS, TopicPicker } from "@/components/post/TopicPicker";
 import { SchedulePostModal } from "@/components/post/SchedulePostModal";
+import { ProfilePagesModal } from "@/components/profile/ProfilePagesModal";
 import { SaveProgressDialog } from "@/components/ui/SaveProgressDialog";
 import { TagProjectPicker } from "@/components/post/TagProjectPicker";
 import { Avatar } from "@/components/ui/Avatar";
@@ -93,6 +94,7 @@ export function Compose() {
     attachMusicCatalogueId?: string;
   }>();
 
+  const [pagesOpen, setPagesOpen] = useState(false);
   const [heading, setHeading] = useState("");
   const [headingColor, setHeadingColor] = useState<string | null>(null);
   const [content, setContent] = useState("");
@@ -345,7 +347,7 @@ export function Compose() {
               {!postingAsPage ? (
                 <>
                   {" · "}
-                  <TextLink href="/pages" className="text-accent">
+                  <TextLink onPress={() => setPagesOpen(true)} className="text-accent">
                     switch
                   </TextLink>
                 </>
@@ -549,6 +551,8 @@ export function Compose() {
       ) : null}
 
       {moreMenuOpen ? <DropdownMenu anchorRef={moreButtonRef} items={moreMenuItems} onClose={() => setMoreMenuOpen(false)} width={192} /> : null}
+
+      {pagesOpen ? <ProfilePagesModal mode="owner" navigateOnSwitch={false} onClose={() => setPagesOpen(false)} /> : null}
 
       {leaveGuard.isBlocked ? (
         <SaveProgressDialog

@@ -35,17 +35,19 @@ export function SettingsSection({ icon, title, summary, open, onToggle, danger =
   }));
 
   return (
-    <View className="overflow-hidden rounded-2xl bg-surface">
+    <View className="overflow-hidden rounded-3xl border border-border bg-surface">
       <Pressable
         onPress={onToggle}
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
-        className="flex-row items-center gap-3 p-4"
+        className="flex-row items-center gap-3.5 p-3.5 active:bg-border-a40"
       >
-        <View>{icon}</View>
-        <Text className={`min-w-0 flex-1 text-sm font-medium ${danger ? "text-danger" : "text-ink"}`}>{title}</Text>
+        <View className={`h-10 w-10 shrink-0 items-center justify-center rounded-full ${danger ? "bg-danger/10" : "bg-border-a40"}`}>
+          {icon}
+        </View>
+        <Text className={`min-w-0 flex-1 text-[15px] font-semibold ${danger ? "text-danger" : "text-ink"}`}>{title}</Text>
         {summary && !open ? (
-          <Text numberOfLines={1} className="max-w-[40%] text-xs text-ink-muted">
+          <Text numberOfLines={1} className="max-w-[40%] text-sm text-ink-muted">
             {summary}
           </Text>
         ) : null}
@@ -59,7 +61,7 @@ export function SettingsSection({ icon, title, summary, open, onToggle, danger =
           style={{ position: "absolute", left: 0, right: 0, top: 0 }}
           onLayout={(e) => setContentHeight(e.nativeEvent.layout.height)}
         >
-          <View className="border-t border-border px-4 pb-5 pt-1">{children}</View>
+          <View className="border-t border-border px-4 pb-5 pt-2">{children}</View>
         </View>
       </Animated.View>
     </View>

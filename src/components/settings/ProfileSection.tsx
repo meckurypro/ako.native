@@ -1,11 +1,10 @@
 // src/components/settings/ProfileSection.tsx
 // Edit profile: photo, display name, username (live availability check), bio, website, job/hobby tags.
-import { Camera, Check, Eye, UserCircle2, X } from "lucide-react-native";
+import { Check, UserCircle2, X } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, View } from "react-native";
 
 import { MentionTextarea } from "@/components/post/MentionTextarea";
-import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
 import { SettingsSection } from "@/components/ui/SettingsSection";
@@ -14,7 +13,6 @@ import { Text } from "@/components/ui/Text";
 import { useAuth } from "@/hooks/useAuth";
 import { useOwnProfile } from "@/hooks/useOwnProfile";
 import { useUpdateProfile, useUpdateProfileRoles } from "@/hooks/useProfile";
-import { useProfileVisitCount } from "@/hooks/useProfileVisits";
 import { useReturnAfterSave } from "@/hooks/useReturnAfterSave";
 import { useToast } from "@/components/ui/Toast";
 import { useRoles } from "@/hooks/useRoles";
@@ -30,12 +28,15 @@ const MAX_ROLES = 3;
 interface ProfileSectionProps {
   open: boolean;
   onToggle: () => void;
+  /** Bumped by the Settings hero's camera button to start picking a new photo. */
+  photoRequest?: number;
+  /** Reports a newly uploaded (not yet saved) photo so the hero can show it. */
+  onAvatarChange?: (url: string) => void;
 }
 
-export function ProfileSection({ open, onToggle }: ProfileSectionProps) {
+export function ProfileSection({ open, onToggle, photoRequest = 0, onAvatarChange }: ProfileSectionProps) {
   const { user } = useAuth();
   const { data: profile } = useOwnProfile();
-  const { data: visitCount } = useProfileVisitCount(profile?.id, !!profile?.id);
   const updateProfile = useUpdateProfile();
   const updateProfileRoles = useUpdateProfileRoles();
   const returnAfterSave = useReturnAfterSave();
@@ -99,11 +100,22 @@ export function ProfileSection({ open, onToggle }: ProfileSectionProps) {
     try {
       const file = await pickSingleImage({ aspect: [1, 1] });
       if (!file) return;
-      setAvatarUrl(await uploadAvatar.mutateAsync(file));
+      const url = await uploadAvatar.mutateAsync(file);
+      setAvatarUrl(url);
+      onAvatarChange?.(url);
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Upload failed.");
     }
   }
+
+  // The hero's camera button asks for a photo by bumping photoRequest.
+  const lastPhotoRequest = useRef(photoRequest);
+  useEffect(() => {
+    if (photoRequest === lastPhotoRequest.current) return;
+    lastPhotoRequest.current = photoRequest;
+    void handleChangePhoto();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [photoRequest]);
 
   async function handleSave() {
     setProfileError(null);
@@ -173,25 +185,14 @@ export function ProfileSection({ open, onToggle }: ProfileSectionProps) {
 
   return (
     <SettingsSection icon={<Icon as={UserCircle2} size={18} className="text-ink-muted" />} title="Profile" summary={displayName || undefined} open={open} onToggle={onToggle}>
-      <View className="mb-6 mt-3 items-center">
-        <Pressable onPress={handleChangePhoto} disabled={uploadAvatar.isPending} accessibilityRole="button" accessibilityLabel="Change photo" className="relative">
-          <Avatar src={avatarUrl} name={displayName || "?"} size="lg" />
-          <View className="absolute bottom-0 right-0 rounded-full bg-accent p-1.5">
-            <Icon as={Camera} size={14} className="text-canvas" />
-          </View>
-        </Pressable>
-        <Pressable onPress={handleChangePhoto} disabled={uploadAvatar.isPending} accessibilityRole="button" className="mt-2" hitSlop={8}>
-          <Text className="text-sm font-medium text-accent">{uploadAvatar.isPending ? "Uploading…" : "Change photo"}</Text>
-        </Pressable>
-        {uploadError ? <Text className="mt-1 text-sm text-danger">{uploadError}</Text> : null}
-
-        <View className="mt-3 flex-row items-center gap-1.5" accessibilityLabel="Only visible to you">
-          <Icon as={Eye} size={14} className="text-ink-muted" />
-          <Text className="text-sm text-ink-muted">
-            <Text className="font-medium text-ink">{visitCount ?? 0}</Text> visits in the last 30 days
-          </Text>
-        </View>
-      </View>
+      {/* The photo and visit count live in the Settings hero above; a photo picked there lands here to be saved
+          with the rest of the profile. */}
+      {uploadError ? <Text className="mb-3 mt-3 text-sm text-danger">{uploadError}</Text> : null}
+      {avatarUrl !== (profile?.avatar_url ?? "") ? (
+        <Text className="mb-3 mt-3 text-sm text-accent">New photo selected — save your changes to apply it.</Text>
+      ) : (
+        <View className="mt-3" />
+      )}
 
       <FormField label="Display name" value={displayName} onChangeText={setDisplayName} autoCapitalize="words" textContentType="name" />
 

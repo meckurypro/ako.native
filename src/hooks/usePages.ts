@@ -35,6 +35,7 @@ export function usePageById(pageId: string, enabled = true) {
         .from("pages")
         .select("id, username, name, avatar_url, page_type, is_verified")
         .eq("id", pageId)
+        .eq("is_active", true)
         .single();
       if (error) throw error;
       return data as PageSummary;
@@ -53,6 +54,9 @@ export function usePageByUsername(username: string) {
         .eq("username", username)
         .single();
       if (error) throw error;
+      // delete_page is a soft delete (is_active = false). RLS keeps a deleted page away from non-admins,
+      // but its old admins can still read the row — to them it must read as gone too.
+      if (data.is_active === false) throw new Error("Page not found");
       return data;
     },
     enabled: !!username,
@@ -98,8 +102,9 @@ export function useMyPages() {
         .eq("status", "active");
       if (error) throw error;
       return (data as any[])
-        .filter((row) => row.page)
-        .map((row) => ({ ...row.page, my_role_label: row.role_label, my_is_admin: row.is_admin }));
+        .filter((row) => row.page && row.page.is_active !== false)
+        .map((row) => ({ ...row.page, my_role_label: row.role_label, my_is_admin: row.is_admin }))
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
     },
     enabled: !!user,
   });
@@ -114,12 +119,12 @@ export function useMyPendingPageInvites() {
     queryFn: async (): Promise<PendingPageInvite[]> => {
       const { data, error } = await supabase
         .from("page_members")
-        .select(`*, page:pages(id, username, name, avatar_url, page_type, is_verified)`)
+        .select(`*, page:pages(id, username, name, avatar_url, page_type, is_verified, is_active)`)
         .eq("user_id", user!.id)
         .eq("status", "invited")
         .order("invited_at", { ascending: false });
       if (error) throw error;
-      return data as any[];
+      return (data as any[]).filter((row) => row.page && row.page.is_active !== false);
     },
     enabled: !!user,
   });
@@ -174,7 +179,9 @@ export function useActiveIdentity() {
       // the DB trigger clears active_page_id on removal, but a stale
       // cache read can still land here between that happening and the
       // next refetch. Fall back to personal rather than error out.
-      if (!membership || !membership.page) return { mode: "personal" };
+      if (!membership || !membership.page || (membership.page as any).is_active === false) {
+        return { mode: "personal" };
+      }
 
       return {
         mode: "page",
@@ -388,6 +395,9 @@ export function useDeletePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["my-pages"] });
       queryClient.invalidateQueries({ queryKey: ["active-identity"] });
+      queryClient.invalidateQueries({ queryKey: ["profile-pages"] });
+      queryClient.invalidateQueries({ queryKey: ["page"] });
+      queryClient.invalidateQueries({ queryKey: ["my-page-invites"] });
     },
   });
 }
