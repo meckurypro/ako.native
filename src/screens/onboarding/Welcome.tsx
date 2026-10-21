@@ -15,7 +15,7 @@ export function Welcome() {
           <Wordmark />
         </View>
 
-        <Text className="mb-3 text-center font-display text-2xl text-ink">Welcome to Akọ</Text>
+        <Text className="mb-3 text-center font-display text-2xl text-ink">Welcome</Text>
         <Text className="mb-10 text-center text-ink-muted">Tell us what interests you. We'll help you find your people.</Text>
 
         <Button onPress={() => router.push("/onboarding/interests")}>Get started</Button>
