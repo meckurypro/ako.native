@@ -438,14 +438,18 @@ export function useDeleteDraftOrScheduledPost() {
   const queryClient = useQueryClient();
 
   return useMutation({
+    // RPC, not a bare delete: an opened draft has post_views rows whose foreign keys block a plain delete, which
+    // failed silently and left the old draft in Drafts after its edited copy was published.
+    // See supabase/ako_discard_unpublished_post.sql.
     mutationFn: async (postId: string) => {
-      const { error } = await supabase.from("posts").delete().eq("id", postId);
+      const { error } = await supabase.rpc("discard_unpublished_post", { p_post_id: postId });
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["my-draft-posts"] });
-      queryClient.invalidateQueries({ queryKey: ["my-scheduled-posts"] });
-    },
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["my-draft-posts"], refetchType: "all" }),
+        queryClient.invalidateQueries({ queryKey: ["my-scheduled-posts"], refetchType: "all" }),
+      ]),
   });
 }
 

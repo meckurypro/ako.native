@@ -153,8 +153,11 @@ export function ProfilePage() {
   const toast = useToast();
   const startConversation = useStartConversation();
   const listRef = useRef<FlashListRef<Row>>(null);
-  // Shares listRef with the app-wide scroll-to-top arrow (see ChromeProvider / ScrollToTopButton).
-  const chromeScroll = useChromeScroll(listRef);
+  // "Back to post" only when this page was reached from a feed post's byline.
+  const [fromFeedPostId] = useState<string | null>(() => fromPost ?? null);
+  // Shares listRef with the app-wide scroll-to-top arrow (see ChromeProvider / ScrollToTopButton). Arrived from a
+  // post, "Back to post" is the one floating action: the arrow would sit next to it, covering content.
+  const chromeScroll = useChromeScroll(listRef, 6, !fromFeedPostId);
 
   const [ownerMenuOpen, setOwnerMenuOpen] = useState(false);
   const ownerMenuButtonRef = useRef<View>(null);
@@ -170,8 +173,6 @@ export function ProfilePage() {
   const [reportContentOpen, setReportContentOpen] = useState(false);
   const [qrShareOpen, setQrShareOpen] = useState(false);
 
-  // "Back to post" only when this page was reached from a feed post's byline.
-  const [fromFeedPostId] = useState<string | null>(() => fromPost ?? null);
   useEffect(() => {
     if (fromPost) router.setParams({ fromPost: undefined });
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -245,6 +245,17 @@ export function Compose() {
     };
   }
 
+  // Awaited (it used to be fire-and-forget) so a failed cleanup is seen instead of silently leaving the stale draft.
+  async function removeOriginalDraft() {
+    if (!resumedPostIdRef.current) return;
+    try {
+      await deleteDraftOrScheduled.mutateAsync(resumedPostIdRef.current);
+    } catch (cleanupErr) {
+      console.error("Couldn't remove the original draft after saving", cleanupErr);
+      toast("Saved, but the old draft couldn't be removed. Delete it from Drafts.", { variant: "error" });
+    }
+  }
+
   async function submitPost(status: "published" | "draft" | "scheduled", scheduledFor?: string) {
     if (!canPost) return;
     setError(null);
@@ -253,7 +264,7 @@ export function Compose() {
       const createdPost = await createPost.mutateAsync(postInput(status, scheduledFor));
 
       // Resuming a draft/scheduled post: the new row replaces it.
-      if (resumedPostIdRef.current) deleteDraftOrScheduled.mutate(resumedPostIdRef.current);
+      await removeOriginalDraft();
 
       // Saved or published — the redirect below is the person finishing, not walking away from unsaved work.
       leaveGuard.allowLeaving();
@@ -296,7 +307,7 @@ export function Compose() {
     setError(null);
     try {
       await createPost.mutateAsync(postInput("draft"));
-      if (resumedPostIdRef.current) deleteDraftOrScheduled.mutate(resumedPostIdRef.current);
+      await removeOriginalDraft();
       toast("Saved to your drafts.", { variant: "success" });
       leaveGuard.proceed();
     } catch (err) {

@@ -175,7 +175,10 @@ export type ChromeScrollHandler = ((e: NativeSyntheticEvent<NativeScrollEvent>) 
 export function useChromeScroll(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   externalRef?: MutableRefObject<any> | RefObject<any>,
-  threshold = 6
+  threshold = 6,
+  // false = still hides/shows the bottom nav, but this list never offers the scroll-to-top arrow (e.g. a profile
+  // opened from one post, where "Back to post" is the one floating action).
+  offersScrollTop = true
 ): ChromeScrollHandler {
   const { hidden, scrollRegistry, publishScrollTop } = useChrome();
   const pane = useContext(PaneIndexContext);
@@ -199,13 +202,13 @@ export function useChromeScroll(
       hidden.value = 0;
       lastY.current = 0;
       const inst = instance.current;
-      scrollRegistry.current.add(inst);
+      if (offersScrollTop) scrollRegistry.current.add(inst);
       publishScrollTop();
       return () => {
         scrollRegistry.current.delete(inst);
         publishScrollTop();
       };
-    }, [hidden, scrollRegistry, publishScrollTop])
+    }, [hidden, scrollRegistry, publishScrollTop, offersScrollTop])
   );
 
   const handler = useCallback(
