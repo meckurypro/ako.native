@@ -6,6 +6,8 @@ import { useAuth } from "./useAuth";
 export interface OnboardingStatus {
   completed: boolean;
   hasInterests: boolean;
+  /** false = Google sign-up that hasn't chosen its username/name yet (runs before Welcome). */
+  profileSetupCompleted: boolean;
 }
 
 /**
@@ -23,7 +25,11 @@ export function useOnboardingStatus() {
     queryFn: async (): Promise<OnboardingStatus> => {
       const [{ data: profile, error: profileError }, { data: interestRow, error: interestError }] =
         await Promise.all([
-          supabase.from("profiles").select("onboarding_completed").eq("id", user!.id).single(),
+          supabase
+            .from("profiles")
+            .select("onboarding_completed, profile_setup_completed")
+            .eq("id", user!.id)
+            .single(),
           supabase.from("user_interests").select("user_id").eq("user_id", user!.id).limit(1).maybeSingle(),
         ]);
 
@@ -33,6 +39,7 @@ export function useOnboardingStatus() {
       return {
         completed: !!profile?.onboarding_completed,
         hasInterests: !!interestRow,
+        profileSetupCompleted: profile?.profile_setup_completed !== false,
       };
     },
     enabled: !!user,
@@ -161,6 +168,32 @@ export function useCompleteOnboarding() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["onboarding-status", user?.id] });
+    },
+  });
+}
+
+/**
+ * Saves the username + display name chosen on the "complete your profile"
+ * step (Google sign-ups) and marks it done. complete_profile_setup is
+ * SECURITY DEFINER and re-validates everything server-side; a taken
+ * username comes back as the error message "username_taken".
+ */
+export function useCompleteProfileSetup() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ username, displayName }: { username: string; displayName: string }) => {
+      const { error } = await supabase.rpc("complete_profile_setup", {
+        p_username: username,
+        p_display_name: displayName,
+      });
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["onboarding-status", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["my-profile", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
   });
 }

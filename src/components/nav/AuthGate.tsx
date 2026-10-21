@@ -8,7 +8,7 @@
 //                                      server": then the app opens (see below) so downloads and cached screens work
 //   pending account (gate on)        → enters in restricted consumer-only mode (silent; see useIsRestricted)
 //   declined / suspended             → AccountUnderReview
-//   onboarding incomplete            → resume at the right step
+//   onboarding incomplete            → resume at the right step (Google sign-ups: /onboarding/profile first)
 //   onboarding already complete      → (onboardingOnly) back to /feed
 import { Redirect, usePathname, type Href } from "expo-router";
 import { useRef, type ReactNode } from "react";
@@ -100,8 +100,20 @@ export function AuthGate({ children, skipOnboardingCheck = false, onboardingOnly
 
   if (onboardingOnly && onboarding?.completed) return <Redirect href={"/feed" as Href} />;
 
+  // Google sign-ups pick their username + name before any other onboarding step.
+  const onProfileStep = pathname === "/onboarding/profile";
+  if (onboardingOnly && onboarding && !onboarding.completed) {
+    if (!onboarding.profileSetupCompleted && !onProfileStep) return <Redirect href={"/onboarding/profile" as Href} />;
+    if (onboarding.profileSetupCompleted && onProfileStep) return <Redirect href={"/onboarding/welcome" as Href} />;
+  }
+
   if (!skipOnboardingCheck && onboarding && !onboarding.completed) {
-    return <Redirect href={(onboarding.hasInterests ? "/onboarding/people" : "/onboarding/welcome") as Href} />;
+    const resumeAt = !onboarding.profileSetupCompleted
+      ? "/onboarding/profile"
+      : onboarding.hasInterests
+        ? "/onboarding/people"
+        : "/onboarding/welcome";
+    return <Redirect href={resumeAt as Href} />;
   }
 
   shownFor.current = user.id;

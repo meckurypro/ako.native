@@ -66,10 +66,15 @@ export async function signInWithGoogle(returnTo?: string | null): Promise<Google
   // AuthGate resumes at whichever step is actually right.
   const { data: profileRow } = await supabase
     .from("profiles")
-    .select("onboarding_completed")
+    .select("onboarding_completed, profile_setup_completed")
     .eq("id", session.user.id)
     .single();
 
-  const destination = profileRow?.onboarding_completed ? (takeReturnTo() ?? "/feed") : "/onboarding/welcome";
+  // New Google account → pick a username + name first, then the usual onboarding.
+  const destination = profileRow?.onboarding_completed
+    ? (takeReturnTo() ?? "/feed")
+    : profileRow?.profile_setup_completed === false
+      ? "/onboarding/profile"
+      : "/onboarding/welcome";
   return { status: "success", destination };
 }
