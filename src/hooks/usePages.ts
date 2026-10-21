@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "./useAuth";
 import { useTheme } from "../theme/ThemeProvider";
-import { PAGE_AFFILIATION_SELECT, PAGE_WITH_MEMBERSHIP_SELECT, toPageAffiliations } from "../lib/pageRoles";
+import { PAGE_AFFILIATION_SELECT, PAGE_WITH_MEMBERSHIP_SELECT, sortRoleLabels, toPageAffiliations } from "../lib/pageRoles";
 import {
   ALL_PAGE_PERMISSIONS,
   resolvePagePermissions,
@@ -510,37 +510,18 @@ export function useInvitePageMember() {
   });
 }
 
-/** Live search-as-you-type for existing team role titles — shown
- * under the free-text role field in PageTeam so a title like
- * "Graphics Designer" only ever gets typed out in full once, not
- * once per invite. Backed by page_role_labels, which a DB trigger on
- * page_members keeps in sync on its own (see the migration) — this
- * hook only ever reads from it. Typing something with no match just
- * shows no suggestions and the invite proceeds as free text exactly
- * like before this existed; the new title becomes a suggestion for
- * next time once that invite's insert fires the trigger. */
-export function usePageRoleLabelSuggestions(query: string) {
+/** The role dropdown's options: the admin-managed catalogue (page_role_labels, status = approved), A→Z.
+ * Roles people type that aren't here go to the Akọ team as a request instead — see
+ * supabase/ako_page_roles_catalogue.sql. */
+export function usePageRoles() {
   return useQuery({
-    queryKey: ["page-role-label-suggestions", query],
+    queryKey: ["page-roles"],
     queryFn: async (): Promise<string[]> => {
-      const q = query.trim();
-      if (!q) return [];
-
-      const { data, error } = await supabase
-        .from("page_role_labels")
-        .select("label")
-        .ilike("label", `%${q}%`)
-        .order("usage_count", { ascending: false })
-        .limit(8);
+      const { data, error } = await supabase.from("page_role_labels").select("label").eq("status", "approved");
       if (error) throw error;
-
-      // Drop an exact (case-insensitive) match to what's already
-      // typed — no point suggesting the text that's already there.
-      return (data ?? [])
-        .map((r) => r.label as string)
-        .filter((label) => label.toLowerCase() !== q.toLowerCase());
+      return sortRoleLabels((data ?? []).map((r) => r.label as string));
     },
-    enabled: query.trim().length > 0,
+    staleTime: 5 * 60 * 1000,
   });
 }
 

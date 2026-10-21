@@ -33,7 +33,14 @@ export type NotificationAction =
 
 export function notificationAction(n: RoutableNotification): NotificationAction {
   if (n.type === "page_role_invite" && n.target_id) return { kind: "page-invite", pageId: n.target_id };
-  if ((n.type === "page_role_accepted" || n.type === "page_role_declined") && n.target_id) return { kind: "page-response", pageId: n.target_id };
+  // accepted/declined: an invitee answered. approved/rejected: an admin decided on a role you were waiting on.
+  // All four land on the page's team roster. (page_role_requested is for admins, who review on the web.)
+  if (
+    (n.type === "page_role_accepted" || n.type === "page_role_declined" || n.type === "page_role_approved" || n.type === "page_role_rejected") &&
+    n.target_id
+  ) {
+    return { kind: "page-response", pageId: n.target_id };
+  }
   if (n.type === "collaboration_invite" && n.target_id && (n.target_type === "post" || n.target_type === "project")) {
     return { kind: "collab-invite", target: n.target_type, targetId: n.target_id };
   }

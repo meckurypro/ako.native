@@ -4,13 +4,14 @@
 // admin kill switches, mirroring the web flow.
 import { router, useLocalSearchParams, type Href } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { Pressable, ScrollView, TextInput, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { KeyboardAvoider } from "@/components/ui/KeyboardAvoider";
 import { TopicPicker, MAX_TOPICS } from "@/components/post/TopicPicker";
 import { Button } from "@/components/ui/Button";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
+import { RoleSelect } from "@/components/ui/RoleSelect";
 import { SelectField } from "@/components/ui/SelectField";
 import { SurfaceInput } from "@/components/ui/SurfaceInput";
 import { Text } from "@/components/ui/Text";
@@ -23,9 +24,10 @@ import {
   useMyPages,
   usePageById,
   usePageCreationEligibility,
-  usePageRoleLabelSuggestions,
+  usePageRoles,
 } from "@/hooks/usePages";
 import { APP_URL } from "@/lib/config";
+import { displayedRoleLabel } from "@/lib/pageRoles";
 import { supabase } from "@/lib/supabase";
 import type { PageType } from "@/types/database";
 
@@ -37,7 +39,7 @@ const TYPES: { value: PageType; label: string }[] = [
   { value: "product", label: "Product" },
 ];
 const NAME_LABEL: Record<PageType, string> = { organization: "Organisation name", brand: "Brand name", product: "Product name" };
-const NAME_PLACEHOLDER: Record<PageType, string> = { organization: "Acme Inc", brand: "Acme", product: "Acme Widget" };
+const NAME_PLACEHOLDER: Record<PageType, string> = { organization: "eg. IQ Academy", brand: "eg. IQ Music", product: "eg. Filma" };
 const TAGLINE_PLACEHOLDER: Record<PageType, string> = {
   organization: "What this organisation does",
   brand: "What this brand does",
@@ -79,7 +81,6 @@ export function CreatePage() {
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [roleLabel, setRoleLabel] = useState("");
-  const [showRoleSuggestions, setShowRoleSuggestions] = useState(false);
   const [tagline, setTagline] = useState("");
   const [bio, setBio] = useState("");
   const [topicIds, setTopicIds] = useState<Set<string>>(new Set());
@@ -87,9 +88,10 @@ export function CreatePage() {
   const [error, setError] = useState<string | null>(null);
   const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>("idle");
   const usernameCheckId = useRef(0);
-  const roleInputRef = useRef<TextInput>(null);
 
-  const { data: roleSuggestions } = usePageRoleLabelSuggestions(roleLabel);
+  // The admin-managed role catalogue behind the role picker. A role that isn't in it goes to the Akọ team for approval
+  // and shows as the generic title until then.
+  const { data: roles = [] } = usePageRoles();
   const myAdminPages = (myPages ?? []).filter((p) => p.my_is_admin);
 
   useEffect(() => {
@@ -222,7 +224,7 @@ export function CreatePage() {
             value={username}
             onChangeText={(v) => setUsername(v.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
             maxLength={30}
-            placeholder="meckuryai"
+            placeholder="eg. meckuryai"
             autoCapitalize="none"
             autoCorrect={false}
           >
@@ -232,46 +234,9 @@ export function CreatePage() {
             {usernameStatus === "available" ? <Text className="mt-1.5 text-xs text-accent">Username is available.</Text> : null}
           </SurfaceInput>
 
-          <View>
-            <SurfaceInput
-              ref={roleInputRef}
-              label="Your role at it"
-              value={roleLabel}
-              onChangeText={(v) => {
-                setRoleLabel(v);
-                setShowRoleSuggestions(true);
-              }}
-              onFocus={() => setShowRoleSuggestions(true)}
-              onBlur={() => setTimeout(() => setShowRoleSuggestions(false), 150)}
-              maxLength={60}
-              placeholder="CEO, Founder, Community Lead…"
-            >
-              <Text className="mt-1 text-xs text-ink-muted">{`Shown as "${roleLabel || "Your role"} at ${name || "this page"}" on your profile.`}</Text>
-            </SurfaceInput>
-
-            {/* Existing role titles matching what's typed — same list PageTeam offers when inviting. */}
-            {showRoleSuggestions && roleLabel.trim().length > 0 && !!roleSuggestions?.length ? (
-              <View className="mt-2 max-h-56 overflow-hidden rounded-xl border border-border bg-canvas">
-                <ScrollView keyboardShouldPersistTaps="always" nestedScrollEnabled>
-                  {roleSuggestions.map((label) => (
-                    <Pressable
-                      key={label}
-                      onPress={() => {
-                        setRoleLabel(label);
-                        setShowRoleSuggestions(false);
-                      }}
-                      accessibilityRole="button"
-                      className="px-3 py-2.5 active:bg-surface"
-                    >
-                      <Text numberOfLines={1} className="text-sm text-ink">
-                        {label}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </ScrollView>
-              </View>
-            ) : null}
-          </View>
+          <RoleSelect label="Your role at it" value={roleLabel} onChange={setRoleLabel} placeholder="Select your role…">
+            <Text className="mt-1 text-xs text-ink-muted">{`Shown as "${displayedRoleLabel(roles, roleLabel)} at ${name || "this page"}" on your profile.`}</Text>
+          </RoleSelect>
 
           <SurfaceInput label="Tagline" value={tagline} onChangeText={setTagline} maxLength={100} placeholder={TAGLINE_PLACEHOLDER[pageType]} />
           <SurfaceInput label="Bio" value={bio} onChangeText={setBio} maxLength={280} rows={3} />

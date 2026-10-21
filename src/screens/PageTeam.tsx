@@ -10,13 +10,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAvoider } from "@/components/ui/KeyboardAvoider";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
+import { RoleSelect } from "@/components/ui/RoleSelect";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { PagePermissionsEditor } from "@/components/page/PagePermissionsEditor";
-import { useInvitePageMember, usePageByUsername, usePageMembers, usePageRoleLabelSuggestions, useRemovePageMember, useSetPageMemberPermissions, useUpdatePageMemberRole } from "@/hooks/usePages";
+import { useInvitePageMember, usePageByUsername, usePageMembers, useRemovePageMember, useSetPageMemberPermissions, useUpdatePageMemberRole } from "@/hooks/usePages";
 import { LEGACY_MEMBER_PERMISSIONS, resolvePagePermissions, samePermissions, type PagePermissions } from "@/lib/pagePermissions";
 import { useSearchPeople } from "@/hooks/useSearch";
 import { useTheme } from "@/theme/ThemeProvider";
@@ -103,7 +104,6 @@ export function PageTeam() {
   const [query, setQuery] = useState("");
   const [selectedUser, setSelectedUser] = useState<ProfileWithRoles | null>(null);
   const [inviteRole, setInviteRole] = useState("");
-  const [showRoleSuggestions, setShowRoleSuggestions] = useState(false);
   const [inviteAsAdmin, setInviteAsAdmin] = useState(false);
   // What a non-admin invitee may do as the page — the admin decides here.
   const [invitePermissions, setInvitePermissions] = useState<PagePermissions>({ ...LEGACY_MEMBER_PERMISSIONS });
@@ -111,7 +111,6 @@ export function PageTeam() {
   const [submitting, setSubmitting] = useState(false);
 
   const { data: searchResults, isLoading: searching } = useSearchPeople(query);
-  const { data: roleSuggestions } = usePageRoleLabelSuggestions(inviteRole);
 
   const myMembership = members?.find((m) => m.user_id === user?.id && m.status === "active");
   const isAdmin = !!myMembership?.is_admin;
@@ -128,7 +127,6 @@ export function PageTeam() {
       await invite.mutateAsync({ page_id: page.id, user_id: selectedUser.id, role_label: inviteRole.trim(), is_admin: inviteAsAdmin, permissions: invitePermissions });
       setSelectedUser(null);
       setInviteRole("");
-      setShowRoleSuggestions(false);
       setInviteAsAdmin(false);
       setInvitePermissions({ ...LEGACY_MEMBER_PERMISSIONS });
       toast("Invite sent.", { variant: "success" });
@@ -236,45 +234,13 @@ export function PageTeam() {
               </View>
             )}
 
-            <View>
-              <TextInput
-                value={inviteRole}
-                onChangeText={(v) => {
-                  setInviteRole(v);
-                  setShowRoleSuggestions(true);
-                }}
-                onFocus={() => setShowRoleSuggestions(true)}
-                onBlur={() => setTimeout(() => setShowRoleSuggestions(false), 150)}
-                placeholder="Role — e.g. Graphics Designer"
-                placeholderTextColor={colors.inkMuted}
-                selectionColor={colors.accent}
-                maxLength={60}
-                className={inputClass}
-                style={{ fontFamily: "Inter_400Regular" }}
-              />
-              {/* Existing role titles matching what's typed; anything else is still a valid role. */}
-              {showRoleSuggestions && inviteRole.trim().length > 0 && !!roleSuggestions?.length ? (
-                <View className="mt-1 max-h-56 overflow-hidden rounded-xl border border-border bg-canvas">
-                  <ScrollView keyboardShouldPersistTaps="always" nestedScrollEnabled>
-                    {roleSuggestions.map((label) => (
-                      <Pressable
-                        key={label}
-                        onPress={() => {
-                          setInviteRole(label);
-                          setShowRoleSuggestions(false);
-                        }}
-                        accessibilityRole="button"
-                        className="px-3 py-2.5 active:bg-surface"
-                      >
-                        <Text numberOfLines={1} className="text-sm text-ink">
-                          {label}
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </ScrollView>
-                </View>
-              ) : null}
-            </View>
+            <RoleSelect
+              value={inviteRole}
+              onChange={setInviteRole}
+              placeholder="Select a role…"
+              subject="them"
+              fieldClassName="rounded-xl bg-canvas px-4 py-2.5"
+            />
 
             <Pressable
               onPress={() => setInviteAsAdmin((v) => !v)}

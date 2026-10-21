@@ -28,6 +28,28 @@ export function formatAffiliation(a: Pick<PageAffiliation, "role_label" | "page_
   return `${a.role_label} at ${a.page_name}`;
 }
 
+// Title a role shows as while it waits for admin approval. Mirrors page_role_generic_label() in
+// supabase/ako_page_roles_catalogue.sql — the DB is what actually stores it; this is only for UI hints.
+export const GENERIC_ROLE_LABEL = "Worker";
+
+/** Roles A→Z for the dropdown (ignores case and accents). */
+export function sortRoleLabels(labels: string[]): string[] {
+  return [...labels].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+}
+
+/** The catalogue's own spelling of `text`, if it is an approved role (case/spacing-insensitive). */
+export function findRole(roles: string[], text: string): string | undefined {
+  const key = text.trim().replace(/\s+/g, " ").toLowerCase();
+  return key ? roles.find((r) => r.toLowerCase() === key) : undefined;
+}
+
+/** What a typed/picked role will actually be shown as on the profile right now. */
+export function displayedRoleLabel(roles: string[], text: string): string {
+  const typed = text.trim();
+  if (!typed) return "Your role";
+  return findRole(roles, typed) ?? GENERIC_ROLE_LABEL;
+}
+
 export function pageModeLabel(pageType: "organization" | "brand" | "product"): string {
   if (pageType === "organization") return "Organisation";
   if (pageType === "brand") return "Brand";

@@ -80,6 +80,12 @@ const TYPE_CONFIG: Record<string, { icon: LucideIcon; verb: string }> = {
   page_role_invite: { icon: Users, verb: "invited you to join their team" },
   page_role_accepted: { icon: UserCheck, verb: "accepted your team invite" },
   page_role_declined: { icon: UserX, verb: "declined your team invite" },
+  // Page-role catalogue (supabase/ako_page_roles_catalogue.sql): a role someone typed that isn't in the list reaches
+  // admins as a request; the admin's decision comes back to the people waiting on it. The decision rows have no
+  // actor (nobody "did" it to you), so they render with the icon like promotion_approved.
+  page_role_requested: { icon: Briefcase, verb: "asked for a new page role" },
+  page_role_approved: { icon: UserCheck, verb: "Your page role was approved" },
+  page_role_rejected: { icon: UserX, verb: "Your page role wasn't approved" },
   post_tagged: { icon: Tag, verb: "tagged you in a post" },
   project_tagged: { icon: Tag, verb: "tagged you in a project" },
   // Owner added you to a private project's access list (project_members). target_type "project",
