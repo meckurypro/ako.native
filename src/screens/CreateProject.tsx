@@ -9,7 +9,7 @@ import { BOOK_COVER_ERROR, BOOK_COVER_HINT, BOOK_COVER_RATIO, isBookCoverRatio }
 import { extractBookPdf } from "@/hooks/useBookBuilder";
 import { Image as ImageIcon } from "lucide-react-native";
 import { router, type Href } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -34,6 +34,7 @@ import { PrivacyToggle } from "@/components/ui/PrivacyToggle";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { SelectField } from "@/components/ui/SelectField";
 import { Icon, Image } from "@/components/ui/styled";
+import { SaveProgressDialog } from "@/components/ui/SaveProgressDialog";
 import { Text } from "@/components/ui/Text";
 import { TextLink } from "@/components/ui/TextLink";
 import { useToast } from "@/components/ui/Toast";
@@ -62,7 +63,17 @@ import {
   type ProjectType,
 } from "@/hooks/useProjects";
 import { useUploadProjectThumbnail } from "@/hooks/useUploadProjectThumbnail";
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import { pickSingleImage } from "@/lib/pickImage";
+import {
+  clearProjectDraft,
+  projectDraftHasProgress,
+  projectDraftKey,
+  projectDraftSignature,
+  readProjectDraft,
+  writeProjectDraft,
+  type ProjectDraftData,
+} from "@/lib/projectDraft";
 import { CONTENT_LIMIT, contentCounterClass } from "@/lib/textLimits";
 
 export function CreateProject() {
@@ -139,6 +150,141 @@ export function CreateProject() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectType, bookFields.is_own_work]);
 
+  // ---- Unsaved progress ---------------------------------------------------------------------------------
+  // Leaving this form with something filled in asks "save as a draft / discard?" (see useLeaveGuard). The draft is
+  // kept on this phone — see lib/projectDraft.ts for why it isn't a `draft` row in `projects` — and is put back
+  // the next time New project opens. One draft per account per acting identity (personal / each Page).
+  const draftKey = me?.id && identity !== undefined ? projectDraftKey(me.id, postingAsPage?.id) : null;
+  const restoredRef = useRef(false);
+  // The form as last restored from a draft; leaving with the form still identical to it isn't "unsaved".
+  const baselineRef = useRef<string | null>(null);
+  const [restoredDraftNotice, setRestoredDraftNotice] = useState(false);
+  const [leaveSaving, setLeaveSaving] = useState(false);
+
+  function collectDraft(): ProjectDraftData {
+    return {
+      title,
+      description,
+      projectType,
+      topicIds: Array.from(topicIds),
+      priceUsd,
+      showPromo,
+      promoPriceUsd,
+      isPrivate,
+      thumbnailUrl,
+      thumbnailRatio,
+      supportingImageUrls,
+      fileFields,
+      urlFields,
+      mediaFields,
+      eventFields,
+      meetingFields,
+      gigFields,
+      pitchFields,
+      roomFields,
+      bookFields,
+    };
+  }
+
+  function applyDraft(d: ProjectDraftData) {
+    setTitle(d.title);
+    setDescription(d.description);
+    setProjectType(d.projectType);
+    setTopicIds(new Set(d.topicIds));
+    setPriceUsd(d.priceUsd);
+    setShowPromo(d.showPromo);
+    setPromoPriceUsd(d.promoPriceUsd);
+    setIsPrivate(d.isPrivate);
+    setThumbnailUrl(d.thumbnailUrl);
+    setThumbnailRatio(d.thumbnailRatio);
+    setSupportingImageUrls(d.supportingImageUrls);
+    setFileFields(d.fileFields);
+    setUrlFields(d.urlFields);
+    setMediaFields(d.mediaFields);
+    setEventFields(d.eventFields);
+    setMeetingFields(d.meetingFields);
+    setGigFields(d.gigFields);
+    setPitchFields(d.pitchFields);
+    setRoomFields(d.roomFields);
+    setBookFields(d.bookFields);
+  }
+
+  function resetForm() {
+    setTitle("");
+    setDescription("");
+    setProjectType(allowedTypes.length === 0 || allowedTypes.includes("file") ? "file" : allowedTypes[0]);
+    setTopicIds(new Set());
+    setPriceUsd("0");
+    setShowPromo(false);
+    setPromoPriceUsd("");
+    setIsPrivate(false);
+    setThumbnailUrl(null);
+    setThumbnailRatio(null);
+    setSupportingImageUrls([]);
+    setFileFields(EMPTY_FILE_FIELDS);
+    setUrlFields(EMPTY_URL_FIELDS);
+    setMediaFields(EMPTY_MEDIA_FIELDS);
+    setEventFields(EMPTY_EVENT_FIELDS);
+    setMeetingFields(EMPTY_MEETING_FIELDS);
+    setGigFields(EMPTY_GIG_FIELDS);
+    setPitchFields(EMPTY_PITCH_FIELDS);
+    setRoomFields(EMPTY_ROOM_FIELDS);
+    setBookFields(EMPTY_BOOK_FIELDS);
+  }
+
+  const currentDraft = collectDraft();
+  const progressNow = projectDraftHasProgress(currentDraft);
+  const hasUnsavedProgress = progressNow && projectDraftSignature(currentDraft) !== baselineRef.current;
+  const leaveGuard = useLeaveGuard(hasUnsavedProgress);
+
+  // Put a saved draft back, once, as soon as we know whose form this is (account + acting identity). The read is
+  // async: if the person has already started typing by the time it returns, their input wins and nothing is clobbered.
+  const progressNowRef = useRef(false);
+  progressNowRef.current = progressNow;
+  useEffect(() => {
+    if (!draftKey || restoredRef.current) return;
+    restoredRef.current = true;
+    let cancelled = false;
+    void readProjectDraft(draftKey).then((stored) => {
+      if (cancelled || !stored || progressNowRef.current) return;
+      applyDraft(stored.data);
+      baselineRef.current = projectDraftSignature(stored.data);
+      setRestoredDraftNotice(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKey]);
+
+  async function handleLeaveSave() {
+    if (leaveSaving) return;
+    setLeaveSaving(true);
+    try {
+      if (!draftKey || !(await writeProjectDraft(draftKey, collectDraft()))) {
+        toast("Couldn't save the draft on this phone. Check that it has free storage.", { variant: "error" });
+        leaveGuard.stay();
+        return;
+      }
+      toast("Draft saved. It'll be here next time you create a project.", { variant: "success" });
+      leaveGuard.proceed();
+    } finally {
+      setLeaveSaving(false);
+    }
+  }
+
+  async function handleLeaveDiscard() {
+    if (draftKey) await clearProjectDraft(draftKey);
+    leaveGuard.proceed();
+  }
+
+  function handleStartOver() {
+    if (draftKey) void clearProjectDraft(draftKey);
+    baselineRef.current = null;
+    setRestoredDraftNotice(false);
+    resetForm();
+  }
+
   function toggleTopic(interestId: string) {
     setTopicIds((prev) => {
       const next = new Set(prev);
@@ -193,6 +339,10 @@ export function CreateProject() {
   }
 
   function goToCreated() {
+    // The project exists now: the saved draft has done its job, and the redirect below is the person finishing,
+    // not leaving unsaved work behind.
+    if (draftKey) void clearProjectDraft(draftKey);
+    leaveGuard.allowLeaving();
     toast(`${title.trim()} created successfully.`, { variant: "success" });
     if (postingAsPage) router.replace(`/page/${postingAsPage.username}?tab=projects` as Href);
     else if (me?.username) router.replace(`/profile/${me.username}?tab=projects` as Href);
@@ -355,6 +505,15 @@ export function CreateProject() {
       <ScreenHeader title="New project" />
       <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="none" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }}>
         <View className="w-full max-w-md self-center">
+          {restoredDraftNotice ? (
+            <View className="mb-5 flex-row items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-3">
+              <Text className="flex-1 text-sm text-ink-muted">Picked up where you left off.</Text>
+              <Pressable onPress={handleStartOver} accessibilityRole="button" hitSlop={8}>
+                <Text className="text-sm font-medium text-accent">Start over</Text>
+              </Pressable>
+            </View>
+          ) : null}
+
           {projectType === "file" ? (
             <View className="mb-4 overflow-hidden rounded-xl border border-border bg-surface">
               <FileFolderHero />
@@ -509,6 +668,16 @@ export function CreateProject() {
           </Button>
         </View>
       </ScrollView>
+
+      {leaveGuard.isBlocked ? (
+        <SaveProgressDialog
+          description="Save this project as a draft on this phone to finish later, or discard it."
+          saving={leaveSaving}
+          onSave={() => void handleLeaveSave()}
+          onDiscard={() => void handleLeaveDiscard()}
+          onKeepEditing={leaveGuard.stay}
+        />
+      ) : null}
     </KeyboardAvoider>
   );
 }
