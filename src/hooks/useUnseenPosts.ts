@@ -33,6 +33,7 @@ export function useUnseenPosts(authorIds: string[]) {
         .select("id, author_id, created_at")
         .in("author_id", authorIds)
         .eq("is_deleted", false)
+        .eq("status", "published")
         .gte("created_at", since)
         .order("created_at", { ascending: true });
 

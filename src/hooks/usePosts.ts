@@ -134,7 +134,9 @@ function useRankedFeed(page: number, enabled: boolean) {
       const { data, error } = await supabase
         .from("posts")
         .select(FEED_SELECT)
-        .in("id", orderedIds);
+        .in("id", orderedIds)
+        // Only live posts: authors/admins can read their own drafts & scheduled posts through RLS.
+        .eq("status", "published");
       if (error) throw error;
 
       const byId = new Map((data as any[]).map((raw) => [raw.id, normalizePost(raw)]));
@@ -179,6 +181,7 @@ function useTopicFeed(interestId: string, page: number, enabled: boolean) {
         .select(FEED_SELECT)
         .eq("is_deleted", false)
         .eq("is_archived", false)
+        .eq("status", "published")
         .in("id", ids)
         .order("created_at", { ascending: false })
         .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
@@ -217,7 +220,9 @@ export function useFollowingFeed(page = 0) {
       const { data, error } = await supabase
         .from("posts")
         .select(FEED_SELECT)
-        .in("id", orderedIds);
+        .in("id", orderedIds)
+        // Only live posts: authors/admins can read their own drafts & scheduled posts through RLS.
+        .eq("status", "published");
       if (error) throw error;
 
       const byId = new Map((data as any[]).map((raw) => [raw.id, normalizePost(raw)]));
@@ -256,7 +261,9 @@ export function useTopDiscussionsFeed(page = 0) {
       const { data, error } = await supabase
         .from("posts")
         .select(FEED_SELECT)
-        .in("id", orderedIds);
+        .in("id", orderedIds)
+        // Only live posts: authors/admins can read their own drafts & scheduled posts through RLS.
+        .eq("status", "published");
       if (error) throw error;
 
       const byId = new Map((data as any[]).map((raw) => [raw.id, normalizePost(raw)]));
@@ -281,6 +288,7 @@ export function usePagePosts(pageId: string, page = 0) {
         .eq("posted_as_page_id", pageId)
         .eq("is_deleted", false)
         .eq("is_archived", false)
+        .eq("status", "published")
         .order("created_at", { ascending: false })
         .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
       if (error) throw error;
@@ -789,7 +797,9 @@ export function useUserPostsWithArchived(
         .from("posts")
         .select(FEED_SELECT)
         .eq("author_id", userId)
-        .eq("is_deleted", false);
+        .eq("is_deleted", false)
+        // Drafts and scheduled posts live on the Drafts / Scheduled screens, never in the profile grid.
+        .eq("status", "published");
       if (!includePagePosts) {
         authoredQuery = authoredQuery.is("posted_as_page_id", null);
       }
@@ -826,6 +836,7 @@ export function useUserPostsWithArchived(
           (post: any) =>
             post &&
             !post.is_deleted &&
+            post.status === "published" &&
             (includePagePosts || !post.posted_as_page_id) &&
             (includeArchived || !post.is_archived)
         )

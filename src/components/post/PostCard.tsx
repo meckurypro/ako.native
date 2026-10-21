@@ -65,6 +65,7 @@ import { recordProfileVisitFromPost } from "@/hooks/useProfileVisits";
 import { useMyReaction, useReactionOverlay, useToggleReaction } from "@/hooks/useReactions";
 import { APP_URL } from "@/lib/config";
 import { formatCompactCount, formatPostDate, formatPostTime } from "@/lib/formatStats";
+import { isPublished } from "@/lib/postStatus";
 import { timeAgo } from "@/lib/timeAgo";
 import { useTheme } from "@/theme/ThemeProvider";
 import { isPlainReshare, isQuote, type PostWithAuthor, type Stance } from "@/types/database";
@@ -223,6 +224,7 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
   }
 
   async function handleShare() {
+    if (!isPublished(post)) return; // never hand out a link to a post nobody else can open
     const url = `${APP_URL}/post/${post.id}`;
     try {
       const result = await Share.share({ message: url, url });
@@ -312,6 +314,8 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
   const order: SecondaryActionKey[] = (
     engagementOrder ?? ["support", "reshare", "share", "gift", "save", "disagree", "pushback", "dislike"]
   ).filter((k) => {
+    // A draft/scheduled post has no public page yet: nothing to share, reshare or gift.
+    if (!isPublished(post) && (k === "share" || k === "reshare" || k === "gift")) return false;
     if (isOwner && HIDDEN_FOR_OWNER.includes(k)) return false;
     if (k === "reshare" && (isOwner || hasReshared)) return false;
     if (k === "gift" && viewingAsPage) return false; // a Page can't gift

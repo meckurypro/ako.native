@@ -20,6 +20,7 @@ import { PostCard } from "@/components/post/PostCard";
 import { StanceComposer } from "@/components/post/StanceComposer";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
+import { PostStatusBanner } from "@/components/post/PostStatusBanner";
 import { RestrictedPostNotice } from "@/components/ui/RestrictedPostNotice";
 import { UnavailableNotice } from "@/components/ui/UnavailableNotice";
 import { useIsRestricted } from "@/hooks/useAccountAccess";
@@ -28,6 +29,7 @@ import { useMarkPostSeen } from "@/hooks/useMarkPostSeen";
 import { usePost } from "@/hooks/usePostDetail";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useSmartBack } from "@/hooks/useSmartBack";
+import { isPublished } from "@/lib/postStatus";
 import type { Stance } from "@/types/database";
 
 export function PostDetail() {
@@ -62,7 +64,8 @@ export function PostDetail() {
   const removedByViewer = !!user && post?.deleted_by === user.id;
   const removerName = post?.remover?.display_name || post?.remover?.username;
 
-  const showThread = !!post && !post.is_deleted && !(post.is_archived && !isOwnPost);
+  // No replies on a draft or scheduled post — it isn't live, so there is no conversation to join yet.
+  const showThread = !!post && !post.is_deleted && !(post.is_archived && !isOwnPost) && isPublished(post);
 
   return (
     <View className="flex-1 bg-canvas">
@@ -99,6 +102,8 @@ export function PostDetail() {
                 <Text className="text-xs text-ink-muted">Only you can see this — you archived it.</Text>
               </View>
             ) : null}
+
+            <PostStatusBanner post={post} isOwnPost={isOwnPost} />
 
             <PostCard
               post={post}

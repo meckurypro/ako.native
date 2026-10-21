@@ -41,6 +41,7 @@ export function useHashtagPosts(tag: string) {
         .in("id", postIds)
         .eq("is_deleted", false)
         .eq("is_archived", false)
+        .eq("status", "published")
         .order("created_at", { ascending: false });
 
       if (error) throw error;

@@ -61,6 +61,7 @@ export function useUserPosts(userId: string) {
         .is("posted_as_page_id", null)
         .eq("is_deleted", false)
         .eq("is_archived", false)
+        .eq("status", "published")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data.map((post: any) => {

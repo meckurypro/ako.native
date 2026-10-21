@@ -49,7 +49,11 @@ async function fetchByRankedIds(
   const orderedIds: string[] = (ranked ?? []).map((r: { post_id: string }) => r.post_id);
   if (orderedIds.length === 0) return [];
 
-  const { data, error } = await supabase.from("posts").select(FEED_SELECT).in("id", orderedIds);
+  const { data, error } = await supabase
+    .from("posts")
+    .select(FEED_SELECT)
+    .in("id", orderedIds)
+    .eq("status", "published");
   if (error) throw error;
 
   const byId = new Map((data as any[]).map((raw) => [raw.id, normalizePost(raw)]));
