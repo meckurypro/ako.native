@@ -5,10 +5,12 @@
 // capped server-side).
 import { Search as SearchIcon } from "lucide-react-native";
 import type { ReactNode } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { Pressable, View } from "react-native";
 
 import { Icon } from "@/components/ui/styled";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { SlidingTabBar } from "@/components/ui/SlidingTabBar";
+import { SwipeToSwitch } from "@/components/ui/SwipeToSwitch";
 import { Text } from "@/components/ui/Text";
 import { useAuth } from "@/hooks/useAuth";
 import { useSearchPages, useSearchPeople, useSearchPosts, useSearchProjects } from "@/hooks/useSearch";
@@ -113,6 +115,7 @@ export function SearchResults({
   const { user } = useAuth();
   const [tab, setTab] = useSearchTab(scope);
   const visibleTabs = scope === "discover" ? DISCOVER_TABS : TABS;
+  const activeIndex = Math.max((visibleTabs as readonly SearchTab[]).indexOf(tab), 0);
   const showPeople = scope === "all";
   const showPosts = scope === "all";
 
@@ -187,27 +190,21 @@ export function SearchResults({
 
   return (
     <View>
-      <ScrollView showsVerticalScrollIndicator={false}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        accessibilityRole="tablist"
-        className="mb-4 border-b border-border"
-        contentContainerClassName="gap-5"
-      >
-        {visibleTabs.map((t) => (
-          <Pressable
-            key={t}
-            onPress={() => setTab(t)}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: tab === t }}
-            className={`-mb-px shrink-0 border-b-2 pb-3 pt-1 ${tab === t ? "border-accent" : "border-transparent"}`}
-          >
-            <Text className={`text-sm font-medium ${tab === t ? "text-accent" : "text-ink-muted"}`}>{TAB_LABELS[t]}</Text>
-          </Pressable>
-        ))}
-      </ScrollView>
+      <SlidingTabBar
+        className="mb-4"
+        tabs={visibleTabs.map((t) => ({ id: t, label: TAB_LABELS[t] }))}
+        activeIndex={activeIndex}
+        onSelect={(i) => setTab(visibleTabs[i])}
+      />
 
-      <View>
+      {/* Swipe left/right between result tabs. The results already sit in the page's own scroll, so this is the
+          single-list kind of swipe (SwipeToSwitch), not a side-by-side carousel. */}
+      <SwipeToSwitch
+        index={activeIndex}
+        count={visibleTabs.length}
+        onIndexChange={(i) => setTab(visibleTabs[i])}
+        style={{ minHeight: 360 }}
+      >
         {tab === "people" ? renderPeople() : null}
         {tab === "pages" ? renderPages() : null}
         {tab === "posts" ? renderPosts() : null}
@@ -241,7 +238,7 @@ export function SearchResults({
             </>
           )
         ) : null}
-      </View>
+      </SwipeToSwitch>
     </View>
   );
 }

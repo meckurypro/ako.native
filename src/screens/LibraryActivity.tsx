@@ -24,6 +24,7 @@ import {
 } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
+import { useSharedValue } from "react-native-reanimated";
 
 import { EmptyNotice } from "@/components/activity/EmptyNotice";
 import { ThumbRow } from "@/components/activity/ThumbRow";
@@ -32,6 +33,8 @@ import { useChromeScroll } from "@/components/nav/ChromeProvider";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { DropdownMenu, type DropdownMenuItem } from "@/components/ui/DropdownMenu";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
+import { SlidingTabBar } from "@/components/ui/SlidingTabBar";
+import { SwipeableTabs } from "@/components/ui/SwipeableTabs";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useToast } from "@/components/ui/Toast";
@@ -191,36 +194,30 @@ function LibraryRow({ item, saved, updateAvailable, highlighted, onLayoutY }: Li
   );
 }
 
-export function LibraryActivity() {
+interface LibraryPaneProps {
+  tab: LibraryTab;
+  items: LibraryItem[];
+  byId: Map<string, OfflineEntry>;
+  stale: Set<string>;
+  savedCount: number;
+  totalBytes: number;
+  isLoading: boolean;
+  online: boolean;
+  highlightedId: string | null;
+}
+
+// One pane per tab, each with its own scroll list (see SwipeableTabs) so every tab keeps its own scroll position.
+function LibraryPane({ tab, items, byId, stale, savedCount, totalBytes, isLoading, online, highlightedId }: LibraryPaneProps) {
   const bottomInset = useBottomNavInset();
   const onScroll = useChromeScroll();
-  const online = useIsOnline();
-  const { items, byId, stale, savedCount, totalBytes, isLoading } = useLibraryWithDownloads();
-  const [tab, setTab] = useTabState<LibraryTab>(TABS, "books");
   const meta = TAB_META[tab];
 
   // Offline, only what's saved on the device can open — showing the rest would just be a list of dead ends.
   const rows = items.filter((i) => i.projectType === meta.type && (online || byId.has(i.projectId)));
 
-  // ── Highlight the item we were just sent here for ──
-  const { highlight } = useLocalSearchParams<{ highlight?: string }>();
-  const [highlightedId, setHighlightedId] = useState<string | null>(typeof highlight === "string" && highlight ? highlight : null);
+  // ── Scroll the item we were just sent here for into view ──
   const scrolledFor = useRef<string | null>(null);
   const rowY = useRef(new Map<string, number>());
-
-  useEffect(() => {
-    if (typeof highlight === "string" && highlight) setHighlightedId(highlight);
-  }, [highlight]);
-
-  useEffect(() => {
-    if (!highlightedId) return;
-    const t = setTimeout(() => {
-      setHighlightedId(null);
-      // Drop the param too, so coming back to this screen later doesn't flash it again.
-      router.setParams({ highlight: undefined });
-    }, HIGHLIGHT_MS);
-    return () => clearTimeout(t);
-  }, [highlightedId]);
 
   const scrollToHighlight = useCallback(
     (projectId: string) => {
@@ -244,29 +241,67 @@ export function LibraryActivity() {
 
   const emptyMessage = !online ? `Nothing saved on this device under ${meta.label} yet. Download something while you're online to use it offline.` : meta.empty;
 
+  if (isLoading) return <Text className="px-4 text-sm text-ink-muted">Loading…</Text>;
+  if (rows.length === 0) return <EmptyNotice icon={LibraryBig} message={emptyMessage} />;
   return (
-    <View className="flex-1 bg-canvas">
-      <ScreenHeader title="Library" back={false} icon={LibraryBig} />
-
-      <View accessibilityRole="tablist" className="mx-4 mb-2 flex-row border-b border-border">
-        {TABS.map((t) => (
-          <Pressable
-            key={t}
-            onPress={() => {
-              if (t === tab) return;
-              haptics.selection();
-              setTab(t);
-            }}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: tab === t }}
-            className={`-mb-px flex-1 items-center border-b-2 pb-3 pt-1 ${tab === t ? "border-accent" : "border-transparent"}`}
-          >
-            <Text numberOfLines={1} className={`text-sm font-medium ${tab === t ? "text-accent" : "text-ink-muted"}`}>
-              {TAB_META[t].label}
-            </Text>
-          </Pressable>
+    <ScrollView showsHorizontalScrollIndicator={false} ref={onScroll.listRef} onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset }}>
+      <View className="gap-2">
+        {rows.map((item) => (
+          <LibraryRow
+            key={item.projectId}
+            item={item}
+            saved={byId.get(item.projectId)}
+            updateAvailable={stale.has(item.projectId)}
+            highlighted={highlightedId === item.projectId}
+            onLayoutY={onRowLayoutY}
+          />
         ))}
       </View>
+      {savedCount > 0 ? (
+        <Text className="mt-4 text-center text-xs text-ink-muted">
+          {savedCount} saved on this device · {formatBytes(totalBytes)}
+        </Text>
+      ) : null}
+    </ScrollView>
+  );
+}
+
+export function LibraryActivity() {
+  const online = useIsOnline();
+  const { items, byId, stale, savedCount, totalBytes, isLoading } = useLibraryWithDownloads();
+  const [tab, setTab] = useTabState<LibraryTab>(TABS, "books");
+  const activeIndex = Math.max(TABS.indexOf(tab), 0);
+  const progress = useSharedValue(activeIndex);
+
+  // ── Highlight the item we were just sent here for ──
+  const { highlight } = useLocalSearchParams<{ highlight?: string }>();
+  const [highlightedId, setHighlightedId] = useState<string | null>(typeof highlight === "string" && highlight ? highlight : null);
+
+  useEffect(() => {
+    if (typeof highlight === "string" && highlight) setHighlightedId(highlight);
+  }, [highlight]);
+
+  useEffect(() => {
+    if (!highlightedId) return;
+    const t = setTimeout(() => {
+      setHighlightedId(null);
+      // Drop the param too, so coming back to this screen later doesn't flash it again.
+      router.setParams({ highlight: undefined });
+    }, HIGHLIGHT_MS);
+    return () => clearTimeout(t);
+  }, [highlightedId]);
+
+  return (
+    <View className="flex-1 bg-canvas">
+      <ScreenHeader title="Library" back={false} icon={LibraryBig} iconClassName="text-brand-orange" titleClassName="text-[28px] font-bold leading-tight tracking-tight text-ink" />
+
+      <SlidingTabBar
+        className="mx-4 mb-2"
+        tabs={TABS.map((t) => ({ id: t, label: TAB_META[t].label }))}
+        activeIndex={activeIndex}
+        progress={progress}
+        onSelect={(i) => setTab(TABS[i])}
+      />
 
       {!online ? (
         <View accessibilityRole="alert" className="mx-4 mb-2 flex-row items-center gap-2 rounded-xl bg-surface px-3 py-2">
@@ -275,31 +310,19 @@ export function LibraryActivity() {
         </View>
       ) : null}
 
-      {isLoading ? (
-        <Text className="px-4 text-sm text-ink-muted">Loading…</Text>
-      ) : rows.length === 0 ? (
-        <EmptyNotice icon={LibraryBig} message={emptyMessage} />
-      ) : (
-        <ScrollView showsHorizontalScrollIndicator={false} ref={onScroll.listRef} onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset }}>
-          <View className="gap-2">
-            {rows.map((item) => (
-              <LibraryRow
-                key={item.projectId}
-                item={item}
-                saved={byId.get(item.projectId)}
-                updateAvailable={stale.has(item.projectId)}
-                highlighted={highlightedId === item.projectId}
-                onLayoutY={onRowLayoutY}
-              />
-            ))}
-          </View>
-          {savedCount > 0 ? (
-            <Text className="mt-4 text-center text-xs text-ink-muted">
-              {savedCount} saved on this device · {formatBytes(totalBytes)}
-            </Text>
-          ) : null}
-        </ScrollView>
-      )}
+      {/* Swipe left/right to change tab — same carousel as Feed. */}
+      <SwipeableTabs
+        index={activeIndex}
+        progress={progress}
+        onIndexChange={(i) => {
+          haptics.selection();
+          setTab(TABS[i]);
+        }}
+      >
+        {TABS.map((t) => (
+          <LibraryPane key={t} tab={t} items={items} byId={byId} stale={stale} savedCount={savedCount} totalBytes={totalBytes} isLoading={isLoading} online={online} highlightedId={highlightedId} />
+        ))}
+      </SwipeableTabs>
     </View>
   );
 }

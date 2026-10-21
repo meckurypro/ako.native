@@ -122,7 +122,8 @@ export function BottomNav() {
       case "messages":
         return pathname.startsWith("/messages") || pathname.startsWith("/page-inbox") || pathname === "/inbox";
       case "profile":
-        return onOwnProfile || onActivePage;
+        // /me is the redirect screen the Profile tab opens first — already selected while it resolves.
+        return pathname === "/me" || onOwnProfile || onActivePage;
     }
   };
 

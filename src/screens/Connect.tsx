@@ -5,6 +5,7 @@
 import { router, type Href } from "expo-router";
 import { CalendarClock, Image as ImageIcon, MoreHorizontal, TrendingUp, Users, X } from "lucide-react-native";
 import { useRef, useState } from "react";
+import { useSharedValue } from "react-native-reanimated";
 import { Pressable, ScrollView, View } from "react-native";
 
 import { EmptyNotice } from "@/components/activity/EmptyNotice";
@@ -14,6 +15,8 @@ import { useChromeScroll } from "@/components/nav/ChromeProvider";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { DropdownMenu } from "@/components/ui/DropdownMenu";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
+import { SlidingTabBar } from "@/components/ui/SlidingTabBar";
+import { SwipeableTabs } from "@/components/ui/SwipeableTabs";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useToast } from "@/components/ui/Toast";
@@ -107,13 +110,20 @@ function ActivityRow({ item }: { item: ActivityItem }) {
   );
 }
 
-export function Connect() {
+interface ConnectPaneProps {
+  tab: ConnectTab;
+  items: ActivityItem[] | undefined;
+  activityLoading: boolean;
+  affiliatesLoading: boolean;
+  relationships: ReturnType<typeof useMyAffiliateRelationships>["data"];
+  refetch: (() => Promise<unknown>)[];
+}
+
+// One pane per tab, each with its own scroll list (see SwipeableTabs) so every tab keeps its own scroll position.
+function ConnectPane({ tab, items, activityLoading, affiliatesLoading, relationships, refetch }: ConnectPaneProps) {
   const bottomInset = useBottomNavInset();
   const onScroll = useChromeScroll();
-  const [tab, setTab] = useTabState<ConnectTab>(TABS, "events");
-  const { data: items, isLoading: activityLoading, refetch: refetchActivity } = useActivity();
-  const { data: relationships, isLoading: affiliatesLoading, refetch: refetchAffiliates } = useMyAffiliateRelationships();
-  const { refreshControl, refreshing } = usePullToRefresh([refetchActivity, refetchAffiliates]);
+  const { refreshControl, refreshing } = usePullToRefresh(refetch);
 
   const now = Date.now();
   const kindItems = tab === "affiliates" ? [] : (items ?? []).filter((i) => i.kind === KIND_FOR_TAB[tab]);
@@ -123,58 +133,65 @@ export function Connect() {
 
   const scrollProps = { ref: onScroll.listRef, refreshControl, onScroll, scrollEventThrottle: 16, showsVerticalScrollIndicator: false, contentContainerStyle: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset, opacity: refreshing ? 0 : 1 } } as const;
 
+  if (tab === "affiliates") {
+    if (affiliatesLoading) return <Text className="px-4 text-sm text-ink-muted">Loading…</Text>;
+    if (affiliates.length === 0) return <EmptyNotice icon={TrendingUp} message={EMPTY_COPY.affiliates} />;
+    return (
+      <ScrollView {...scrollProps}>
+        {affiliates.map((r) => (
+          <AffiliateLinkRow key={r.id} relationship={r} />
+        ))}
+      </ScrollView>
+    );
+  }
+  if (activityLoading) return <Text className="px-4 text-sm text-ink-muted">Loading…</Text>;
+  if (kindItems.length === 0) return <EmptyNotice icon={CalendarClock} message={EMPTY_COPY[tab]} />;
+  return (
+    <ScrollView {...scrollProps}>
+      <View className="mb-6">
+        <Text className="mb-2 text-sm font-medium text-ink-muted">Upcoming</Text>
+        <View className="gap-2">{upcoming.length === 0 ? <Text className="text-xs text-ink-muted">Nothing upcoming.</Text> : upcoming.map((item, i) => <ActivityRow key={`${item.kind}-${item.projectId}-${i}`} item={item} />)}</View>
+      </View>
+      <View>
+        <Text className="mb-2 text-sm font-medium text-ink-muted">Past</Text>
+        <View className="gap-2">{past.length === 0 ? <Text className="text-xs text-ink-muted">Nothing past yet.</Text> : past.map((item, i) => <ActivityRow key={`${item.kind}-${item.projectId}-${i}`} item={item} />)}</View>
+      </View>
+    </ScrollView>
+  );
+}
+
+export function Connect() {
+  const [tab, setTab] = useTabState<ConnectTab>(TABS, "events");
+  const activeIndex = Math.max(TABS.indexOf(tab), 0);
+  const progress = useSharedValue(activeIndex);
+  const { data: items, isLoading: activityLoading, refetch: refetchActivity } = useActivity();
+  const { data: relationships, isLoading: affiliatesLoading, refetch: refetchAffiliates } = useMyAffiliateRelationships();
+
   return (
     <View className="flex-1 bg-canvas">
-      <ScreenHeader title="Connect" back={false} icon={Users} />
+      <ScreenHeader title="Connect" back={false} icon={Users} iconClassName="text-brand-orange" titleClassName="text-[28px] font-bold leading-tight tracking-tight text-ink" />
 
-      <View accessibilityRole="tablist" className="mx-4 mb-2 flex-row border-b border-border">
+      <SlidingTabBar
+        className="mx-4 mb-2"
+        tabs={TABS.map((t) => ({ id: t, label: TAB_LABEL[t] }))}
+        activeIndex={activeIndex}
+        progress={progress}
+        onSelect={(i) => setTab(TABS[i])}
+      />
+
+      {/* Swipe left/right to change tab — same carousel as Feed. */}
+      <SwipeableTabs
+        index={activeIndex}
+        progress={progress}
+        onIndexChange={(i) => {
+          haptics.selection();
+          setTab(TABS[i]);
+        }}
+      >
         {TABS.map((t) => (
-          <Pressable
-            key={t}
-            onPress={() => {
-              if (t === tab) return;
-              haptics.selection();
-              setTab(t);
-            }}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: tab === t }}
-            className={`-mb-px flex-1 items-center border-b-2 pb-3 pt-1 ${tab === t ? "border-accent" : "border-transparent"}`}
-          >
-            <Text numberOfLines={1} className={`text-sm font-medium ${tab === t ? "text-accent" : "text-ink-muted"}`}>
-              {TAB_LABEL[t]}
-            </Text>
-          </Pressable>
+          <ConnectPane key={t} tab={t} items={items} activityLoading={activityLoading} affiliatesLoading={affiliatesLoading} relationships={relationships} refetch={[refetchActivity, refetchAffiliates]} />
         ))}
-      </View>
-
-      {tab === "affiliates" ? (
-        affiliatesLoading ? (
-          <Text className="px-4 text-sm text-ink-muted">Loading…</Text>
-        ) : affiliates.length === 0 ? (
-          <EmptyNotice icon={TrendingUp} message={EMPTY_COPY.affiliates} />
-        ) : (
-          <ScrollView {...scrollProps}>
-            {affiliates.map((r) => (
-              <AffiliateLinkRow key={r.id} relationship={r} />
-            ))}
-          </ScrollView>
-        )
-      ) : activityLoading ? (
-        <Text className="px-4 text-sm text-ink-muted">Loading…</Text>
-      ) : kindItems.length === 0 ? (
-        <EmptyNotice icon={CalendarClock} message={EMPTY_COPY[tab]} />
-      ) : (
-        <ScrollView {...scrollProps}>
-          <View className="mb-6">
-            <Text className="mb-2 text-sm font-medium text-ink-muted">Upcoming</Text>
-            <View className="gap-2">{upcoming.length === 0 ? <Text className="text-xs text-ink-muted">Nothing upcoming.</Text> : upcoming.map((item, i) => <ActivityRow key={`${item.kind}-${item.projectId}-${i}`} item={item} />)}</View>
-          </View>
-          <View>
-            <Text className="mb-2 text-sm font-medium text-ink-muted">Past</Text>
-            <View className="gap-2">{past.length === 0 ? <Text className="text-xs text-ink-muted">Nothing past yet.</Text> : past.map((item, i) => <ActivityRow key={`${item.kind}-${item.projectId}-${i}`} item={item} />)}</View>
-          </View>
-        </ScrollView>
-      )}
+      </SwipeableTabs>
     </View>
   );
 }

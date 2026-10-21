@@ -21,9 +21,13 @@ interface ScreenHeaderProps {
   back?: boolean;
   /** …and show their section icon in its place. */
   icon?: LucideIcon;
+  /** Icon colour for tab-root screens (default muted; Library/Connect use the brand orange). */
+  iconClassName?: string;
+  /** Replaces the default title style (Library/Connect match the Profile's big bold name). */
+  titleClassName?: string;
 }
 
-export function ScreenHeader({ title, right, bar = false, onBack, back = true, icon }: ScreenHeaderProps) {
+export function ScreenHeader({ title, right, bar = false, onBack, back = true, icon, iconClassName = "text-ink-muted", titleClassName = "font-display text-xl text-ink" }: ScreenHeaderProps) {
   const insets = useSafeAreaInsets();
   const smartBack = useSmartBack();
 
@@ -37,8 +41,8 @@ export function ScreenHeader({ title, right, bar = false, onBack, back = true, i
           <Icon as={ArrowLeft} size={22} className="text-ink-muted" />
         </Pressable>
       ) : null}
-      {icon ? <Icon as={icon} size={22} className="text-ink-muted" /> : null}
-      <Text numberOfLines={1} className="min-w-0 flex-1 font-display text-xl text-ink">
+      {icon ? <Icon as={icon} size={titleClassName.includes("text-[28px]") ? 24 : 22} className={iconClassName} /> : null}
+      <Text numberOfLines={1} className={`min-w-0 flex-1 ${titleClassName}`}>
         {title}
       </Text>
       {right}

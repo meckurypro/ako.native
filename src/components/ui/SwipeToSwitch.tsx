@@ -7,7 +7,7 @@
 // carousel inside the list still wins horizontal drags over this.
 import type { ReactNode } from "react";
 import { useMemo } from "react";
-import { View } from "react-native";
+import { View, type ViewStyle } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { scheduleOnRN } from "react-native-worklets";
 
@@ -22,12 +22,15 @@ export function SwipeToSwitch({
   onIndexChange,
   children,
   enabled = true,
+  style,
 }: {
   index: number;
   count: number;
   onIndexChange: (index: number) => void;
   children: ReactNode;
   enabled?: boolean;
+  /** Defaults to filling its parent; pass an explicit style (e.g. minHeight) inside a ScrollView, where flex:1 collapses. */
+  style?: ViewStyle;
 }) {
   const pan = useMemo(
     () =>
@@ -47,7 +50,7 @@ export function SwipeToSwitch({
   return (
     <TabsGestureContext.Provider value={pan}>
       <GestureDetector gesture={pan}>
-        <View style={{ flex: 1 }}>{children}</View>
+        <View style={style ?? { flex: 1 }}>{children}</View>
       </GestureDetector>
     </TabsGestureContext.Provider>
   );
