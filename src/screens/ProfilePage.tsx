@@ -360,13 +360,9 @@ export function ProfilePage() {
   }
 
   // ── scroll state ──
-  const headerHeightRef = useRef(0);
-  const scrollYRef = useRef(0);
   const onScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       chromeScroll(e);
-      const y = e.nativeEvent.contentOffset.y;
-      scrollYRef.current = y;
     },
     [chromeScroll]
   );
@@ -374,9 +370,8 @@ export function ProfilePage() {
   function switchTab(index: number) {
     if (index === activeIndex || index < 0 || index >= tabDefs.length) return;
     haptics.selection();
+    // Switching tabs never moves the page — it only scrolls when the person scrolls.
     setActiveTab(tabDefs[index].id);
-    // Keep the tab bar pinned: if the header is scrolled out, land the new tab's content at the top.
-    if (scrollYRef.current > headerHeightRef.current) listRef.current?.scrollToIndex({ index: 1, animated: false });
   }
 
   // ── tab bar ──
@@ -501,7 +496,7 @@ export function ProfilePage() {
     if (!profile) return null;
     const followBusy = toggleFollow.isPending || sendFollowRequest.isPending || cancelFollowRequest.isPending || isBlocked;
     return (
-      <View onLayout={(e) => (headerHeightRef.current = e.nativeEvent.layout.height)} className="bg-canvas">
+      <View className="bg-canvas">
         {renderToolbar()}
 
         <View className="px-4 pt-2">
