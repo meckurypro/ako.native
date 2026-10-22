@@ -5,7 +5,7 @@
 // room / meeting — or the Buy / Book / Support control when you don't. Owners
 // get a menu to edit, publish, archive, manage access, push to feed, or delete.
 import { FileFolderHero } from "@/components/project/FileFolderArt";
-import { useDownloadProjectFile, } from "@/hooks/useDownloadProjectFile";
+import { DownloadCancelledError, useDownloadProjectFile } from "@/hooks/useDownloadProjectFile";
 import { PurchaseError } from "@/components/wallet/PurchaseError";
 import {
   Archive,
@@ -388,6 +388,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
       await downloadProjectFile.mutateAsync({ projectId: project.id, title: project.title, filePath: project.file_path });
       logFreeAccessIfNeeded("download");
     } catch (err) {
+      if (err instanceof DownloadCancelledError) return; // the person stopped it — not an error
       setError(await resolveFunctionErrorMessage(err, "Couldn't download the file."));
     }
   }
@@ -542,7 +543,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
   // ---- Detail-view action bar (ProjectDetail only) ----------------------------------------------
   // One primary CTA fills ~90% of the row; a single "···" takes the rest. Save, Share and every
   // secondary action live ONLY in that menu (the old tray repeated them in two places).
-  type DetailCta = { label: string; icon?: LucideIcon; onPress: () => void; disabled?: boolean };
+  type DetailCta = { label: string; icon?: LucideIcon; onPress: () => void; disabled?: boolean; /** 0–100: fills the button left to right. */ progress?: number | null };
   const priceLabel = `$${effectivePrice.toFixed(2)}`;
   const bookUpload = isBook && bookDetails?.content_source === "upload";
   const bookReadsInApp = bookUpload && !!bookDetails?.allow_read_in_app;
@@ -606,11 +607,16 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
       };
     }
   } else if (project.project_type === "file") {
+    // While it runs, the button fills with progress and a tap cancels. At 100% the file is on the device and counted;
+    // the mutation only settles once the system save sheet closes, so don't keep offering Cancel then.
+    const dl = downloadProjectFile;
+    const dlSaving = dl.isPending && dl.progress === 100;
     detailCta = {
-      label: downloadProjectFile.isPending ? (downloadProjectFile.progress != null ? `Downloading ${downloadProjectFile.progress}%` : "Preparing…") : "Download",
+      label: dlSaving ? "Download complete" : dl.isPending ? `${dl.progress != null ? `Downloading ${dl.progress}%` : "Preparing…"} · Cancel` : "Download",
       icon: Download,
-      onPress: () => void handleDownloadFile(),
-      disabled: downloadProjectFile.isPending,
+      onPress: () => (dl.isPending ? dl.cancel() : void handleDownloadFile()),
+      disabled: dlSaving,
+      progress: dl.isPending ? dl.progress : null,
     };
   } else if (project.project_type === "url") {
     detailCta = { label: "Open link", icon: LinkIcon, onPress: () => openExternal(project.external_url) };
@@ -921,7 +927,15 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
                 hasAccess ? (
                   <LinkAction
                     icon={Download}
-                    label={downloadProjectFile.isPending ? (downloadProjectFile.progress != null ? `Downloading ${downloadProjectFile.progress}%` : "Preparing…") : "Download"}
+                    label={
+                      downloadProjectFile.isPending
+                        ? downloadProjectFile.progress === 100
+                          ? "Download complete"
+                          : downloadProjectFile.progress != null
+                            ? `Downloading ${downloadProjectFile.progress}%`
+                            : "Preparing…"
+                        : "Download"
+                    }
                     disabled={downloadProjectFile.isPending}
                     onPress={() => void handleDownloadFile()}
                   />
@@ -1027,9 +1041,16 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
                       onPress={detailCta.onPress}
                       disabled={detailCta.disabled}
                       accessibilityRole="button"
-                      className={`h-12 flex-row items-center justify-center gap-2 rounded-2xl active:scale-[0.98] ${detailCta.disabled ? "opacity-50" : ""}`}
+                      className={`h-12 flex-row items-center justify-center gap-2 overflow-hidden rounded-2xl active:scale-[0.98] ${detailCta.disabled ? "opacity-50" : ""}`}
                       style={{ flex: 9, elevation: 3, backgroundColor: ctaFill(colors.accent) }}
                     >
+                      {typeof detailCta.progress === "number" ? (
+                        <View
+                          pointerEvents="none"
+                          className="absolute bottom-0 left-0 top-0"
+                          style={{ width: `${Math.min(100, Math.max(0, detailCta.progress))}%`, backgroundColor: "rgba(255,255,255,0.22)" }}
+                        />
+                      ) : null}
                       {detailCta.icon ? <Icon as={detailCta.icon} size={18} className="text-white" /> : null}
                       <Text className="text-base font-semibold text-white">{detailCta.label}</Text>
                     </Pressable>
