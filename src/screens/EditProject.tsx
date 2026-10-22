@@ -20,7 +20,18 @@ import { ManageAccessSheet } from "@/components/project/ManageAccessSheet";
 import { ProjectLinkSheet } from "@/components/project/ProjectLinkSheet";
 import { BookFields, EMPTY_BOOK_FIELDS, type BookFieldsValue } from "@/components/project-types/BookFields";
 import { EMPTY_EVENT_FIELDS, EventFields, type EventFieldsValue } from "@/components/project-types/EventFields";
-import { EMPTY_FILE_FIELDS, FileFields, type FileFieldsValue } from "@/components/project-types/FileFields";
+import {
+  EMPTY_FILE_FIELDS,
+  FileFields,
+  fileFieldsError,
+  fileFieldsFromProjectFiles,
+  fileFieldsToInputs,
+  type FileFieldsValue,
+} from "@/components/project-types/FileFields";
+import { useIsRestricted } from "@/hooks/useAccountAccess";
+import { useMyProfile } from "@/hooks/useProfile";
+import { useProjectFiles, useSaveProjectFiles } from "@/hooks/useProjectFiles";
+import { maxProjectFiles } from "@/lib/fileProject";
 import { EMPTY_GIG_FIELDS, GigFields, type GigFieldsValue } from "@/components/project-types/GigFields";
 import { EMPTY_MEDIA_FIELDS, MediaFields, mediaFieldsAreValid, type MediaFieldsValue } from "@/components/project-types/MediaFields";
 import { EMPTY_MEETING_FIELDS, MeetingFields, type MeetingFieldsValue } from "@/components/project-types/MeetingFields";
@@ -54,6 +65,12 @@ export function EditProject() {
   const insets = useSafeAreaInsets();
 
   const { data: project, isLoading } = useProject(projectId);
+  // File projects: the saved files (one slot each), and how many this account may hold (1, or 6 if verified).
+  const { data: me } = useMyProfile();
+  const restricted = useIsRestricted();
+  const maxFiles = maxProjectFiles(!!me?.is_verified && !restricted);
+  const { data: existingFiles } = useProjectFiles(projectId, project?.project_type === "file");
+  const saveProjectFiles = useSaveProjectFiles();
   const ownership = useProjectOwnership();
   const [manageAccessOpen, setManageAccessOpen] = useState(false);
   const [affiliateSheetOpen, setAffiliateSheetOpen] = useState(false);
@@ -140,7 +157,6 @@ export function EditProject() {
       setThumbnailUrl(project.thumbnail_url);
       setSupportingImageUrls(project.supporting_image_urls ?? []);
       if (project.thumbnail_width && project.thumbnail_height) setThumbnailRatio({ width: project.thumbnail_width, height: project.thumbnail_height });
-      if (project.project_type === "file") setFileFields({ file_path: project.file_path, file_name: null });
       if (project.project_type === "url") setUrlFields({ url: project.external_url ?? "" });
       if (project.promo_price_usd !== null) {
         setShowPromo(true);
@@ -203,10 +219,13 @@ export function EditProject() {
         source_credit: existingBookDetails?.source_credit ?? "",
       });
       setTypeDetailsHydrated(true);
-    } else if (!["event", "meeting", "media", "gig", "pitch", "room", "book"].includes(t)) {
+    } else if (t === "file" && existingFiles) {
+      setFileFields(fileFieldsFromProjectFiles(existingFiles));
+      setTypeDetailsHydrated(true);
+    } else if (!["event", "meeting", "media", "gig", "pitch", "room", "book", "file"].includes(t)) {
       setTypeDetailsHydrated(true);
     }
-  }, [project, existingEventDetails, existingMeetingDetails, existingMediaDetails, existingGigDetails, existingGigSamples, existingPitchDetails, existingRoomDetails, existingBookDetails, typeDetailsHydrated]);
+  }, [project, existingEventDetails, existingMeetingDetails, existingMediaDetails, existingGigDetails, existingGigSamples, existingPitchDetails, existingRoomDetails, existingBookDetails, existingFiles, typeDetailsHydrated]);
 
   async function handleThumbnailSelect() {
     const file = await pickSingleImage(project?.project_type === "book" ? { aspect: [2, 3] } : {});
@@ -224,7 +243,10 @@ export function EditProject() {
     if (!project) return null;
     const t = project.project_type;
     if (t === "book" && thumbnailUrl && thumbnailRatio && !isBookCoverRatio(thumbnailRatio.width, thumbnailRatio.height)) return BOOK_COVER_ERROR;
-    if (t === "file" && !fileFields.file_path) return "Upload a file to continue.";
+    if (t === "file") {
+      const fileError = fileFieldsError(fileFields);
+      if (fileError) return fileError;
+    }
     if (t === "url" && !urlFields.url.trim()) return "Add the link you're sharing access to.";
     if (t === "media" && !mediaFieldsAreValid(mediaFields)) {
       if (!mediaFields.audio.enabled && !mediaFields.video.enabled && !mediaFields.image.enabled) return "Turn on Audio, Video, Image, or any combination.";
@@ -268,13 +290,18 @@ export function EditProject() {
     }
 
     try {
+      // Files first: it's the part the database can refuse (limit, ownership), so if it does, nothing else changes.
+      if (t === "file") {
+        await saveProjectFiles.mutateAsync({ projectId, files: fileFieldsToInputs(fileFields) });
+      }
       await updateProject.mutateAsync({
         id: projectId,
         title: title.trim(),
         description: description.trim() || null,
         project_type: t,
         external_url: t === "url" ? urlFields.url.trim() || null : project.external_url,
-        file_path: t === "file" ? fileFields.file_path : project.file_path,
+        // File projects: the files are saved by set_project_files above, which also keeps file_path in step.
+        file_path: t === "file" ? undefined : project.file_path,
         // File projects never carry a thumbnail (the folder icon stands in) — editing one clears any old one.
         thumbnail_url: t === "file" ? null : thumbnailUrl,
         thumbnail_width: t === "file" ? null : (thumbnailRatio?.width ?? null),
@@ -478,7 +505,7 @@ export function EditProject() {
           <TopicPicker selected={topicIds} onToggle={toggleTopic} />
 
           {t === "media" ? <MediaFields value={mediaFields} onChange={setMediaFields} onError={setError} /> : null}
-          {t === "file" ? <FileFields value={fileFields} onChange={setFileFields} onError={setError} onUploadingChange={setFileUploading} /> : null}
+          {t === "file" ? <FileFields value={fileFields} onChange={setFileFields} onError={setError} maxFiles={maxFiles} onUploadingChange={setFileUploading} /> : null}
           {t === "url" ? <UrlFields value={urlFields} onChange={setUrlFields} /> : null}
           {t === "event" ? <EventFields value={eventFields} onChange={setEventFields} /> : null}
           {t === "meeting" ? <MeetingFields value={meetingFields} onChange={setMeetingFields} /> : null}

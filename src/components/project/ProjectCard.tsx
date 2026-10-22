@@ -6,6 +6,8 @@
 // get a menu to edit, publish, archive, manage access, push to feed, or delete.
 import { FileFolderHero } from "@/components/project/FileFolderArt";
 import { DownloadCancelledError, useDownloadProjectFile } from "@/hooks/useDownloadProjectFile";
+import { useProjectFiles, type ProjectFile } from "@/hooks/useProjectFiles";
+import { ProjectFilesList } from "@/components/project/ProjectFilesList";
 import { PurchaseError } from "@/components/wallet/PurchaseError";
 import {
   Archive,
@@ -231,6 +233,15 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
   // A signed-out visitor never has access to anything, free or not: a shared link is a landing page, and every way
   // past it (Read, Download, Listen, Join…) goes through login first.
   const hasAccess = !!user && !privacyBlocked && (isOwner || hasPurchased || (isFree && !isRoom));
+
+  // File projects can hold several files. The list names each saved copy (the uploaded file's own name unless the
+  // creator typed one), so it's loaded for anyone who can download, and on the project's own screen for everyone.
+  const isFileProject = project.project_type === "file";
+  const { data: projectFiles } = useProjectFiles(project.id, isFileProject && (hasAccess || !!isDetailView));
+  // file_count rides along on the project row; some lists select explicit columns without it, so trust the loaded
+  // list too — otherwise a multi-file project could look like a one-file one and download only its first file.
+  const fileCount = Math.max(project.file_count ?? 0, projectFiles?.length ?? 0);
+  const isMultiFile = isFileProject && fileCount > 1;
   const isSaved = !!isSavedQuery.data;
 
   // Back to THIS page after login — the pretty /:slug address when that's how they arrived. replace (not push) so the
@@ -384,11 +395,19 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
   }
 
   /** File projects download in-app so the download only counts once every byte is on the device. */
-  async function handleDownloadFile() {
+  async function handleDownloadFile(file?: ProjectFile) {
     if (!requireUser()) return;
     setError(null);
     try {
-      await downloadProjectFile.mutateAsync({ projectId: project.id, title: project.title, filePath: project.file_path });
+      // A specific file from the list, or the project's first (a one-file project).
+      const target = file ?? projectFiles?.[0] ?? null;
+      await downloadProjectFile.mutateAsync({
+        projectId: project.id,
+        fileId: target?.id ?? null,
+        fileName: target?.download_name ?? null,
+        title: project.title,
+        filePath: project.file_path,
+      });
       logFreeAccessIfNeeded("download");
     } catch (err) {
       if (err instanceof DownloadCancelledError) return; // the person stopped it — not an error
@@ -617,7 +636,8 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
     // the mutation only settles once the system save sheet closes, so don't keep offering Cancel then.
     const dl = downloadProjectFile;
     const dlSaving = dl.isPending && dl.progress === 100;
-    detailCta = {
+    // Several files: each has its own Download button in the list, so there's no single primary action.
+    detailCta = isMultiFile ? null : {
       label: dlSaving ? "Download complete" : dl.isPending ? `${dl.progress != null ? `Downloading ${dl.progress}%` : "Preparing…"} · Cancel` : "Download",
       icon: Download,
       onPress: () => (dl.isPending ? dl.cancel() : void handleDownloadFile()),
@@ -821,6 +841,18 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
               <Text className={`${concealDetails ? "mt-3" : "mt-1"} text-sm text-ink-muted`}>{renderFormattedText(project.description, "d")}</Text>
             ) : null}
 
+            {isDetailView && isMultiFile && projectFiles && projectFiles.length > 0 ? (
+              <ProjectFilesList
+                files={projectFiles}
+                hasAccess={hasAccess}
+                busy={downloadProjectFile.isPending}
+                activeFileId={downloadProjectFile.isPending ? (downloadProjectFile.variables?.fileId ?? null) : null}
+                progress={downloadProjectFile.progress}
+                onDownload={(file) => void handleDownloadFile(file)}
+                onCancel={() => downloadProjectFile.cancel()}
+              />
+            ) : null}
+
             {/* Goal progress — informational only; hitting or missing the goal changes nothing about what's already pledged. */}
             {showDetails && isPitch && pitchDetails ? (
               <View className="mt-2.5">
@@ -930,7 +962,12 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
             {!isDetailView ? (
             <View className="mt-3 flex-row items-center gap-2">
               {project.project_type === "file" ? (
-                hasAccess ? (
+                hasAccess && isMultiFile ? (
+                  <View className="flex-row items-center gap-1.5">
+                    <Icon as={Download} size={15} className="text-accent" />
+                    <Text className="text-sm font-medium text-accent">{fileCount} files</Text>
+                  </View>
+                ) : hasAccess ? (
                   <LinkAction
                     icon={Download}
                     label={

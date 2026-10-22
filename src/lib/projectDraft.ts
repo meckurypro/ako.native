@@ -17,7 +17,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { EMPTY_BOOK_FIELDS, type BookFieldsValue } from "@/components/project-types/BookFields";
 import { EMPTY_EVENT_FIELDS, type EventFieldsValue } from "@/components/project-types/EventFields";
-import { EMPTY_FILE_FIELDS, type FileFieldsValue } from "@/components/project-types/FileFields";
+import { fileFieldsHaveProgress, normalizeFileFields, type FileFieldsValue } from "@/components/project-types/FileFields";
 import { EMPTY_GIG_FIELDS, type GigFieldsValue } from "@/components/project-types/GigFields";
 import { EMPTY_MEDIA_FIELDS, type MediaFieldsValue } from "@/components/project-types/MediaFields";
 import { EMPTY_MEETING_FIELDS, type MeetingFieldsValue } from "@/components/project-types/MeetingFields";
@@ -67,7 +67,8 @@ export async function readProjectDraft(key: string): Promise<{ data: ProjectDraf
     if (!raw) return null;
     const parsed = JSON.parse(raw) as StoredDraft;
     if (!parsed || parsed.v !== VERSION || !parsed.data || typeof parsed.data.title !== "string") return null;
-    return { data: parsed.data, savedAt: parsed.savedAt };
+    // A draft saved before File projects could hold several files stored one { file_path, file_name }.
+    return { data: { ...parsed.data, fileFields: normalizeFileFields(parsed.data.fileFields) }, savedAt: parsed.savedAt };
   } catch {
     return null;
   }
@@ -114,7 +115,7 @@ export function projectDraftHasProgress(d: ProjectDraftData): boolean {
     d.priceUsd !== "0" ||
     d.promoPriceUsd.trim() !== "" ||
     d.isPrivate ||
-    differs(d.fileFields, EMPTY_FILE_FIELDS) ||
+    fileFieldsHaveProgress(d.fileFields) ||
     differs(d.urlFields, EMPTY_URL_FIELDS) ||
     differs(d.mediaFields, EMPTY_MEDIA_FIELDS) ||
     differs(d.eventFields, EMPTY_EVENT_FIELDS) ||

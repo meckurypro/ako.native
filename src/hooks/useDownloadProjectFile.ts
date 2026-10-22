@@ -15,7 +15,11 @@ import { supabase } from "../lib/supabase";
 
 interface DownloadArgs {
   projectId: string;
-  /** Used to name the saved file (title + the stored file's extension). */
+  /** Which of the project's files (project_files.id). Omit for the first — what older callers always meant. */
+  fileId?: string | null;
+  /** What the saved copy is called (project_files.download_name), if the caller already knows it. */
+  fileName?: string | null;
+  /** Last-resort naming only (project title + stored extension), if the server sends no name. */
   title: string;
   filePath: string | null;
 }
@@ -69,9 +73,8 @@ export function useDownloadProjectFile() {
   const cancelledRef = useRef(false);
 
   const mutation = useMutation({
-    mutationFn: async ({ projectId, title, filePath }: DownloadArgs): Promise<number | null> => {
+    mutationFn: async ({ projectId, fileId, fileName: knownName, title, filePath }: DownloadArgs): Promise<number | null> => {
       cancelledRef.current = false;
-      const fileName = suggestedFileName(title, filePath);
 
       // Find out up front: no point streaming a file the device then has no way to hand to the person.
       if (!(await Sharing.isAvailableAsync())) {
@@ -82,13 +85,17 @@ export function useDownloadProjectFile() {
       let dest: string | null = null;
       try {
         const { data, error } = await supabase.functions.invoke("get-project-file", {
-          body: { project_id: projectId, kind: "file", action: "download" },
+          body: { project_id: projectId, kind: "file", action: "download", ...(fileId ? { file_id: fileId } : {}) },
         });
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
         const url: string = data.url;
         const downloadId: string | null = data.download_id ?? null;
         if (cancelledRef.current) throw new DownloadCancelledError();
+
+        // The server's name wins: the uploaded file's own name unless the creator typed a title for it.
+        const fileName: string =
+          (typeof data.file_name === "string" && data.file_name) || knownName || suggestedFileName(title, filePath);
 
         const dir = await prepareDownloadDir();
         dest = `${dir}${Date.now()}-${fileName}`;

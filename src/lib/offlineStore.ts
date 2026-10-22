@@ -33,6 +33,7 @@ import {
   offlineErrorFromServer,
   overallProgress,
   safeFileName,
+  uniqueFileNames,
   type OfflineBundle,
   type OfflineFileInfo,
 } from "./offlineProjects";
@@ -274,7 +275,7 @@ async function fetchBundle(projectId: string): Promise<OfflineBundle> {
   if (error) throw looksOffline(error.message) ? new OfflineError("offline") : offlineErrorFromServer(error.message);
   const bundle = data as OfflineBundle | null;
   if (!bundle || !isOfflineType(bundle.project_type)) throw new OfflineError("not_downloadable");
-  return { ...bundle, files: bundle.files ?? [] };
+  return { ...bundle, files: uniqueFileNames(bundle.files ?? []) };
 }
 
 async function fetchProjectRow(projectId: string): Promise<Project> {
@@ -284,7 +285,7 @@ async function fetchProjectRow(projectId: string): Promise<Project> {
 }
 
 async function signedUrlFor(projectId: string, file: OfflineFileInfo): Promise<string> {
-  const { data, error } = await supabase.functions.invoke("get-project-file", { body: { project_id: projectId, kind: file.kind, action: "download" } });
+  const { data, error } = await supabase.functions.invoke("get-project-file", { body: { project_id: projectId, kind: file.kind, action: "download", ...(file.file_id ? { file_id: file.file_id } : {}) } });
   if (error || data?.error || typeof data?.url !== "string") {
     // The server re-checks access here too (and the host's allow_download for uploaded books).
     throw looksOffline(error?.message) ? new OfflineError("offline") : new OfflineError("download_not_allowed");

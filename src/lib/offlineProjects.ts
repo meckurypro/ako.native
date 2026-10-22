@@ -14,6 +14,8 @@ export interface OfflineFileInfo {
   name: string;
   bytes: number;
   mime: string | null;
+  /** project_files.id, for File projects (they can hold several): which file get-project-file should sign. */
+  file_id?: string | null;
 }
 
 /** What get_project_offline_bundle returns. `content` holds rows shaped exactly like the online queries' results. */
@@ -174,6 +176,24 @@ export function safeFileName(name: string, fallback = "file"): string {
     .trim()
     .slice(0, 120);
   return cleaned || fallback;
+}
+
+/**
+ * Safe, distinct local names for a project's files. A project can hold two uploads with the same name ("take.wav"
+ * twice); saved side by side in one folder the second would overwrite the first, so later ones are numbered.
+ */
+export function uniqueFileNames<T extends { name: string }>(files: T[]): T[] {
+  const seen = new Set<string>();
+  return files.map((file) => {
+    const safe = safeFileName(file.name);
+    const dot = safe.lastIndexOf(".");
+    const base = dot > 0 ? safe.slice(0, dot) : safe;
+    const ext = dot > 0 ? safe.slice(dot) : "";
+    let name = safe;
+    for (let n = 2; seen.has(name.toLowerCase()); n++) name = `${base}-${n}${ext}`;
+    seen.add(name.toLowerCase());
+    return { ...file, name };
+  });
 }
 
 // ── Versions & how a saved project opens ────────────────────────────────────

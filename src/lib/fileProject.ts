@@ -23,3 +23,20 @@ export function formatFileSize(bytes: number | null | undefined): string {
   if (n >= 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(n >= 100 * 1024 * 1024 ? 0 : 1)} MB`;
   return `${Math.max(1, Math.round(n / 1024))} KB`;
 }
+
+/**
+ * How many files one File project can hold. One for everyone; up to six for verified, unrestricted accounts — the
+ * same rule as profile websites. The database enforces it (project_file_limit in
+ * supabase/ako_multi_file_projects.sql); this only decides how much of the form to show.
+ */
+export const MAX_PROJECT_FILES_VERIFIED = 6;
+export const MAX_PROJECT_FILES_DEFAULT = 1;
+
+export function maxProjectFiles(canAddMore: boolean): number {
+  return canAddMore ? MAX_PROJECT_FILES_VERIFIED : MAX_PROJECT_FILES_DEFAULT;
+}
+
+/** "My Song.final.wav" → "My Song.final" — what a slot's title box shows as its placeholder. */
+export function stripExtension(name: string): string {
+  return name.replace(/\.[A-Za-z0-9]{1,10}$/, "");
+}

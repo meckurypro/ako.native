@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { resolveFunctionErrorMessage } from "../lib/functionErrors";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "./useAuth";
+import { saveProjectFiles, type ProjectFileInput } from "./useProjectFiles";
 import { useSound } from "./useSound";
 import { PROFILE_ROLES_SELECT, toProfileRoles } from "../lib/profileRoles";
 import type { AuthorSummary, PageSummary } from "../types/database";
@@ -342,6 +343,8 @@ export interface Project {
   like_count: number;
   // File projects: completed downloads by people other than the creator (see complete_file_download).
   download_count: number;
+  // File projects: how many files the project holds (see project_files). 0 for every other type.
+  file_count: number;
   // Public link alias — see src/lib/projectLinks.ts. Never the
   // canonical identity (id always is); null until the owner sets one
   // in the "Custom URL" section of Edit. Globally unique.
@@ -598,6 +601,8 @@ interface CreateProjectInput {
   gig_details?: GigDetailsInput;
   room_details?: RoomDetailsInput;
   book_details?: BookDetailsInput;
+  // File projects: the files, in order (see useProjectFiles). file_path is mirrored to the first one.
+  file_details?: { files: ProjectFileInput[] };
 }
 
 export function useCreateProject() {
@@ -614,6 +619,7 @@ export function useCreateProject() {
       gig_details,
       room_details,
       book_details,
+      file_details,
       ...input
     }: CreateProjectInput) => {
       if (!user) throw new Error("Not signed in");
@@ -623,6 +629,12 @@ export function useCreateProject() {
         .select()
         .single();
       if (error) throw error;
+
+      // File project: the files themselves. Same reasoning as topics/details below — the project row already
+      // exists, so a failure here must surface rather than leave a File project missing files it was meant to have.
+      if (input.project_type === "file" && file_details?.files.length) {
+        await saveProjectFiles(data.id, file_details.files);
+      }
 
       if (topic_ids && topic_ids.length > 0) {
         const rows = topic_ids.map((interest_id) => ({ project_id: data.id, interest_id }));

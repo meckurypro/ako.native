@@ -19,7 +19,13 @@ import { MAX_TOPICS, TopicPicker } from "@/components/post/TopicPicker";
 import { BookFields, EMPTY_BOOK_FIELDS, type BookFieldsValue } from "@/components/project-types/BookFields";
 import { CourseFields } from "@/components/project-types/CourseFields";
 import { EMPTY_EVENT_FIELDS, EventFields, type EventFieldsValue } from "@/components/project-types/EventFields";
-import { EMPTY_FILE_FIELDS, FileFields, type FileFieldsValue } from "@/components/project-types/FileFields";
+import {
+  EMPTY_FILE_FIELDS,
+  FileFields,
+  fileFieldsError,
+  fileFieldsToInputs,
+  type FileFieldsValue,
+} from "@/components/project-types/FileFields";
 import { EMPTY_GIG_FIELDS, GigFields, type GigFieldsValue } from "@/components/project-types/GigFields";
 import { EMPTY_MEDIA_FIELDS, MediaFields, mediaFieldsAreValid, type MediaFieldsValue } from "@/components/project-types/MediaFields";
 import { EMPTY_MEETING_FIELDS, MeetingFields, type MeetingFieldsValue } from "@/components/project-types/MeetingFields";
@@ -49,7 +55,9 @@ import {
   useMyCreatorKind,
 } from "@/hooks/useCreatorKinds";
 import { useActiveIdentity, useActivePagePermissions } from "@/hooks/usePages";
+import { useIsRestricted } from "@/hooks/useAccountAccess";
 import { useMyProfile } from "@/hooks/useProfile";
+import { maxProjectFiles } from "@/lib/fileProject";
 import {
   PROJECT_TYPE_HINTS,
   PROJECT_TYPE_LABELS,
@@ -102,6 +110,9 @@ export function CreateProject() {
   // Fixed at open (switch account mode FIRST, then create) — same rule as composing a post.
   const { data: identity } = useActiveIdentity();
   const { data: me } = useMyProfile();
+  // One file for most accounts; up to six for verified, unrestricted ones (the database enforces it too).
+  const restricted = useIsRestricted();
+  const maxFiles = maxProjectFiles(!!me?.is_verified && !restricted);
   const postingAsPage = identity?.mode === "page" ? identity.page : null;
   const pagePerms = useActivePagePermissions();
 
@@ -314,7 +325,10 @@ export function CreateProject() {
 
   function validateTypeSpecific(): string | null {
     if (projectType === "book" && thumbnailUrl && thumbnailRatio && !isBookCoverRatio(thumbnailRatio.width, thumbnailRatio.height)) return BOOK_COVER_ERROR;
-    if (projectType === "file" && !fileFields.file_path) return "Upload a file to continue.";
+    if (projectType === "file") {
+      const fileError = fileFieldsError(fileFields);
+      if (fileError) return fileError;
+    }
     if (projectType === "url" && !urlFields.url.trim()) return "Add the link you're sharing access to.";
     if (projectType === "media" && !mediaFieldsAreValid(mediaFields)) {
       if (!mediaFields.audio.enabled && !mediaFields.video.enabled && !mediaFields.image.enabled) return "Turn on Audio, Video, Image, or any combination.";
@@ -404,7 +418,9 @@ export function CreateProject() {
         project_type: projectType,
         posted_as_page_id: postingAsPage?.id,
         external_url: projectType === "url" ? urlFields.url.trim() : undefined,
-        file_path: projectType === "file" ? (fileFields.file_path ?? undefined) : undefined,
+        // File: the first file's path is mirrored here (older app builds read it); the full list goes in file_details.
+        file_path: projectType === "file" ? fileFieldsToInputs(fileFields)[0]?.file_path : undefined,
+        file_details: projectType === "file" ? { files: fileFieldsToInputs(fileFields) } : undefined,
         thumbnail_url: projectType === "file" ? undefined : (thumbnailUrl ?? undefined),
         thumbnail_width: projectType === "file" ? undefined : thumbnailRatio?.width,
         thumbnail_height: projectType === "file" ? undefined : thumbnailRatio?.height,
@@ -607,7 +623,7 @@ export function CreateProject() {
 
           {/* ---- Type-specific block ---- */}
           {projectType === "media" ? <MediaFields value={mediaFields} onChange={setMediaFields} onError={setError} /> : null}
-          {projectType === "file" ? <FileFields value={fileFields} onChange={setFileFields} onError={setError} onUploadingChange={setFileUploading} /> : null}
+          {projectType === "file" ? <FileFields value={fileFields} onChange={setFileFields} onError={setError} maxFiles={maxFiles} onUploadingChange={setFileUploading} /> : null}
           {projectType === "url" ? <UrlFields value={urlFields} onChange={setUrlFields} /> : null}
           {projectType === "event" ? <EventFields value={eventFields} onChange={setEventFields} /> : null}
           {projectType === "meeting" ? <MeetingFields value={meetingFields} onChange={setMeetingFields} /> : null}
