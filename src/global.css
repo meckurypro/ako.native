@@ -26,6 +26,7 @@
   --color-pushback: #B8862E;
   --color-stance-support: #4E8A62;
   --color-stance-disagree: #B4574A;
+  --color-stance-question: #4A78A8;
   --color-stance-pushback: #B8862E;
   --color-online-glow: #FF6A00;
   --color-brand-orange: #FD5200;
@@ -114,7 +115,8 @@
   --color-pushback-a10: #B8862E1A;
   --color-pushback-a15: #B8862E26;
   --color-stance-support-a50: #4E8A6280;
-  --color-stance-disagree-a50: #B4574A80;
+  --color-stance-question-a10: #4A78A81A;
+  --color-stance-question-a50: #4A78A880;
   --color-stance-pushback-a50: #B8862E80;
   --color-highlight-a50: #BFE6C680;
   --color-white-a15: #FFFFFF26;

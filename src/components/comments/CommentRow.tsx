@@ -17,7 +17,8 @@ import { STANCE_TONE, timeAgoCompact } from "./stance";
  * reply lists and off for neutral context rows like ancestors.
  */
 export function CommentRow({ comment, tinted = true }: { comment: CommentWithAuthor; tinted?: boolean }) {
-  const tone = tinted && comment.stance ? STANCE_TONE[comment.stance] : null;
+  // The neutral "comment" stance draws nothing: no rail, no label.
+  const tone = tinted && comment.stance && comment.stance !== "comment" ? STANCE_TONE[comment.stance] : null;
   const profileHref = `/profile/${comment.author.username}` as Href;
 
   return (

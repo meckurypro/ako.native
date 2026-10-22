@@ -204,7 +204,9 @@ export interface Interest {
   is_active: boolean;
 }
 
-export type Stance = "support" | "disagree" | "pushback";
+/** What a comment is toward the thing it answers. "disagree" no longer exists (folded into "pushback"). "comment" is the
+ *  neutral one — it carries no colour. */
+export type Stance = "support" | "pushback" | "question" | "comment";
 
 export interface Post {
   id: string;
@@ -224,8 +226,12 @@ export interface Post {
   dislike_count: number;
   share_count: number;
   support_count: number;
+  /** Always 0 now — kept so older builds that still select it don't break. */
   disagree_count: number;
   pushback_count: number;
+  question_count: number;
+  /** Top-level comments with the neutral "comment" stance. */
+  neutral_count: number;
   gift_count: number;
   comment_count: number;
   is_deleted: boolean;
@@ -300,6 +306,8 @@ export interface Comment {
   support_count: number;
   disagree_count: number;
   pushback_count: number;
+  question_count: number;
+  neutral_count: number;
   is_deleted: boolean;
   edited_at: string | null;
   created_at: string;

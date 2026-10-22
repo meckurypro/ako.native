@@ -13,7 +13,7 @@ import { useAuth } from "./useAuth";
 // that was already being recorded.
 export type SecondaryActionKey =
   | "support"
-  | "disagree"
+  | "question"
   | "pushback"
   | "dislike"
   | "gift"
@@ -23,7 +23,7 @@ export type SecondaryActionKey =
 
 const ALL_SECONDARY: SecondaryActionKey[] = [
   "support",
-  "disagree",
+  "question",
   "pushback",
   "dislike",
   "gift",
@@ -32,26 +32,38 @@ const ALL_SECONDARY: SecondaryActionKey[] = [
   "share",
 ];
 
-// Tiebreaker for brand-new users (all counts = 0).
-const DEFAULT_ORDER: SecondaryActionKey[] = [
+/** The only actions that can take one of the two usage-ranked tray slots (Like and Comment are fixed). Support,
+ *  Question, Dislike and Gift never show in the tray: they live in "More". */
+export const TRAY_CANDIDATES: SecondaryActionKey[] = ["save", "reshare", "share", "pushback"];
+
+/** Tray order for someone with no usage yet. */
+export const DEFAULT_TRAY_ORDER: SecondaryActionKey[] = ["reshare", "share", "save", "pushback"];
+
+/** "More" is a fixed list, never reshuffled: Support first, then Question, the rest, Dislike last. */
+export const MORE_ORDER: SecondaryActionKey[] = [
   "support",
+  "question",
+  "pushback",
   "reshare",
   "share",
-  "gift",
   "save",
-  "disagree",
-  "pushback",
+  "gift",
   "dislike",
 ];
+
+// Tiebreaker for brand-new users (all counts = 0).
+const DEFAULT_ORDER: SecondaryActionKey[] = [...DEFAULT_TRAY_ORDER, "support", "question", "gift", "dislike"];
 
 type UsageCounts = Record<SecondaryActionKey, number>;
 
 /**
- * Ranks the 7 secondary post actions by how often the current user
- * has used each one, most-used first.
+ * Ranks the secondary post actions by how often the current user
+ * has used each one, most-used first. Only TRAY_CANDIDATES are read from
+ * this ranking (the two tray slots after the fixed Like and Comment).
  *
  * Usage sources:
- *   support / disagree / pushback  →  comments.stance authored by this user
+ *   support / question / pushback  →  comments.stance authored by this user
+ *                                      (legacy "disagree" rows were merged into pushback)
  *   dislike                        →  reactions of type "dislike"
  *   gift                           →  gifts.sender_id
  *   save                           →  bookmarks.user_id
@@ -60,9 +72,8 @@ type UsageCounts = Record<SecondaryActionKey, number>;
  *                                      and quotes both count as "resharing")
  *   share                          →  reactions of type "share"
  *
- * PostCard places Like first (fixed), then streams all 8 in this ranked
- * order into the visible middle slots + long-press sheet. Cached 5 min —
- * usage shifts slowly.
+ * PostCard places Like and Comment first (fixed), then the top two tray
+ * candidates from this ranking. Cached 5 min — usage shifts slowly.
  */
 export function useEngagementOrder() {
   const { user } = useAuth();
@@ -72,7 +83,7 @@ export function useEngagementOrder() {
     queryFn: async (): Promise<SecondaryActionKey[]> => {
       const counts: UsageCounts = {
         support: 0,
-        disagree: 0,
+        question: 0,
         pushback: 0,
         dislike: 0,
         gift: 0,
@@ -82,7 +93,7 @@ export function useEngagementOrder() {
       };
 
       const [stanceRes, dislikeRes, giftRes, saveRes, reshareRes, shareRes] = await Promise.all([
-        // Support/Disagree/Pushback are stance-tagged comments.
+        // Support/Question/Pushback are stance-tagged comments.
         supabase
           .from("comments")
           .select("stance")
@@ -128,8 +139,8 @@ export function useEngagementOrder() {
 
       for (const row of stanceRes.data ?? []) {
         if (row.stance === "support") counts.support++;
-        else if (row.stance === "disagree") counts.disagree++;
-        else if (row.stance === "pushback") counts.pushback++;
+        else if (row.stance === "question") counts.question++;
+        else if (row.stance === "pushback" || (row.stance as string) === "disagree") counts.pushback++;
       }
       counts.dislike = dislikeRes.count ?? 0;
       counts.gift = giftRes.count ?? 0;

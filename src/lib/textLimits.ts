@@ -1,7 +1,7 @@
 // src/lib/textLimits.ts
 
 // Single source of truth for the max length of user-authored long-form
-// text: post content, stance comments (support/disagree/pushback), and
+// text: post content, stance comments (support/pushback/question/comment), and
 // project descriptions. They're all capped at the same number by
 // product decision, not by coincidence — keeping one exported constant
 // means changing that number later is a one-line edit here instead of

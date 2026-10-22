@@ -31,7 +31,8 @@ import {
   UserX,
   Users,
   Wallet2,
-  XCircle,
+  Hand,
+  HelpCircle,
   type LucideIcon,
 } from "lucide-react-native";
 import { memo, useCallback, useEffect, useState } from "react";
@@ -60,8 +61,9 @@ const TYPE_CONFIG: Record<string, { icon: LucideIcon; verb: string }> = {
   like: { icon: Heart, verb: "liked your post" },
   dislike: { icon: ThumbsDown, verb: "disliked your post" },
   support: { icon: Handshake, verb: "supported your post" },
-  disagree: { icon: XCircle, verb: "disagreed with your post" },
-  pushback: { icon: Handshake, verb: "pushed back on your post" },
+  disagree: { icon: Hand, verb: "pushed back on your post" }, // legacy rows; migrated to pushback
+  pushback: { icon: Hand, verb: "pushed back on your post" },
+  question: { icon: HelpCircle, verb: "asked a question on your post" },
   reshare: { icon: Repeat2, verb: "reposted your post" },
   quote: { icon: Quote, verb: "quoted your post" },
   share: { icon: Redo2, verb: "shared your post" },

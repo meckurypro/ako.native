@@ -126,7 +126,7 @@ export function PostDetail() {
                 postId={post.id}
                 parentCommentId={null}
                 total={post.comment_count}
-                counts={{ support: post.support_count, disagree: post.disagree_count, pushback: post.pushback_count }}
+                counts={{ support: post.support_count, question: post.question_count, pushback: post.pushback_count, comment: post.neutral_count }}
               />
             </View>
 
@@ -134,7 +134,6 @@ export function PostDetail() {
               <StanceComposer
                 postId={post.id}
                 stance={composeStance}
-                stances={isOwnPost ? ["support"] : undefined}
                 onClose={() => setComposeStance(null)}
               />
             ) : null}

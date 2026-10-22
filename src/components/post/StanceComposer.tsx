@@ -1,10 +1,10 @@
 // src/components/post/StanceComposer.tsx
-// The Support / Disagree / Pushback composer. Opens as a card docked to the
-// bottom; the coloured top border and submit button follow the active stance.
-// With only one stance on offer (an author supporting their own post) the tabs
-// are hidden.
-import { useRef, useState } from "react";
-import { Pressable, View, type TextInput } from "react-native";
+// The Support / Question / Pushback / Comment composer. Opens as a card docked to the
+// bottom; the coloured top border and submit button follow the stance. The stance is
+// fixed once the composer is open (shown as a chip, not switchable): to change it,
+// close and pick another. Comment is the neutral one and carries no colour.
+import { useState } from "react";
+import { Pressable, View } from "react-native";
 
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
@@ -14,82 +14,93 @@ import { CONTENT_LIMIT, contentCounterClass } from "@/lib/textLimits";
 import type { Stance } from "@/types/database";
 import { MentionTextarea } from "./MentionTextarea";
 
-const STANCES: Stance[] = ["support", "disagree", "pushback"];
-
 // Every class string is spelled out in full so Tailwind can see it at build time.
 export const STANCE_COLORS: Record<
   Stance,
   {
     label: string;
+    submitLabel: string; // what the post button says
     prompt: string;
     iconClass: string; // text-* for tray icon stroke
-    tabActive: string; // active tab background + underline
-    tabTextActive: string; // active tab label colour
+    chipClass: string; // the fixed stance chip's background
+    chipTextClass: string; // …and its label colour
     topBorderClass: string; // coloured top border on the card
     submitClass: string; // submit button background
+    submitTextClass: string;
     pillClass: string; // comment pill background (see CommentThread)
     pillTextClass: string; // comment pill label colour
   }
 > = {
   support: {
     label: "Support",
+    submitLabel: "Support",
     prompt: "Add your reasoning or build on the argument.",
     iconClass: "text-ink",
-    tabActive: "border-b-2 border-accent bg-accent-soft",
-    tabTextActive: "text-accent",
+    chipClass: "bg-accent-soft",
+    chipTextClass: "text-accent",
     topBorderClass: "border-t-4 border-accent",
     submitClass: "bg-accent",
+    submitTextClass: "text-canvas",
     pillClass: "bg-accent-soft",
     pillTextClass: "text-accent",
   },
-  disagree: {
-    label: "Disagree",
-    prompt: "Explain your position.",
+  question: {
+    label: "Question",
+    submitLabel: "Ask",
+    prompt: "What would you like to know?",
     iconClass: "text-ink",
-    tabActive: "border-b-2 border-danger bg-danger-a10",
-    tabTextActive: "text-danger",
-    topBorderClass: "border-t-4 border-danger",
-    submitClass: "bg-danger",
-    pillClass: "bg-danger-a10",
-    pillTextClass: "text-danger",
+    chipClass: "bg-stance-question-a10",
+    chipTextClass: "text-stance-question",
+    topBorderClass: "border-t-4 border-stance-question",
+    submitClass: "bg-stance-question",
+    submitTextClass: "text-canvas",
+    pillClass: "bg-stance-question-a10",
+    pillTextClass: "text-stance-question",
   },
   pushback: {
     label: "Pushback",
-    prompt: "What would you question, qualify, or add?",
+    submitLabel: "Push back",
+    prompt: "Say where you disagree, or what you'd question or qualify.",
     iconClass: "text-ink",
-    tabActive: "border-b-2 border-pushback bg-pushback-a10",
-    tabTextActive: "text-pushback",
+    chipClass: "bg-pushback-a10",
+    chipTextClass: "text-pushback",
     topBorderClass: "border-t-4 border-pushback",
     submitClass: "bg-pushback",
+    submitTextClass: "text-canvas",
     pillClass: "bg-pushback-a10",
     pillTextClass: "text-pushback",
+  },
+  comment: {
+    label: "Comment",
+    submitLabel: "Comment",
+    prompt: "Say something.",
+    iconClass: "text-ink",
+    chipClass: "bg-surface",
+    chipTextClass: "text-ink-muted",
+    topBorderClass: "border-t-4 border-border",
+    submitClass: "bg-ink",
+    submitTextClass: "text-canvas",
+    pillClass: "bg-surface",
+    pillTextClass: "text-ink-muted",
   },
 };
 
 interface StanceComposerProps {
   postId: string;
+  /** The stance this comment is posted with. Fixed for the life of the composer. */
   stance: Stance;
   onClose: () => void;
   /** Present = this stance is a reply to that comment. */
   parentCommentId?: string;
-  /** Which stances to offer as tabs. Defaults to all three. */
-  stances?: Stance[];
 }
 
-export function StanceComposer({ postId, stance: initialStance, onClose, parentCommentId, stances = STANCES }: StanceComposerProps) {
-  const [activeStance, setActiveStance] = useState<Stance>(initialStance);
+export function StanceComposer({ postId, stance, onClose, parentCommentId }: StanceComposerProps) {
   const [content, setContent] = useState("");
-  const inputRef = useRef<TextInput>(null);
   const [error, setError] = useState<string | null>(null);
   const createComment = useCreateComment(postId);
   const toast = useToast();
 
-  const colors = STANCE_COLORS[activeStance];
-
-  function switchStance(s: Stance) {
-    setActiveStance(s);
-    setTimeout(() => inputRef.current?.focus(), 0);
-  }
+  const colors = STANCE_COLORS[stance];
 
   async function handleSubmit() {
     if (!content.trim()) return;
@@ -98,7 +109,7 @@ export function StanceComposer({ postId, stance: initialStance, onClose, parentC
       await createComment.mutateAsync({
         post_id: postId,
         content,
-        stance: activeStance,
+        stance,
         parent_comment_id: parentCommentId,
       });
       setContent("");
@@ -113,29 +124,13 @@ export function StanceComposer({ postId, stance: initialStance, onClose, parentC
   return (
     <Modal onClose={onClose} bare align="bottom" scrim="canvas" maxWidth={448} ariaLabel={`${colors.label} composer`}>
       <View className={`overflow-hidden rounded-2xl bg-canvas ${colors.topBorderClass}`}>
-        {stances.length > 1 ? (
-          <View className="flex-row border-b border-border">
-            {stances.map((s) => (
-              <Pressable
-                key={s}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: activeStance === s }}
-                onPress={() => switchStance(s)}
-                className={`flex-1 items-center py-3 ${activeStance === s ? STANCE_COLORS[s].tabActive : ""}`}
-              >
-                <Text className={`text-sm font-medium ${activeStance === s ? STANCE_COLORS[s].tabTextActive : "text-ink-muted"}`}>
-                  {STANCE_COLORS[s].label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        ) : null}
-
         <View className="p-5">
-          <Text className="mb-3 text-sm text-ink-muted">{colors.prompt}</Text>
+          {/* The stance is fixed once the composer is open: shown, not switchable. */}
+          <View className={`mb-3 self-start rounded-full px-3 py-1 ${colors.chipClass}`}>
+            <Text className={`text-xs font-semibold ${colors.chipTextClass}`}>{colors.label}</Text>
+          </View>
 
           <MentionTextarea
-            ref={inputRef}
             value={content}
             onChange={setContent}
             maxLength={CONTENT_LIMIT}
@@ -158,7 +153,7 @@ export function StanceComposer({ postId, stance: initialStance, onClose, parentC
               accessibilityRole="button"
               className={`rounded-full px-5 py-2 ${colors.submitClass} ${!content.trim() || createComment.isPending ? "opacity-50" : ""}`}
             >
-              <Text className="text-sm font-medium text-canvas">{createComment.isPending ? "Posting…" : colors.label}</Text>
+              <Text className={`text-sm font-medium ${colors.submitTextClass}`}>{createComment.isPending ? "Posting…" : colors.submitLabel}</Text>
             </Pressable>
           </View>
 

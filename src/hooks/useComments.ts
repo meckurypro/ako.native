@@ -14,6 +14,12 @@ const COMMENT_SELECT = `*, author:profiles!comments_author_id_fkey(id, username,
 
 export const COMMENT_PAGE_SIZE = 25;
 
+/** The per-stance counter column. The neutral "comment" stance counts in neutral_count: comment_count is the total. */
+function stanceCountField(stance: Stance | null | undefined): string | null {
+  if (!stance) return null;
+  return stance === "comment" ? "neutral_count" : `${stance}_count`;
+}
+
 /** "all", or one stance — the stance is always the reply's stance toward ITS parent (post or comment). */
 export type StanceFilter = "all" | Stance;
 
@@ -128,7 +134,7 @@ export function useCreateComment(postId: string) {
       const queuedAt = ctx?.queuedAt ?? Date.now();
       const stance = comment?.stance ?? input.stance ?? null;
       const parentId = comment?.parent_comment_id ?? input.parent_comment_id ?? null;
-      const stanceField = stance ? `${stance}_count` : null;
+      const stanceField = stanceCountField(stance);
 
       // Counts move the instant the reply is accepted — mirrors what the database triggers just did
       // (update_post_stance_counts): the post's comment_count, its per-stance total for a top-level comment, and
@@ -198,7 +204,7 @@ export function useDeleteComment(postId: string) {
     onSuccess: (_d, comment, ctx) => {
       const queuedAt = ctx?.queuedAt ?? Date.now();
       const parentId = comment.parent_comment_id;
-      const stanceField = comment.stance ? `${comment.stance}_count` : null;
+      const stanceField = stanceCountField(comment.stance);
 
       notifyManager.batch(() => {
         adjustCountInCaches(queryClient, { roots: POST_QUERY_ROOTS, id: postId, field: "comment_count", delta: -1, queuedAt });

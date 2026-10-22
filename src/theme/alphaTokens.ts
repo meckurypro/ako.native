@@ -70,7 +70,8 @@ export const ALPHA_TOKENS: Record<string, number[]> = {
   "stance-support": [
     50
   ],
-  "stance-disagree": [
+  "stance-question": [
+    10,
     50
   ],
   "stance-pushback": [

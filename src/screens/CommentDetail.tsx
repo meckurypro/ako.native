@@ -78,7 +78,7 @@ function CommentThreadBody({ comment }: { comment: CommentWithAuthor }) {
         postId={comment.post_id}
         parentCommentId={comment.id}
         total={comment.reply_count}
-        counts={{ support: comment.support_count, disagree: comment.disagree_count, pushback: comment.pushback_count }}
+        counts={{ support: comment.support_count, question: comment.question_count, pushback: comment.pushback_count, comment: comment.neutral_count }}
       />
     </>
   );

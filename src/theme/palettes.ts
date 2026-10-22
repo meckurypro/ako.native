@@ -23,6 +23,7 @@ export interface Palette {
   /** Conversation stance cues (replies) — own tokens so page mode's orange accent never recolours them. */
   stanceSupport: string;
   stanceDisagree: string;
+  stanceQuestion: string;
   stancePushback: string;
   onlineGlow: string;
   brandOrange: string; // the orange in the Akọ logo — pages/organisation affordances
@@ -67,6 +68,7 @@ const light: Palette = {
   pushback: "#B8862E",
   stanceSupport: "#4E8A62",
   stanceDisagree: "#B4574A",
+  stanceQuestion: "#4A78A8",
   stancePushback: "#B8862E",
   onlineGlow: "#FF6A00",
   brandOrange: "#FD5200",
@@ -110,6 +112,7 @@ const dark: Palette = {
   pushback: "#D9A857",
   stanceSupport: "#5DBB89",
   stanceDisagree: "#D68A7B",
+  stanceQuestion: "#86ADD8",
   stancePushback: "#D9A857",
   highlight: "#1E4B31",
   postHeader: "#7CB3FF",
@@ -215,6 +218,7 @@ export function paletteToCssVars(p: Palette): Record<`--${string}`, string> {
     "--color-pushback": p.pushback,
     "--color-stance-support": p.stanceSupport,
     "--color-stance-disagree": p.stanceDisagree,
+    "--color-stance-question": p.stanceQuestion,
     "--color-stance-pushback": p.stancePushback,
     "--color-online-glow": p.onlineGlow,
     "--color-brand-orange": p.brandOrange,

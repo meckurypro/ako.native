@@ -22,11 +22,14 @@ export const STANCE_TONE: Record<
   }
 > = {
   support: { label: "Supports", noun: "Support", rail: "bg-stance-support-a50", text: "text-stance-support", underline: "border-stance-support" },
-  disagree: { label: "Disagrees", noun: "Disagree", rail: "bg-stance-disagree-a50", text: "text-stance-disagree", underline: "border-stance-disagree" },
+  question: { label: "Asks", noun: "Question", rail: "bg-stance-question-a50", text: "text-stance-question", underline: "border-stance-question" },
   pushback: { label: "Pushes back", noun: "Pushback", rail: "bg-stance-pushback-a50", text: "text-stance-pushback", underline: "border-stance-pushback" },
+  // The neutral stance: deliberately no colour. Reply rows draw no rail or label for it (see CommentRow).
+  comment: { label: "Comments", noun: "Comment", rail: "bg-ink-muted-a50", text: "text-ink-muted", underline: "border-ink-muted" },
 };
 
-export const STANCE_ORDER: Stance[] = ["support", "disagree", "pushback"];
+/** Display order everywhere stances are listed (filter chips, quick-reply words). */
+export const STANCE_ORDER: Stance[] = ["support", "question", "pushback", "comment"];
 
 /** "now" / "5m" / "2h" / "3d" / "2w" — compact, for dense reply rows. */
 export function timeAgoCompact(dateString: string): string {
