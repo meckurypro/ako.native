@@ -21,7 +21,7 @@ export const STANCE_TONE: Record<
     underline: string;
   }
 > = {
-  support: { label: "Supports", noun: "Support", rail: "bg-stance-support-a50", text: "text-stance-support", underline: "border-stance-support" },
+  support: { label: "Adds", noun: "Add", rail: "bg-stance-support-a50", text: "text-stance-support", underline: "border-stance-support" },
   question: { label: "Asks", noun: "Question", rail: "bg-stance-question-a50", text: "text-stance-question", underline: "border-stance-question" },
   pushback: { label: "Pushes back", noun: "Pushback", rail: "bg-stance-pushback-a50", text: "text-stance-pushback", underline: "border-stance-pushback" },
   // The neutral stance: deliberately no colour. Reply rows draw no rail or label for it (see CommentRow).

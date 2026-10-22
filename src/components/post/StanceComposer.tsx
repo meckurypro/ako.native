@@ -32,9 +32,9 @@ export const STANCE_COLORS: Record<
   }
 > = {
   support: {
-    label: "Support",
-    submitLabel: "Support",
-    prompt: "Add your reasoning or build on the argument.",
+    label: "Add",
+    submitLabel: "Add",
+    prompt: "Build on it, agree, or share what you know.",
     iconClass: "text-ink",
     chipClass: "bg-accent-soft",
     chipTextClass: "text-accent",

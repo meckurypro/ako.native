@@ -12,7 +12,7 @@ import {
   Briefcase,
   Coins,
   Gift,
-  Handshake,
+  MessageSquarePlus,
   Heart,
   Lock,
   Megaphone,
@@ -60,7 +60,7 @@ import { timeAgo } from "@/lib/timeAgo";
 const TYPE_CONFIG: Record<string, { icon: LucideIcon; verb: string }> = {
   like: { icon: Heart, verb: "liked your post" },
   dislike: { icon: ThumbsDown, verb: "disliked your post" },
-  support: { icon: Handshake, verb: "supported your post" },
+  support: { icon: MessageSquarePlus, verb: "added to your post" },
   disagree: { icon: Hand, verb: "pushed back on your post" }, // legacy rows; migrated to pushback
   pushback: { icon: Hand, verb: "pushed back on your post" },
   question: { icon: HelpCircle, verb: "asked a question on your post" },

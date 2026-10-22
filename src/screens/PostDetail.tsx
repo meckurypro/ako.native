@@ -117,7 +117,7 @@ export function PostDetail() {
           <CommentEngagementProvider key={post.id} postId={post.id}>
             <View onLayout={(e) => (repliesY.current = e.nativeEvent.layout.y)}>
               <ReplyBar
-                placeholder="Add your reasoning…"
+                placeholder="What's your take?"
                 // The post's own author can only build on their own post.
                 stances={isOwnPost ? ["support"] : undefined}
                 onOpen={setComposeStance}

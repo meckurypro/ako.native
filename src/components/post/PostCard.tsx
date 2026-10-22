@@ -13,11 +13,10 @@ import {
   Archive,
   Bookmark,
   HelpCircle,
-  MessageCircle,
+  MessageSquarePlus,
   Gift as GiftIcon,
   Globe,
   Hand,
-  Handshake,
   Megaphone,
   MoreHorizontal,
   Pencil,
@@ -51,13 +50,7 @@ import { useLivePost } from "@/hooks/useLiveCounts";
 import { useRecordPostView } from "@/hooks/useRecordPostView";
 import { useIsBookmarked, useToggleBookmark } from "@/hooks/useBookmarks";
 import { useCollaborators } from "@/hooks/useCollaboration";
-import {
-  DEFAULT_TRAY_ORDER,
-  MORE_ORDER,
-  TRAY_CANDIDATES,
-  useEngagementOrder,
-  type SecondaryActionKey,
-} from "@/hooks/useEngagementOrder";
+import { MORE_ORDER, STANCE_KEYS, TRAY_ORDER, type SecondaryActionKey } from "@/lib/engagementActions";
 import { useActiveIdentity } from "@/hooks/usePages";
 import {
   canEditPost,
@@ -189,7 +182,6 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
   const prioritizedTodayQuery = usePrioritizedPostToday(post.author.id, isOwner);
   const isPrioritizedToday = (prioritizedTodayQuery.data ?? null) === post.id;
 
-  const { data: engagementOrder } = useEngagementOrder();
 
   const hasResharedQuery = useHasReshared(reshareTarget.id, !isOwner && active);
   const hasReshared = !!hasResharedQuery.data;
@@ -261,8 +253,8 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
   const secondaryDefs: Record<SecondaryActionKey, ActionDef> = {
     support: {
       key: "support",
-      label: "Support",
-      icon: mk(Handshake),
+      label: "Add",
+      icon: mk(MessageSquarePlus),
       count: post.support_count,
       onAction: () => setActiveStance("support"),
     },
@@ -319,8 +311,8 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
 
   // Which actions are available at all on this post.
   const isAvailable = (k: SecondaryActionKey) => {
-    // A draft/scheduled post has no public page yet: nothing to share, reshare or gift.
-    if (!isPublished(post) && (k === "share" || k === "reshare" || k === "gift")) return false;
+    // A draft/scheduled post has no public page yet: nothing to share, reshare or gift, and nobody to answer to.
+    if (!isPublished(post) && (k === "share" || k === "reshare" || k === "gift" || STANCE_KEYS.includes(k))) return false;
     if (isOwner && HIDDEN_FOR_OWNER.includes(k)) return false;
     if (k === "reshare" && (isOwner || hasReshared)) return false;
     if (k === "gift" && viewingAsPage) return false; // a Page can't gift
@@ -328,13 +320,10 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
     return true;
   };
 
-  // The tray: Like and Comment are fixed; the next two are whichever of Save / Reshare / Share / Pushback this
-  // person uses most. Gift, Dislike, Question and Support never appear there — they live in "More".
-  const trayKeys = (engagementOrder ?? DEFAULT_TRAY_ORDER)
-    .filter((k) => TRAY_CANDIDATES.includes(k) && isAvailable(k))
-    .slice(0, 2);
+  // The tray: Like, then the three stances (Add / Question / Pushback), always — see lib/engagementActions.ts.
+  const trayKeys = TRAY_ORDER.filter(isAvailable);
 
-  // "More" is a fixed order so it never shuffles under the thumb: Support, then Question, the rest, Dislike last.
+  // "More" is a fixed list: sharing first, Dislike last.
   const moreOrder = MORE_ORDER.filter(isAvailable);
 
   // Plain reshares have no content of their own to edit; collaborative posts are locked.
@@ -348,19 +337,6 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
       count: likeCount,
       onClick: () => toggleLike.mutate(isLiked),
     },
-    // Fixed second slot: opens the neutral (uncoloured) comment composer. The "Comments: N" label under it still
-    // goes to the conversation.
-    ...(isPublished(post)
-      ? [
-          {
-            key: "comment",
-            label: "Comment",
-            icon: mk(MessageCircle),
-            count: null,
-            onClick: () => setActiveStance("comment"),
-          } satisfies EngagementAction,
-        ]
-      : []),
   ];
 
   const ownerActions: EngagementAction[] = isOwner
@@ -401,7 +377,7 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
 
   const moreActions: EngagementAction[] = [...moreOrder.map(toAction), ...ownerActions];
 
-  // Two usage-ranked slots after the fixed Like and Comment; long-pressing any button opens the full sheet.
+  // Add / Question / Pushback sit right after Like; long-pressing any button opens the full sheet.
   const middleActions: EngagementAction[] = trayKeys.map(toAction);
 
   const hasOwnText = post.content.trim() !== "" || !!post.heading;
