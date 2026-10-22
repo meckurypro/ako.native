@@ -9,6 +9,7 @@ import { router } from "expo-router";
 import {
   ArrowDownCircle,
   ArrowUpCircle,
+  Gem,
   Gift,
   Heart,
   Megaphone,
@@ -125,21 +126,34 @@ export default function WalletScreen() {
           <Text className="mb-8 mt-3 font-display text-5xl text-canvas">{formatUsd(wallet?.balance ?? 0)}</Text>
         )}
 
-        {depositsEnabled ? (
+        <View className="flex-row items-center gap-6">
+          {depositsEnabled ? (
+            <Pressable
+              onPress={() => router.push("/wallet/fund")}
+              accessibilityRole="button"
+              accessibilityLabel="Fund wallet"
+              className="flex-row items-center gap-3"
+            >
+              <View className="h-11 w-11 items-center justify-center rounded-full bg-canvas/15">
+                <Icon as={ArrowDownCircle} size={20} className="text-canvas" />
+              </View>
+              <Text className="text-sm font-medium text-canvas">Fund wallet</Text>
+            </Pressable>
+          ) : (
+            <Text className="text-xs text-canvas/70">Funding is temporarily unavailable.</Text>
+          )}
           <Pressable
-            onPress={() => router.push("/wallet/fund")}
+            onPress={() => router.push("/wallet/gifts")}
             accessibilityRole="button"
-            accessibilityLabel="Fund wallet"
-            className="flex-row items-center gap-3 self-start"
+            accessibilityLabel="Open gift vault"
+            className="flex-row items-center gap-3"
           >
             <View className="h-11 w-11 items-center justify-center rounded-full bg-canvas/15">
-              <Icon as={ArrowDownCircle} size={20} className="text-canvas" />
+              <Icon as={Gem} size={20} className="text-canvas" />
             </View>
-            <Text className="text-sm font-medium text-canvas">Fund wallet</Text>
+            <Text className="text-sm font-medium text-canvas">Vault</Text>
           </Pressable>
-        ) : (
-          <Text className="text-xs text-canvas/70">Funding is temporarily unavailable.</Text>
-        )}
+        </View>
       </View>
 
       {pending.length > 0 ? (
