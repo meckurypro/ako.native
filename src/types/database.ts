@@ -300,6 +300,8 @@ export interface Comment {
   stance: Stance | null;
   like_count: number;
   dislike_count: number;
+  /** Unique people who shared this comment's link. */
+  share_count: number;
   reply_count: number;
   // Per-stance totals of the direct replies — same trio a post carries, so a
   // comment opened as a parent can show the same breakdown a post does.

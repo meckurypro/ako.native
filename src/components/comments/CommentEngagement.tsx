@@ -1,5 +1,6 @@
 // src/components/comments/CommentEngagement.tsx
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { router, usePathname, type Href } from "expo-router";
 import { Share } from "react-native";
 
@@ -12,6 +13,7 @@ import { useLiveThread } from "@/hooks/useLiveCounts";
 import { useDeleteComment, type CommentWithAuthor } from "@/hooks/useComments";
 import { useMyCommentReactions, useToggleCommentReaction, type CommentCountDeltas, type CommentReactionState } from "@/hooks/useReactions";
 import { APP_URL } from "@/lib/config";
+import { supabase } from "@/lib/supabase";
 import type { Stance } from "@/types/database";
 import { CommentEditSheet } from "./CommentEditSheet";
 import { CommentReportSheet } from "./CommentReportSheet";
@@ -97,16 +99,26 @@ export function CommentEngagementProvider({ postId, children }: { postId: string
     }
   }
 
+  const queryClient = useQueryClient();
   const share = useCallback(
     async (comment: CommentWithAuthor) => {
       const url = commentUrl(postId, comment.id);
+      let shared = false;
       try {
-        await Share.share({ message: url, url });
+        const result = await Share.share({ message: url, url });
+        shared = result.action === Share.sharedAction;
       } catch {
         // Share sheet dismissed — nothing to do.
       }
+      if (!shared) return;
+      // Count it once per person, then refresh the comment so the number on the Share button moves.
+      const { error } = await supabase.rpc("record_comment_share", { p_comment_id: comment.id });
+      if (!error) {
+        void queryClient.invalidateQueries({ queryKey: ["comment", comment.id] });
+        void queryClient.invalidateQueries({ queryKey: ["comment-list"] });
+      }
     },
-    [postId]
+    [postId, queryClient]
   );
 
   const value = useMemo<CommentEngagementCtx>(

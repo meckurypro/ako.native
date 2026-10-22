@@ -23,7 +23,7 @@ import { COMMENT_QUERY_ROOTS, patchFields, POST_QUERY_ROOTS } from "./optimistic
 import { supabase } from "./supabase";
 
 const POST_FIELDS = ["like_count", "dislike_count", "share_count", "support_count", "disagree_count", "pushback_count", "question_count", "neutral_count", "gift_count", "comment_count"];
-const COMMENT_FIELDS = ["like_count", "dislike_count", "reply_count", "support_count", "disagree_count", "pushback_count", "question_count", "neutral_count"];
+const COMMENT_FIELDS = ["like_count", "dislike_count", "share_count", "reply_count", "support_count", "disagree_count", "pushback_count", "question_count", "neutral_count"];
 
 const MAX_POST_CHANNELS = 40; // Supabase caps channels per connection; a screen never needs more than this
 const SUBSCRIBE_DELAY_MS = 300; // cards scrolled past in a flick never subscribe

@@ -65,11 +65,11 @@ export function CommentMoreMenu({ comment, iconSize = 16 }: { comment: CommentWi
 }
 
 /**
- * Like · dislike · gift for one comment (counts hidden at zero), gift on the right and only on others' comments.
- * There's no reply button: opening a comment is how you reply (see ReplyBar in CommentDetail). `sm` is the
- * compact row under a reply; `lg` is the spaced-out bar under an opened comment.
+ * The row under a reply: like · dislike · share · report (or edit / delete on your own) · gift on the far right
+ * (others' comments only). There's no "…" menu and no reply button — opening a comment is how you reply (see
+ * ReplyBar in CommentDetail). Counts are hidden at zero.
  */
-export function CommentActionBar({ comment, size = "sm" }: { comment: CommentWithAuthor; size?: "sm" | "lg" }) {
+export function CommentActionBar({ comment }: { comment: CommentWithAuthor }) {
   const eng = useCommentEngagement();
   const { colors } = useTheme();
   const state = eng.reactions?.get(comment.id);
@@ -79,15 +79,12 @@ export function CommentActionBar({ comment, size = "sm" }: { comment: CommentWit
   const likeCount = Math.max(0, comment.like_count + (delta?.like ?? 0));
   const dislikeCount = Math.max(0, comment.dislike_count + (delta?.dislike ?? 0));
 
-  const icon = size === "lg" ? 22 : 17;
-  const countClass = size === "lg" ? "text-sm" : "text-xs";
-  const countLine = size === "lg" ? 20 : 16;
-  const wrapperClass = size === "lg" ? "flex-row items-center justify-around py-1" : "mt-1 -ml-1.5 flex-row items-center gap-7";
+  const icon = 17;
   const btn = "flex-row items-center gap-1.5 p-1.5";
   const isMine = !!eng.currentUserId && comment.author.id === eng.currentUserId;
 
   return (
-    <View className={wrapperClass}>
+    <View className="mt-1 -ml-1.5 flex-row items-center gap-4">
       <Pressable
         onPress={() => eng.toggleReaction({ commentId: comment.id, type: "like", currentlyActive: liked })}
         accessibilityRole="button"
@@ -96,7 +93,7 @@ export function CommentActionBar({ comment, size = "sm" }: { comment: CommentWit
         className={btn}
       >
         <LikeHeart active={liked} size={icon} className={liked ? "text-danger" : "text-ink-muted"} />
-        <AnimatedCount value={likeCount} lineHeight={countLine} className={`${countClass} ${liked ? "text-danger" : "text-ink-muted"}`} />
+        <AnimatedCount value={likeCount} lineHeight={16} className={`text-xs ${liked ? "text-danger" : "text-ink-muted"}`} />
       </Pressable>
 
       <Pressable
@@ -107,25 +104,34 @@ export function CommentActionBar({ comment, size = "sm" }: { comment: CommentWit
         className={btn}
       >
         <ThumbsDown size={icon} color={disliked ? colors.danger : colors.inkMuted} fill={disliked ? colors.danger : "none"} />
-        <AnimatedCount value={dislikeCount} lineHeight={countLine} className={`${countClass} ${disliked ? "text-danger" : "text-ink-muted"}`} />
+        <AnimatedCount value={dislikeCount} lineHeight={16} className={`text-xs ${disliked ? "text-danger" : "text-ink-muted"}`} />
       </Pressable>
 
-      {size === "lg" ? (
-        <Pressable onPress={() => eng.share(comment)} accessibilityRole="button" accessibilityLabel="Share" className={btn}>
-          <Icon as={Share2} size={icon} className="text-ink-muted" />
-        </Pressable>
-      ) : null}
+      <Pressable onPress={() => eng.share(comment)} accessibilityRole="button" accessibilityLabel="Share" className={btn}>
+        <Icon as={Share2} size={icon} className="text-ink-muted" />
+      </Pressable>
 
-      {!isMine ? (
-        <Pressable
-          onPress={() => eng.gift(comment)}
-          accessibilityRole="button"
-          accessibilityLabel="Send a gift"
-          className={`${btn} ${size === "sm" ? "ml-auto" : ""}`}
-        >
-          <Icon as={GiftIcon} size={icon} className="text-ink-muted" />
-        </Pressable>
-      ) : null}
+      {isMine ? (
+        <>
+          {canEditComment(comment) ? (
+            <Pressable onPress={() => eng.edit(comment)} accessibilityRole="button" accessibilityLabel="Edit" className={btn}>
+              <Icon as={Pencil} size={icon} className="text-ink-muted" />
+            </Pressable>
+          ) : null}
+          <Pressable onPress={() => eng.remove(comment)} accessibilityRole="button" accessibilityLabel="Delete" className={btn}>
+            <Icon as={Trash2} size={icon} className="text-ink-muted" />
+          </Pressable>
+        </>
+      ) : (
+        <>
+          <Pressable onPress={() => eng.report(comment)} accessibilityRole="button" accessibilityLabel="Report" className={btn}>
+            <Icon as={Flag} size={icon} className="text-ink-muted" />
+          </Pressable>
+          <Pressable onPress={() => eng.gift(comment)} accessibilityRole="button" accessibilityLabel="Send a gift" className={`${btn} ml-auto`}>
+            <Icon as={GiftIcon} size={icon} className="text-ink-muted" />
+          </Pressable>
+        </>
+      )}
     </View>
   );
 }

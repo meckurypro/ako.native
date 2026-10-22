@@ -14,10 +14,11 @@ const COMMENT_SELECT = `*, author:profiles!comments_author_id_fkey(id, username,
 
 export const COMMENT_PAGE_SIZE = 25;
 
-/** The per-stance counter column. The neutral "comment" stance counts in neutral_count: comment_count is the total. */
+/** The per-stance counter column (comment_count is the total). */
 function stanceCountField(stance: Stance | null | undefined): string | null {
   if (!stance) return null;
-  return stance === "comment" ? "neutral_count" : `${stance}_count`;
+  // The retired neutral "comment" stance now counts as an Add.
+  return stance === "comment" ? "support_count" : `${stance}_count`;
 }
 
 /** "all", or one stance — the stance is always the reply's stance toward ITS parent (post or comment). */

@@ -6,7 +6,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Text } from "@/components/ui/Text";
 import type { CommentWithAuthor } from "@/hooks/useComments";
 import { renderFormattedText } from "@/lib/formatText";
-import { CommentActionBar, CommentMoreMenu } from "./CommentActionBar";
+import { CommentActionBar } from "./CommentActionBar";
 import { STANCE_TONE, timeAgoCompact } from "./stance";
 
 /**
@@ -41,14 +41,11 @@ export function CommentRow({ comment, tinted = true }: { comment: CommentWithAut
           <Text className="flex-shrink-0 text-xs text-ink-muted">· {timeAgoCompact(comment.created_at)}</Text>
           {comment.edited_at ? <Text className="flex-shrink-0 text-xs text-ink-muted">· edited</Text> : null}
           {tone ? <Text className={`flex-shrink-0 text-[11px] font-medium ${tone.text}`}>· {tone.label}</Text> : null}
-          <View className="ml-auto flex-shrink-0 pl-2">
-            <CommentMoreMenu comment={comment} />
-          </View>
         </View>
 
         <Text className="mt-0.5 text-[15px] leading-snug text-ink">{renderFormattedText(comment.content, "c")}</Text>
 
-        <CommentActionBar comment={comment} size="sm" />
+        <CommentActionBar comment={comment} />
       </View>
     </Pressable>
   );

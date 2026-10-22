@@ -29,7 +29,8 @@ export const STANCE_TONE: Record<
 };
 
 /** Display order everywhere stances are listed (filter chips, quick-reply words). */
-export const STANCE_ORDER: Stance[] = ["support", "question", "pushback", "comment"];
+// Every comment is an Add, a Question or a Pushback — the old neutral "comment" is retired (folded into Add).
+export const STANCE_ORDER: Stance[] = ["support", "question", "pushback"];
 
 /** "now" / "5m" / "2h" / "3d" / "2w" — compact, for dense reply rows. */
 export function timeAgoCompact(dateString: string): string {
