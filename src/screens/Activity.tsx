@@ -1,7 +1,7 @@
 // src/screens/Activity.tsx
 // The Activity hub: one row per personal log (saved, liked, drafts, scheduled, history).
 import { router, type Href } from "expo-router";
-import { Bookmark, ChevronRight, FileEdit, Heart, History, Send, Tag, type LucideIcon } from "lucide-react-native";
+import { Bookmark, ChevronRight, FileEdit, GitFork, Heart, History, Send, Tag, type LucideIcon } from "lucide-react-native";
 import { Pressable, ScrollView, View } from "react-native";
 
 import { useBottomNavInset } from "@/components/nav/BottomNav";
@@ -9,6 +9,7 @@ import { useChromeScroll } from "@/components/nav/ChromeProvider";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
+import { useMyAffiliateRelationships } from "@/hooks/useAffiliates";
 import { useMyDraftPosts, useMyScheduledPosts } from "@/hooks/usePosts";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 
@@ -18,6 +19,8 @@ interface ActivityRow {
   label: string;
   description: string;
   countFrom?: "drafts" | "scheduled";
+  /** Only listed once the user has forked a project. */
+  forkedOnly?: boolean;
 }
 
 const ROWS: ActivityRow[] = [
@@ -26,6 +29,7 @@ const ROWS: ActivityRow[] = [
   { to: "/activity/drafts", icon: FileEdit, label: "Drafts", description: "Posts you started but haven't shared yet", countFrom: "drafts" },
   { to: "/activity/scheduled", icon: Send, label: "Scheduled", description: "Posts queued to publish automatically", countFrom: "scheduled" },
   { to: "/activity/offers", icon: Tag, label: "Offers", description: "Bundle your paid projects at a special price" },
+  { to: "/wallet/affiliate-links", icon: GitFork, label: "Forked projects", description: "Projects you forked, with your affiliate links", forkedOnly: true },
   { to: "/activity/history", icon: History, label: "History", description: "Posts and projects you've viewed" },
 ];
 
@@ -34,7 +38,9 @@ export function Activity() {
   const onScroll = useChromeScroll();
   const { data: drafts, refetch: refetchDrafts } = useMyDraftPosts();
   const { data: scheduled, refetch: refetchScheduled } = useMyScheduledPosts();
-  const { refreshControl, refreshing } = usePullToRefresh([refetchDrafts, refetchScheduled]);
+  const { data: forks, refetch: refetchForks } = useMyAffiliateRelationships();
+  const hasForks = (forks ?? []).some((r) => !!r.project);
+  const { refreshControl, refreshing } = usePullToRefresh([refetchDrafts, refetchScheduled, refetchForks]);
 
   // Only drafts/scheduled get a badge: they're the rows with a pending action behind them.
   const countFor = (from: ActivityRow["countFrom"]) => (from === "drafts" ? (drafts?.length ?? 0) : from === "scheduled" ? (scheduled?.length ?? 0) : 0);
@@ -43,7 +49,7 @@ export function Activity() {
     <View className="flex-1 bg-canvas">
       <ScreenHeader title="Activity" />
       <ScrollView showsHorizontalScrollIndicator={false} ref={onScroll.listRef} refreshControl={refreshControl} onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset, opacity: refreshing ? 0 : 1 }}>
-        {ROWS.map(({ to, icon, label, description, countFrom }) => {
+        {ROWS.filter((row) => !row.forkedOnly || hasForks).map(({ to, icon, label, description, countFrom }) => {
           const count = countFor(countFrom);
           return (
             <Pressable

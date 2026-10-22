@@ -32,7 +32,7 @@ import { AffiliateLinkRow } from "./MyAffiliateLinks";
 const TABS = ["events", "meetings", "rooms", "affiliates"] as const;
 type ConnectTab = (typeof TABS)[number];
 
-const TAB_LABEL: Record<ConnectTab, string> = { events: "Events", meetings: "Meetings", rooms: "Rooms", affiliates: "Affiliates" };
+const TAB_LABEL: Record<ConnectTab, string> = { events: "Events", meetings: "Meetings", rooms: "Rooms", affiliates: "Forked" };
 const KIND_FOR_TAB: Record<Exclude<ConnectTab, "affiliates">, ActivityItem["kind"]> = { events: "event", meetings: "meeting", rooms: "room_meeting" };
 
 const ROUTE_FOR: Record<ActivityItem["kind"], (item: ActivityItem) => string> = {
@@ -46,7 +46,7 @@ const EMPTY_COPY: Record<ConnectTab, string> = {
   events: "Events you have tickets for will show up here.",
   meetings: "Meetings you've joined or bought access to will show up here.",
   rooms: "Room meetings for rooms you're a member of will show up here.",
-  affiliates: 'Projects you fork to earn a commission on will show up here — look for "Share & earn" on any project that has affiliate forking turned on.',
+  affiliates: 'Projects you fork show up here. Tap "Fork & earn" on a project to start.',
 };
 
 function ActivityRow({ item }: { item: ActivityItem }) {

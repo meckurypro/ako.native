@@ -356,3 +356,35 @@ export function useClaimPendingAffiliateClick() {
 export function storePendingAffiliateClick(clickToken: string) {
   localStorage.setItem(CLICK_TOKEN_STORAGE_KEY, clickToken);
 }
+
+// Projects the current user has an ACTIVE fork of that can be tagged in a post: published and public,
+// same scope create-post enforces. Backs the forked section of the tag picker.
+export interface TaggableForkedProject {
+  id: string;
+  title: string;
+  thumbnail_url: string | null;
+  project_type: string;
+}
+
+export function useMyTaggableForkedProjects() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["my-taggable-forked-projects", user?.id],
+    queryFn: async (): Promise<TaggableForkedProject[]> => {
+      const { data, error } = await supabase
+        .from("affiliate_relationships")
+        .select("project:projects!inner(id, title, thumbnail_url, project_type, status, is_private)")
+        .eq("affiliate_user_id", user!.id)
+        .eq("status", "active")
+        .eq("project.status", "active")
+        .eq("project.is_private", false)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return ((data ?? []) as unknown as { project: TaggableForkedProject | null }[])
+        .map((r) => r.project)
+        .filter((p): p is TaggableForkedProject => !!p);
+    },
+    enabled: !!user,
+  });
+}

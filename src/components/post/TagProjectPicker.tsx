@@ -1,5 +1,5 @@
 // src/components/post/TagProjectPicker.tsx
-// Pick one of your published projects to tag on a post.
+// Pick one of your published projects, or one you forked, to tag on a post.
 import { isFileType } from "@/lib/fileProject";
 import { FileFolderIcon } from "@/components/project/FileFolderArt";
 import { isBookType } from "@/lib/bookCover";
@@ -11,15 +11,24 @@ import { SheetFrame } from "@/components/ui/SheetFrame";
 import { Icon, Image } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { runAfterDismiss } from "@/hooks/useBackDismiss";
+import { useMyTaggableForkedProjects } from "@/hooks/useAffiliates";
 import { PROJECT_TYPE_LABELS, useUserProjects } from "@/hooks/useProjects";
 
 function Rows({ userId, onSelect }: { userId: string; onSelect: (projectId: string, title: string) => void }) {
   const { close } = useSheet();
-  const { data: projects, isLoading } = useUserProjects(userId, false);
+  const { data: ownProjects, isLoading: loadingOwn } = useUserProjects(userId, false);
+  const { data: forked, isLoading: loadingForked } = useMyTaggableForkedProjects();
+  const isLoading = loadingOwn || loadingForked;
+  // Own projects first, then forked ones (create-post accepts both; forks carry the poster's affiliate link).
+  const ownIds = new Set((ownProjects ?? []).map((p) => p.id));
+  const projects = [
+    ...(ownProjects ?? []).map((p) => ({ ...p, isFork: false })),
+    ...(forked ?? []).filter((p) => !ownIds.has(p.id)).map((p) => ({ ...p, isFork: true })),
+  ] as { id: string; title: string; thumbnail_url: string | null; project_type: keyof typeof PROJECT_TYPE_LABELS; isFork: boolean }[];
 
   if (isLoading) return <Text className="py-6 text-center text-sm text-ink-muted">Loading…</Text>;
-  if (!projects || projects.length === 0) {
-    return <Text className="px-4 py-6 text-center text-sm text-ink-muted">You don't have any published projects to tag yet.</Text>;
+  if (projects.length === 0) {
+    return <Text className="px-4 py-6 text-center text-sm text-ink-muted">No projects to tag yet.</Text>;
   }
 
   return (
@@ -41,7 +50,7 @@ function Rows({ userId, onSelect }: { userId: string; onSelect: (projectId: stri
             )}
           </View>
           <View className="min-w-0 flex-1">
-            <Text className="text-[10px] font-medium uppercase tracking-wide text-ink-muted">{PROJECT_TYPE_LABELS[project.project_type]}</Text>
+            <Text className="text-[10px] font-medium uppercase tracking-wide text-ink-muted">{PROJECT_TYPE_LABELS[project.project_type]}{project.isFork ? " · Forked" : ""}</Text>
             <Text numberOfLines={1} className="text-sm font-medium text-ink">
               {project.title}
             </Text>

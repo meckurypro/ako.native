@@ -553,7 +553,7 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
       {/* Quotes keep their own caption above and show the original as a bordered card. */}
       {quotePost ? <RepostEmbed source={original} /> : null}
 
-      <TaggedProjectEmbed project={taggedProject} />
+      <TaggedProjectEmbed project={taggedProject} refToken={(post as unknown as { tagged_project_ref?: string | null }).tagged_project_ref} />
 
       {showStats ? (
         <View className="mt-3 flex-row items-center gap-1.5 border-b border-border pb-3">

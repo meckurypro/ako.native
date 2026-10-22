@@ -4,7 +4,7 @@
 import { isFileType } from "@/lib/fileProject";
 import { FileFolderIcon } from "@/components/project/FileFolderArt";
 import { router, type Href } from "expo-router";
-import { Image as ImageIcon, Share2, TrendingUp } from "lucide-react-native";
+import { GitFork, Image as ImageIcon, Share2 } from "lucide-react-native";
 import { Pressable, ScrollView, Share, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -62,7 +62,7 @@ export function AffiliateLinkRow({ relationship }: { relationship: AffiliateRela
         {relationship.status === "revoked" ? (
           <Text className="shrink-0 text-xs text-ink-muted">Revoked</Text>
         ) : (
-          <Pressable onPress={() => void handleShare()} accessibilityRole="button" accessibilityLabel="Share link" hitSlop={8} className="shrink-0 p-1.5">
+          <Pressable onPress={() => void handleShare()} accessibilityRole="button" accessibilityLabel="Share affiliate link" hitSlop={8} className="shrink-0 p-1.5">
             <Icon as={Share2} size={16} className="text-accent" />
           </Pressable>
         )}
@@ -87,11 +87,11 @@ export function MyAffiliateLinks() {
 
   return (
     <View className="flex-1 bg-canvas">
-      <ScreenHeader title="My affiliate links" />
+      <ScreenHeader title="Forked projects" />
       {isLoading ? (
         <Text className="px-4 text-sm text-ink-muted">Loading…</Text>
       ) : list.length === 0 ? (
-        <EmptyNotice icon={TrendingUp} message={'Projects you fork to earn a commission on will show up here — look for "Share & earn" on any project that has affiliate forking turned on.'} />
+        <EmptyNotice icon={GitFork} message={'No forked projects yet. Tap "Fork & earn" on a project to start.'} />
       ) : (
         <ScrollView showsHorizontalScrollIndicator={false} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: insets.bottom + 24 }}>
           {list.map((r) => (

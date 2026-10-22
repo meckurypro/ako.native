@@ -11,7 +11,7 @@ import {
   MapPin,
   Navigation,
   RefreshCw,
-  TrendingUp,
+  GitFork,
   Video,
 } from "lucide-react-native";
 import { router, useLocalSearchParams, usePathname, type Href } from "expo-router";
@@ -323,8 +323,8 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
                   accessibilityRole="button"
                   className="-mt-2 mb-4 w-full flex-row items-center justify-center gap-2 rounded-2xl bg-accent-soft py-3 active:scale-[0.98]"
                 >
-                  <Icon as={TrendingUp} size={16} className="text-accent" />
-                  <Text className="text-sm font-semibold text-accent">Share & earn a commission</Text>
+                  <Icon as={GitFork} size={16} className="text-accent" />
+                  <Text className="text-sm font-semibold text-accent">Fork & earn</Text>
                 </Pressable>
               ) : null}
 

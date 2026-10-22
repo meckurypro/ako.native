@@ -10,6 +10,7 @@ import { Pressable, View } from "react-native";
 import { Icon, Image } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import type { ProjectType } from "@/hooks/useProjects";
+import { affiliateLinkFor } from "@/hooks/useAffiliates";
 import { getProjectPath } from "@/lib/projectLinks";
 
 export interface TaggedProjectSummary {
@@ -28,7 +29,14 @@ export interface TaggedProjectSummary {
   };
 }
 
-export function TaggedProjectEmbed({ project }: { project: TaggedProjectSummary | null | undefined }) {
+export function TaggedProjectEmbed({
+  project,
+  refToken,
+}: {
+  project: TaggedProjectSummary | null | undefined;
+  // Set when the poster tagged a project they forked: the link carries their affiliate ref.
+  refToken?: string | null;
+}) {
   if (!project) return null;
 
   if (project.status !== "active") {
@@ -49,7 +57,7 @@ export function TaggedProjectEmbed({ project }: { project: TaggedProjectSummary 
 
   return (
     <Pressable
-      onPress={() => router.push(getProjectPath(project) as Href)}
+      onPress={() => router.push((refToken ? affiliateLinkFor(getProjectPath(project), refToken) : getProjectPath(project)) as Href)}
       accessibilityRole="link"
       accessibilityLabel={project.title}
       className="mt-3 justify-center active:opacity-80"

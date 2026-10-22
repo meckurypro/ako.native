@@ -42,7 +42,7 @@ import {
   Send,
   Ticket,
   Trash2,
-  TrendingUp,
+  GitFork,
   Users,
   Video,
   type LucideIcon,
@@ -1110,8 +1110,8 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
                 accessibilityRole="button"
                 className="mb-2 mt-3 w-full flex-row items-center justify-center gap-2 rounded-2xl bg-accent-soft py-2.5 active:scale-[0.98]"
               >
-                <Icon as={TrendingUp} size={15} className="text-accent" />
-                <Text className="text-sm font-semibold text-accent">Share & earn a commission</Text>
+                <Icon as={GitFork} size={15} className="text-accent" />
+                <Text className="text-sm font-semibold text-accent">Fork & earn</Text>
               </Pressable>
             ) : null}
 
