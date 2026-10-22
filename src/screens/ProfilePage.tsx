@@ -332,7 +332,8 @@ export function ProfilePage() {
     } else if (id === "media") {
       out.push({ kind: "grid", id: "media", projects: mediaProjects });
     } else if (id === "projects") {
-      if (fallbackProjects && fallbackProjects.length > 0) out.push({ kind: "grid", id: "projects", projects: fallbackProjects });
+      // Compact glance-and-tap tiles, like web (the catch-all tab can hold many mixed types); each tile opens the project's slug page.
+      if (fallbackProjects && fallbackProjects.length > 0) out.push({ kind: "minigrid", id: "projects", projects: fallbackProjects });
       else if (projectsLoading) out.push({ kind: "skeleton", id: "skeleton-projects" });
       else out.push({ kind: "message", id: "no-projects", text: projectsOwnerView ? "No projects yet — publish your first one." : "No projects yet." });
     } else if (id.startsWith("type-")) {

@@ -33,7 +33,7 @@ function Rows({ userId, onSelect }: { userId: string; onSelect: (projectId: stri
         >
           <View className={`${isBookType(project.project_type) ? "h-[60px]" : "h-10"} w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-canvas`}>
             {isFileType(project.project_type) ? (
-              <FileFolderIcon />
+              <FileFolderIcon size={40} fill />
             ) : project.thumbnail_url ? (
               <Image source={{ uri: project.thumbnail_url }} contentFit="cover" style={{ width: "100%", height: "100%" }} />
             ) : (

@@ -700,7 +700,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
           />
         ) : project.project_type === "file" ? (
           // File projects never use a thumbnail: the folder stands in, with the download count under it.
-          <FileFolderHero downloadCount={project.download_count ?? 0} />
+          <FileFolderHero downloadCount={project.download_count ?? 0} fill />
         ) : project.thumbnail_url && isDetailView && galleryImages.length > 1 ? (
           <ProjectImageCarousel images={galleryImages} fit={thumb.fit} />
         ) : project.thumbnail_url ? (

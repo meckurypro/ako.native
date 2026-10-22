@@ -53,7 +53,7 @@ function OfferCard({
           <View key={item.id} className="flex-row items-center gap-3">
             <View className="h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-canvas">
               {isFileType(item.project_type) ? (
-                <FileFolderIcon />
+                <FileFolderIcon size={36} fill />
               ) : item.thumbnail_url ? (
                 <Image source={item.thumbnail_url} contentFit="cover" className="h-full w-full" />
               ) : (

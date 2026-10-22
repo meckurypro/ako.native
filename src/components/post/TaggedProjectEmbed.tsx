@@ -83,7 +83,7 @@ export function TaggedProjectEmbed({ project }: { project: TaggedProjectSummary 
       >
         <View className="h-full w-full items-center justify-center overflow-hidden rounded-lg border border-white-a25">
           {isFileType(project.project_type) ? (
-            <FileFolderIcon />
+            <FileFolderIcon size={thumbW} fill />
           ) : project.thumbnail_url ? (
             <Image source={{ uri: project.thumbnail_url }} contentFit="cover" style={{ width: "100%", height: "100%" }} />
           ) : (

@@ -46,7 +46,7 @@ export function ProjectMiniCard({ project, showStatus = false, width }: { projec
           </View>
         ) : null}
         {isFileType(project.project_type) ? (
-          <FileFolderIcon />
+          <FileFolderIcon size={200} fill />
         ) : project.thumbnail_url ? (
           <Image source={{ uri: project.thumbnail_url }} contentFit="cover" transition={150} style={{ width: "100%", height: "100%" }} />
         ) : (

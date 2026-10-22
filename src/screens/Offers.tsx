@@ -33,7 +33,7 @@ import { formatUsd } from "@/lib/money";
 function Thumb({ url, size, isFile }: { url: string | null; size: number; isFile?: boolean }) {
   return (
     <View className="shrink-0 items-center justify-center overflow-hidden rounded-lg bg-canvas" style={{ width: size, height: size }}>
-      {isFile ? <FileFolderIcon /> : url ? <Image source={url} contentFit="cover" className="h-full w-full" /> : <Icon as={ImageIcon} size={14} className="text-ink-muted" />}
+      {isFile ? <FileFolderIcon size={size} fill /> : url ? <Image source={url} contentFit="cover" className="h-full w-full" /> : <Icon as={ImageIcon} size={14} className="text-ink-muted" />}
     </View>
   );
 }

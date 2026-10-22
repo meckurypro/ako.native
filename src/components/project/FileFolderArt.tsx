@@ -30,16 +30,19 @@ function FolderWash({ id, stops }: { id: string; stops: { offset: number; color:
   );
 }
 
-/** Fixed `size` (px) or, without it, fills its parent (profile grid tiles, whatever size they are). */
-export function FileFolderIcon({ size }: { size?: number }) {
+/**
+ * Mirrors web's FileFolderIcon({ size, className }): `size` is the tile size the glyph is scaled to (emoji = size × 0.52),
+ * exactly like web, so a folder looks the same weight at every size. By default the tile is that fixed size; with `fill`
+ * it stretches to its parent instead (web's `className="w-full h-full"`) while the glyph keeps scaling from `size`.
+ */
+export function FileFolderIcon({ size = 64, fill = false }: { size?: number; fill?: boolean }) {
   const { colors } = useTheme();
-  const glyph = size ?? 56;
   return (
     <View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
       className="items-center justify-center overflow-hidden bg-surface"
-      style={size ? { width: size, height: size } : { width: "100%", height: "100%" }}
+      style={fill ? { width: "100%", height: "100%" } : { width: size, height: size }}
     >
       <FolderWash
         id="fileIconWash"
@@ -48,17 +51,22 @@ export function FileFolderIcon({ size }: { size?: number }) {
           { offset: 1, color: colors.surface, opacity: 1 },
         ]}
       />
-      <Text style={{ fontSize: Math.round(glyph * 0.52), lineHeight: Math.round(glyph * 0.65) }}>{FILE_FOLDER_EMOJI}</Text>
+      <Text style={{ fontSize: Math.round(size * 0.52), lineHeight: Math.round(size * 0.65) }}>{FILE_FOLDER_EMOJI}</Text>
     </View>
   );
 }
 
-export function FileFolderHero({ downloadCount }: { downloadCount?: number | null }) {
+/**
+ * `fill` — the hero sits in a box with a definite size (a ProjectCard's aspect-ratio thumbnail frame) and stretches to it.
+ * Without it (Create / Edit screens, where web wraps it in an auto-height box with min-h-[200px]) it sizes itself:
+ * percentage heights under an auto-height parent are what made the Edit screen's hero grow to the whole scroll height.
+ */
+export function FileFolderHero({ downloadCount, fill = false }: { downloadCount?: number | null; fill?: boolean }) {
   const { colors } = useTheme();
   const ink = `rgba(${colors.shadowInkRgb}, `;
   const paperShadow = { shadowColor: `rgb(${colors.shadowInkRgb})`, shadowOpacity: 0.08, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 1 };
   return (
-    <View className="h-full w-full items-center justify-center gap-3 overflow-hidden bg-canvas" style={{ minHeight: 200 }}>
+    <View className={`${fill ? "h-full " : ""}w-full items-center justify-center gap-3 overflow-hidden bg-canvas`} style={{ minHeight: 200 }}>
       <FolderWash
         id="fileHeroWash"
         stops={[

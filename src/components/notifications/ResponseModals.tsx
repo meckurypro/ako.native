@@ -114,7 +114,7 @@ function Thumb({ url, light, tall, isFile }: { url: string | null | undefined; l
   if (isFile) {
     return (
       <View className="h-12 w-12 shrink-0 overflow-hidden rounded-lg">
-        <FileFolderIcon />
+        <FileFolderIcon size={48} fill />
       </View>
     );
   }

@@ -36,7 +36,7 @@ export function ThumbRow({ onPress, thumbnailUrl, fallbackIcon, title, subtitle,
       className={`flex-row items-center gap-3 ${variant === "card" ? "rounded-xl border border-border bg-surface p-3" : "border-b border-border py-3"}`}
     >
       <View className={`shrink-0 items-center justify-center overflow-hidden rounded-lg ${variant === "card" ? "bg-canvas" : "bg-surface"}`} style={{ width: size, height: tall ? size * 1.5 : size }}>
-        {isFile ? <FileFolderIcon /> : thumbnailUrl ? <Image source={thumbnailUrl} contentFit="cover" className="h-full w-full" /> : <Icon as={fallbackIcon} size={18} className="text-ink-muted" />}
+        {isFile ? <FileFolderIcon size={size} fill /> : thumbnailUrl ? <Image source={thumbnailUrl} contentFit="cover" className="h-full w-full" /> : <Icon as={fallbackIcon} size={18} className="text-ink-muted" />}
       </View>
       <View className="min-w-0 flex-1">
         <Text numberOfLines={1} className="text-sm text-ink">
