@@ -31,6 +31,7 @@ import { useAccountAccess } from "@/hooks/useAccountAccess";
 import { useBootGrace } from "@/hooks/useBootGrace";
 import { useLaunchPushAsk } from "@/hooks/useLaunchPushAsk";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { useIdentityRouteSync } from "@/hooks/useIdentityRouteSync";
 import { usePageThemeSync } from "@/hooks/usePageThemeSync";
 import { SoundProvider } from "@/hooks/useSound";
 import { queryClient } from "@/lib/queryClient";
@@ -71,6 +72,7 @@ function ThemedStack() {
  */
 function GlobalEffects() {
   usePageThemeSync();
+  useIdentityRouteSync();
   useClaimPendingAffiliateClick();
 
   const { ref } = useGlobalSearchParams<{ ref?: string }>();

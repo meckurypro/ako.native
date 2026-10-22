@@ -12,7 +12,6 @@ import {
   Plus,
   Redo2,
   Share2,
-  Sparkles,
   UserCog,
   UserMinus,
   UserPlus,
@@ -309,19 +308,6 @@ export function PagePage() {
         </View>
       </View>
 
-      {previewingAsVisitor && canEditPage ? (
-        <View className="mx-4 mt-3 flex-row items-center justify-between gap-2 rounded-xl bg-accent-soft px-4 py-2.5">
-          <View className="flex-row items-center gap-1.5">
-            <Icon as={Eye} size={14} className="text-accent" />
-            <Text className="text-sm text-accent">Viewing as a visitor sees it</Text>
-          </View>
-          <Pressable onPress={() => setPreviewingAsVisitor(false)} accessibilityRole="button" accessibilityLabel="Exit visitor view" hitSlop={8} className="flex-row items-center gap-1">
-            <Icon as={X} size={14} className="text-accent" />
-            <Text className="text-sm font-medium text-accent">Exit</Text>
-          </Pressable>
-        </View>
-      ) : null}
-
       {/* Identity */}
       <View className="px-4">
         <View className="-mt-12 flex-row items-end justify-between gap-3">
@@ -400,12 +386,22 @@ export function PagePage() {
 
       {/* Landing sections */}
       <View className="mt-8 gap-9 px-4 pb-8">
+        {previewingAsVisitor && canEditPage ? (
+          <View className="flex-row items-center justify-between gap-3 rounded-xl bg-accent-soft px-4 py-2.5">
+            <View className="min-w-0 flex-1 flex-row items-center gap-1.5">
+              <Icon as={Eye} size={14} className="text-accent" />
+              <Text className="flex-1 text-sm text-accent">You're viewing this page as a visitor.</Text>
+            </View>
+            <Pressable onPress={() => setPreviewingAsVisitor(false)} accessibilityRole="button" accessibilityLabel="Exit visitor view" hitSlop={8} className="flex-row items-center gap-1">
+              <Icon as={X} size={14} className="text-accent" />
+              <Text className="text-sm font-medium text-accent">Exit</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
         {editorView && setupSteps.length > 0 ? (
           <View className="rounded-2xl border border-dashed border-border bg-surface p-4">
-            <View className="flex-row items-center gap-2">
-              <Icon as={Sparkles} size={16} className="text-brand-orange" />
-              <Text className="text-sm font-semibold text-ink">Make your page stand out</Text>
-            </View>
+            <Text className="text-sm font-semibold text-ink">Make your page stand out</Text>
             <Text className="mt-1 text-xs text-ink-muted">Only your team sees this. Visitors see the finished page.</Text>
             <View className="mt-3 flex-row flex-wrap gap-2">
               {setupSteps.map((s) => (
