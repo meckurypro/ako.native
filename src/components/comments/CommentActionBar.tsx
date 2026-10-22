@@ -1,5 +1,5 @@
 // src/components/comments/CommentActionBar.tsx
-import { Flag, Gift as GiftIcon, MessageCircle, MoreHorizontal, Pencil, Share2, ThumbsDown, Trash2 } from "lucide-react-native";
+import { Flag, Gift as GiftIcon, MoreHorizontal, Pencil, Share2, ThumbsDown, Trash2 } from "lucide-react-native";
 import { useRef, useState } from "react";
 import { Pressable, View } from "react-native";
 
@@ -12,7 +12,7 @@ import { canEditComment, type CommentWithAuthor } from "@/hooks/useComments";
 import { useTheme } from "@/theme/ThemeProvider";
 import { useCommentEngagement } from "./CommentEngagement";
 
-/** "…" menu for one comment: share; for your own — edit (until anyone engages) and delete; for others' — gift and report. */
+/** "…" menu for one comment: share; for your own — edit (until anyone engages) and delete; for others' — report. */
 export function CommentMoreMenu({ comment, iconSize = 16 }: { comment: CommentWithAuthor; iconSize?: number }) {
   const eng = useCommentEngagement();
   const [open, setOpen] = useState(false);
@@ -36,7 +36,6 @@ export function CommentMoreMenu({ comment, iconSize = 16 }: { comment: CommentWi
           },
         ]
       : [
-          { key: "gift", label: "Send a gift", icon: <Icon as={GiftIcon} size={22} className="text-overlay-ink" />, onSelect: () => eng.gift(comment) },
           {
             key: "report",
             label: "Report",
@@ -66,8 +65,9 @@ export function CommentMoreMenu({ comment, iconSize = 16 }: { comment: CommentWi
 }
 
 /**
- * Reply · like · dislike for one comment, each with its own count (hidden at zero). `sm` is the compact row
- * under a reply; `lg` is the spaced-out bar under an opened comment.
+ * Like · dislike · gift for one comment (counts hidden at zero), gift on the right and only on others' comments.
+ * There's no reply button: opening a comment is how you reply (see ReplyBar in CommentDetail). `sm` is the
+ * compact row under a reply; `lg` is the spaced-out bar under an opened comment.
  */
 export function CommentActionBar({ comment, size = "sm" }: { comment: CommentWithAuthor; size?: "sm" | "lg" }) {
   const eng = useCommentEngagement();
@@ -84,14 +84,10 @@ export function CommentActionBar({ comment, size = "sm" }: { comment: CommentWit
   const countLine = size === "lg" ? 20 : 16;
   const wrapperClass = size === "lg" ? "flex-row items-center justify-around py-1" : "mt-1 -ml-1.5 flex-row items-center gap-7";
   const btn = "flex-row items-center gap-1.5 p-1.5";
+  const isMine = !!eng.currentUserId && comment.author.id === eng.currentUserId;
 
   return (
     <View className={wrapperClass}>
-      <Pressable onPress={() => eng.reply(comment)} accessibilityRole="button" accessibilityLabel="Reply" className={btn}>
-        <Icon as={MessageCircle} size={icon} className="text-ink-muted" />
-        <AnimatedCount value={comment.reply_count} lineHeight={countLine} className={`${countClass} text-ink-muted`} />
-      </Pressable>
-
       <Pressable
         onPress={() => eng.toggleReaction({ commentId: comment.id, type: "like", currentlyActive: liked })}
         accessibilityRole="button"
@@ -117,6 +113,17 @@ export function CommentActionBar({ comment, size = "sm" }: { comment: CommentWit
       {size === "lg" ? (
         <Pressable onPress={() => eng.share(comment)} accessibilityRole="button" accessibilityLabel="Share" className={btn}>
           <Icon as={Share2} size={icon} className="text-ink-muted" />
+        </Pressable>
+      ) : null}
+
+      {!isMine ? (
+        <Pressable
+          onPress={() => eng.gift(comment)}
+          accessibilityRole="button"
+          accessibilityLabel="Send a gift"
+          className={`${btn} ${size === "sm" ? "ml-auto" : ""}`}
+        >
+          <Icon as={GiftIcon} size={icon} className="text-ink-muted" />
         </Pressable>
       ) : null}
     </View>
