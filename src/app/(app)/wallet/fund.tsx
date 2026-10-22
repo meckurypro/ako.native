@@ -9,13 +9,13 @@ import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { AlertCircle } from "lucide-react-native";
 import { useMemo, useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { Linking, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button, Icon, Text, useToast } from "@/components/ui";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { SurfaceInput } from "@/components/ui/SurfaceInput";
-import { useInitiateDeposit } from "@/hooks/useDeposits";
+import { useInitiateDeposit, useVerifyDeposit } from "@/hooks/useDeposits";
 import { useFeatureFlag } from "@/hooks/useFeatureFlags";
 import { useExchangeRates } from "@/hooks/useWalletRates";
 import { resolveFunctionErrorMessage } from "@/lib/functionErrors";
@@ -24,12 +24,14 @@ import { formatNgn, formatUsd } from "@/lib/money";
 const PRESET_AMOUNTS = [5, 10, 25, 50, 100];
 const MINIMUM_DEPOSIT_USD = 1;
 const RETURN_DEEP_LINK = "ako://wallet/deposit/callback";
+const POLL_INTERVAL_MS = 3000;
 
 export default function FundWalletScreen() {
   const insets = useSafeAreaInsets();
   const toast = useToast();
   const { data: rates } = useExchangeRates();
   const initiateDeposit = useInitiateDeposit();
+  const verifyDeposit = useVerifyDeposit();
   const depositsEnabled = useFeatureFlag("deposits_enabled");
 
   const [selectedPreset, setSelectedPreset] = useState<number | null>(10);
@@ -69,15 +71,50 @@ export default function FundWalletScreen() {
     try {
       const result = await initiateDeposit.mutateAsync(amountUsd);
 
-      // Open Paystack's web checkout. The auth session resolves when the browser
-      // navigates to our deep link (or the user closes it).
+      // Open Paystack's web checkout. The auth session normally resolves when the browser
+      // navigates to our deep link — but that redirect is unreliable (Android Custom Tabs
+      // and iOS often leave the user stranded on Paystack's success page). So while the
+      // browser is open we also poll verify-deposit (server re-checks with Paystack) and,
+      // the moment the payment is confirmed, bring the app forward and close the browser.
       setOpening(true);
-      const session = await WebBrowser.openAuthSessionAsync(result.authorization_url, RETURN_DEEP_LINK);
-      setOpening(false);
+      const callbackUrl = `${RETURN_DEEP_LINK}?reference=${encodeURIComponent(result.reference)}`;
+      let inFlight = false;
+      let confirmed = false;
+      const poll = setInterval(async () => {
+        if (inFlight || confirmed) return;
+        inFlight = true;
+        try {
+          const verified = await verifyDeposit.mutateAsync(result.reference);
+          if (verified.status === "success") {
+            confirmed = true;
+            // Re-opening our own deep link foregrounds the app (and resolves the auth
+            // session on Android); dismissing closes the browser sheet on iOS.
+            void Linking.openURL(callbackUrl).catch(() => {});
+            try {
+              WebBrowser.dismissAuthSession();
+            } catch {}
+            try {
+              WebBrowser.dismissBrowser();
+            } catch {}
+          }
+        } catch {
+          // Transient network / not-yet-credited errors: keep polling.
+        } finally {
+          inFlight = false;
+        }
+      }, POLL_INTERVAL_MS);
 
-      // Verify whatever happened — returned via deep link or closed early (the user may
-      // have paid and dismissed the browser; verify-deposit is idempotent and the
-      // webhook credits independently either way).
+      let session;
+      try {
+        session = await WebBrowser.openAuthSessionAsync(result.authorization_url, RETURN_DEEP_LINK);
+      } finally {
+        clearInterval(poll);
+        setOpening(false);
+      }
+
+      // Verify whatever happened — returned via deep link, closed by the poll above, or
+      // closed early (the user may have paid and dismissed the browser; verify-deposit is
+      // idempotent and the webhook credits independently either way).
       router.replace({ pathname: "/wallet/deposit/callback", params: { reference: result.reference } });
       void session;
     } catch (err) {
