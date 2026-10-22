@@ -14,6 +14,7 @@ import { OfflineBanner } from "@/components/nav/OfflineBanner";
 import { ScrollToTopButton } from "@/components/nav/ScrollToTopButton";
 import { useAuth } from "@/hooks/useAuth";
 import { isGuestProjectPath } from "@/lib/guestRoutes";
+import { usePrefetchGifting } from "@/hooks/useWallet";
 import { usePersistedQueries } from "@/hooks/usePersistedQueries";
 import { usePostRealtime } from "@/hooks/usePostRealtime";
 import { usePushLifecycle } from "@/hooks/usePushLifecycle";
@@ -37,6 +38,7 @@ function RouteMemory() {
 function PersistGate({ children }: { children: React.ReactNode }) {
   const restored = usePersistedQueries();
   usePostRealtime(); // live post edits from other devices / authors
+  usePrefetchGifting(); // gift catalogue ready before the first Gift tap
   return restored ? <>{children}</> : <View style={{ flex: 1 }} />;
 }
 

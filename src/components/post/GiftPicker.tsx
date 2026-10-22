@@ -3,7 +3,7 @@
 // Gift art ships inside the app (lib/giftAssets); the "sent" step plays a small
 // pop + rising-glyph moment.
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, View } from "react-native";
+import { Pressable, View, useWindowDimensions } from "react-native";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -116,9 +116,12 @@ function Body(props: GiftPickerProps & { step: Step; setStep: (s: Step) => void 
   const [error, setError] = useState<string | null>(null);
   const [insufficientGift, setInsufficientGift] = useState<GiftType | null>(null);
 
-  const { data: giftTypes, isLoading: loadingGifts } = useGiftTypes();
+  const { height: windowH } = useWindowDimensions();
+  const { data: giftTypes, isLoading: loadingTypes } = useGiftTypes();
   const { data: wallet } = useWallet();
-  const { data: topGiftTypeIds } = useTopGiftTypeIds(6);
+  const { data: topGiftTypeIds, isLoading: loadingTop } = useTopGiftTypeIds(6);
+  // Wait for the "most used" order too, so the grid never reshuffles after it appears.
+  const loadingGifts = loadingTypes || loadingTop;
   const sendGift = useSendGift();
   const sendMediaGift = useSendMediaGift();
   const giftingEnabled = useFeatureFlag("gifting_enabled");
@@ -184,7 +187,11 @@ function Body(props: GiftPickerProps & { step: Step; setStep: (s: Step) => void 
           {!giftingEnabled ? (
             <Text className="py-10 text-center text-sm text-ink-muted">Gifting is temporarily unavailable. Check back later.</Text>
           ) : loadingGifts ? (
-            <Text className="py-10 text-center text-sm text-ink-muted">Loading gifts…</Text>
+            // Reserve roughly the finished card's height so the sheet opens at its real size (it keeps its top edge
+            // and only grows downward, so a short placeholder would leave it opening small).
+            <View style={{ minHeight: windowH * 0.55 }} className="items-center justify-center">
+              <Text className="text-sm text-ink-muted">Loading gifts…</Text>
+            </View>
           ) : !sortedGiftTypes || sortedGiftTypes.length === 0 ? (
             <Text className="py-10 text-center text-sm text-ink-muted">No gifts available right now.</Text>
           ) : (

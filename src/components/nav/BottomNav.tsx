@@ -128,7 +128,9 @@ export function BottomNav() {
   };
 
   const navList = restricted ? RESTRICTED_ITEMS : FULL_ITEMS;
-  const showChatFab = !isActive("messages");
+  // No floating chat button while reading a post or one of its comments — nothing should sit over the conversation.
+  const onPostPage = pathname.startsWith("/post/");
+  const showChatFab = !isActive("messages") && !onPostPage;
 
   return (
     <>

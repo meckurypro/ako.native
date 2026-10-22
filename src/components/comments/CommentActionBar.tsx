@@ -12,7 +12,7 @@ import { canEditComment, type CommentWithAuthor } from "@/hooks/useComments";
 import { useTheme } from "@/theme/ThemeProvider";
 import { useCommentEngagement } from "./CommentEngagement";
 
-/** "…" menu for one comment: share; for your own — edit (until anyone engages) and delete; for others' — report. */
+/** "…" menu for one comment: share; for your own — edit (until anyone engages) and delete; for others' — gift and report. */
 export function CommentMoreMenu({ comment, iconSize = 16 }: { comment: CommentWithAuthor; iconSize?: number }) {
   const eng = useCommentEngagement();
   const [open, setOpen] = useState(false);
@@ -21,6 +21,9 @@ export function CommentMoreMenu({ comment, iconSize = 16 }: { comment: CommentWi
 
   const items: DropdownMenuItem[] = [
     { key: "share", label: "Share", icon: <Icon as={Share2} size={22} className="text-overlay-ink" />, onSelect: () => eng.share(comment) },
+    ...(!isMine
+      ? [{ key: "gift", label: "Gift", icon: <Icon as={GiftIcon} size={22} className="text-overlay-ink" />, onSelect: () => eng.gift(comment) }]
+      : []),
     ...(isMine
       ? [
           // Editable only until anyone engages; deletable any time.
@@ -65,9 +68,9 @@ export function CommentMoreMenu({ comment, iconSize = 16 }: { comment: CommentWi
 }
 
 /**
- * The row under a reply: like · dislike · share · report (or edit / delete on your own) · gift on the far right
- * (others' comments only). There's no "…" menu and no reply button — opening a comment is how you reply (see
- * ReplyBar in CommentDetail). Counts are hidden at zero.
+ * The row under a reply: like · dislike, with a "…" on the right that holds everything else (share, gift, report;
+ * edit / delete on your own). There's no reply button — opening a comment is how you reply (see ReplyBar in
+ * CommentDetail). Counts are hidden at zero.
  */
 export function CommentActionBar({ comment }: { comment: CommentWithAuthor }) {
   const eng = useCommentEngagement();
@@ -81,10 +84,9 @@ export function CommentActionBar({ comment }: { comment: CommentWithAuthor }) {
 
   const icon = 17;
   const btn = "flex-row items-center gap-1.5 p-1.5";
-  const isMine = !!eng.currentUserId && comment.author.id === eng.currentUserId;
 
   return (
-    <View className="mt-1 -ml-1.5 flex-row items-center gap-4">
+    <View className="mt-1 -ml-1.5 flex-row items-center gap-7">
       <Pressable
         onPress={() => eng.toggleReaction({ commentId: comment.id, type: "like", currentlyActive: liked })}
         accessibilityRole="button"
@@ -107,31 +109,9 @@ export function CommentActionBar({ comment }: { comment: CommentWithAuthor }) {
         <AnimatedCount value={dislikeCount} lineHeight={16} className={`text-xs ${disliked ? "text-danger" : "text-ink-muted"}`} />
       </Pressable>
 
-      <Pressable onPress={() => eng.share(comment)} accessibilityRole="button" accessibilityLabel="Share" className={btn}>
-        <Icon as={Share2} size={icon} className="text-ink-muted" />
-      </Pressable>
-
-      {isMine ? (
-        <>
-          {canEditComment(comment) ? (
-            <Pressable onPress={() => eng.edit(comment)} accessibilityRole="button" accessibilityLabel="Edit" className={btn}>
-              <Icon as={Pencil} size={icon} className="text-ink-muted" />
-            </Pressable>
-          ) : null}
-          <Pressable onPress={() => eng.remove(comment)} accessibilityRole="button" accessibilityLabel="Delete" className={btn}>
-            <Icon as={Trash2} size={icon} className="text-ink-muted" />
-          </Pressable>
-        </>
-      ) : (
-        <>
-          <Pressable onPress={() => eng.report(comment)} accessibilityRole="button" accessibilityLabel="Report" className={btn}>
-            <Icon as={Flag} size={icon} className="text-ink-muted" />
-          </Pressable>
-          <Pressable onPress={() => eng.gift(comment)} accessibilityRole="button" accessibilityLabel="Send a gift" className={`${btn} ml-auto`}>
-            <Icon as={GiftIcon} size={icon} className="text-ink-muted" />
-          </Pressable>
-        </>
-      )}
+      <View className="ml-auto">
+        <CommentMoreMenu comment={comment} />
+      </View>
     </View>
   );
 }
