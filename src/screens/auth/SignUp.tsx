@@ -1,12 +1,12 @@
 // src/screens/auth/SignUp.tsx
 import { router, useLocalSearchParams, type Href } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { type TextInput, View } from "react-native";
+import { Pressable, type TextInput, View } from "react-native";
 
 import { AuthScreen } from "@/components/ui/AuthScreen";
 import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
-import { GoogleAuthButton } from "@/components/ui/GoogleAuthButton";
+import { AuthOrDivider, GoogleAuthButton } from "@/components/ui/GoogleAuthButton";
 import { PasswordField } from "@/components/ui/PasswordField";
 import { Text } from "@/components/ui/Text";
 import { TextLink } from "@/components/ui/TextLink";
@@ -42,6 +42,9 @@ export function SignUp() {
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // Google is the primary way in; the email form is the secondary option (always shown in add-account mode).
+  const [showEmail, setShowEmail] = useState(false);
+  const emailVisible = addMode || showEmail;
   const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>("idle");
 
   const usernameRef = useRef<TextInput>(null);
@@ -186,6 +189,23 @@ export function SignUp() {
         </Text>
       ) : null}
 
+      {!addMode ? (
+        <>
+          <GoogleAuthButton returnTo={returnTo} label="Sign up with Google" />
+          <AuthOrDivider />
+        </>
+      ) : null}
+
+      {!emailVisible ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => setShowEmail(true)}
+          className="h-12 w-full items-center justify-center rounded-xl border border-border bg-surface active:bg-accent-soft"
+        >
+          <Text className="font-body text-base font-medium text-ink">Sign up with email</Text>
+        </Pressable>
+      ) : (
+        <>
       <FormField
         label="Display name"
         value={displayName}
@@ -252,8 +272,10 @@ export function SignUp() {
         Create account
       </Button>
 
-      {/* Add-account mode: see the note in Login.tsx. */}
-      {!addMode ? <GoogleAuthButton returnTo={returnTo} /> : null}
+        </>
+      )}
+
+      {/* Add-account mode has no Google button: see the note in Login.tsx. */}
 
       <Text className="mt-6 text-center text-sm text-ink-muted">
         Already have an account? <TextLink href={(addMode ? "/login?add=1" : returnTo ? `/login?redirect=${encodeURIComponent(returnTo)}` : "/login")}>Log in</TextLink>

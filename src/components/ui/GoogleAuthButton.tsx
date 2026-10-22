@@ -1,6 +1,6 @@
 // src/components/ui/GoogleAuthButton.tsx
-// "or" divider + Continue with Google. Sits under the email form on Login and
-// SignUp. Mirrors the web GoogleAuthButton.
+// The primary action on Login and SignUp (Google first, email is the quieter
+// alternative below it). Mirrors the web GoogleAuthButton.
 import { useQueryClient } from "@tanstack/react-query";
 import { router, type Href } from "expo-router";
 import { useState } from "react";
@@ -16,9 +16,22 @@ import { signInWithGoogle } from "@/lib/googleAuth";
 interface GoogleAuthButtonProps {
   /** Where the visitor was headed (already run through safeReturnPath). */
   returnTo?: string | null;
+  /** Sign-up pages read "Sign up with Google". */
+  label?: string;
 }
 
-export function GoogleAuthButton({ returnTo }: GoogleAuthButtonProps) {
+/** The quiet "or" rule between the primary Google action and the email alternative. */
+export function AuthOrDivider() {
+  return (
+    <View className="my-5 flex-row items-center gap-3" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <View className="h-px flex-1 bg-border" />
+      <Text className="text-xs uppercase tracking-wider text-ink-muted">or</Text>
+      <View className="h-px flex-1 bg-border" />
+    </View>
+  );
+}
+
+export function GoogleAuthButton({ returnTo, label = "Continue with Google" }: GoogleAuthButtonProps) {
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,23 +62,19 @@ export function GoogleAuthButton({ returnTo }: GoogleAuthButtonProps) {
   }
 
   return (
-    <View className="mt-6">
-      <View className="mb-6 flex-row items-center gap-3" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-        <View className="h-px flex-1 bg-border" />
-        <Text className="text-xs uppercase tracking-wider text-ink-muted">or</Text>
-        <View className="h-px flex-1 bg-border" />
-      </View>
-
+    <View>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Continue with Google"
+        accessibilityLabel={label}
         accessibilityState={{ disabled: loading, busy: loading }}
         disabled={loading}
         onPress={handlePress}
-        className={`w-full flex-row items-center justify-center gap-3 rounded-xl border border-border bg-surface px-6 py-3 active:bg-accent-soft ${loading ? "opacity-50" : ""}`}
+        className={`h-12 w-full flex-row items-center justify-center gap-3 rounded-xl bg-ink px-6 active:opacity-80 ${loading ? "opacity-50" : ""}`}
       >
-        <GoogleGlyph />
-        <Text className="font-body text-base font-medium text-ink">{loading ? "Opening Google…" : "Continue with Google"}</Text>
+        <View className="h-7 w-7 items-center justify-center rounded-full bg-white">
+          <GoogleGlyph size={16} />
+        </View>
+        <Text className="font-body text-base font-semibold text-canvas">{loading ? "Opening Google…" : label}</Text>
       </Pressable>
 
       {error ? (
