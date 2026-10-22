@@ -40,3 +40,15 @@ export function maxProjectFiles(canAddMore: boolean): number {
 export function stripExtension(name: string): string {
   return name.replace(/\.[A-Za-z0-9]{1,10}$/, "");
 }
+
+/**
+ * Largest zip we build in the app. A plain ZIP (what fflate writes) uses 32-bit offsets, so an archive tops out at
+ * 4GB; stay a little under it. Batches above this are offered one by one only.
+ */
+export const ZIP_MAX_BYTES = 3.75 * 1024 * 1024 * 1024;
+
+/** Whether "as one zip" can be offered: unknown sizes (older uploads) are allowed, a known total over the cap is not. */
+export function canZipFiles(files: { size_bytes: number | null }[]): boolean {
+  if (!files.every((f) => f.size_bytes && f.size_bytes > 0)) return true;
+  return files.reduce((sum, f) => sum + (f.size_bytes ?? 0), 0) <= ZIP_MAX_BYTES;
+}

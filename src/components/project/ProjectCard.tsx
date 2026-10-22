@@ -6,6 +6,9 @@
 // get a menu to edit, publish, archive, manage access, push to feed, or delete.
 import { FileFolderHero } from "@/components/project/FileFolderArt";
 import { DownloadCancelledError, useDownloadProjectFile } from "@/hooks/useDownloadProjectFile";
+import { useDownloadAllProjectFiles, type DownloadAllMode } from "@/hooks/useDownloadAllProjectFiles";
+import { OptionsModal } from "@/components/ui/OptionsModal";
+import { canZipFiles, formatFileSize } from "@/lib/fileProject";
 import { useProjectFiles, type ProjectFile } from "@/hooks/useProjectFiles";
 import { ProjectFilesList } from "@/components/project/ProjectFilesList";
 import { PurchaseError } from "@/components/wallet/PurchaseError";
@@ -21,6 +24,7 @@ import {
   ChevronDown,
   Copy,
   Download,
+  FileArchive,
   Eye,
   EyeOff,
   Gift as GiftIcon,
@@ -182,6 +186,8 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
   const buyBusy = purchaseProject.isPending || offerNudge.checking;
   const bookGig = useBookGig();
   const downloadProjectFile = useDownloadProjectFile();
+  const downloadAllFiles = useDownloadAllProjectFiles();
+  const [downloadAllOpen, setDownloadAllOpen] = useState(false);
   const getAudioStream = useGetProjectFile();
   const getVideoStream = useGetProjectFile();
   const getImageStream = useGetProjectFile();
@@ -415,6 +421,20 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
     }
   }
 
+  /** "Download all" for a multi-file project: as one zip, or one by one into a folder. The whole batch counts as one download. */
+  async function handleDownloadAll(mode: DownloadAllMode) {
+    if (!requireUser()) return;
+    setError(null);
+    try {
+      const saved = await downloadAllFiles.mutateAsync({ projectId: project.id, title: project.title, mode });
+      logFreeAccessIfNeeded("download");
+      if (mode === "each") toast(`Saved ${saved} files`, { variant: "success" });
+    } catch (err) {
+      if (err instanceof DownloadCancelledError) return; // the person stopped it — not an error
+      setError(await resolveFunctionErrorMessage(err, "Couldn't download the files."));
+    }
+  }
+
   async function loadStream(mutation: ReturnType<typeof useGetProjectFile>, kind: "audio" | "video" | "image", set: (url: string) => void, fallback: string) {
     if (!requireUser()) return;
     setError(null);
@@ -636,8 +656,21 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
     // the mutation only settles once the system save sheet closes, so don't keep offering Cancel then.
     const dl = downloadProjectFile;
     const dlSaving = dl.isPending && dl.progress === 100;
-    // Several files: each has its own Download button in the list, so there's no single primary action.
-    detailCta = isMultiFile ? null : {
+    // Several files: "Download all" (zip, or one by one) is the primary action; each file in the list also has its own
+    // Download button for taking just one.
+    const da = downloadAllFiles;
+    const daSaving = da.isPending && da.progress === 100;
+    detailCta = isMultiFile ? {
+      label: daSaving
+        ? "Download complete"
+        : da.isPending
+          ? `${da.status ?? "Preparing…"}${da.progress != null ? ` · ${da.progress}%` : ""} · Cancel`
+          : "Download all",
+      icon: Download,
+      onPress: () => (da.isPending ? da.cancel() : setDownloadAllOpen(true)),
+      disabled: daSaving || dl.isPending,
+      progress: da.isPending ? da.progress : null,
+    } : {
       label: dlSaving ? "Download complete" : dl.isPending ? `${dl.progress != null ? `Downloading ${dl.progress}%` : "Preparing…"} · Cancel` : "Download",
       icon: Download,
       onPress: () => (dl.isPending ? dl.cancel() : void handleDownloadFile()),
@@ -845,7 +878,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
               <ProjectFilesList
                 files={projectFiles}
                 hasAccess={hasAccess}
-                busy={downloadProjectFile.isPending}
+                busy={downloadProjectFile.isPending || downloadAllFiles.isPending}
                 activeFileId={downloadProjectFile.isPending ? (downloadProjectFile.variables?.fileId ?? null) : null}
                 progress={downloadProjectFile.progress}
                 onDownload={(file) => void handleDownloadFile(file)}
@@ -963,10 +996,18 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
             <View className="mt-3 flex-row items-center gap-2">
               {project.project_type === "file" ? (
                 hasAccess && isMultiFile ? (
-                  <View className="flex-row items-center gap-1.5">
-                    <Icon as={Download} size={15} className="text-accent" />
-                    <Text className="text-sm font-medium text-accent">{fileCount} files</Text>
-                  </View>
+                  <LinkAction
+                    icon={Download}
+                    label={
+                      downloadAllFiles.isPending
+                        ? downloadAllFiles.progress === 100
+                          ? "Download complete"
+                          : `${downloadAllFiles.status ?? "Preparing…"}${downloadAllFiles.progress != null ? ` · ${downloadAllFiles.progress}%` : ""}`
+                        : `Download all (${fileCount} files)`
+                    }
+                    disabled={downloadAllFiles.isPending || downloadProjectFile.isPending}
+                    onPress={() => setDownloadAllOpen(true)}
+                  />
                 ) : hasAccess ? (
                   <LinkAction
                     icon={Download}
@@ -1144,6 +1185,31 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
       </View>
 
       {manageAccessOpen ? <ManageAccessSheet projectId={project.id} projectTitle={project.title} onClose={() => setManageAccessOpen(false)} /> : null}
+      {downloadAllOpen && isMultiFile ? (
+        <OptionsModal
+          title={`Download all (${fileCount} files)`}
+          onClose={() => setDownloadAllOpen(false)}
+          items={[
+            {
+              key: "zip",
+              label: "As one zip",
+              icon: menuIcon(FileArchive),
+              description: canZipFiles(projectFiles ?? []) ? "A single .zip with every file inside" : "Too big for one zip (over 4 GB). Use one by one",
+              disabled: !canZipFiles(projectFiles ?? []),
+              onSelect: () => void handleDownloadAll("zip"),
+            },
+            {
+              key: "each",
+              label: "One by one",
+              icon: menuIcon(Download),
+              description: `Saves ${fileCount} separate files to a folder you pick${
+                projectFiles && projectFiles.every((f) => f.size_bytes) ? ` (${formatFileSize(projectFiles.reduce((t, f) => t + (f.size_bytes ?? 0), 0))})` : ""
+              }`,
+              onSelect: () => void handleDownloadAll("each"),
+            },
+          ]}
+        />
+      ) : null}
       {guestPassOpen ? <GuestPassSheet projectId={project.id} projectTitle={project.title} isPrivate={project.is_private} isPaid={Number(project.price_usd) > 0} onClose={() => setGuestPassOpen(false)} /> : null}
 
       {supportSheetOpen ? (
