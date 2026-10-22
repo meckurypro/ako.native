@@ -42,16 +42,11 @@ import { useBookDetails, useEventDetails, useGigDetails, useGigSamples, useMedia
 import { PROJECT_TYPE_LABELS, useProject, useProjectTopics, useUpdateProject, type ProjectStatus } from "@/hooks/useProjects";
 import { useUploadProjectThumbnail } from "@/hooks/useUploadProjectThumbnail";
 import { isoToLocalInput } from "@/lib/dateInput";
+import { ProjectStatusSelect } from "@/components/project/ProjectStatusSelect";
 import { SupportingImagesField } from "@/components/project/SupportingImagesField";
 import { pickSingleImage } from "@/lib/pickImage";
 import { supabase } from "@/lib/supabase";
 import { CONTENT_LIMIT, contentCounterClass } from "@/lib/textLimits";
-
-const STATUS_OPTIONS: { value: ProjectStatus; label: string; hint: string }[] = [
-  { value: "active", label: "Published", hint: "Visible to everyone" },
-  { value: "draft", label: "Draft", hint: "Only visible to you, not published yet" },
-  { value: "archived", label: "Archived", hint: "Hidden — was published before" },
-];
 
 export function EditProject() {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
@@ -431,25 +426,7 @@ export function EditProject() {
         <View className="w-full max-w-md self-center">
           <View className="mb-6">
             <Text className="mb-1.5 text-sm font-medium text-ink-muted">Status</Text>
-            <View className="gap-2">
-              {STATUS_OPTIONS.map((opt) => (
-                <Pressable
-                  key={opt.value}
-                  onPress={() => setStatus(opt.value)}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: status === opt.value }}
-                  className={`flex-row items-center gap-3 rounded-xl border px-4 py-3 ${status === opt.value ? "border-accent bg-accent-soft" : "border-border bg-canvas"}`}
-                >
-                  <View className={`h-4 w-4 items-center justify-center rounded-full border ${status === opt.value ? "border-accent" : "border-ink-muted-a50"}`}>
-                    {status === opt.value ? <View className="h-2 w-2 rounded-full bg-accent" /> : null}
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-sm font-medium text-ink">{opt.label}</Text>
-                    <Text className="text-xs text-ink-muted">{opt.hint}</Text>
-                  </View>
-                </Pressable>
-              ))}
-            </View>
+            <ProjectStatusSelect value={status} onChange={setStatus} />
           </View>
 
 {project?.project_type === "file" ? (
