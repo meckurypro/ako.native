@@ -53,7 +53,7 @@ export const RESERVED_PROJECT_SLUGS = new Set([
   "verify-email", "reset-password", "auth", "onboarding", "compose",
   "promote", "hashtag", "topics", "post", "requests", "bookmarks", "inbox",
   "page-inbox", "rooms", "courses", "books", "meetings", "gigs",
-  "saved-projects", "settings-advanced", "settings-appearance",
+  "saved-projects", "settings-advanced", "settings-appearance", "pass",
 ]);
 
 export function normalizeProjectSlug(raw: string): string {

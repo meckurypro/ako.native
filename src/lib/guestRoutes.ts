@@ -8,9 +8,17 @@ import { RESERVED_PROJECT_SLUGS } from "@/lib/projectLinks";
 const EXTRA_APP_SEGMENTS = new Set(["connect"]);
 const SLUG_SHAPE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
+/** True for /pass/:token — a Guest Pass link (creator-minted, 6 hours, works for private projects too). */
+export function isGuestPassPath(pathname: string | null | undefined): boolean {
+  if (!pathname) return false;
+  const parts = (pathname.split(/[?#]/)[0] ?? "").split("/").filter(Boolean);
+  return parts.length === 2 && parts[0] === "pass";
+}
+
 /** True for /projects/:id and /:slug (a custom project link) — never for /projects/new, /projects/:id/edit, /feed, … */
 export function isGuestProjectPath(pathname: string | null | undefined): boolean {
   if (!pathname) return false;
+  if (isGuestPassPath(pathname)) return true;
   const path = pathname.split(/[?#]/)[0] ?? "";
   const parts = path.split("/").filter(Boolean);
 

@@ -9,6 +9,7 @@ import { DownloadCancelledError, useDownloadProjectFile } from "@/hooks/useDownl
 import { PurchaseError } from "@/components/wallet/PurchaseError";
 import {
   Archive,
+  KeyRound,
   ArrowDownToLine,
   BookOpen,
   BookText,
@@ -93,6 +94,7 @@ import { useTheme } from "@/theme/ThemeProvider";
 import { AffiliateShareSheet } from "./AffiliateShareSheet";
 import { OfferNudgeSheet } from "./OfferNudgeSheet";
 import { OFFER_ELIGIBLE_TYPES, useOfferNudge } from "@/hooks/useOffers";
+import { GuestPassSheet } from "./GuestPassSheet";
 import { ManageAccessSheet } from "./ManageAccessSheet";
 import { OfflineDownloadSheet } from "./OfflineDownloadSheet";
 import { MediaHeroPlayer } from "./MediaHeroPlayer";
@@ -212,6 +214,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
   const [showMoreActions, setShowMoreActions] = useState(false);
   const [showGiftPicker, setShowGiftPicker] = useState(false);
   const [manageAccessOpen, setManageAccessOpen] = useState(false);
+  const [guestPassOpen, setGuestPassOpen] = useState(false);
   const [supportSheetOpen, setSupportSheetOpen] = useState(false);
   const [affiliateShareOpen, setAffiliateShareOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -506,6 +509,9 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
       : []),
     ...(project.is_private
       ? [{ key: "manage-access", label: "Manage access", icon: <Icon as={Users} size={22} className="text-overlay-ink" />, onSelect: () => setManageAccessOpen(true) } satisfies DropdownMenuItem]
+      : []),
+    ...(project.status === "active"
+      ? [{ key: "guest-pass", label: "Guest Pass", icon: <Icon as={KeyRound} size={22} className="text-overlay-ink" />, onSelect: () => setGuestPassOpen(true) } satisfies DropdownMenuItem]
       : []),
     ...(project.status !== "active" && project.status !== "cancelled"
       ? [{ key: "publish", label: "Publish", icon: <Icon as={Send} size={22} className="text-overlay-ink" />, onSelect: () => handleStatusChange("active") } satisfies DropdownMenuItem]
@@ -1101,6 +1107,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
       </View>
 
       {manageAccessOpen ? <ManageAccessSheet projectId={project.id} projectTitle={project.title} onClose={() => setManageAccessOpen(false)} /> : null}
+      {guestPassOpen ? <GuestPassSheet projectId={project.id} projectTitle={project.title} isPrivate={project.is_private} isPaid={Number(project.price_usd) > 0} onClose={() => setGuestPassOpen(false)} /> : null}
 
       {supportSheetOpen ? (
         <SupportPitchSheet

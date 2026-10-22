@@ -15,6 +15,7 @@ import { KeyboardAvoider } from "@/components/ui/KeyboardAvoider";
 import { MentionTextarea } from "@/components/post/MentionTextarea";
 import { MAX_TOPICS, TopicPicker } from "@/components/post/TopicPicker";
 import { AffiliateProgramSheet } from "@/components/project/AffiliateProgramSheet";
+import { GuestPassSheet } from "@/components/project/GuestPassSheet";
 import { ManageAccessSheet } from "@/components/project/ManageAccessSheet";
 import { ProjectLinkSheet } from "@/components/project/ProjectLinkSheet";
 import { BookFields, EMPTY_BOOK_FIELDS, type BookFieldsValue } from "@/components/project-types/BookFields";
@@ -57,6 +58,7 @@ export function EditProject() {
   const [manageAccessOpen, setManageAccessOpen] = useState(false);
   const [affiliateSheetOpen, setAffiliateSheetOpen] = useState(false);
   const [linkSheetOpen, setLinkSheetOpen] = useState(false);
+  const [guestPassOpen, setGuestPassOpen] = useState(false);
   const { data: affiliateProgram } = useAffiliateProgram(project && project.project_type !== "pitch" ? project.id : undefined);
   const { data: existingTopicIds } = useProjectTopics(projectId);
   const { data: existingEventDetails } = useEventDetails(project?.project_type === "event" ? projectId : undefined);
@@ -557,6 +559,12 @@ export function EditProject() {
             <Text className="text-sm font-medium text-accent">{project.slug ? "Custom URL →" : "Choose your custom URL →"}</Text>
           </Pressable>
 
+          {project.status === "active" ? (
+            <Pressable onPress={() => setGuestPassOpen(true)} accessibilityRole="button" className="mb-6 px-1">
+              <Text className="text-sm font-medium text-accent">Guest Pass — a 6-hour link anyone can open →</Text>
+            </Pressable>
+          ) : null}
+
           <PrivacyToggle checked={isPrivate} onChange={setIsPrivate} />
           {isPrivate ? (
             <Pressable onPress={() => setManageAccessOpen(true)} accessibilityRole="button" className="-mt-4 mb-6 px-1">
@@ -581,6 +589,7 @@ export function EditProject() {
         <AffiliateProgramSheet projectId={project.id} projectTitle={project.title} priceUsd={parseFloat(priceUsd) || 0} onClose={() => setAffiliateSheetOpen(false)} />
       ) : null}
       {linkSheetOpen ? <ProjectLinkSheet project={project} onClose={() => setLinkSheetOpen(false)} /> : null}
+      {guestPassOpen ? <GuestPassSheet projectId={project.id} projectTitle={project.title} isPrivate={project.is_private} isPaid={(parseFloat(priceUsd) || 0) > 0} onClose={() => setGuestPassOpen(false)} /> : null}
     </KeyboardAvoider>
   );
 }
