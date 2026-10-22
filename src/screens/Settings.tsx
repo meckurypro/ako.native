@@ -3,7 +3,7 @@
 // time). /settings/profile is the same screen; /settings/appearance and /settings/advanced redirect
 // here with the matching section pre-opened.
 import { useLocalSearchParams } from "expo-router";
-import { Camera, Eye, LogOut, ShieldCheck } from "lucide-react-native";
+import { Camera, LogOut, ShieldCheck } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { Linking, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -25,7 +25,6 @@ import { useSignOut } from "@/hooks/useAccountAccess";
 import { useIsAdmin } from "@/hooks/useAdmin";
 import { useAuth } from "@/hooks/useAuth";
 import { useOwnProfile } from "@/hooks/useOwnProfile";
-import { useProfileVisitCount } from "@/hooks/useProfileVisits";
 import { removeSavedAccount } from "@/lib/accountSessions";
 import { APP_URL } from "@/lib/config";
 
@@ -42,15 +41,14 @@ export function Settings() {
   const { user } = useAuth();
   const { data: isAdmin } = useIsAdmin();
   const { data: profile, isLoading: profileLoading } = useOwnProfile();
-  const { data: visitCount } = useProfileVisitCount(profile?.id, !!profile?.id);
   // A photo picked from the hero is uploaded by ProfileSection (which saves it with the rest of the profile).
   const [photoRequest, setPhotoRequest] = useState(0);
   const [pendingAvatarUrl, setPendingAvatarUrl] = useState<string | null>(null);
   const signOut = useSignOut();
   const params = useLocalSearchParams<{ section?: string }>();
 
-  // Profile is open by default (the section people open most); a ?section= param can open another.
-  const [openSection, setOpenSection] = useState<SettingsSectionId | null>(asSectionId(params.section) ?? "profile");
+  // Every section — Profile included — starts collapsed; a ?section= param can open one (deep links from elsewhere).
+  const [openSection, setOpenSection] = useState<SettingsSectionId | null>(asSectionId(params.section) ?? null);
   useEffect(() => {
     const requested = asSectionId(params.section);
     if (requested) setOpenSection(requested);
@@ -76,52 +74,24 @@ export function Settings() {
     <KeyboardAvoider className="flex-1 bg-canvas">
       <ScreenHeader title="Settings" />
       <ScrollView showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="none" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: insets.bottom + 40 }}>
-        {/* Hero — same shape as the top of the profile: big name + handle + stacked stats on the left, large
-            ringed avatar on the right with a round change-photo badge. */}
-        <View className="mb-6">
-          <View className="flex-row items-start justify-between gap-4">
-            <View className="min-w-0 flex-1 pt-1">
-              <Text className="text-[1.75rem] font-bold leading-tight tracking-tight text-ink">{profile?.display_name}</Text>
-              <Text numberOfLines={1} className="mt-0.5 text-base text-ink-muted">@{profile?.username}</Text>
+        {/* Hero — just the avatar, centred, with the round change-photo badge. Name, handle and follower / visit
+            stats live on the profile itself; repeating them here was redundant. */}
+        <View className="mb-6 items-center">
+          <View className="relative">
+            <View className="rounded-full border-2 border-border p-[3px]">
+              <Avatar src={pendingAvatarUrl ?? profile?.avatar_url} name={profile?.display_name ?? "?"} size="2xl" />
             </View>
-            <View className="shrink-0">
-              <View className="rounded-full border-2 border-border p-[3px]">
-                <Avatar src={pendingAvatarUrl ?? profile?.avatar_url} name={profile?.display_name ?? "?"} size="2xl" />
-              </View>
-              <Pressable
-                onPress={() => {
-                  setOpenSection("profile");
-                  setPhotoRequest((n) => n + 1);
-                }}
-                accessibilityRole="button"
-                accessibilityLabel="Change profile photo"
-                className="absolute -bottom-1 -right-1 h-9 w-9 items-center justify-center rounded-full border-[3px] border-canvas bg-accent"
-              >
-                <Icon as={Camera} size={16} className="text-white" />
-              </Pressable>
-            </View>
-          </View>
-
-          <View className="mt-5 flex-row items-center gap-7">
-            {typeof profile?.following_count === "number" ? (
-              <View>
-                <Text className="text-xl font-semibold text-ink">{profile.following_count}</Text>
-                <Text className="mt-1 text-sm text-ink-muted">Following</Text>
-              </View>
-            ) : null}
-            {typeof profile?.follower_count === "number" ? (
-              <View>
-                <Text className="text-xl font-semibold text-ink">{profile.follower_count}</Text>
-                <Text className="mt-1 text-sm text-ink-muted">Followers</Text>
-              </View>
-            ) : null}
-            <View accessibilityLabel="Only visible to you">
-              <View className="flex-row items-center gap-1.5">
-                <Text className="text-xl font-semibold text-ink">{visitCount ?? 0}</Text>
-                <Icon as={Eye} size={15} className="text-ink-muted" />
-              </View>
-              <Text className="mt-1 text-sm text-ink-muted">Visits · 30 days</Text>
-            </View>
+            <Pressable
+              onPress={() => {
+                setOpenSection("profile");
+                setPhotoRequest((n) => n + 1);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Change profile photo"
+              className="absolute -bottom-1 -right-1 h-9 w-9 items-center justify-center rounded-full border-[3px] border-canvas bg-accent"
+            >
+              <Icon as={Camera} size={16} className="text-white" />
+            </Pressable>
           </View>
         </View>
 

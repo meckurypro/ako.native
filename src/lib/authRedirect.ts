@@ -10,12 +10,15 @@
 
 const STORAGE_KEY = "ako.return_to.v1";
 const AUTH_PREFIXES = ["/login", "/signup", "/verify-email", "/reset-password", "/auth"];
+// Account-management screens are never somewhere a login should drop you (see the web authRedirect).
+const NEVER_RETURN_PREFIXES = ["/settings"];
 
 export function safeReturnPath(raw: string | null | undefined): string | null {
   if (!raw) return null;
   if (!raw.startsWith("/") || raw.startsWith("//") || raw.includes("\\")) return null;
   if (raw === "/") return null;
   if (AUTH_PREFIXES.some((p) => raw === p || raw.startsWith(`${p}?`) || raw.startsWith(`${p}/`))) return null;
+  if (NEVER_RETURN_PREFIXES.some((p) => raw === p || raw.startsWith(`${p}?`) || raw.startsWith(`${p}/`))) return null;
   return raw;
 }
 

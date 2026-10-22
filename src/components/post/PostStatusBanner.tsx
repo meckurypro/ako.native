@@ -3,6 +3,8 @@
 // its author or an admin/moderator opens it. RLS lets them in; everyone else is told it isn't available.
 // Without this banner the screen looks exactly like a published post, so an author thinks it's live and
 // shares a link nobody else can open. See lib/postStatus.ts.
+import { router, type Href } from "expo-router";
+import type { ReactNode } from "react";
 import { View } from "react-native";
 
 import { Text } from "@/components/ui/Text";
@@ -19,11 +21,26 @@ export function PostStatusBanner({ post, isOwnPost }: { post: PostWithAuthor; is
   if (state === "published") return null;
 
   const handle = post.author?.username ? `@${post.author.username}` : "the author";
-  let text: string;
+  let text: ReactNode;
   if (state === "draft") {
-    text = isOwnPost
-      ? "This is a draft — only you can see it. It isn't live yet, so a link to it won't open for anyone else. Publish it from your Drafts to share it."
-      : `Draft by ${handle} — not published. Only the author and admins can see it; everyone else is told it isn't available.`;
+    // For the author, "draft" / "Drafts" are links to the Drafts screen, where the post can be resumed and published.
+    const draftsLink = (label: string) => (
+      <Text
+        accessibilityRole="link"
+        onPress={() => router.push("/activity/drafts" as Href)}
+        className="text-xs font-medium text-accent underline"
+      >
+        {label}
+      </Text>
+    );
+    text = isOwnPost ? (
+      <>
+        This is a {draftsLink("draft")} — only you can see it. It isn't live yet, so a link to it won't open for anyone
+        else. Publish it from your {draftsLink("Drafts")} to share it.
+      </>
+    ) : (
+      `Draft by ${handle} — not published. Only the author and admins can see it; everyone else is told it isn't available.`
+    );
   } else {
     const when = formatWhen(post.scheduled_for);
     text = isOwnPost
