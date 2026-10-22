@@ -9,6 +9,7 @@ import { router } from "expo-router";
 import {
   ArrowDownCircle,
   ArrowUpCircle,
+  ChevronRight,
   Gem,
   Gift,
   Heart,
@@ -25,6 +26,7 @@ import { FlatList, Pressable, View } from "react-native";
 
 import { useBottomNavInset } from "@/components/nav/BottomNav";
 import { Button, Icon, Text } from "@/components/ui";
+import { BrandCard, ON_BRAND, useBrandColor } from "@/components/ui/BrandCard";
 import { RefreshSkeleton } from "@/components/ui/RefreshSkeleton";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -68,13 +70,53 @@ function txnDate(dateString: string): string {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: sameYear ? undefined : "numeric" });
 }
 
-function BalanceAction({ icon, label, onPress }: { icon: LucideIcon; label: string; onPress: () => void }) {
+// Fund is the primary action: a solid white pill with deep-brand text (a light button on a dark brand surface).
+// Withdraw is its quieter translucent twin. Same pairing as web.
+function CardPill({ icon, label, onPress, primary }: { icon: LucideIcon; label: string; onPress: () => void; primary?: boolean }) {
+  const brand = useBrandColor();
+  const fg = primary ? brand : ON_BRAND.full;
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} className="items-center gap-1.5 active:opacity-70">
-      <View className="h-11 w-11 items-center justify-center rounded-full bg-canvas/15">
-        <Icon as={icon} size={20} className="text-canvas" />
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      className="h-11 flex-1 flex-row items-center justify-center gap-2 rounded-full active:opacity-80"
+      style={
+        primary
+          ? { backgroundColor: "#FFFFFF" }
+          : { backgroundColor: ON_BRAND.chip, borderWidth: 1, borderColor: ON_BRAND.chipBorder }
+      }
+    >
+      <Icon as={icon} size={18} color={fg} />
+      <Text className="text-sm font-semibold" style={{ color: fg }}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+// Secondary destinations sit under the card as quiet surface tiles — the Profile's bordered, rounded-2xl,
+// accent-soft icon-chip language.
+function ShortcutTile({ icon, title, hint, onPress }: { icon: LucideIcon; title: string; hint: string; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      className="flex-1 flex-row items-center gap-3 rounded-2xl border border-border bg-surface px-3.5 py-3 active:bg-accent-soft"
+    >
+      <View className="h-10 w-10 items-center justify-center rounded-full bg-accent-soft">
+        <Icon as={icon} size={18} className="text-accent" />
       </View>
-      <Text className="text-xs font-medium text-canvas">{label}</Text>
+      <View className="min-w-0 flex-1">
+        <Text numberOfLines={1} className="text-sm font-medium text-ink">
+          {title}
+        </Text>
+        <Text numberOfLines={1} className="text-xs text-ink-muted">
+          {hint}
+        </Text>
+      </View>
+      <Icon as={ChevronRight} size={16} className="text-ink-muted" />
     </Pressable>
   );
 }
@@ -137,43 +179,74 @@ export default function WalletScreen() {
   const header = (
     <View>
       {/* Balance card — the one bold element on the page */}
-      <View className="mb-4 overflow-hidden rounded-[28px] bg-accent p-6 pt-7">
-        <View className="absolute -right-6 -top-6 opacity-[0.12]" pointerEvents="none">
-          <Icon as={WalletIcon} size={140} strokeWidth={1} className="text-canvas" />
+      <BrandCard className="mb-3 p-6">
+        <View className="flex-row items-center justify-between">
+          <Text className="text-[11px] font-medium uppercase tracking-[0.16em]" style={{ color: ON_BRAND.full }}>
+            Available balance
+          </Text>
+          <View className="rounded-full px-2.5 py-0.5" style={{ backgroundColor: ON_BRAND.chip, borderWidth: 1, borderColor: ON_BRAND.chipBorder }}>
+            <Text className="text-[11px] font-medium tracking-wide" style={{ color: ON_BRAND.full }}>
+              USD
+            </Text>
+          </View>
         </View>
-        <Text className="text-xs font-medium uppercase tracking-[0.14em] text-canvas/70">Available balance</Text>
+
         {isLoading ? (
-          <Skeleton className="mb-8 mt-3 h-12 w-40 rounded-xl" />
+          <Skeleton className="mb-6 mt-3 h-12 w-40 rounded-xl" />
         ) : (
-          <Text className="mb-8 mt-3 font-display text-5xl text-canvas">{formatUsd(wallet?.balance ?? 0)}</Text>
+          <Text className="mb-6 mt-3 font-display text-5xl" style={{ color: ON_BRAND.full }}>
+            {formatUsd(wallet?.balance ?? 0)}
+          </Text>
         )}
 
-        <View className="flex-row justify-between">
-          {depositsEnabled ? <BalanceAction icon={ArrowDownCircle} label="Fund" onPress={() => router.push("/wallet/fund")} /> : null}
-          {withdrawalsEnabled ? <BalanceAction icon={ArrowUpCircle} label="Withdraw" onPress={() => router.push("/wallet/withdraw")} /> : null}
-          <BalanceAction icon={Gem} label="Vault" onPress={() => router.push("/wallet/gifts")} />
-          {affiliateEnabled ? <BalanceAction icon={TrendingUp} label="Affiliate" onPress={() => router.push("/wallet/affiliate-links")} /> : null}
-        </View>
-        {!depositsEnabled && !withdrawalsEnabled ? (
-          <Text className="mt-4 text-xs text-canvas/70">Funding and withdrawals are temporarily unavailable.</Text>
+        {depositsEnabled || withdrawalsEnabled ? (
+          <View className="flex-row gap-3">
+            {depositsEnabled ? <CardPill icon={ArrowDownCircle} label="Fund" primary onPress={() => router.push("/wallet/fund")} /> : null}
+            {withdrawalsEnabled ? (
+              <CardPill icon={ArrowUpCircle} label="Withdraw" primary={!depositsEnabled} onPress={() => router.push("/wallet/withdraw")} />
+            ) : null}
+          </View>
+        ) : (
+          <Text className="text-xs" style={{ color: ON_BRAND.high }}>
+            Funding and withdrawals are temporarily unavailable.
+          </Text>
+        )}
+
+        {/* Withdrawal position — the two numbers people check before asking for money out. */}
+        {withdrawalsEnabled && (eligibility || inReviewUsd > 0) ? (
+          <View className="mt-6 flex-row gap-4 pt-4" style={{ borderTopWidth: 1, borderTopColor: ON_BRAND.hairline }}>
+            <View className="flex-1">
+              <Text className="text-[11px] uppercase tracking-wide" style={{ color: ON_BRAND.high }}>
+                Can withdraw
+              </Text>
+              <Text className="mt-0.5 font-display text-xl" style={{ color: ON_BRAND.full }}>
+                {formatUsd(eligibility?.available_to_request ?? 0)}
+              </Text>
+              <Text className="text-[11px]" style={{ color: ON_BRAND.high }}>
+                this week
+              </Text>
+            </View>
+            <View className="flex-1">
+              <Text className="text-[11px] uppercase tracking-wide" style={{ color: ON_BRAND.high }}>
+                In review
+              </Text>
+              <Text className="mt-0.5 font-display text-xl" style={{ color: ON_BRAND.full }}>
+                {formatUsd(inReviewUsd)}
+              </Text>
+              <Text className="text-[11px]" style={{ color: ON_BRAND.high }}>
+                on its way to your bank
+              </Text>
+            </View>
+          </View>
+        ) : null}
+      </BrandCard>
+
+      <View className="mb-4 flex-row gap-3">
+        <ShortcutTile icon={Gem} title="Gift Vault" hint="Gifts received" onPress={() => router.push("/wallet/gifts")} />
+        {affiliateEnabled ? (
+          <ShortcutTile icon={TrendingUp} title="Affiliate" hint="Links & earnings" onPress={() => router.push("/wallet/affiliate-links")} />
         ) : null}
       </View>
-
-      {/* Withdrawal position — the two numbers people check before asking for money out. */}
-      {withdrawalsEnabled && (eligibility || inReviewUsd > 0) ? (
-        <View className="mb-4 flex-row gap-3">
-          <View className="flex-1 rounded-2xl border border-border bg-surface px-4 py-3">
-            <Text className="text-[11px] uppercase tracking-wide text-ink-muted">Can withdraw</Text>
-            <Text className="mt-0.5 font-display text-xl text-ink">{formatUsd(eligibility?.available_to_request ?? 0)}</Text>
-            <Text className="mt-0.5 text-[11px] text-ink-muted">this week</Text>
-          </View>
-          <View className="flex-1 rounded-2xl border border-border bg-surface px-4 py-3">
-            <Text className="text-[11px] uppercase tracking-wide text-ink-muted">In review</Text>
-            <Text className="mt-0.5 font-display text-xl text-ink">{formatUsd(inReviewUsd)}</Text>
-            <Text className="mt-0.5 text-[11px] text-ink-muted">on its way to your bank</Text>
-          </View>
-        </View>
-      ) : null}
 
       {pending.length > 0 ? (
         <View className="mb-4 rounded-2xl border border-border bg-surface p-4">
