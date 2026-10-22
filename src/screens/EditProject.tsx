@@ -93,6 +93,7 @@ export function EditProject() {
   const [topicsHydrated, setTopicsHydrated] = useState(false);
 
   const [fileFields, setFileFields] = useState<FileFieldsValue>(EMPTY_FILE_FIELDS);
+  const [fileUploading, setFileUploading] = useState(false);
   const [urlFields, setUrlFields] = useState<UrlFieldsValue>(EMPTY_URL_FIELDS);
   const [mediaFields, setMediaFields] = useState<MediaFieldsValue>(EMPTY_MEDIA_FIELDS);
   const [eventFields, setEventFields] = useState<EventFieldsValue>(EMPTY_EVENT_FIELDS);
@@ -254,6 +255,8 @@ export function EditProject() {
     setError(null);
     if (!projectId || !project) return;
     if (!title.trim()) return setError("Title is required.");
+    // Saving now would keep the OLD file while the new one is still going up — hold until it lands.
+    if (project.project_type === "file" && fileUploading) return setError("Your file is still uploading — wait for it to finish.");
 
     const t = project.project_type;
     const price = t === "pitch" ? 0 : parseFloat(priceUsd) || 0;
@@ -496,7 +499,7 @@ export function EditProject() {
           <TopicPicker selected={topicIds} onToggle={toggleTopic} />
 
           {t === "media" ? <MediaFields value={mediaFields} onChange={setMediaFields} onError={setError} /> : null}
-          {t === "file" ? <FileFields value={fileFields} onChange={setFileFields} onError={setError} /> : null}
+          {t === "file" ? <FileFields value={fileFields} onChange={setFileFields} onError={setError} onUploadingChange={setFileUploading} /> : null}
           {t === "url" ? <UrlFields value={urlFields} onChange={setUrlFields} /> : null}
           {t === "event" ? <EventFields value={eventFields} onChange={setEventFields} /> : null}
           {t === "meeting" ? <MeetingFields value={meetingFields} onChange={setMeetingFields} /> : null}
@@ -590,7 +593,7 @@ export function EditProject() {
             </Text>
           ) : null}
 
-          <Button onPress={() => void handleSubmit()} loading={updateProject.isPending}>
+          <Button onPress={() => void handleSubmit()} loading={updateProject.isPending} disabled={project.project_type === "file" && fileUploading}>
             Save changes
           </Button>
         </View>

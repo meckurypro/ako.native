@@ -15,3 +15,11 @@ export function formatDownloadCount(n: number | null | undefined): string {
   const count = Math.max(0, Number(n ?? 0));
   return `${count.toLocaleString()} download${count === 1 ? "" : "s"}`;
 }
+
+/** "12.4 MB" / "830 KB" — for showing a picked file's size. */
+export function formatFileSize(bytes: number | null | undefined): string {
+  const n = Math.max(0, Number(bytes ?? 0));
+  if (n >= 1024 * 1024 * 1024) return `${(n / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+  if (n >= 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(n >= 100 * 1024 * 1024 ? 0 : 1)} MB`;
+  return `${Math.max(1, Math.round(n / 1024))} KB`;
+}

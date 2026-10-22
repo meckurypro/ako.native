@@ -133,6 +133,7 @@ export function CreateProject() {
 
   // Per-type field state is kept separately so switching type never discards what was entered.
   const [fileFields, setFileFields] = useState<FileFieldsValue>(EMPTY_FILE_FIELDS);
+  const [fileUploading, setFileUploading] = useState(false);
   const [urlFields, setUrlFields] = useState<UrlFieldsValue>(EMPTY_URL_FIELDS);
   const [mediaFields, setMediaFields] = useState<MediaFieldsValue>(EMPTY_MEDIA_FIELDS);
   const [eventFields, setEventFields] = useState<EventFieldsValue>(EMPTY_EVENT_FIELDS);
@@ -354,6 +355,7 @@ export function CreateProject() {
   async function handleSubmit() {
     setError(null);
     if (!title.trim()) return setError("Title is required.");
+    if (projectType === "file" && fileUploading) return setError("Your file is still uploading — wait for it to finish.");
 
     const price = parseFloat(priceUsd) || 0;
     const typeError = validateTypeSpecific();
@@ -605,7 +607,7 @@ export function CreateProject() {
 
           {/* ---- Type-specific block ---- */}
           {projectType === "media" ? <MediaFields value={mediaFields} onChange={setMediaFields} onError={setError} /> : null}
-          {projectType === "file" ? <FileFields value={fileFields} onChange={setFileFields} onError={setError} /> : null}
+          {projectType === "file" ? <FileFields value={fileFields} onChange={setFileFields} onError={setError} onUploadingChange={setFileUploading} /> : null}
           {projectType === "url" ? <UrlFields value={urlFields} onChange={setUrlFields} /> : null}
           {projectType === "event" ? <EventFields value={eventFields} onChange={setEventFields} /> : null}
           {projectType === "meeting" ? <MeetingFields value={meetingFields} onChange={setMeetingFields} /> : null}
@@ -664,7 +666,7 @@ export function CreateProject() {
             </Text>
           ) : null}
 
-          <Button onPress={() => void handleSubmit()} loading={submitting}>
+          <Button onPress={() => void handleSubmit()} loading={submitting} disabled={projectType === "file" && fileUploading}>
             {isDraftType ? "Create draft" : projectType === "pitch" ? "Publish pitch" : "Publish project"}
           </Button>
         </View>
