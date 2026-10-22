@@ -5,6 +5,8 @@
 // truth for where it appears — the same 23 pages the web showed it on.
 //
 // Paths are matched against expo-router's pathname (route groups removed).
+import { isReservedProjectSlug, isValidProjectSlugFormat, normalizeProjectSlug } from "@/lib/projectLinks";
+
 const SHOWS_BOTTOM_NAV: RegExp[] = [
   /^\/feed$/,
   /^\/topics$/,
@@ -35,10 +37,23 @@ const SHOWS_BOTTOM_NAV: RegExp[] = [
 // Page-inbox threads also hide the nav: a docked message composer can't share the bottom edge with it.
 const NEVER: RegExp[] = [/^\/projects\/new$/, /^\/messages\/[^/]+$/, /^\/page-inbox\/[^/]+$/];
 
+/**
+ * A project's pretty public address — "/my-file" (see lib/projectLinks). It renders the same ProjectDetail as
+ * "/projects/:id", so it gets the same nav. Any single-segment path that is a valid, non-reserved slug is one:
+ * reserved words are exactly the app's own top-level routes (settings, compose, login…), which is why a slug can
+ * never shadow them.
+ */
+function isProjectSlugPath(pathname: string): boolean {
+  const match = /^\/([^/]+)$/.exec(pathname);
+  if (!match) return false;
+  const slug = normalizeProjectSlug(match[1]); // the screen resolves slugs case-insensitively, so must this
+  return isValidProjectSlugFormat(slug) && !isReservedProjectSlug(slug);
+}
+
 export function showsBottomNav(pathname: string): boolean {
   if (pathname === "/messages/archive") return true;
   if (NEVER.some((r) => r.test(pathname))) return false;
-  return SHOWS_BOTTOM_NAV.some((r) => r.test(pathname));
+  return SHOWS_BOTTOM_NAV.some((r) => r.test(pathname)) || isProjectSlugPath(pathname);
 }
 
 export type NavKey = "feed" | "topics" | "library" | "connect" | "messages" | "profile";
