@@ -1,10 +1,10 @@
 // src/app/(app)/wallet/index.tsx
 //
-// Wallet home: balance, Fund action, recent activity, and a status banner for a
+// Wallet home: balance, Fund / Withdraw / Vault / Affiliate actions, recent activity, and a status banner for a
 // payment that's still being confirmed. Port of the web Wallet page.
 //
 // Funding always happens on the web (Paystack) and returns here by deep link.
-// Withdrawals and affiliate payouts aren't on native yet, so those actions are not offered here.
+// Withdrawals have their own screen (wallet/withdraw); Friday-only requests, paid out Saturdays.
 import { router } from "expo-router";
 import {
   ArrowDownCircle,
@@ -31,7 +31,9 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useDeposits, useVerifyDeposit } from "@/hooks/useDeposits";
 import { useFeatureFlag } from "@/hooks/useFeatureFlags";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { useWithdrawals } from "@/hooks/usePayout";
 import { useWallet, useWalletTransactions } from "@/hooks/useWallet";
+import { useWithdrawalEligibility } from "@/hooks/useWalletRates";
 import { formatUsd } from "@/lib/money";
 
 // Per-type label, icon and tint — scanning history by icon is faster than reading every line.
@@ -66,6 +68,17 @@ function txnDate(dateString: string): string {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: sameYear ? undefined : "numeric" });
 }
 
+function BalanceAction({ icon, label, onPress }: { icon: LucideIcon; label: string; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} className="items-center gap-1.5 active:opacity-70">
+      <View className="h-11 w-11 items-center justify-center rounded-full bg-canvas/15">
+        <Icon as={icon} size={20} className="text-canvas" />
+      </View>
+      <Text className="text-xs font-medium text-canvas">{label}</Text>
+    </Pressable>
+  );
+}
+
 const RECENT_PENDING_MS = 30 * 60 * 1000;
 
 export default function WalletScreen() {
@@ -77,8 +90,17 @@ export default function WalletScreen() {
 
   const walletEnabled = useFeatureFlag("wallet_enabled");
   const depositsEnabled = useFeatureFlag("deposits_enabled");
+  const withdrawalsEnabled = useFeatureFlag("withdrawals_enabled");
+  const affiliateEnabled = useFeatureFlag("affiliate_programs_enabled");
+  const { data: eligibility, refetch: refetchEligibility } = useWithdrawalEligibility();
+  const { data: withdrawals, refetch: refetchWithdrawals } = useWithdrawals();
 
-  const { refreshControl, refreshing } = usePullToRefresh([refetchWallet, refetchTxns, refetchDeposits]);
+  // Requests that have left the wallet but not yet reached the bank.
+  const inReviewUsd = (withdrawals ?? [])
+    .filter((w) => w.status === "pending" || w.status === "processing")
+    .reduce((sum, w) => sum + Number(w.amount_usd), 0);
+
+  const { refreshControl, refreshing } = usePullToRefresh([refetchWallet, refetchTxns, refetchDeposits, refetchEligibility, refetchWithdrawals]);
 
   // A payment started in the last half hour that hasn't been confirmed yet (user closed the browser
   // early, or the webhook is slow). Confirm it automatically once per reference, and let them re-check.
@@ -126,35 +148,32 @@ export default function WalletScreen() {
           <Text className="mb-8 mt-3 font-display text-5xl text-canvas">{formatUsd(wallet?.balance ?? 0)}</Text>
         )}
 
-        <View className="flex-row items-center gap-6">
-          {depositsEnabled ? (
-            <Pressable
-              onPress={() => router.push("/wallet/fund")}
-              accessibilityRole="button"
-              accessibilityLabel="Fund wallet"
-              className="flex-row items-center gap-3"
-            >
-              <View className="h-11 w-11 items-center justify-center rounded-full bg-canvas/15">
-                <Icon as={ArrowDownCircle} size={20} className="text-canvas" />
-              </View>
-              <Text className="text-sm font-medium text-canvas">Fund wallet</Text>
-            </Pressable>
-          ) : (
-            <Text className="text-xs text-canvas/70">Funding is temporarily unavailable.</Text>
-          )}
-          <Pressable
-            onPress={() => router.push("/wallet/gifts")}
-            accessibilityRole="button"
-            accessibilityLabel="Open gift vault"
-            className="flex-row items-center gap-3"
-          >
-            <View className="h-11 w-11 items-center justify-center rounded-full bg-canvas/15">
-              <Icon as={Gem} size={20} className="text-canvas" />
-            </View>
-            <Text className="text-sm font-medium text-canvas">Vault</Text>
-          </Pressable>
+        <View className="flex-row justify-between">
+          {depositsEnabled ? <BalanceAction icon={ArrowDownCircle} label="Fund" onPress={() => router.push("/wallet/fund")} /> : null}
+          {withdrawalsEnabled ? <BalanceAction icon={ArrowUpCircle} label="Withdraw" onPress={() => router.push("/wallet/withdraw")} /> : null}
+          <BalanceAction icon={Gem} label="Vault" onPress={() => router.push("/wallet/gifts")} />
+          {affiliateEnabled ? <BalanceAction icon={TrendingUp} label="Affiliate" onPress={() => router.push("/wallet/affiliate-links")} /> : null}
         </View>
+        {!depositsEnabled && !withdrawalsEnabled ? (
+          <Text className="mt-4 text-xs text-canvas/70">Funding and withdrawals are temporarily unavailable.</Text>
+        ) : null}
       </View>
+
+      {/* Withdrawal position — the two numbers people check before asking for money out. */}
+      {withdrawalsEnabled && (eligibility || inReviewUsd > 0) ? (
+        <View className="mb-4 flex-row gap-3">
+          <View className="flex-1 rounded-2xl border border-border bg-surface px-4 py-3">
+            <Text className="text-[11px] uppercase tracking-wide text-ink-muted">Can withdraw</Text>
+            <Text className="mt-0.5 font-display text-xl text-ink">{formatUsd(eligibility?.available_to_request ?? 0)}</Text>
+            <Text className="mt-0.5 text-[11px] text-ink-muted">this week</Text>
+          </View>
+          <View className="flex-1 rounded-2xl border border-border bg-surface px-4 py-3">
+            <Text className="text-[11px] uppercase tracking-wide text-ink-muted">In review</Text>
+            <Text className="mt-0.5 font-display text-xl text-ink">{formatUsd(inReviewUsd)}</Text>
+            <Text className="mt-0.5 text-[11px] text-ink-muted">on its way to your bank</Text>
+          </View>
+        </View>
+      ) : null}
 
       {pending.length > 0 ? (
         <View className="mb-4 rounded-2xl border border-border bg-surface p-4">
