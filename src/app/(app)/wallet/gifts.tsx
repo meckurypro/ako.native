@@ -1,13 +1,13 @@
 // src/app/(app)/wallet/gifts.tsx
 //
 // Gift Vault (native): a trophy cabinet for every gift the user has received.
-//   • Plaque — total worth, gifts, artifacts, plus a Share button for show-offs.
+//   • Plaque — total worth, gifts, artifacts and your prized piece.
 //   • Latest — newest gifts first (artwork, sender, date/time, price), filter All / Today / This week.
 //   • Artifacts — one tile per gift type with an ×count badge; tapping opens that artifact's history.
 // Rarity (Everyday → Legendary) is driven by the price of a single gift.
-import { Crown, Gem, Share2, Sparkles } from "lucide-react-native";
+import { Crown, Gem, Sparkles } from "lucide-react-native";
 import { useMemo, useState } from "react";
-import { Pressable, ScrollView, Share, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Avatar, Icon, Image, Text } from "@/components/ui";
@@ -87,23 +87,8 @@ export default function GiftVaultScreen() {
   const filtered = useMemo(() => filterByRange(gifts ?? [], range), [gifts, range]);
   const artifacts = useMemo(() => groupArtifacts(filtered), [filtered]);
   const totals = useMemo(() => vaultTotals(filtered), [filtered]);
-  const allTimeTotals = useMemo(() => vaultTotals(gifts ?? []), [gifts]);
   const latest = showAll ? filtered : filtered.slice(0, LATEST_PAGE);
   const rangeLabel = RANGES.find((r) => r.id === range)!.label.toLowerCase();
-
-  async function share() {
-    const message =
-      allTimeTotals.giftCount > 0
-        ? `My Akọ Gift Vault: ${allTimeTotals.giftCount} gifts, ${allTimeTotals.artifactCount} treasures, worth ${formatUsd(allTimeTotals.totalWorth)}${
-            allTimeTotals.topArtifact ? ` — prized piece: ${allTimeTotals.topArtifact.name}` : ""
-          }.`
-        : "I'm building my Gift Vault on Akọ.";
-    try {
-      await Share.share({ message });
-    } catch {
-      // Share sheet dismissed.
-    }
-  }
 
   return (
     <View className="flex-1 bg-canvas">
@@ -136,18 +121,6 @@ export default function GiftVaultScreen() {
                   Gift Vault
                 </Text>
               </View>
-              <Pressable
-                onPress={share}
-                accessibilityRole="button"
-                accessibilityLabel="Share my vault"
-                className="flex-row items-center gap-1.5 rounded-full px-3.5 py-2"
-                style={{ backgroundColor: "rgba(217,168,87,0.16)", borderWidth: 1, borderColor: "rgba(217,168,87,0.5)" }}
-              >
-                <Icon as={Share2} size={14} color={CREAM} />
-                <Text style={{ color: CREAM }} className="text-xs font-medium">
-                  Show off
-                </Text>
-              </Pressable>
             </View>
 
             <Text style={{ color: CREAM }} className="mt-6 font-display text-5xl">

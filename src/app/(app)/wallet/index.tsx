@@ -21,8 +21,8 @@ import {
   Wallet as WalletIcon,
   type LucideIcon,
 } from "lucide-react-native";
-import { useEffect, useRef } from "react";
-import { FlatList, Pressable, View } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { FlatList, Pressable, ScrollView, View } from "react-native";
 
 import { useBottomNavInset } from "@/components/nav/BottomNav";
 import { Button, Icon, Text } from "@/components/ui";
@@ -37,6 +37,7 @@ import { useWithdrawals } from "@/hooks/usePayout";
 import { useWallet, useWalletTransactions } from "@/hooks/useWallet";
 import { useWithdrawalEligibility } from "@/hooks/useWalletRates";
 import { formatUsd } from "@/lib/money";
+import { WALLET_PERIODS, inPeriod, type WalletPeriod } from "@/lib/walletPeriod";
 
 // Per-type label, icon and tint — scanning history by icon is faster than reading every line.
 const TXN_META: Record<string, { label: string; icon: LucideIcon; positiveTint: boolean }> = {
@@ -121,6 +122,13 @@ function ShortcutTile({ icon, title, hint, onPress }: { icon: LucideIcon; title:
   );
 }
 
+type ActivityFilter = "all" | "in" | "out";
+const FILTERS: { id: ActivityFilter; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "in", label: "Money in" },
+  { id: "out", label: "Money out" },
+];
+
 const RECENT_PENDING_MS = 30 * 60 * 1000;
 
 export default function WalletScreen() {
@@ -141,6 +149,33 @@ export default function WalletScreen() {
   const inReviewUsd = (withdrawals ?? [])
     .filter((w) => w.status === "pending" || w.status === "processing")
     .reduce((sum, w) => sum + Number(w.amount_usd), 0);
+
+  const [filter, setFilter] = useState<ActivityFilter>("all");
+  const [period, setPeriod] = useState<WalletPeriod>("all");
+
+  // Period first, so the in/out summary reflects the chosen range regardless of the In/Out filter.
+  const periodRows = useMemo(
+    () => ((transactions as Txn[] | undefined) ?? []).filter((t) => inPeriod(t.created_at, period)),
+    [transactions, period],
+  );
+  const summary = useMemo(() => {
+    let moneyIn = 0;
+    let moneyOut = 0;
+    for (const t of periodRows) {
+      const amt = Number(t.amount);
+      if (amt >= 0) moneyIn += amt;
+      else moneyOut += -amt;
+    }
+    return { moneyIn, moneyOut };
+  }, [periodRows]);
+  const rows = useMemo(
+    () =>
+      periodRows.filter((t) => {
+        const amt = Number(t.amount);
+        return filter === "all" ? true : filter === "in" ? amt >= 0 : amt < 0;
+      }),
+    [periodRows, filter],
+  );
 
   const { refreshControl, refreshing } = usePullToRefresh([refetchWallet, refetchTxns, refetchDeposits, refetchEligibility, refetchWithdrawals]);
 
@@ -176,10 +211,11 @@ export default function WalletScreen() {
     );
   }
 
-  const header = (
-    <View>
+  // Pinned above the list (not part of it), so the balance card and its actions never scroll away.
+  const card = (
+    <View className="px-4 pb-1 pt-4">
       {/* Balance card — the one bold element on the page */}
-      <BrandCard className="mb-3 p-6">
+      <BrandCard className="p-6">
         <View className="flex-row items-center justify-between">
           <Text className="text-[11px] font-medium uppercase tracking-[0.16em]" style={{ color: ON_BRAND.full }}>
             Available balance
@@ -240,6 +276,11 @@ export default function WalletScreen() {
           </View>
         ) : null}
       </BrandCard>
+    </View>
+  );
+
+  const header = (
+    <View>
 
       <View className="mb-4 flex-row gap-3">
         <ShortcutTile icon={Gem} title="Gift Vault" hint="Gifts received" onPress={() => router.push("/wallet/gifts")} />
@@ -260,35 +301,76 @@ export default function WalletScreen() {
         </View>
       ) : null}
 
-      <Text className="mb-3 mt-4 font-display text-lg text-ink">Recent activity</Text>
+      <Text className="mb-3 mt-4 font-display text-lg text-ink">Activity</Text>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3 -mx-4" contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
+        {FILTERS.map((f) => (
+          <Pressable
+            key={f.id}
+            onPress={() => setFilter(f.id)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: filter === f.id }}
+            className={`rounded-full border px-3.5 py-2 ${filter === f.id ? "border-accent bg-accent" : "border-border bg-surface"}`}
+          >
+            <Text className={`text-sm ${filter === f.id ? "text-canvas" : "text-ink"}`}>{f.label}</Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3 -mx-4" contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
+        {WALLET_PERIODS.map((p) => (
+          <Pressable
+            key={p.id}
+            onPress={() => setPeriod(p.id)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: period === p.id }}
+            className={`rounded-full border px-3 py-1.5 ${period === p.id ? "border-accent/40 bg-accent-soft" : "border-border"}`}
+          >
+            <Text className={`text-xs ${period === p.id ? "font-medium text-accent" : "text-ink-muted"}`}>{p.label}</Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+
+      {periodRows.length > 0 ? (
+        <Text className="mb-3 px-1 text-xs text-ink-muted">
+          In <Text className="font-medium text-accent">+{formatUsd(summary.moneyIn)}</Text> · Out{" "}
+          <Text className="font-medium text-ink">-{formatUsd(summary.moneyOut)}</Text>
+          {period !== "all" ? ` · ${WALLET_PERIODS.find((p) => p.id === period)!.label.toLowerCase()}` : ""}
+        </Text>
+      ) : null}
     </View>
   );
 
   return (
     <View className="flex-1 bg-canvas">
       <ScreenHeader title="Wallet" icon={WalletIcon} back={false} bar />
+      {card}
       <FlatList<Txn>
         showsVerticalScrollIndicator={false}
         showsHorizontalScrollIndicator={false}
-        data={refreshing ? [] : ((transactions as Txn[] | undefined) ?? [])}
+        data={refreshing ? [] : rows}
         keyExtractor={(t) => t.id}
         refreshControl={refreshControl}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: bottomInset + 24 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset + 24 }}
         ListHeaderComponent={header}
         ListEmptyComponent={
           refreshing ? (
             <RefreshSkeleton rows={4} />
           ) : (
             <View className="items-center py-10">
-              <Text className="text-sm text-ink-muted">No transactions yet.</Text>
-              <Text className="mt-1 text-xs text-ink-muted">Everything you fund, spend, and earn will show up here.</Text>
+              <Text className="text-sm text-ink-muted">
+                {transactions && transactions.length > 0 ? "Nothing here for this filter." : "No transactions yet."}
+              </Text>
+              {!transactions || transactions.length === 0 ? (
+                <Text className="mt-1 text-xs text-ink-muted">Everything you fund, spend, and earn will show up here.</Text>
+              ) : null}
             </View>
           )
         }
         renderItem={({ item, index }) => {
           const meta = TXN_META[item.type] ?? { label: item.type.replace(/_/g, " "), icon: Receipt, positiveTint: false };
           const amount = Number(item.amount);
-          const count = transactions?.length ?? 0;
+          const count = rows.length;
           return (
             <View
               className={`flex-row items-center gap-3 border-x border-border bg-surface px-4 py-3.5 ${
