@@ -2,6 +2,7 @@
 // Heading (optional, selectable colour) + body paragraphs. A heading with no
 // body renders as ordinary body text — only a heading that has a body under
 // it gets the large title treatment.
+import { memo } from "react";
 import { View } from "react-native";
 
 import { Text } from "@/components/ui/Text";
@@ -59,7 +60,7 @@ function Paragraphs({ content }: { content: string }) {
   );
 }
 
-export function PostContent({ heading, headingColor, content }: PostContentProps) {
+function PostContentImpl({ heading, headingColor, content }: PostContentProps) {
   const { colors } = useTheme();
   const hasBody = content.trim() !== "";
 
@@ -84,3 +85,6 @@ export function PostContent({ heading, headingColor, content }: PostContentProps
     </View>
   );
 }
+
+// Text only changes when the post does — skip re-parsing it whenever the card re-renders for another reason.
+export const PostContent = memo(PostContentImpl);

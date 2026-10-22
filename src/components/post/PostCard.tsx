@@ -75,8 +75,8 @@ import { GiftPicker } from "./GiftPicker";
 import { PostCollaboratorsBadge } from "./PostCollaboratorsBadge";
 import { PostContent } from "./PostContent";
 import { PostMedia } from "./PostMedia";
-import { ReactionMoreSheet } from "./ReactionMoreSheet";
-import { ReactionTray, type EngagementAction } from "./ReactionTray";
+import { PostReactionBar } from "./PostReactionBar";
+import type { EngagementAction } from "./ReactionTray";
 import { RepostBadge } from "./RepostBadge";
 import { RepostEmbed } from "./RepostEmbed";
 import { ReshareSheet } from "./ReshareSheet";
@@ -123,7 +123,6 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [showTagSheet, setShowTagSheet] = useState(false);
   const [showCollaboratorsSheet, setShowCollaboratorsSheet] = useState(false);
-  const [showMoreActions, setShowMoreActions] = useState(false);
   const [showPrioritizeConfirm, setShowPrioritizeConfirm] = useState(false);
   const [prioritizeError, setPrioritizeError] = useState<string | null>(null);
   const lastTapRef = useRef(0);
@@ -334,10 +333,6 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
       count: likeCount,
       onClick: () => toggleLike.mutate(isLiked),
     },
-  ];
-
-  const rightActions: EngagementAction[] = [
-    { key: "more", label: "More", icon: mk(MoreHorizontal), count: null, onClick: () => setShowMoreActions(true) },
   ];
 
   const ownerActions: EngagementAction[] = isOwner
@@ -569,19 +564,18 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
         </View>
       ) : null}
 
-      {/* Keyed by post: FlashList recycles cells, and a recycled cell must reset its counters, not roll from the
-          previous post's numbers to this one's. */}
-      <ReactionTray
-        key={post.id}
+      {/* The tray and its "More actions" sheet own their open state (see PostReactionBar), so opening the sheet doesn't
+          re-render this whole card. Keyed by post inside: FlashList recycles cells, and a recycled cell must reset its
+          counters, not roll from the previous post's numbers to this one's. */}
+      <PostReactionBar
+        postId={post.id}
         leftActions={leftActions}
         middleActions={middleActions}
-        rightActions={rightActions}
-        onOpenMore={trayFrozen ? undefined : () => setShowMoreActions(true)}
+        moreActions={moreActions}
+        moreIcon={mk(MoreHorizontal)}
         belowLeftLabel={{ text: "Comments:", count: post.comment_count, onClick: handleCommentTap }}
-        disabled={trayFrozen}
+        frozen={trayFrozen}
       />
-
-      {showMoreActions && !trayFrozen ? <ReactionMoreSheet actions={moreActions} onClose={() => setShowMoreActions(false)} /> : null}
 
       {activeStance ? (
         <StanceComposer

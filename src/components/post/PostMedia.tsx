@@ -5,7 +5,7 @@
 // The carousel is a native paging ScrollView, so the swipe/settle physics are
 // the platform's own rather than a hand-rolled approximation.
 import { useVideoPlayer, VideoView } from "expo-video";
-import { useCallback, useState } from "react";
+import { memo, useCallback, useState } from "react";
 import { Pressable, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { Gesture, GestureDetector, ScrollView } from "react-native-gesture-handler";
 
@@ -121,7 +121,7 @@ function SingleImage({ url, onPress }: { url: string; onPress: () => void }) {
   );
 }
 
-export function PostMedia({ mediaUrls }: { mediaUrls: string[] }) {
+function PostMediaImpl({ mediaUrls }: { mediaUrls: string[] }) {
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
   if (mediaUrls.length === 0) return null;
@@ -146,3 +146,6 @@ export function PostMedia({ mediaUrls }: { mediaUrls: string[] }) {
     </View>
   );
 }
+
+// The carousel keeps its own state; don't re-render it (and its images) when the surrounding card re-renders.
+export const PostMedia = memo(PostMediaImpl);
