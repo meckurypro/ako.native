@@ -41,7 +41,7 @@ import { router, useLocalSearchParams, type Href } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
-import Animated, { Easing, FadeIn, FadeOut, useAnimatedStyle, withTiming } from "react-native-reanimated";
+import Animated, { Easing, FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { FAB_GAP, FAB_SIZE, useBottomNavInset } from "@/components/nav/BottomNav";
@@ -145,6 +145,9 @@ function Message({ text, icon = Layers }: { text: string; icon?: LucideIcon }) {
   );
 }
 
+// pt-4 (16) + the 44px icon buttons — the open height of the owner quick-actions row.
+const ACTION_ROW_HEIGHT = 60;
+
 export function ProfilePage() {
   const { username, fromPost } = useLocalSearchParams<{ username: string; fromPost?: string }>();
   const { user } = useAuth();
@@ -172,6 +175,18 @@ export function ProfilePage() {
   const [showRemoveFollowerConfirm, setShowRemoveFollowerConfirm] = useState(false);
   const [showBlockConfirm, setShowBlockConfirm] = useState(false);
   const [previewingAsVisitor, setPreviewingAsVisitor] = useState(false);
+  // Owner quick actions (share / view as visitor / activity) stay tucked away until the chevron under the Pages icon
+  // is tapped. 0 = tucked, 1 = shown; the row's height, fade and slide all hang off this one value.
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const actionsProgress = useSharedValue(0);
+  const actionsWrapStyle = useAnimatedStyle(() => ({ height: actionsProgress.value * ACTION_ROW_HEIGHT, opacity: actionsProgress.value }));
+  const actionsSlideStyle = useAnimatedStyle(() => ({ transform: [{ translateY: (1 - actionsProgress.value) * -12 }] }));
+  const chevronStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${actionsProgress.value * 180}deg` }] }));
+  function toggleActions() {
+    const next = !actionsOpen;
+    setActionsOpen(next);
+    actionsProgress.value = withTiming(next ? 1 : 0, { duration: 300, easing: Easing.out(Easing.cubic) });
+  }
   const [avatarOpen, setAvatarOpen] = useState(false);
   const [shareSheetOpen, setShareSheetOpen] = useState(false);
   const [reportContentOpen, setReportContentOpen] = useState(false);
@@ -589,6 +604,64 @@ export function ProfilePage() {
 
           {profile.bio ? <Text className="mt-5 text-[15px] leading-relaxed text-ink">{profile.bio}</Text> : null}
 
+          {showOwnerView ? (
+            <>
+              {/* Websites on the left, the chevron on the right: same horizontal axis as the first website, centred
+                  under the Pages icon. */}
+              <View className="mt-3 flex-row items-start justify-between gap-3">
+                <View className="min-w-0 flex-1 flex-row flex-wrap gap-2">
+              {websites.map((url) => (
+                <Pressable
+                  key={url}
+                  onPress={() => void openExternal(getWebsiteHref(url))}
+                  accessibilityRole="link"
+                  accessibilityLabel={`Website ${getWebsiteDomain(url)}`}
+                  className="max-w-full flex-row items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1.5"
+                >
+                  <Icon as={Link2} size={14} className="text-accent" />
+                  <Text numberOfLines={1} className="shrink text-sm font-medium text-accent">
+                    {getWebsiteDomain(url)}
+                  </Text>
+                </Pressable>
+              ))}
+                </View>
+                <Pressable
+                  onPress={toggleActions}
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: actionsOpen }}
+                  accessibilityLabel={actionsOpen ? "Hide quick actions" : "Show quick actions"}
+                  className="mr-1 h-8 w-11 shrink-0 items-center justify-center active:opacity-70"
+                >
+                  <Animated.View style={chevronStyle}>
+                    <Icon as={ChevronDown} size={18} className="text-ink-muted" />
+                  </Animated.View>
+                </Pressable>
+              </View>
+
+              {/* Push down / push up: the row's height animates open so everything below slides with it, while the
+                  icons ease in from just above their final spot. Out of reach of touch and screen readers when tucked. */}
+              <Animated.View
+                style={[{ overflow: "hidden" }, actionsWrapStyle]}
+                className="mb-4"
+                pointerEvents={actionsOpen ? "auto" : "none"}
+                accessibilityElementsHidden={!actionsOpen}
+                importantForAccessibility={actionsOpen ? "auto" : "no-hide-descendants"}
+              >
+                <Animated.View style={actionsSlideStyle} className="flex-row items-center gap-2 pt-4">
+                  <Pressable onPress={() => setQrShareOpen(true)} accessibilityRole="button" accessibilityLabel="Share profile" className="h-11 flex-1 items-center justify-center rounded-xl border border-border bg-surface">
+                    <Icon as={Share2} size={20} className="text-ink" />
+                  </Pressable>
+                  <Pressable onPress={() => setPreviewingAsVisitor(true)} accessibilityRole="button" accessibilityLabel="View as visitor" className="h-11 flex-1 items-center justify-center rounded-xl border border-border bg-surface">
+                    <Icon as={Eye} size={20} className="text-ink" />
+                  </Pressable>
+                  <Pressable onPress={() => router.push("/activity")} accessibilityRole="button" accessibilityLabel="Activity" className="h-11 flex-1 items-center justify-center rounded-xl border border-border bg-surface">
+                    <Icon as={ActivityIcon} size={20} className="text-ink" />
+                  </Pressable>
+                </Animated.View>
+              </Animated.View>
+            </>
+          ) : (
+            <>
           {websites.length > 0 ? (
             <View className="mt-3 flex-row flex-wrap gap-2">
               {websites.map((url) => (
@@ -608,22 +681,11 @@ export function ProfilePage() {
             </View>
           ) : null}
 
+
           {/* Action row — icon-led. The owner gets quick actions; a visitor gets the one follow control that
               matches the relationship (follow / follow back / requested / following) plus message. */}
           <View className="mb-4 mt-5 flex-row items-center gap-2">
-            {showOwnerView ? (
-              <>
-                <Pressable onPress={() => setQrShareOpen(true)} accessibilityRole="button" accessibilityLabel="Share profile" className="h-11 flex-1 items-center justify-center rounded-xl border border-border bg-surface">
-                  <Icon as={Share2} size={20} className="text-ink" />
-                </Pressable>
-                <Pressable onPress={() => setPreviewingAsVisitor(true)} accessibilityRole="button" accessibilityLabel="View as visitor" className="h-11 flex-1 items-center justify-center rounded-xl border border-border bg-surface">
-                  <Icon as={Eye} size={20} className="text-ink" />
-                </Pressable>
-                <Pressable onPress={() => router.push("/activity")} accessibilityRole="button" accessibilityLabel="Activity" className="h-11 flex-1 items-center justify-center rounded-xl border border-border bg-surface">
-                  <Icon as={ActivityIcon} size={20} className="text-ink" />
-                </Pressable>
-              </>
-            ) : isOwnProfile ? null : (
+            {isOwnProfile ? null : (
               <>
                 {isFollowing ? (
                   <View ref={relationshipMenuButtonRef} collapsable={false} className="flex-1">
@@ -674,6 +736,8 @@ export function ProfilePage() {
               </>
             )}
           </View>
+            </>
+          )}
         </View>
 
         {isPrivateLocked ? (
