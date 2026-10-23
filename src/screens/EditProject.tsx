@@ -4,11 +4,11 @@
 // text, topics, the type's own fields, price/promo, affiliate program, custom
 // URL, privacy and access — can change.
 import { FileFolderHero } from "@/components/project/FileFolderArt";
-import { BOOK_COVER_ERROR, BOOK_COVER_HINT, BOOK_COVER_RATIO, isBookCoverRatio } from "@/lib/bookCover";
-import { Image as ImageIcon } from "lucide-react-native";
+import { BOOK_COVER_ERROR, BOOK_COVER_RATIO, isBookCoverRatio } from "@/lib/bookCover";
+import { Banknote, CircleDot, Eye, EyeOff, Image as ImageIcon, Link2, Lock, Percent, Ticket, Type, Users } from "lucide-react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { KeyboardAvoider } from "@/components/ui/KeyboardAvoider";
@@ -39,9 +39,8 @@ import { EMPTY_PITCH_FIELDS, PitchFields, type PitchFieldsValue } from "@/compon
 import { EMPTY_ROOM_FIELDS, RoomFields, type RoomFieldsValue } from "@/components/project-types/RoomFields";
 import { EMPTY_URL_FIELDS, UrlFields, type UrlFieldsValue } from "@/components/project-types/UrlFields";
 import { Button } from "@/components/ui/Button";
-import { Checkbox } from "@/components/ui/Checkbox";
 import { FormField } from "@/components/ui/FormField";
-import { PrivacyToggle } from "@/components/ui/PrivacyToggle";
+import { ToggleRow } from "@/components/settings/SettingsParts";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { Icon, Image } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
@@ -55,7 +54,14 @@ import { PROJECT_TYPE_LABELS, useProject, useProjectTopics, useUpdateProject, ty
 import { useUploadProjectThumbnail } from "@/hooks/useUploadProjectThumbnail";
 import { isoToLocalInput } from "@/lib/dateInput";
 import { ProjectStatusSelect } from "@/components/project/ProjectStatusSelect";
-import { SupportingImagesField } from "@/components/project/SupportingImagesField";
+import {
+  FormFooter,
+  FormSection,
+  LinkRow,
+  PricingFields,
+  PROJECT_TYPE_ICONS,
+  ThumbnailPicker,
+} from "@/components/project/ProjectFormParts";
 import { pickSingleImage } from "@/lib/pickImage";
 import { supabase } from "@/lib/supabase";
 import { CONTENT_LIMIT, contentCounterClass } from "@/lib/textLimits";
@@ -454,165 +460,145 @@ export function EditProject() {
   return (
     <KeyboardAvoider className="flex-1 bg-canvas">
       <ScreenHeader title="Edit project" />
-      <ScrollView showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="none" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }}>
-        <View className="w-full max-w-md self-center">
-          <View className="mb-6">
-            <Text className="mb-1.5 text-sm font-medium text-ink-muted">Status</Text>
-            <ProjectStatusSelect value={status} onChange={setStatus} />
-          </View>
-
-{project?.project_type === "file" ? (
-            <View className="mb-4 overflow-hidden rounded-xl border border-border bg-surface">
-              <FileFolderHero />
+      <ScrollView showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="none" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 24 }}>
+        <View className="w-full max-w-md gap-3 self-center">
+          <FormSection icon={CircleDot} title="Status" description="Whether people can find and open it.">
+            <View className="mb-4">
+              <ProjectStatusSelect value={status} onChange={setStatus} />
             </View>
-          ) : (
-            <>
-                      <Pressable
-            onPress={() => void handleThumbnailSelect()}
-            accessibilityRole="button"
-            accessibilityLabel="Change thumbnail"
-            className={`items-center justify-center overflow-hidden rounded-xl border border-border bg-surface ${isBook ? "mb-2 w-48 self-center" : "mb-4 w-full"}`}
-            style={{ aspectRatio: aspect }}
-          >
-            {thumbnailUrl ? (
-              <Image source={{ uri: thumbnailUrl }} contentFit="cover" style={{ width: "100%", height: "100%" }} />
-            ) : (
-              <View className="items-center gap-1">
-                <Icon as={ImageIcon} size={24} className="text-ink-muted" />
-                <Text className="text-sm text-ink-muted">{uploadThumbnail.isPending ? "Uploading…" : isBook ? "Add cover (2:3)" : "Add thumbnail"}</Text>
+          </FormSection>
+
+          <FormSection icon={ImageIcon} title="Cover" description={isBook ? "Your book's cover." : project?.project_type === "file" ? undefined : "The image people see first."}>
+            {project?.project_type === "file" ? (
+              <View className="mb-4 overflow-hidden rounded-2xl border border-border bg-canvas">
+                <FileFolderHero />
               </View>
-            )}
-          </Pressable>
-          {isBook ? <Text className="mb-4 text-center text-xs text-ink-muted">{BOOK_COVER_HINT}</Text> : null}
-
-          <SupportingImagesField urls={supportingImageUrls} onChange={setSupportingImageUrls} hasThumbnail={!!thumbnailUrl} />
-            </>
-          )}
-
-          <FormField label="Title" value={title} onChangeText={setTitle} />
-
-          {/* Fixed after creation — each type has its own details table and member data; changing it here would orphan that. */}
-          <View className="mb-4">
-            <Text className="mb-1.5 text-sm font-medium text-ink-muted">Project type</Text>
-            <Text className="rounded-xl border border-border bg-surface px-4 py-3 text-sm text-ink-muted">{PROJECT_TYPE_LABELS[t]} — can't be changed after creation</Text>
-          </View>
-
-          <View className="mb-4">
-            <Text className="mb-1.5 text-sm font-medium text-ink-muted">Description</Text>
-            <MentionTextarea value={description} onChange={setDescription} maxLength={CONTENT_LIMIT} rows={3} showFormatToolbar className="rounded-xl border border-border bg-canvas px-4 py-3" />
-            <Text className={`mt-1.5 text-right text-xs ${contentCounterClass(description.length)}`}>
-              {description.length}/{CONTENT_LIMIT}
-            </Text>
-          </View>
-
-          <TopicPicker selected={topicIds} onToggle={toggleTopic} />
-
-          {t === "media" ? <MediaFields value={mediaFields} onChange={setMediaFields} onError={setError} /> : null}
-          {t === "file" ? <FileFields value={fileFields} onChange={setFileFields} onError={setError} maxFiles={maxFiles} onUploadingChange={setFileUploading} /> : null}
-          {t === "url" ? <UrlFields value={urlFields} onChange={setUrlFields} /> : null}
-          {t === "event" ? <EventFields value={eventFields} onChange={setEventFields} /> : null}
-          {t === "meeting" ? <MeetingFields value={meetingFields} onChange={setMeetingFields} /> : null}
-          {t === "room" ? (
-            <>
-              <RoomFields value={roomFields} onChange={setRoomFields} />
-              <Text className="-mt-2 mb-4 text-xs text-ink-muted">Manage lectures, chat, meetings, and assignments from the cohort itself.</Text>
-            </>
-          ) : null}
-          {t === "course" ? <Text className="mb-4 text-xs text-ink-muted">Manage modules and lessons from the course builder.</Text> : null}
-          {t === "gig" ? (
-            <>
-              {existingGigDetails?.is_complete === false ? (
-                <View className="mb-4 rounded-xl border border-accent-a30 bg-accent-soft p-3">
-                  <Text className="text-sm font-medium text-ink">Finish setting up this Gig</Text>
-                  <Text className="mt-0.5 text-xs text-ink-muted">
-                    {existingGigDetails.source === "auto_collaboration" ? "This was started automatically from a collaboration you were credited on." : "This Gig isn't complete yet."}{" "}
-                    Review the details below and save to publish it to your profile.
-                  </Text>
-                </View>
-              ) : null}
-              <GigFields value={gigFields} onChange={setGigFields} excludeProjectId={project.id} />
-            </>
-          ) : null}
-          {t === "pitch" ? <PitchFields value={pitchFields} onChange={setPitchFields} /> : null}
-          {t === "book" ? (
-            <>
-              <BookFields value={bookFields} onChange={setBookFields} onError={setError} existingSource={existingBookDetails?.content_source} />
-              {bookFields.content_source === "authored" ? <Text className="-mt-2 mb-4 text-xs text-ink-muted">Manage chapters from the book builder.</Text> : null}
-            </>
-          ) : null}
-
-          {t !== "pitch" ? (
-            <>
-              <FormField label={t === "gig" ? "Booking fee (USD, optional)" : "Price (USD)"} value={priceUsd} onChangeText={setPriceUsd} keyboardType="decimal-pad" editable={!bookNotOwn} />
-              <Text className="-mt-4 mb-4 text-xs text-ink-muted">
-                {t === "gig"
-                  ? "Set to 0 to keep this message-only. Add an amount to also let people pay a booking fee to secure a slot."
-                  : bookNotOwn
-                    ? "Crediting someone else's work — this has to stay free."
-                    : "Set to 0 for a free project."}
-              </Text>
-
-              {!bookNotOwn ? (
-                <View className="mb-6">
-                  <Checkbox
-                    checked={showPromo}
-                    onChange={(v) => {
-                      setShowPromo(v);
-                      if (!v) setPromoPriceUsd("");
-                    }}
-                    label="Add a promo price"
-                  />
-                  {showPromo ? (
-                    <View className="mt-3">
-                      <FormField label="Promo price" value={promoPriceUsd} onChangeText={setPromoPriceUsd} keyboardType="decimal-pad" placeholder="Promo price" />
-                      <Text className="-mt-4 text-xs text-ink-muted">Shown next to the actual price, which will appear crossed out. Must be lower than the actual price.</Text>
-                    </View>
-                  ) : null}
-                </View>
-              ) : null}
-            </>
-          ) : null}
-
-          {/* Pitches have no sale for a commission to attach to. Free projects are blocked too — read off the live form
-              value so this updates before Save — unless a program already exists (so it can still be turned off). */}
-          {t !== "pitch" ? (
-            (parseFloat(priceUsd) || 0) > 0 || !!affiliateProgram ? (
-              <Pressable onPress={() => setAffiliateSheetOpen(true)} accessibilityRole="button" className="mb-6 px-1">
-                <Text className="text-sm font-medium text-accent">Affiliate program →</Text>
-              </Pressable>
             ) : (
-              <Text className="mb-6 px-1 text-sm text-ink-muted">Affiliate program — set a price above to enable this.</Text>
-            )
+              <ThumbnailPicker
+                url={thumbnailUrl}
+                aspect={aspect}
+                isBook={isBook}
+                uploading={uploadThumbnail.isPending}
+                onPress={() => void handleThumbnailSelect()}
+                supportingImageUrls={supportingImageUrls}
+                onSupportingChange={setSupportingImageUrls}
+              />
+            )}
+          </FormSection>
+
+          <FormSection icon={Type} title="Basics">
+            <FormField label="Title" value={title} onChangeText={setTitle} />
+
+            {/* Fixed after creation — each type has its own details table and member data; changing it here would orphan that. */}
+            <View className="mb-6">
+              <Text className="mb-2.5 text-[11px] font-medium uppercase tracking-[1.54px] text-ink-muted">Project type</Text>
+              <View className="flex-row items-center gap-2.5 rounded-xl bg-canvas px-4 py-3">
+                <Icon as={PROJECT_TYPE_ICONS[t]} size={16} className="text-ink-muted" />
+                <Text className="flex-1 text-sm text-ink">
+                  {PROJECT_TYPE_LABELS[t]} <Text className="text-ink-muted">— can't be changed after creation</Text>
+                </Text>
+                <Icon as={Lock} size={14} className="text-ink-muted" />
+              </View>
+            </View>
+
+            <View className="mb-4">
+              <Text className="mb-2.5 text-[11px] font-medium uppercase tracking-[1.54px] text-ink-muted">Description</Text>
+              <MentionTextarea value={description} onChange={setDescription} maxLength={CONTENT_LIMIT} rows={3} showFormatToolbar className="rounded-xl border border-border bg-canvas px-4 py-3" />
+              <Text className={`mt-1.5 text-right text-xs ${contentCounterClass(description.length)}`}>
+                {description.length}/{CONTENT_LIMIT}
+              </Text>
+            </View>
+
+            <TopicPicker selected={topicIds} onToggle={toggleTopic} />
+          </FormSection>
+
+          <FormSection icon={PROJECT_TYPE_ICONS[t]} title={`${PROJECT_TYPE_LABELS[t]} details`}>
+            {t === "media" ? <MediaFields value={mediaFields} onChange={setMediaFields} onError={setError} /> : null}
+            {t === "file" ? <FileFields value={fileFields} onChange={setFileFields} onError={setError} maxFiles={maxFiles} onUploadingChange={setFileUploading} /> : null}
+            {t === "url" ? <UrlFields value={urlFields} onChange={setUrlFields} /> : null}
+            {t === "event" ? <EventFields value={eventFields} onChange={setEventFields} /> : null}
+            {t === "meeting" ? <MeetingFields value={meetingFields} onChange={setMeetingFields} /> : null}
+            {t === "room" ? (
+              <>
+                <RoomFields value={roomFields} onChange={setRoomFields} />
+                <Text className="-mt-2 mb-4 text-xs text-ink-muted">Manage lectures, chat, meetings, and assignments from the cohort itself.</Text>
+              </>
+            ) : null}
+            {t === "course" ? <Text className="mb-4 text-xs text-ink-muted">Manage modules and lessons from the course builder.</Text> : null}
+            {t === "gig" ? (
+              <>
+                {existingGigDetails?.is_complete === false ? (
+                  <View className="mb-4 rounded-xl border border-accent-a30 bg-accent-soft p-3">
+                    <Text className="text-sm font-medium text-ink">Finish setting up this Gig</Text>
+                    <Text className="mt-0.5 text-xs text-ink-muted">
+                      {existingGigDetails.source === "auto_collaboration" ? "This was started automatically from a collaboration you were credited on." : "This Gig isn't complete yet."}{" "}
+                      Review the details below and save to publish it to your profile.
+                    </Text>
+                  </View>
+                ) : null}
+                <GigFields value={gigFields} onChange={setGigFields} excludeProjectId={project.id} />
+              </>
+            ) : null}
+            {t === "pitch" ? <PitchFields value={pitchFields} onChange={setPitchFields} /> : null}
+            {t === "book" ? (
+              <>
+                <BookFields value={bookFields} onChange={setBookFields} onError={setError} existingSource={existingBookDetails?.content_source} />
+                {bookFields.content_source === "authored" ? <Text className="-mt-2 mb-4 text-xs text-ink-muted">Manage chapters from the book builder.</Text> : null}
+              </>
+            ) : null}
+          </FormSection>
+
+          {t !== "pitch" ? (
+            <FormSection icon={Banknote} title="Pricing" description={bookNotOwn ? "Free — it credits someone else's work." : "Free, or set a price."}>
+              <PricingFields
+                type={t}
+                priceUsd={priceUsd}
+                onPriceChange={setPriceUsd}
+                showPromo={showPromo}
+                onShowPromoChange={setShowPromo}
+                promoPriceUsd={promoPriceUsd}
+                onPromoPriceChange={setPromoPriceUsd}
+                bookNotOwn={bookNotOwn}
+              />
+              {/* Pitches have no sale for a commission to attach to. Free projects are blocked too — read off the live form
+                  value so this updates before Save — unless a program already exists (so it can still be turned off). */}
+              <LinkRow
+                icon={Percent}
+                title="Affiliate program"
+                description={(parseFloat(priceUsd) || 0) > 0 || !!affiliateProgram ? "Let others earn a commission for sharing this." : "Set a price above to enable this."}
+                onPress={() => setAffiliateSheetOpen(true)}
+                disabled={!((parseFloat(priceUsd) || 0) > 0 || !!affiliateProgram)}
+              />
+            </FormSection>
           ) : null}
 
-          <Pressable onPress={() => setLinkSheetOpen(true)} accessibilityRole="button" className="mb-6 px-1">
-            <Text className="text-sm font-medium text-accent">{project.slug ? "Custom URL →" : "Choose your custom URL →"}</Text>
-          </Pressable>
-
-          {project.status === "active" ? (
-            <Pressable onPress={() => setGuestPassOpen(true)} accessibilityRole="button" className="mb-6 px-1">
-              <Text className="text-sm font-medium text-accent">Guest Pass — a 6-hour link anyone can open →</Text>
-            </Pressable>
-          ) : null}
-
-          <PrivacyToggle checked={isPrivate} onChange={setIsPrivate} />
-          {isPrivate ? (
-            <Pressable onPress={() => setManageAccessOpen(true)} accessibilityRole="button" className="-mt-4 mb-6 px-1">
-              <Text className="text-sm font-medium text-accent">Manage who has access →</Text>
-            </Pressable>
-          ) : null}
-
-          {error ? (
-            <Text accessibilityRole="alert" className="mb-4 text-sm text-danger">
-              {error}
-            </Text>
-          ) : null}
-
-          <Button onPress={() => void handleSubmit()} loading={updateProject.isPending} disabled={project.project_type === "file" && fileUploading}>
-            Save changes
-          </Button>
+          <FormSection icon={Eye} title="Sharing & access">
+            <LinkRow
+              icon={Link2}
+              title={project.slug ? "Custom URL" : "Choose your custom URL"}
+              description={project.slug ? "Change the link people use to open this." : "Give it a short, memorable link."}
+              onPress={() => setLinkSheetOpen(true)}
+            />
+            {project.status === "active" ? (
+              <LinkRow icon={Ticket} title="Guest Pass" description="A 6-hour link anyone can open." onPress={() => setGuestPassOpen(true)} />
+            ) : null}
+            <ToggleRow
+              icon={EyeOff}
+              title="Private project"
+              description="Not listed anywhere, and not open to anyone by link — only people you add can see or open it."
+              checked={isPrivate}
+              onToggle={() => setIsPrivate(!isPrivate)}
+            />
+            {isPrivate ? <LinkRow icon={Users} title="Manage who has access" onPress={() => setManageAccessOpen(true)} /> : null}
+          </FormSection>
         </View>
       </ScrollView>
+
+      <FormFooter error={error} bottomInset={insets.bottom}>
+        <Button onPress={() => void handleSubmit()} loading={updateProject.isPending} disabled={project.project_type === "file" && fileUploading}>
+          Save changes
+        </Button>
+      </FormFooter>
 
       {manageAccessOpen ? <ManageAccessSheet projectId={project.id} projectTitle={project.title} onClose={() => setManageAccessOpen(false)} /> : null}
       {affiliateSheetOpen ? (
