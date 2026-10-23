@@ -1,12 +1,13 @@
 // src/screens/EditPage.tsx
 // Edit a Page's banner, avatar, name, tagline, bio, website, topics and hero slides (admins, or members allowed to edit).
-import { Camera, Trash2 } from "lucide-react-native";
+import { Camera, MoreHorizontal, Trash2 } from "lucide-react-native";
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { DropdownMenu } from "@/components/ui/DropdownMenu";
 import { KeyboardAvoider } from "@/components/ui/KeyboardAvoider";
 import { MentionTextarea } from "@/components/post/MentionTextarea";
 import { MAX_TOPICS, TopicPicker } from "@/components/post/TopicPicker";
@@ -35,7 +36,7 @@ import { cropToAspect } from "@/lib/cropImage";
 import { pickSingleImage } from "@/lib/pickImage";
 
 export function EditPage() {
-  const { username } = useLocalSearchParams<{ username: string }>();
+  const { username, section } = useLocalSearchParams<{ username: string; section?: string }>();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
 
@@ -70,6 +71,17 @@ export function EditPage() {
   const isOwnerOfPage = isAdmin && !!user && pageOwnerId === user.id;
   const deletePage = useDeletePage();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
+  const heroY = useRef<number | null>(null);
+  const scrolledToHero = useRef(false);
+
+  // Arrived from the page's "…" menu → "Hero slides": bring that section into view once it has been laid out.
+  function maybeScrollToHero() {
+    if (section !== "hero" || scrolledToHero.current || heroY.current === null) return;
+    scrolledToHero.current = true;
+    scrollRef.current?.scrollTo({ y: Math.max(heroY.current - 8, 0), animated: true });
+  }
 
   useEffect(() => {
     if (page && !hydrated) {
@@ -167,8 +179,18 @@ export function EditPage() {
 
   return (
     <KeyboardAvoider className="flex-1 bg-canvas">
-      <ScreenHeader title="Edit page" />
-      <ScrollView showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="none" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }}>
+      <ScreenHeader
+        title="Edit page"
+        right={
+          // Destructive actions live behind this, not on the page — nobody should hit Delete while looking for Save.
+          isOwnerOfPage ? (
+            <Pressable onPress={() => setMenuOpen(true)} accessibilityRole="button" accessibilityLabel="More options" hitSlop={8} className="h-9 w-9 items-center justify-center rounded-full active:opacity-70">
+              <Icon as={MoreHorizontal} size={22} className="text-ink-muted" />
+            </Pressable>
+          ) : undefined
+        }
+      />
+      <ScrollView ref={scrollRef} showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="none" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}>
         <View className="w-full max-w-md gap-5 self-center">
           {/* Banner — like a YouTube / Facebook cover: a wide image across the top of the page. */}
           <View>
@@ -233,35 +255,43 @@ export function EditPage() {
 
           {error ? <Text accessibilityRole="alert" className="text-sm text-danger">{error}</Text> : null}
 
+          {/* Every change here saves by itself — separate from the page details above. */}
+          <View
+            className="mt-4 border-t border-border pt-6"
+            onLayout={(e) => {
+              heroY.current = e.nativeEvent.layout.y;
+              maybeScrollToHero();
+            }}
+          >
+            <PageHeroEditor page={page} />
+          </View>
+        </View>
+      </ScrollView>
+
+      {/* Save — always at the bottom, always in reach. */}
+      <View className="border-t border-border bg-canvas px-4 pt-3" style={{ paddingBottom: Math.max(insets.bottom, 12) }}>
+        <View className="w-full max-w-md self-center">
           <Button onPress={handleSubmit} loading={updatePage.isPending} disabled={uploadingAvatar || uploadingCover}>
             Save changes
           </Button>
-
-          {/* Every change here saves by itself — separate from the page details above. */}
-          <View className="mt-4 border-t border-border pt-6">
-            <PageHeroEditor page={page} />
-          </View>
-
-          {isOwnerOfPage ? (
-            <View className="mt-10 border-t border-border pt-6">
-              <Text className="mb-1 text-xs font-medium uppercase tracking-wide text-ink-muted">Danger zone</Text>
-              <Text className="mb-3 text-xs text-ink-muted">
-                Deleting {page.name} removes it from search and everyone's feed.
-              </Text>
-              <Pressable
-                onPress={() => setShowDeleteConfirm(true)}
-                disabled={deletePage.isPending}
-                accessibilityRole="button"
-                accessibilityLabel="Delete page"
-                className="flex-row items-center justify-center gap-2 rounded-xl border border-danger/40 py-3 active:opacity-70"
-              >
-                <Icon as={Trash2} size={16} className="text-danger" />
-                <Text className="text-sm font-medium text-danger">Delete page</Text>
-              </Pressable>
-            </View>
-          ) : null}
         </View>
-      </ScrollView>
+      </View>
+
+      {menuOpen ? (
+        <DropdownMenu
+          title="More options"
+          onClose={() => setMenuOpen(false)}
+          items={[
+            {
+              key: "delete",
+              label: "Delete page",
+              icon: <Icon as={Trash2} size={22} className="text-danger" />,
+              variant: "danger",
+              onSelect: () => setShowDeleteConfirm(true),
+            },
+          ]}
+        />
+      ) : null}
 
       {showDeleteConfirm ? (
         <ConfirmDialog

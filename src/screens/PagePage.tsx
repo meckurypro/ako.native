@@ -6,6 +6,7 @@ import {
   ArrowLeftRight,
   Building2,
   Eye,
+  Images,
   Link2,
   MoreHorizontal,
   Pencil,
@@ -226,13 +227,6 @@ export function PagePage() {
 
   const hasSlides = (slides?.length ?? 0) > 0;
   const hasFeatured = (featured?.length ?? 0) > 0;
-  // What an editor could still add to make the page feel finished.
-  const setupSteps = [
-    !page.cover_url && { key: "banner", label: "Add a banner", to: `/page/${page.username}/edit` },
-    !hasSlides && { key: "hero", label: "Add hero slides", to: `/page/${page.username}/edit` },
-    isAdmin && !hasFeatured && { key: "team", label: "Choose who appears in “Meet the team”", to: `/page/${page.username}/team` },
-  ].filter(Boolean) as { key: string; label: string; to: string }[];
-
   const menuItems: (DropdownMenuItem | "divider")[] = [
     { key: "share", label: `Share ${pageModeLabel(page.page_type).toLowerCase()}`, icon: <Icon as={Redo2} size={22} className="text-overlay-ink" />, onSelect: () => void sharePage() },
     ...(isMember && isActiveHere
@@ -258,6 +252,7 @@ export function PagePage() {
     ...(canEditPage
       ? [
           { key: "edit", label: "Edit page", icon: <Icon as={Pencil} size={22} className="text-overlay-ink" />, onSelect: () => router.push(`/page/${page.username}/edit` as Href) } satisfies DropdownMenuItem,
+          { key: "hero", label: hasSlides ? "Hero slides" : "Add hero slides", icon: <Icon as={Images} size={22} className="text-overlay-ink" />, onSelect: () => router.push(`/page/${page.username}/edit?section=hero` as Href) } satisfies DropdownMenuItem,
           {
             key: "preview",
             label: previewingAsVisitor ? "Exit visitor view" : "View as visitor",
@@ -267,7 +262,7 @@ export function PagePage() {
         ]
       : []),
     ...(isAdmin
-      ? [{ key: "team", label: "Manage team", icon: <Icon as={UserCog} size={22} className="text-overlay-ink" />, onSelect: () => router.push(`/page/${page.username}/team` as Href) } satisfies DropdownMenuItem]
+      ? [{ key: "team", label: hasFeatured ? "Manage team" : "Add team to page", icon: <Icon as={UserCog} size={22} className="text-overlay-ink" />, onSelect: () => router.push(`/page/${page.username}/team` as Href) } satisfies DropdownMenuItem]
       : []),
     ...(isAdmin && subsidiariesEnabled && !restricted
       ? [{ key: "subsidiary", label: "Add Subsidiary", icon: <Icon as={Building2} size={22} className="text-overlay-ink" />, onSelect: () => router.push(`/pages/new?parent=${page.id}` as Href) } satisfies DropdownMenuItem]
@@ -396,20 +391,6 @@ export function PagePage() {
               <Icon as={X} size={14} className="text-accent" />
               <Text className="text-sm font-medium text-accent">Exit</Text>
             </Pressable>
-          </View>
-        ) : null}
-
-        {editorView && setupSteps.length > 0 ? (
-          <View className="rounded-2xl border border-dashed border-border bg-surface p-4">
-            <Text className="text-sm font-semibold text-ink">Make your page stand out</Text>
-            <Text className="mt-1 text-xs text-ink-muted">Only your team sees this. Visitors see the finished page.</Text>
-            <View className="mt-3 flex-row flex-wrap gap-2">
-              {setupSteps.map((s) => (
-                <Pressable key={s.key} onPress={() => router.push(s.to as Href)} accessibilityRole="button" className="rounded-full bg-accent-soft px-3.5 py-2 active:opacity-80">
-                  <Text className="text-sm font-medium text-accent">{s.label}</Text>
-                </Pressable>
-              ))}
-            </View>
           </View>
         ) : null}
 

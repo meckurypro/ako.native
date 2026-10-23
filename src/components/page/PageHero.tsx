@@ -4,6 +4,10 @@
 // direction and at the pace the page's admin chose. It pauses whenever it shouldn't be moving — a finger
 // on it, the app in the background, the screen not focused, "reduce motion" on, or the visitor pressing
 // pause. (Mirrors the web component of the same name.)
+//
+// It loops forever with no seam: the last slide glides into the first the same way any slide glides into the
+// next (and the first back into the last when going backward). That is done with a cloned slide at each end —
+// [last, 1, 2, …, N, first] — and, once a glide lands on a clone, a silent jump to the identical real slide.
 import { Pause, Play } from "lucide-react-native";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -65,18 +69,27 @@ function Segment({ active, running, canAutoplay, seconds, onPress, label }: { ac
   );
 }
 
+const SETTLE_MS = 450; // how long a programmatic glide is allowed to run before we check for a clone
+
 export function PageHero({ slides, autoplay, intervalSeconds, direction, pageName, onTouchLock }: PageHeroProps) {
   const count = slides.length;
+  const loop = count > 1;
+  // Extended strip: a clone of the last slide in front, a clone of the first slide behind.
+  const strip = loop ? [slides[count - 1], ...slides, slides[0]] : slides;
+  const realOf = useCallback((pos: number) => (loop ? (((pos - 1) % count) + count) % count : pos), [loop, count]);
+  const posOf = useCallback((real: number) => (loop ? real + 1 : real), [loop]);
+
   const listRef = useRef<FlatList<PageHeroSlide>>(null);
   const [width, setWidth] = useState(0);
-  const [index, setIndex] = useState(0);
+  const [index, setIndex] = useState(0); // real slide, 0..count-1
+  const posRef = useRef(0); // position in the extended strip
   const [userPaused, setUserPaused] = useState(false);
   const [touching, setTouching] = useState(false);
   const [appActive, setAppActive] = useState(AppState.currentState === "active");
   const [focused, setFocused] = useState(true);
   const [reducedMotion, setReducedMotion] = useState(false);
-  const fade = useSharedValue(1);
   const touchResume = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const canAutoplay = autoplay && count > 1 && !reducedMotion;
   const running = canAutoplay && !userPaused && !touching && appActive && focused && width > 0;
@@ -99,40 +112,54 @@ export function PageHero({ slides, autoplay, intervalSeconds, direction, pageNam
     }, [])
   );
 
-  useEffect(() => () => clearTimeout(touchResume.current), []);
+  useEffect(
+    () => () => {
+      clearTimeout(touchResume.current);
+      clearTimeout(settleTimer.current);
+    },
+    []
+  );
 
-  // A slide removed while someone is looking at the last one.
+  // Instantly put the list at an extended position (no animation).
+  const place = useCallback(
+    (pos: number) => {
+      if (width === 0) return;
+      posRef.current = pos;
+      listRef.current?.scrollToOffset({ offset: pos * width, animated: false });
+    },
+    [width]
+  );
+
+  // Landed on a clone? Jump to the identical real slide — invisible, because they look the same.
+  const normalize = useCallback(() => {
+    if (!loop) return;
+    if (posRef.current === 0) place(count);
+    else if (posRef.current === count + 1) place(1);
+  }, [loop, count, place]);
+
+  // Initial placement once measured, and whenever the number of slides changes.
   useEffect(() => {
-    if (index > count - 1) setIndex(Math.max(count - 1, 0));
-  }, [count, index]);
+    if (width === 0) return;
+    const real = Math.min(index, Math.max(count - 1, 0));
+    if (real !== index) setIndex(real);
+    place(posOf(real));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [width, count]);
 
-  const goTo = useCallback(
-    (target: number, wrap = false) => {
+  const moveTo = useCallback(
+    (pos: number) => {
       if (count === 0 || width === 0) return;
-      const next = ((target % count) + count) % count;
-      if (wrap && !reducedMotion) {
-        // Rewinding smoothly would whip past every slide; dip out, jump, and fade back in.
-        fade.value = withTiming(0, { duration: 160 });
-        setTimeout(() => {
-          listRef.current?.scrollToOffset({ offset: next * width, animated: false });
-          setIndex(next);
-          fade.value = withTiming(1, { duration: 200 });
-        }, 170);
-        return;
-      }
-      setIndex(next);
-      listRef.current?.scrollToOffset({ offset: next * width, animated: !reducedMotion });
+      clearTimeout(settleTimer.current);
+      posRef.current = pos;
+      setIndex(realOf(pos));
+      listRef.current?.scrollToOffset({ offset: pos * width, animated: !reducedMotion });
+      settleTimer.current = setTimeout(normalize, reducedMotion ? 0 : SETTLE_MS);
     },
-    [count, width, reducedMotion, fade]
+    [count, width, realOf, reducedMotion, normalize]
   );
 
-  const step = useCallback(
-    (delta: 1 | -1) => {
-      const target = index + delta;
-      goTo(target, target < 0 || target > count - 1);
-    },
-    [count, goTo, index]
-  );
+  const goTo = useCallback((real: number) => moveTo(posOf(((real % count) + count) % count)), [count, moveTo, posOf]);
+  const step = useCallback((delta: 1 | -1) => moveTo(posRef.current + delta), [moveTo]);
 
   // Autoplay: one timer per slide. Anything that changes `index` (including the visitor swiping)
   // restarts it, so a manual swipe always gets a full interval.
@@ -142,12 +169,12 @@ export function PageHero({ slides, autoplay, intervalSeconds, direction, pageNam
     return () => clearTimeout(t);
   }, [running, index, direction, intervalSeconds, step]);
 
-  const fadeStyle = useAnimatedStyle(() => ({ opacity: fade.value }));
-
   function onMomentumEnd(e: NativeSyntheticEvent<NativeScrollEvent>) {
     if (width === 0) return;
-    const i = Math.round(e.nativeEvent.contentOffset.x / width);
-    setIndex(Math.min(Math.max(i, 0), count - 1));
+    const pos = Math.min(Math.max(Math.round(e.nativeEvent.contentOffset.x / width), 0), strip.length - 1);
+    posRef.current = pos;
+    setIndex(realOf(pos));
+    normalize();
   }
 
   function releaseTouchSoon() {
@@ -168,11 +195,11 @@ export function PageHero({ slides, autoplay, intervalSeconds, direction, pageNam
       style={{ aspectRatio: ASPECT }}
     >
       {width > 0 ? (
-        <Animated.View style={[{ flex: 1 }, fadeStyle]}>
+        <View style={{ flex: 1 }}>
           <FlatList
             ref={listRef}
-            data={slides}
-            keyExtractor={(s) => s.id}
+            data={strip}
+            keyExtractor={(s, pos) => (loop && (pos === 0 || pos === count + 1) ? `${s.id}-${pos === 0 ? "pre" : "post"}` : s.id)}
             horizontal
             pagingEnabled
             nestedScrollEnabled
@@ -185,8 +212,14 @@ export function PageHero({ slides, autoplay, intervalSeconds, direction, pageNam
             }}
             onScrollEndDrag={releaseTouchSoon}
             onMomentumScrollEnd={onMomentumEnd}
-            renderItem={({ item, index: i }) => (
-              <View accessible accessibilityLabel={`${i + 1} of ${count}${item.title ? `: ${item.title}` : ""}`} style={{ width, aspectRatio: ASPECT }}>
+            renderItem={({ item, index: pos }) => (
+              <View
+                accessible
+                accessibilityElementsHidden={loop && (pos === 0 || pos === count + 1)}
+                importantForAccessibility={loop && (pos === 0 || pos === count + 1) ? "no-hide-descendants" : "auto"}
+                accessibilityLabel={`${realOf(pos) + 1} of ${count}${item.title ? `: ${item.title}` : ""}`}
+                style={{ width, aspectRatio: ASPECT }}
+              >
                 <Image source={{ uri: item.image_url }} contentFit="cover" style={{ width: "100%", height: "100%" }} />
                 {item.title || item.caption ? (
                   <>
@@ -208,7 +241,7 @@ export function PageHero({ slides, autoplay, intervalSeconds, direction, pageNam
               </View>
             )}
           />
-        </Animated.View>
+        </View>
       ) : null}
 
       {count > 1 ? (
