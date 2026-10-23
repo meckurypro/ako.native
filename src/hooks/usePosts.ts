@@ -332,11 +332,13 @@ export function usePostById(postId: string | null) {
   });
 }
 
-export function useCreatePost() {
+export function useCreatePost({ blocking = true }: { blocking?: boolean } = {}) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    meta: { blocking: true },
+    // Publishing leaves for the Feed the instant "Post" is tapped and finishes in the background, so that path must
+    // not throw the full-screen saving overlay over the Feed it just landed on (Compose passes blocking: false).
+    meta: { blocking },
     mutationFn: async (input: CreatePostInput) => {
       const { posted_as_page_id, ...rest } = input;
 

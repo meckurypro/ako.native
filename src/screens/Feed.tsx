@@ -25,7 +25,7 @@ import { pageFeedKeys, usePageFollowingFeed, usePageRankedFeed } from "@/hooks/u
 import { useActiveIdentity } from "@/hooks/usePages";
 import { feedKeys, useFeedPosts, useFollowingFeed, usePostById, useTopDiscussionsFeed } from "@/hooks/usePosts";
 import { useTabState } from "@/hooks/useTabState";
-import { consumeJustPosted } from "@/lib/justPosted";
+import { consumeJustPosted, consumeJustPostedPending } from "@/lib/justPosted";
 import { haptics } from "@/lib/haptics";
 import type { PostWithAuthor } from "@/types/database";
 
@@ -256,11 +256,21 @@ export function Feed() {
   useFocusEffect(
     useCallback(() => {
       const id = consumeJustPosted();
-      if (id) {
-        setJustPostedId(id);
+      // Compose sends the person here the instant they tap Post, before the server has answered: the id arrives
+      // later through this promise (null if the post was rejected and the person went back to the editor).
+      const pending = consumeJustPostedPending();
+      if (id) setJustPostedId(id);
+      if (id || pending) {
         // The Feed stays mounted under Compose and keeps its ?tab= / ?interest= params: the new post is on For You.
         router.setParams({ tab: undefined, interest: undefined });
       }
+      let cancelled = false;
+      void pending?.then((pendingId) => {
+        if (pendingId && !cancelled) setJustPostedId(pendingId);
+      });
+      return () => {
+        cancelled = true;
+      };
     }, [])
   );
 

@@ -33,7 +33,8 @@ import { useMyProfile } from "@/hooks/useProfile";
 import { useReturnAfterSave } from "@/hooks/useReturnAfterSave";
 import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import { useSmartBack } from "@/hooks/useSmartBack";
-import { setJustPosted } from "@/lib/justPosted";
+import { setJustPostedPending } from "@/lib/justPosted";
+import { setComposeRestore, peekComposeRestore, clearComposeRestore, type ComposeRestore } from "@/lib/composeRestore";
 import { setJustSaved } from "@/lib/justSaved";
 import { formatScheduleShort } from "@/lib/schedulePresets";
 import { isVideoUrl, useUploadPostMedia } from "@/hooks/useUploadPostMedia";
@@ -94,22 +95,30 @@ export function Compose() {
     attachMusicCatalogueId?: string;
   }>();
 
+  // Set when a post that already left for the Feed was then rejected: the form comes back as it was. Peeked (not
+  // consumed) so a double render sees it too; cleared on mount below.
+  const [restore] = useState(() => peekComposeRestore());
+  useEffect(() => {
+    clearComposeRestore();
+  }, []);
+
   const [pagesOpen, setPagesOpen] = useState(false);
-  const [heading, setHeading] = useState("");
-  const [headingColor, setHeadingColor] = useState<string | null>(null);
-  const [content, setContent] = useState("");
-  const [topicIds, setTopicIds] = useState<Set<string>>(new Set());
-  const [mediaUrls, setMediaUrls] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [heading, setHeading] = useState(restore?.heading ?? "");
+  const [headingColor, setHeadingColor] = useState<string | null>(restore?.headingColor ?? null);
+  const [content, setContent] = useState(restore?.content ?? "");
+  const [topicIds, setTopicIds] = useState<Set<string>>(new Set(restore?.topicIds ?? []));
+  const [mediaUrls, setMediaUrls] = useState<string[]>(restore?.mediaUrls ?? []);
+  const [error, setError] = useState<string | null>(restore?.error ?? null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [taggedProject, setTaggedProject] = useState<{ id: string; title: string } | null>(
-    params.taggedProjectId ? { id: params.taggedProjectId, title: params.taggedProjectTitle ?? "Project" } : null
+    restore?.taggedProject ??
+      (params.taggedProjectId ? { id: params.taggedProjectId, title: params.taggedProjectTitle ?? "Project" } : null)
   );
   const [showProjectPicker, setShowProjectPicker] = useState(false);
   // Optional soundtrack — either picked via AddMusicSheet in this session (attachedMusic has full
   // display info), or arriving from the discovery sheet's "Use in my post" (id only).
   const [attachedMusic, setAttachedMusic] = useState<MusicSearchResult | null>(null);
-  const [musicCatalogueId, setMusicCatalogueId] = useState<string | null>(params.attachMusicCatalogueId ?? null);
+  const [musicCatalogueId, setMusicCatalogueId] = useState<string | null>(restore?.musicCatalogueId ?? params.attachMusicCatalogueId ?? null);
   // Only gates the entry point for attaching NEW music — a post that already has music keeps its chip
   // (so it can be removed) even if the flag flips off mid-session.
   const musicInPostsEnabled = useFeatureFlag("music_in_posts_enabled");
@@ -119,13 +128,16 @@ export function Compose() {
   const moreButtonRef = useRef<View>(null);
 
   const createPost = useCreatePost();
+  // Publishing leaves for the Feed immediately, so it must not raise the blocking overlay (see useCreatePost).
+  const publishPost = useCreatePost({ blocking: false });
+  const publishingRef = useRef(false);
   const deleteDraftOrScheduled = useDeleteDraftOrScheduledPost();
   const uploadMedia = useUploadPostMedia();
   const { data: identity } = useActiveIdentity();
   const { data: me } = useMyProfile();
 
   const resumingPostId = params.draftId ?? params.scheduledId ?? null;
-  const resumedPostIdRef = useRef(resumingPostId);
+  const resumedPostIdRef = useRef(restore?.resumedPostId ?? resumingPostId);
   const resumingKind = params.scheduledId ? "scheduled post" : "draft";
 
   // The form as it stood when it was opened — including a project/song handed in by whoever opened it, which isn't
@@ -141,7 +153,12 @@ export function Compose() {
     taggedProjectId: taggedProject?.id ?? null,
     musicCatalogueId,
   });
-  if (baselineRef.current === null) baselineRef.current = signature;
+  // A form handed back after a failed post is unsaved progress, not a fresh start.
+  if (baselineRef.current === null) {
+    baselineRef.current = restore
+      ? postSignature({ heading: "", headingColor: null, content: "", mediaUrls: [], topicIds: [], taggedProjectId: null, musicCatalogueId: null })
+      : signature;
+  }
 
   // Resuming a draft / scheduled post: load it into the form once.
   useEffect(() => {
@@ -187,7 +204,7 @@ export function Compose() {
   // Leaving with unsaved progress asks first (save as a draft / discard). Hooks stay above the early return below.
   const leaveGuard = useLeaveGuard(signature !== baselineRef.current);
   const [leaveSaving, setLeaveSaving] = useState(false);
-  const busy = !canPost || createPost.isPending;
+  const busy = !canPost || createPost.isPending || publishPost.isPending;
 
   function toggleTopic(interestId: string) {
     setTopicIds((prev) => {
@@ -256,8 +273,69 @@ export function Compose() {
     }
   }
 
+  // Publishing: the person is on the Feed (For You) the instant they tap Post. The server round trip (moderation,
+  // insert, fetching the new post) finishes in the background, and Feed pins the post when its id arrives. If the
+  // post is rejected, the form is handed back through composeRestore and the person returns to the editor with
+  // everything they typed and the reason shown - so they never lose their words, and never wait on a spinner.
+  function publishInBackground() {
+    if (publishingRef.current) return;
+    publishingRef.current = true;
+    setError(null);
+
+    const input = postInput("published");
+    const resumedId = resumedPostIdRef.current;
+    const snapshot: ComposeRestore = {
+      heading,
+      headingColor,
+      content,
+      mediaUrls,
+      topicIds: Array.from(topicIds),
+      taggedProject,
+      musicCatalogueId,
+      resumedPostId: resumedId,
+      error: null,
+    };
+    const removeOriginal = deleteDraftOrScheduled.mutateAsync;
+
+    const result: Promise<string | null> = publishPost
+      .mutateAsync(input)
+      .then(async (createdPost) => {
+        // Resuming a draft/scheduled post: the new row replaces it.
+        if (resumedId) {
+          try {
+            await removeOriginal(resumedId);
+          } catch (cleanupErr) {
+            console.error("Couldn't remove the original draft after saving", cleanupErr);
+            toast("Saved, but the old draft couldn't be removed. Delete it from Drafts.", { variant: "error" });
+          }
+        }
+        toast("Posted.", { variant: "success" });
+        return (createdPost as { id: string }).id;
+      })
+      .catch((err) => {
+        // Moderation rejections and other edge-function errors surface here - the message is already short and
+        // direct. Reopen the editor with the form exactly as it was.
+        const message = err instanceof Error ? err.message : "Couldn't post this.";
+        toast(message, { variant: "error" });
+        setComposeRestore({ ...snapshot, error: message });
+        router.push("/compose" as Href);
+        return null;
+      });
+
+    setJustPostedPending(result);
+    // Posted from here is the person finishing, not walking away from unsaved work.
+    leaveGuard.allowLeaving();
+    // Always land on the Feed (everything above it in the stack is dismissed), whichever screen opened Compose
+    // (e.g. Notifications' "+" button). Feed resets to For You when it sees the pending post.
+    void returnAfterSave({ landOn: "/feed" });
+  }
+
   async function submitPost(status: "published" | "draft" | "scheduled", scheduledFor?: string) {
     if (!canPost) return;
+    if (status === "published") {
+      publishInBackground();
+      return;
+    }
     setError(null);
 
     try {
@@ -280,12 +358,6 @@ export function Compose() {
         setJustSaved("scheduled", createdId);
         toast(scheduledFor ? `Scheduled for ${formatScheduleShort(new Date(scheduledFor))}.` : "Scheduled - it'll post automatically.", { variant: "success" });
         router.replace("/activity/scheduled" as Href);
-      } else {
-        // A published post always lands on the Feed with a "Posted" toast. The create-post hook already refetched
-        // feed / profile lists, and the hint lets Feed pin this exact post at the top as it comes into view.
-        setJustPosted(createdId);
-        toast("Posted.", { variant: "success" });
-        await returnAfterSave({ landOn: "/feed" });
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Couldn't post this.";
@@ -543,7 +615,7 @@ export function Compose() {
             accessibilityRole="button"
             className={`rounded-full bg-accent px-5 py-2 ${busy ? "opacity-50" : "active:bg-accent-hover"}`}
           >
-            <Text className="text-sm font-medium text-canvas">{createPost.isPending ? "Posting…" : "Post"}</Text>
+            <Text className="text-sm font-medium text-canvas">{createPost.isPending || publishPost.isPending ? "Posting…" : "Post"}</Text>
           </Pressable>
         </View>
       </View>
