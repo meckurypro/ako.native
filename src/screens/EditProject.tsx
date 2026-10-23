@@ -411,8 +411,11 @@ export function EditProject() {
       // Draft/archived → published is the moment worth calling out; any other save is just "saved".
       // Either way the person goes back to the screen they opened the editor from, refreshed.
       const justPublished = project.status !== "active" && status === "active";
-      toast(justPublished ? "Project published." : "Changes saved.", { variant: "success" });
-      await returnAfterSave({ fallback: `/projects/${projectId}` });
+      const savedAsDraft = status === "draft";
+      toast(justPublished ? "Project published." : savedAsDraft ? "Saved as draft." : "Changes saved.", { variant: "success" });
+      // A draft is finished business on its owner's Projects tab, not on whatever screen opened the editor.
+      const projectsTab = savedAsDraft && !(project.posted_as_page_id && ownership.actingAsPageId) && me?.username ? `/profile/${me.username}?tab=projects` : undefined;
+      await returnAfterSave({ fallback: `/projects/${projectId}`, landOn: projectsTab });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't save changes.");
     }

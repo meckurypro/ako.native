@@ -12,6 +12,7 @@ import { GoogleGlyph } from "@/components/ui/BrandIcons";
 import { Text } from "@/components/ui/Text";
 import { NETWORK_AUTH_MESSAGE, authErrorMessage } from "@/lib/authErrors";
 import { signInWithGoogle } from "@/lib/googleAuth";
+import { useTheme } from "@/theme/ThemeProvider";
 
 interface GoogleAuthButtonProps {
   /** Where the visitor was headed (already run through safeReturnPath). */
@@ -33,6 +34,8 @@ export function AuthOrDivider() {
 
 export function GoogleAuthButton({ returnTo, label = "Continue with Google" }: GoogleAuthButtonProps) {
   const queryClient = useQueryClient();
+  const { resolvedTheme } = useTheme();
+  const dark = resolvedTheme === "dark";
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -69,12 +72,15 @@ export function GoogleAuthButton({ returnTo, label = "Continue with Google" }: G
         accessibilityState={{ disabled: loading, busy: loading }}
         disabled={loading}
         onPress={handlePress}
-        className={`h-12 w-full flex-row items-center justify-center gap-3 rounded-xl bg-ink px-6 active:opacity-80 ${loading ? "opacity-50" : ""}`}
+        // Google's own light / dark button styles, matched to the app theme: a light button on the light theme, a
+        // dark one on the dark theme (never the inverse, which is what bg-ink / text-canvas produced).
+        className={`h-12 w-full flex-row items-center justify-center gap-3 rounded-xl px-6 active:opacity-80 ${loading ? "opacity-50" : ""}`}
+        style={{ backgroundColor: dark ? "#131314" : "#FFFFFF", borderWidth: 1, borderColor: dark ? "#8E918F" : "#747775" }}
       >
-        <View className="h-7 w-7 items-center justify-center rounded-full bg-white">
-          <GoogleGlyph size={16} />
-        </View>
-        <Text className="font-body text-base font-semibold text-canvas">{loading ? "Opening Google…" : label}</Text>
+        <GoogleGlyph size={18} />
+        <Text style={{ color: dark ? "#E3E3E3" : "#1F1F1F" }} className="font-body text-base font-semibold">
+          {loading ? "Opening Google…" : label}
+        </Text>
       </Pressable>
 
       {error ? (

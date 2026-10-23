@@ -81,15 +81,15 @@ function CardPill({ icon, label, onPress, primary }: { icon: LucideIcon; label: 
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
-      className="h-11 flex-1 flex-row items-center justify-center gap-2 rounded-full active:opacity-80"
+      className="h-9 flex-1 flex-row items-center justify-center gap-1.5 rounded-full active:opacity-80"
       style={
         primary
           ? { backgroundColor: "#FFFFFF" }
           : { backgroundColor: ON_BRAND.chip, borderWidth: 1, borderColor: ON_BRAND.chipBorder }
       }
     >
-      <Icon as={icon} size={18} color={fg} />
-      <Text className="text-sm font-semibold" style={{ color: fg }}>
+      <Icon as={icon} size={16} color={fg} />
+      <Text className="text-[13px] font-semibold" style={{ color: fg }}>
         {label}
       </Text>
     </Pressable>
@@ -213,30 +213,30 @@ export default function WalletScreen() {
 
   // Pinned above the list (not part of it), so the balance card and its actions never scroll away.
   const card = (
-    <View className="px-4 pb-1 pt-4">
+    <View className="px-4 pb-1 pt-2">
       {/* Balance card — the one bold element on the page */}
-      <BrandCard className="p-6">
+      <BrandCard className="p-4">
         <View className="flex-row items-center justify-between">
           <Text className="text-[11px] font-medium uppercase tracking-[0.16em]" style={{ color: ON_BRAND.full }}>
             Available balance
           </Text>
-          <View className="rounded-full px-2.5 py-0.5" style={{ backgroundColor: ON_BRAND.chip, borderWidth: 1, borderColor: ON_BRAND.chipBorder }}>
-            <Text className="text-[11px] font-medium tracking-wide" style={{ color: ON_BRAND.full }}>
+          <View className="rounded-full px-2 py-px" style={{ backgroundColor: ON_BRAND.chip, borderWidth: 1, borderColor: ON_BRAND.chipBorder }}>
+            <Text className="text-[10px] font-medium tracking-wide" style={{ color: ON_BRAND.full }}>
               USD
             </Text>
           </View>
         </View>
 
         {isLoading ? (
-          <Skeleton className="mb-6 mt-3 h-12 w-40 rounded-xl" />
+          <Skeleton className="mb-3 mt-1 h-9 w-32 rounded-xl" />
         ) : (
-          <Text className="mb-6 mt-3 font-display text-5xl" style={{ color: ON_BRAND.full }}>
+          <Text className="mb-3 mt-1 font-display text-3xl" style={{ color: ON_BRAND.full }}>
             {formatUsd(wallet?.balance ?? 0)}
           </Text>
         )}
 
         {depositsEnabled || withdrawalsEnabled ? (
-          <View className="flex-row gap-3">
+          <View className="flex-row gap-2">
             {depositsEnabled ? <CardPill icon={ArrowDownCircle} label="Fund" primary onPress={() => router.push("/wallet/fund")} /> : null}
             {withdrawalsEnabled ? (
               <CardPill icon={ArrowUpCircle} label="Withdraw" primary={!depositsEnabled} onPress={() => router.push("/wallet/withdraw")} />

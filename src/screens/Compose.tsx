@@ -280,13 +280,9 @@ export function Compose() {
         setJustSaved("scheduled", createdId);
         toast(scheduledFor ? `Scheduled for ${formatScheduleShort(new Date(scheduledFor))}.` : "Scheduled - it'll post automatically.", { variant: "success" });
         router.replace("/activity/scheduled" as Href);
-      } else if (postingAsPage) {
-        // A Page's posts live on the Page's own profile (already newest-first).
-        toast("Posted.", { variant: "success" });
-        router.replace(`/page/${postingAsPage.username}` as Href);
       } else {
-        // Personal posts live on the Feed. The create-post hook already refetched feed / profile lists, and the
-        // hint lets Feed pin this exact post at the top of "For You" as it comes into view.
+        // A published post always lands on the Feed with a "Posted" toast. The create-post hook already refetched
+        // feed / profile lists, and the hint lets Feed pin this exact post at the top as it comes into view.
         setJustPosted(createdId);
         toast("Posted.", { variant: "success" });
         await returnAfterSave({ landOn: "/feed" });
@@ -298,18 +294,20 @@ export function Compose() {
     }
   }
 
-  // "Save draft" from the leave prompt: same draft the "Save as draft" menu item makes, but the person carries on
-  // to wherever they were headed instead of landing on the drafts list. If the save is rejected (moderation, no
+  // "Save draft" from the leave prompt: same draft the "Save as draft" menu item makes, and the same landing: the Drafts list. If the save is rejected (moderation, no
   // connection) they stay on the form with everything intact, and the reason is shown.
   async function handleLeaveSave() {
     if (!canPost || leaveSaving) return;
     setLeaveSaving(true);
     setError(null);
     try {
-      await createPost.mutateAsync(postInput("draft"));
+      const savedDraft = await createPost.mutateAsync(postInput("draft"));
       await removeOriginalDraft();
+      setJustSaved("draft", (savedDraft as { id: string }).id);
       toast("Saved to your drafts.", { variant: "success" });
-      leaveGuard.proceed();
+      // Like "Save as draft" from the menu: the draft is the outcome, so the person lands on their Drafts.
+      leaveGuard.allowLeaving();
+      router.replace("/activity/drafts" as Href);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Couldn't save this draft.";
       setError(message);

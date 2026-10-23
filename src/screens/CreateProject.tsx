@@ -281,7 +281,11 @@ export function CreateProject() {
         return;
       }
       toast("Draft saved. It'll be here next time you create a project.", { variant: "success" });
-      leaveGuard.proceed();
+      // Land on the Projects tab where the person's projects live, not wherever the leave gesture was headed.
+      leaveGuard.allowLeaving();
+      if (postingAsPage) router.replace(`/page/${postingAsPage.username}?tab=projects` as Href);
+      else if (me?.username) router.replace(`/profile/${me.username}?tab=projects` as Href);
+      else leaveGuard.proceed();
     } finally {
       setLeaveSaving(false);
     }

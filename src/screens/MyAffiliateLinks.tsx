@@ -4,8 +4,8 @@
 //
 // Built from the same parts as Library, Connect and the Profile so it reads as one family:
 //   • Header  — Library/Connect's bold title and orange icon (with a back arrow: this screen lives under Wallet).
-//   • Summary — the Profile's quiet stat row (big number, muted label, no filled card). The filled green card
-//               belongs to the Wallet balance alone; earnings here are a figure, not a second balance.
+//   • Summary — the Profile's quiet stat row (number over muted label, no filled card). Lead with the projects;
+//               earnings are one stat among four. The Wallet owns the money headline.
 //   • Tabs    — Active / Revoked on the shared SlidingTabBar + SwipeableTabs carousel.
 //   • Rows    — Library's thumbnail tile, with the share action in the trailing slot where Library puts "remove".
 import { isFileType } from "@/lib/fileProject";
@@ -133,16 +133,14 @@ export function MyAffiliateLinks() {
     revoked: `Revoked${revoked.length ? ` · ${revoked.length}` : ""}`,
   };
 
+  // Projects first: how many you've forked and how they're doing. Earnings are one stat among four, the same weight
+  // as the rest; the Wallet owns the money headline.
   const summary = (
-    <View className="mb-5">
-      <Text className="text-[11px] font-medium uppercase tracking-[0.16em] text-ink-muted">Earned from referrals</Text>
-      <Text className="mt-1.5 font-display text-4xl text-ink">{totals.loading ? "…" : formatUsd(totals.paid + totals.pending)}</Text>
-      <View className="mt-4 flex-row gap-4 border-t border-border pt-4">
-        <Stat label="Clicks" value={String(totals.clicks)} />
-        <Stat label="Sales" value={String(totals.sales)} />
-        <Stat label="Pending" value={formatUsd(totals.pending)} />
-        <Stat label="Paid" value={formatUsd(totals.paid)} />
-      </View>
+    <View className="mb-4 flex-row gap-4 border-b border-border pb-4">
+      <Stat label="Forked" value={String(visible.length)} />
+      <Stat label="Clicks" value={String(totals.clicks)} />
+      <Stat label="Sales" value={String(totals.sales)} />
+      <Stat label="Earned" value={totals.loading ? "…" : formatUsd(totals.paid + totals.pending)} />
     </View>
   );
 
