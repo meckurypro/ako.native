@@ -1,5 +1,5 @@
 // src/components/page/PageHero.tsx
-// The hero slideshow at the top of a Page's landing view: one 16:9 frame of images, each with an optional
+// The hero slideshow at the top of a Page's landing view: one frame of images (shaped by the first image), each with an optional
 // title and caption. Visitors swipe through it or tap a segment; it also advances on its own, in the
 // direction and at the pace the page's admin chose. It pauses whenever it shouldn't be moving — a finger
 // on it, the app in the background, the screen not focused, "reduce motion" on, or the visitor pressing
@@ -11,7 +11,7 @@
 import { Pause, Play } from "lucide-react-native";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AccessibilityInfo, AppState, FlatList, Pressable, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { AccessibilityInfo, AppState, FlatList, Pressable, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import Animated, { Easing, cancelAnimation, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 
 import { Icon, Image } from "@/components/ui/styled";
@@ -24,11 +24,12 @@ interface PageHeroProps {
   intervalSeconds: number;
   direction: HeroDirection;
   pageName: string;
+  /** Width / height of the frame — set by the first slide. Defaults to 16:9. */
+  aspect?: number;
   /** Lets the screen switch off its own swipe-between-tabs while a finger is on the slideshow. */
   onTouchLock?: (locked: boolean) => void;
 }
 
-const ASPECT = 16 / 9;
 
 // Stacked translucent bands stand in for a gradient scrim (no gradient dependency in the app).
 function BottomScrim() {
@@ -71,7 +72,10 @@ function Segment({ active, running, canAutoplay, seconds, onPress, label }: { ac
 
 const SETTLE_MS = 450; // how long a programmatic glide is allowed to run before we check for a clone
 
-export function PageHero({ slides, autoplay, intervalSeconds, direction, pageName, onTouchLock }: PageHeroProps) {
+export function PageHero({ slides, autoplay, intervalSeconds, direction, pageName, onTouchLock, aspect = 16 / 9 }: PageHeroProps) {
+  const { height: windowHeight } = useWindowDimensions();
+  // Tall frames are capped to ~70% of the screen height so a 9:16 hero never swallows the page.
+  const maxFrameWidth = windowHeight * 0.7 * aspect;
   const count = slides.length;
   const loop = count > 1;
   // Extended strip: a clone of the last slide in front, a clone of the first slide behind.
@@ -192,7 +196,7 @@ export function PageHero({ slides, autoplay, intervalSeconds, direction, pageNam
       onTouchEnd={() => onTouchLock?.(false)}
       onTouchCancel={() => onTouchLock?.(false)}
       className="overflow-hidden rounded-3xl bg-surface"
-      style={{ aspectRatio: ASPECT }}
+      style={{ aspectRatio: aspect, width: "100%", maxWidth: maxFrameWidth, alignSelf: "center" }}
     >
       {width > 0 ? (
         <View style={{ flex: 1 }}>
@@ -218,7 +222,7 @@ export function PageHero({ slides, autoplay, intervalSeconds, direction, pageNam
                 accessibilityElementsHidden={loop && (pos === 0 || pos === count + 1)}
                 importantForAccessibility={loop && (pos === 0 || pos === count + 1) ? "no-hide-descendants" : "auto"}
                 accessibilityLabel={`${realOf(pos) + 1} of ${count}${item.title ? `: ${item.title}` : ""}`}
-                style={{ width, aspectRatio: ASPECT }}
+                style={{ width, aspectRatio: aspect }}
               >
                 <Image source={{ uri: item.image_url }} contentFit="cover" style={{ width: "100%", height: "100%" }} />
                 {item.title || item.caption ? (

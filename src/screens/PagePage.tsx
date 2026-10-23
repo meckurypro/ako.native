@@ -19,8 +19,8 @@ import {
   X,
 } from "lucide-react-native";
 import { router, useLocalSearchParams, type Href } from "expo-router";
-import { useMemo, useRef, useState } from "react";
-import { Pressable, ScrollView, Share, View } from "react-native";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Pressable, ScrollView, Share, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -52,7 +52,7 @@ import {
   useSwitchActiveMode,
   useTogglePageFollow,
 } from "@/hooks/usePages";
-import { usePageFeaturedMembers, usePageHeroSlides, BANNER_ASPECT } from "@/hooks/usePageLanding";
+import { usePageFeaturedMembers, usePageHeroSlides, useHeroAspect, BANNER_ASPECT } from "@/hooks/usePageLanding";
 import { usePagePosts } from "@/hooks/usePosts";
 import { useMyProfile } from "@/hooks/useProfile";
 import { usePageProjects } from "@/hooks/useProjects";
@@ -140,6 +140,32 @@ export function PagePage() {
   const TABS: readonly (typeof ALL_TABS)[number][] = restricted ? RESTRICTED_TABS : ALL_TABS;
   const [activeTab, setActiveTab] = useTabState<(typeof ALL_TABS)[number]>(TABS, "projects");
   const activeIndex = Math.max(TABS.indexOf(activeTab), 0);
+
+  // Switching Projects / Posts swaps the list's rows; keep the page exactly where the person had scrolled to
+  // instead of letting the list jump (it only clamps if the new tab is genuinely shorter).
+  const scrollYRef = useRef(0);
+  const keepScrollY = useRef<number | null>(null);
+  const onListScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      scrollYRef.current = e.nativeEvent.contentOffset.y;
+      chromeScroll(e);
+    },
+    [chromeScroll]
+  );
+  function switchTab(next: (typeof ALL_TABS)[number]) {
+    if (next === activeTab) return;
+    keepScrollY.current = scrollYRef.current;
+    setActiveTab(next);
+  }
+  useLayoutEffect(() => {
+    const y = keepScrollY.current;
+    if (y === null) return;
+    keepScrollY.current = null;
+    const restore = () => chromeScroll.listRef.current?.scrollToOffset?.({ offset: y, animated: false });
+    restore();
+    requestAnimationFrame(restore);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
   const { data: myPages } = useMyPages();
   const { data: identity } = useActiveIdentity();
   const switchMode = useSwitchActiveMode();
@@ -149,6 +175,7 @@ export function PagePage() {
   const { data: subsidiaries } = usePageSubsidiaries(page?.id);
   const subsidiariesEnabled = useFeatureFlag("subsidiaries_enabled");
   const { data: slides } = usePageHeroSlides(page?.id);
+  const heroAspect = useHeroAspect(slides);
   // Only the members an admin chose to show — a visitor's page load never fetches the full roster.
   const { data: featured } = usePageFeaturedMembers(page?.id);
 
@@ -395,7 +422,7 @@ export function PagePage() {
         ) : null}
 
         {hasSlides ? (
-          <PageHero slides={slides!} autoplay={page.hero_autoplay ?? true} intervalSeconds={page.hero_interval_seconds ?? 5} direction={page.hero_direction ?? "forward"} pageName={page.name} onTouchLock={setSwipeLocked} />
+          <PageHero slides={slides!} autoplay={page.hero_autoplay ?? true} intervalSeconds={page.hero_interval_seconds ?? 5} direction={page.hero_direction ?? "forward"} pageName={page.name} aspect={heroAspect} onTouchLock={setSwipeLocked} />
         ) : null}
 
         {page.bio ? (
@@ -441,14 +468,14 @@ export function PagePage() {
       <SlidingTabBar
         tabs={TABS.map((t) => ({ id: t, label: t === "projects" && projects && projects.length > 0 ? `${TAB_LABEL[t]} · ${projects.length}` : TAB_LABEL[t] }))}
         activeIndex={activeIndex}
-        onSelect={(i) => setActiveTab(TABS[i])}
+        onSelect={(i) => switchTab(TABS[i])}
       />
     </View>
   );
 
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
-      <SwipeToSwitch index={activeIndex} count={TABS.length} enabled={!swipeLocked} onIndexChange={(i) => setActiveTab(TABS[i])}>
+      <SwipeToSwitch index={activeIndex} count={TABS.length} enabled={!swipeLocked} onIndexChange={(i) => switchTab(TABS[i])}>
         <FlashList
           showsHorizontalScrollIndicator={false}
           data={rows}
@@ -456,7 +483,7 @@ export function PagePage() {
           getItemType={(r) => r.kind}
           stickyHeaderIndices={[1]}
           ref={chromeScroll.listRef}
-          onScroll={chromeScroll}
+          onScroll={onListScroll}
           scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: bottomInset }}

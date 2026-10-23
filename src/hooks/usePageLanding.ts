@@ -8,6 +8,8 @@
 // shipping the app before the migration never breaks a page.
 // ============================================================
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { Image as RNImage } from "react-native";
 import { supabase } from "../lib/supabase";
 import type { HeroDirection, PageHeroSlide, PageMemberWithProfile } from "../types/database";
 
@@ -17,6 +19,50 @@ export const HERO_INTERVAL_OPTIONS = [3, 5, 8, 12] as const;
 
 /** Every hero slide is framed 16:9, and the banner 8:3 — editors crop to these on upload. */
 export const HERO_ASPECT = 16 / 9;
+/** Hero slides keep the shape of the FIRST image uploaded (9:16, 1:1, 16:9, …), within these limits. */
+export const HERO_MIN_ASPECT = 9 / 16;
+export const HERO_MAX_ASPECT = 21 / 9;
+export function clampHeroAspect(a: number): number {
+  return Math.min(HERO_MAX_ASPECT, Math.max(HERO_MIN_ASPECT, a));
+}
+
+const heroAspectCache = new Map<string, number>();
+
+/** Width / height of an already-uploaded slide image (cached). Resolves to 16:9 if it can't be read. */
+export function loadHeroAspect(url: string): Promise<number> {
+  const hit = heroAspectCache.get(url);
+  if (hit) return Promise.resolve(hit);
+  return new Promise((resolve) => {
+    RNImage.getSize(
+      url,
+      (w, h) => {
+        const a = w > 0 && h > 0 ? clampHeroAspect(w / h) : HERO_ASPECT;
+        heroAspectCache.set(url, a);
+        resolve(a);
+      },
+      () => resolve(HERO_ASPECT)
+    );
+  });
+}
+
+/**
+ * The page's hero aspect ratio: set by the first slide (lowest position); every other slide was cropped
+ * to match it on upload. Returns 16:9 until the first image has been measured.
+ */
+export function useHeroAspect(slides: PageHeroSlide[] | undefined): number {
+  const first = slides && slides.length ? [...slides].sort((a, b) => a.position - b.position)[0] : undefined;
+  const url = first?.image_url;
+  const [aspect, setAspect] = useState<number>(() => (url && heroAspectCache.get(url)) || HERO_ASPECT);
+  useEffect(() => {
+    if (!url) return;
+    let alive = true;
+    loadHeroAspect(url).then((a) => alive && setAspect(a));
+    return () => {
+      alive = false;
+    };
+  }, [url]);
+  return aspect;
+}
 export const BANNER_ASPECT = 8 / 3;
 
 const SLIDE_SELECT = "id, page_id, image_url, title, caption, position, created_at";

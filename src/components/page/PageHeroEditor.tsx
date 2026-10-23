@@ -1,7 +1,7 @@
 // src/components/page/PageHeroEditor.tsx
 // Where a page admin (or a member allowed to edit the page) builds the hero slideshow: add images, give each
 // a title and caption, reorder, remove, and choose how it plays. Every change saves on its own — there's no
-// separate "save hero" step to forget. All slides are cropped to 16:9 on upload so they sit in one frame.
+// separate "save hero" step to forget. The first image sets the shape (9:16, 1:1, 16:9, …); every later one is cropped to match.
 import { ArrowDown, ArrowUp, ImagePlus, Trash2 } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, TextInput, View } from "react-native";
@@ -12,17 +12,20 @@ import { Toggle } from "@/components/ui/Toggle";
 import { useToast } from "@/components/ui/Toast";
 import { useUploadAvatar } from "@/hooks/useUploadAvatar";
 import {
-  HERO_ASPECT,
   HERO_INTERVAL_OPTIONS,
   MAX_HERO_SLIDES,
+  clampHeroAspect,
+  loadHeroAspect,
   useAddHeroSlide,
   useDeleteHeroSlide,
   usePageHeroSlides,
   useReorderHeroSlides,
   useUpdateHeroSettings,
+  useHeroAspect,
   useUpdateHeroSlide,
 } from "@/hooks/usePageLanding";
 import { cropToAspect } from "@/lib/cropImage";
+import { getImageSize } from "@/lib/localFile";
 import { pickImages } from "@/lib/pickImage";
 import { useTheme } from "@/theme/ThemeProvider";
 import type { HeroDirection, Page, PageHeroSlide } from "@/types/database";
@@ -46,9 +49,11 @@ function SlideRow({
   index,
   total,
   busy,
+  aspect,
   onMove,
   onDelete,
 }: {
+  aspect: number;
   slide: PageHeroSlide;
   pageId: string;
   index: number;
@@ -70,7 +75,7 @@ function SlideRow({
 
   return (
     <View className="rounded-2xl bg-canvas p-3">
-      <View className="overflow-hidden rounded-xl bg-surface" style={{ aspectRatio: HERO_ASPECT }}>
+      <View className="self-center overflow-hidden rounded-xl bg-surface" style={{ aspectRatio: aspect, width: aspect < 1 ? `${Math.round(aspect * 100 * 1.4)}%` : "100%", maxWidth: "100%" }}>
         <Image source={{ uri: slide.image_url }} contentFit="cover" style={{ width: "100%", height: "100%" }} />
         <View className="absolute left-2 top-2 rounded-full px-2 py-0.5" style={{ backgroundColor: "rgba(0,0,0,0.55)" }}>
           <Text className="text-[11px] font-medium text-white">{index + 1}</Text>
@@ -139,6 +144,7 @@ export function PageHeroEditor({ page }: { page: Page }) {
   const updateSettings = useUpdateHeroSettings(page.id);
   const upload = useUploadAvatar();
   const [uploading, setUploading] = useState(false);
+  const aspect = useHeroAspect(slides);
 
   const autoplay = page.hero_autoplay ?? true;
   const interval = page.hero_interval_seconds ?? 5;
@@ -152,8 +158,19 @@ export function PageHeroEditor({ page }: { page: Page }) {
     setUploading(true);
     let position = slides.length ? Math.max(...slides.map((s) => s.position)) + 1 : 0;
     try {
+      // The first image on the page sets the aspect ratio; once there are slides, everything matches them.
+      const firstSlide = [...slides].sort((a, b) => a.position - b.position)[0];
+      let target: number;
+      if (firstSlide) {
+        target = await loadHeroAspect(firstSlide.image_url);
+      } else {
+        const size = await getImageSize(picked[0]).catch(() => {
+          throw new Error("That image couldn't be read. Try a JPEG, PNG or WebP.");
+        });
+        target = clampHeroAspect(size.width / size.height);
+      }
       for (const file of picked) {
-        const cropped = await cropToAspect(file, HERO_ASPECT, { maxWidth: 1600 });
+        const cropped = await cropToAspect(file, target, { maxWidth: target < 1 ? 1200 : 1600 });
         const image_url = await upload.mutateAsync(cropped);
         await addSlide.mutateAsync({ image_url, position: position++ });
       }
@@ -182,7 +199,7 @@ export function PageHeroEditor({ page }: { page: Page }) {
           Hero slides
         </Text>
         <Text className="mt-0.5 text-xs text-ink-muted">
-          A slideshow visitors see first. Images are cropped to 16:9 so they all fit the same frame. Up to {MAX_HERO_SLIDES}.
+          A slideshow visitors see first. The first image you add sets the shape (tall, square, wide…); the rest are cropped to match. Up to {MAX_HERO_SLIDES}.
         </Text>
       </View>
 
@@ -196,6 +213,7 @@ export function PageHeroEditor({ page }: { page: Page }) {
               index={i}
               total={slides.length}
               busy={busy}
+              aspect={aspect}
               onMove={(d) => move(i, d)}
               onDelete={() => deleteSlide.mutate(slide.id, { onError: () => toast("Couldn't remove that slide.", { variant: "error" }) })}
             />
