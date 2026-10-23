@@ -100,6 +100,21 @@ export const PRIVACY_POLICY: LegalDocument = {
       ],
     },
     {
+      id: "google-sign-in",
+      title: "Google sign-in and Google user data",
+      blocks: [
+        "You can create an account or log in with Google. This section explains exactly what we receive from Google and what we do with it.",
+        [
+          "What we receive: when you choose to continue with Google, Google shares your name, your email address and your Google profile picture with our authentication provider (Supabase), using the standard openid, email and profile permissions. We do not ask for, and cannot see, anything else in your Google account, such as your Gmail, Google Drive, Calendar, Contacts, search history or YouTube data.",
+          "How we use it: we use your email address to create and secure your Akọ account and to send you account and security messages, and we use your name to suggest a display name when you set up your profile. We do not currently use your Google profile picture; the photo on your Akọ profile is only one you choose to upload.",
+          "How we store it: your email address and name are stored with your other account details in our authentication provider and our database, and protected as described in this policy.",
+          "Who we share it with: we do not sell it, we do not use it for advertising, and we do not share it with anyone except the service providers that run Akọ for us (listed above) or where the law requires it.",
+          "Your choices: you can stop Akọ from using Google sign-in at any time by removing Akọ from the apps connected to your Google Account (myaccount.google.com/permissions). You can also ask us to delete your account information by emailing the address in Contact us.",
+        ],
+        "Akọ's use and transfer to any other app of information received from Google APIs will adhere to the Google API Services User Data Policy, including the Limited Use requirements.",
+      ],
+    },
+    {
       id: "controls",
       title: "Your choices and controls",
       blocks: [
