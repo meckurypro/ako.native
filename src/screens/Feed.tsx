@@ -92,21 +92,31 @@ function ForYouTab({
 
   useEffect(() => setPage(0), [interestId, isPageMode]);
 
-  // A just-published post is pinned to the top of the first page, and the feed
-  // waits for it so the new post is never missing from a stale list.
-  const pinning = !!justPostedId && page === 0 && !interestId && !isPageMode;
+  // A just-published post is pinned to the top of the first page (personal or Page mode). useCreatePost has already
+  // cached it, so it shows immediately while the ranked list refetches underneath; the feed only waits when the
+  // pinned post itself still has to be fetched.
+  const pinning = !!justPostedId && page === 0 && !interestId;
   const { data: justPostedPost, isLoading: isLoadingJustPosted, isError: justPostedFailed } = usePostById(pinning ? justPostedId : null);
-  const waitingForFreshFeed = pinning && (isLoading || isFetching || (isLoadingJustPosted && !justPostedFailed));
+  // Only pin a post that belongs to the identity this feed is for (personal post never pins into a Page's feed).
+  const pinnedPost =
+    justPostedPost && (justPostedPost.posted_as_page_id ?? null) === (activePageId ?? null) ? justPostedPost : undefined;
+  const waitingForFreshFeed = pinning && isLoadingJustPosted && !justPostedFailed;
 
   // Returning from a post to where you were: if it isn't in the loaded pages, fetch it and show it first.
   const scrollTargetInList = !!scrollToPostId && posts.some((p) => p.id === scrollToPostId);
   const { data: fetchedScrollToPost } = usePostById(scrollToPostId && !scrollTargetInList ? scrollToPostId : null);
 
   const displayed = useMemo(() => {
-    let list = justPostedPost ? [justPostedPost, ...posts.filter((p) => p.id !== justPostedPost.id)] : posts;
+    let list = pinnedPost ? [pinnedPost, ...posts.filter((p) => p.id !== pinnedPost.id)] : posts;
     if (fetchedScrollToPost) list = [fetchedScrollToPost, ...list.filter((p) => p.id !== fetchedScrollToPost.id)];
     return list as PostWithAuthor[];
-  }, [posts, justPostedPost, fetchedScrollToPost]);
+  }, [posts, pinnedPost, fetchedScrollToPost]);
+
+  // The Feed stays mounted under Compose, so it still holds its old scroll offset: bring the new post into view.
+  const pinnedId = pinnedPost?.id;
+  useEffect(() => {
+    if (pinnedId) listRef.current?.scrollToOffset({ offset: 0, animated: false });
+  }, [pinnedId]);
 
   // Scroll the target into view once it's in the list.
   const scrolledRef = useRef(false);
@@ -134,7 +144,7 @@ function ForYouTab({
     <PostList
       ref={listRef}
       posts={displayed}
-      isLoading={(isLoading || waitingForFreshFeed) && page === 0}
+      isLoading={((isLoading && !pinnedPost) || waitingForFreshFeed) && page === 0}
       isFetchingMore={isFetching && page > 0}
       error={error}
       exhausted={exhausted}
@@ -235,13 +245,22 @@ export function Feed() {
     if (!params.justPostedId && !params.scrollToPostId) return;
     if (params.justPostedId) setJustPostedId(params.justPostedId);
     if (params.scrollToPostId) setScrollToPostId(params.scrollToPostId);
-    router.setParams({ justPostedId: undefined, scrollToPostId: undefined });
+    // A fresh post lives on For You with no topic filter, whichever tab/filter the Feed was left on.
+    router.setParams({
+      justPostedId: undefined,
+      scrollToPostId: undefined,
+      ...(params.justPostedId ? { tab: undefined, interest: undefined } : {}),
+    });
   }, [params.justPostedId, params.scrollToPostId]);
   // Compose returns here with plain back navigation (no params) and leaves a one-shot hint instead.
   useFocusEffect(
     useCallback(() => {
       const id = consumeJustPosted();
-      if (id) setJustPostedId(id);
+      if (id) {
+        setJustPostedId(id);
+        // The Feed stays mounted under Compose and keeps its ?tab= / ?interest= params: the new post is on For You.
+        router.setParams({ tab: undefined, interest: undefined });
+      }
     }, [])
   );
 

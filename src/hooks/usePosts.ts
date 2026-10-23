@@ -306,26 +306,28 @@ export function usePagePosts(pageId: string, page = 0) {
  * mean whichever query happened to populate the cache first "wins"
  * the shape for both call sites, even though the two select different
  * columns — not worth the entanglement for what's otherwise an
- * unrelated read. Currently used by Feed.tsx to pin a just-published
- * post at the top of the "For You" list the instant it lands there
- * (see justPostedId) — the ranked feed itself has no reason to
- * surface a brand-new, zero-engagement post anywhere near the top
- * (see get_ranked_feed: a fresh post scores 0 until it has
- * engagement), so that placement is done here client-side rather than
- * by waiting on the ranking algorithm to do it.
+ * unrelated read. Used by Feed.tsx to pin a just-published post at the
+ * top of the "For You" list the instant it lands there (see
+ * justPostedId). useCreatePost seeds this same cache entry as soon as
+ * the post is created, so the pinned post is already there when the
+ * Feed mounts. The server agrees with the pin: get_ranked_feed puts
+ * the poster's own post from the last 30 minutes first (see
+ * supabase/ako_for_you_own_new_post_first.sql).
  */
+export async function fetchPostFull(postId: string): Promise<PostWithAuthor> {
+  const { data, error } = await supabase
+    .from("posts")
+    .select(FEED_SELECT)
+    .eq("id", postId)
+    .single();
+  if (error) throw error;
+  return normalizePost(data);
+}
+
 export function usePostById(postId: string | null) {
   return useQuery({
     queryKey: ["post-full", postId],
-    queryFn: async (): Promise<PostWithAuthor> => {
-      const { data, error } = await supabase
-        .from("posts")
-        .select(FEED_SELECT)
-        .eq("id", postId)
-        .single();
-      if (error) throw error;
-      return normalizePost(data);
-    },
+    queryFn: () => fetchPostFull(postId as string),
     enabled: !!postId,
   });
 }
@@ -357,10 +359,36 @@ export function useCreatePost() {
       if (data?.error) throw new Error(data.error);
       return data.post;
     },
-    // Awaited + refetchType "all" so the screen Compose returns to (feed,
-    // a profile, a Page) is refetched with the new post already in it,
-    // rather than painting its old cached list first.
-    onSuccess: async (_post, variables) => {
+    // A published post: seed the one thing the Feed needs to show it (the fully-joined post, cached under the
+    // key usePostById reads) and return straight away. The caller navigates to For You with the post pinned on
+    // top, so nothing here should hold the person on the editor while every feed list refetches; those refreshes
+    // run in the background, and get_ranked_feed also ranks the poster's own new post first, so the refetched
+    // list agrees with the pin. Drafts / scheduled saves land on a list that must already contain the row, so
+    // they still wait for their refetch below.
+    onSuccess: async (post, variables) => {
+      const isPublished = variables.status !== "draft" && variables.status !== "scheduled";
+      if (isPublished) {
+        const createdId = (post as { id?: string } | null)?.id;
+        if (createdId) {
+          try {
+            await queryClient.fetchQuery({
+              queryKey: ["post-full", createdId],
+              queryFn: () => fetchPostFull(createdId),
+              staleTime: 0,
+            });
+          } catch {
+            // Not fatal: the Feed's pin fetches the post itself when it mounts.
+          }
+        }
+        void queryClient.invalidateQueries({ queryKey: ["feed-posts"], refetchType: "all" });
+        void queryClient.invalidateQueries({ queryKey: ["page-feed-posts"], refetchType: "all" });
+        // A new post shows on the author's own profile too.
+        void queryClient.invalidateQueries({ queryKey: ["user-posts"], refetchType: "all" });
+        if (variables.posted_as_page_id) {
+          void queryClient.invalidateQueries({ queryKey: ["page-posts", variables.posted_as_page_id], refetchType: "all" });
+        }
+        return;
+      }
       const refreshes = [
         queryClient.invalidateQueries({ queryKey: ["feed-posts"], refetchType: "all" }),
         // A new post shows on the author's own profile too.
