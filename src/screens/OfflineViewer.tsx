@@ -6,7 +6,8 @@ import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { Image as ExpoImage } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import * as Sharing from "expo-sharing";
-import { useVideoPlayer, VideoView } from "expo-video";
+import { useVideoPlayer } from "expo-video";
+import { SafeVideoView } from "../components/ui/SafeVideoView";
 import { ExternalLink, FileText, Pause, Play, RotateCcw, RotateCw } from "lucide-react-native";
 import { useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
@@ -75,7 +76,7 @@ function VideoFile({ uri }: { uri: string }) {
   });
   return (
     <View className="overflow-hidden rounded-3xl bg-black">
-      <VideoView player={player} nativeControls contentFit="contain" style={{ width: "100%", aspectRatio: 16 / 9 }} />
+      <SafeVideoView player={player} nativeControls contentFit="contain" style={{ width: "100%", aspectRatio: 16 / 9 }} />
     </View>
   );
 }

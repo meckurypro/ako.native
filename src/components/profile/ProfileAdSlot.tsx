@@ -3,7 +3,8 @@
 // video; tapping opens the advertiser's link. Renders an empty box when there's
 // no matching ad, so the toolbar layout never shifts.
 import { openExternal } from "@/lib/openExternal";
-import { useVideoPlayer, VideoView } from "expo-video";
+import { useVideoPlayer } from "expo-video";
+import { SafeVideoView } from "../ui/SafeVideoView";
 import { Pressable, View } from "react-native";
 
 import { Image } from "@/components/ui/styled";
@@ -15,7 +16,7 @@ function AdVideo({ url }: { url: string }) {
     p.muted = true;
     p.play();
   });
-  return <VideoView player={player} contentFit="cover" nativeControls={false} style={{ width: "100%", height: "100%" }} />;
+  return <SafeVideoView player={player} contentFit="cover" nativeControls={false} style={{ width: "100%", height: "100%" }} />;
 }
 
 export function ProfileAdSlot({ className = "" }: { className?: string }) {

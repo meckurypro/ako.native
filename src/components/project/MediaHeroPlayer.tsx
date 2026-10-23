@@ -4,7 +4,8 @@
 // artwork), with a progress strip. Locked when you don't have access. Pauses
 // itself the moment its card leaves the screen.
 import { useAudioPlayer } from "expo-audio";
-import { useVideoPlayer, VideoView } from "expo-video";
+import { useVideoPlayer } from "expo-video";
+import { SafeVideoView } from "../ui/SafeVideoView";
 import { Image as ImageIcon, Lock, Music, Pause, Play, Video } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, View } from "react-native";
@@ -142,7 +143,7 @@ export function MediaHeroPlayer({ kind, thumbnailUrl, hasAccess, previewSrc, isL
       className="h-full w-full"
     >
       {kind === "video" && previewSrc ? (
-        <VideoView player={videoPlayer} contentFit="cover" nativeControls={false} style={{ width: "100%", height: "100%" }} />
+        <SafeVideoView player={videoPlayer} contentFit="cover" nativeControls={false} style={{ width: "100%", height: "100%" }} />
       ) : thumbnailUrl ? (
         <Image source={{ uri: thumbnailUrl }} contentFit={fit} transition={150} style={{ width: "100%", height: "100%" }} />
       ) : (

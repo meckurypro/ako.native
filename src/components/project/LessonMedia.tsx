@@ -3,7 +3,8 @@
 // video files in a native expo-video player (fires onWatched when it finishes),
 // anything else as an "Open lesson video" link.
 import { useEvent } from "expo";
-import { useVideoPlayer, VideoView } from "expo-video";
+import { useVideoPlayer } from "expo-video";
+import { SafeVideoView } from "../ui/SafeVideoView";
 import { PlayCircle } from "lucide-react-native";
 import { useEffect, useRef } from "react";
 import { Pressable, View } from "react-native";
@@ -58,7 +59,7 @@ function DirectVideo({ url, onWatched, startAt, onTime }: { url: string; onWatch
 
   return (
     <View className="mb-2 aspect-video w-full overflow-hidden rounded-xl bg-canvas">
-      <VideoView player={player} nativeControls fullscreenOptions={{ enable: true }} style={{ width: "100%", height: "100%" }} />
+      <SafeVideoView player={player} nativeControls fullscreenOptions={{ enable: true }} style={{ width: "100%", height: "100%" }} />
     </View>
   );
 }

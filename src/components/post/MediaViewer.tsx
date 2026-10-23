@@ -4,7 +4,8 @@
 // drag, or flick). Android Back and the X button close it. Paging is a native paging ScrollView; the zoom
 // and dismiss gestures are Gesture Handler + Reanimated so they run on the UI
 // thread.
-import { useVideoPlayer, VideoView } from "expo-video";
+import { useVideoPlayer } from "expo-video";
+import { SafeVideoView } from "../ui/SafeVideoView";
 import { X } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
@@ -153,7 +154,7 @@ function ViewerVideo({ url, width, height, active }: { url: string; width: numbe
     if (active) fadeInAndPlay(player);
     else fadeOutAndPause(player);
   }, [active, player]);
-  return <VideoView player={player} contentFit="contain" nativeControls style={{ width, height }} />;
+  return <SafeVideoView player={player} contentFit="contain" nativeControls style={{ width, height }} />;
 }
 
 export function MediaViewer({ mediaUrls, startIndex, onClose }: MediaViewerProps) {

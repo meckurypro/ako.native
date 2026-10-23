@@ -3,7 +3,8 @@
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
-import { useVideoPlayer, VideoView } from "expo-video";
+import { useVideoPlayer } from "expo-video";
+import { SafeVideoView } from "../ui/SafeVideoView";
 import { Image as ImageIcon, Music, Pause, Play, Trash2, Music as MusicIcon } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, View } from "react-native";
@@ -38,7 +39,7 @@ function AudioHighlight({ url }: { url: string }) {
 
 function VideoHighlight({ url }: { url: string }) {
   const player = useVideoPlayer(url);
-  return <VideoView player={player} nativeControls contentFit="cover" style={{ width: "100%", aspectRatio: 1 }} />;
+  return <SafeVideoView player={player} nativeControls contentFit="cover" style={{ width: "100%", aspectRatio: 1 }} />;
 }
 
 function HighlightTile({ highlight, isOwner, onDelete, deletePending }: { highlight: EventHighlight; isOwner: boolean; onDelete: () => void; deletePending: boolean }) {

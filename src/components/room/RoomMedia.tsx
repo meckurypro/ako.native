@@ -2,7 +2,8 @@
 // Media attached to a classroom post or an assignment submission: video (native player),
 // image, or audio (play/pause + progress).
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
-import { useVideoPlayer, VideoView } from "expo-video";
+import { useVideoPlayer } from "expo-video";
+import { SafeVideoView } from "../ui/SafeVideoView";
 import { Pause, Play } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, View } from "react-native";
@@ -16,7 +17,7 @@ function RoomVideo({ url }: { url: string }) {
   const player = useVideoPlayer(url);
   return (
     <View className="mt-1 aspect-video w-full overflow-hidden rounded-lg bg-canvas">
-      <VideoView player={player} nativeControls fullscreenOptions={{ enable: true }} style={{ width: "100%", height: "100%" }} />
+      <SafeVideoView player={player} nativeControls fullscreenOptions={{ enable: true }} style={{ width: "100%", height: "100%" }} />
     </View>
   );
 }

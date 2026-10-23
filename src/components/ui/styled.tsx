@@ -5,10 +5,12 @@
 // small bridge below.
 import { Image as ExpoImage, type ImageProps as ExpoImageProps, type ImageSource } from "expo-image";
 import type { LucideIcon, LucideProps } from "lucide-react-native";
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { View } from "react-native";
 import { useCssElement } from "react-native-css";
 
 import { isRemoteUrl, stableImageKey, storeFileName } from "../../lib/imageKey";
+import { MediaPlaceholder, type MediaKind } from "./MediaPlaceholder";
 import { discardStoredImage, lookupStoredImage, storeImage, subscribeStoredImage } from "../../lib/imageStore";
 
 type ImageProp = ExpoImageProps & {
@@ -18,6 +20,8 @@ type ImageProp = ExpoImageProps & {
    * media that must not be stored automatically (chat photos use their own tap-to-download store).
    */
   durable?: boolean;
+  /** What to show when the picture is missing or fails to load (default: gradient + image icon). "none" = render nothing special; the caller handles `onError` itself. */
+  fallback?: MediaKind | "none";
 };
 
 /** The remote uri of a plain `{uri}` / string source; null for assets, arrays, local files and null. */
@@ -40,7 +44,8 @@ const NEVER = () => () => {};
  * failed download left every avatar, thumbnail and photo empty. A stored copy that fails to display is discarded and
  * the remote URL takes over again.
  */
-export function Image({ durable = true, source, cachePolicy, onLoad, onError, ...rest }: ImageProp) {
+export function Image({ durable = true, fallback = "image", source, cachePolicy, onLoad, onError, ...rest }: ImageProp) {
+  const [failed, setFailed] = useState(false);
   const remote = remoteUriOf(source);
   const name = remote && durable ? storeFileName(remote) : null;
   const subscribe = useCallback((l: () => void) => (name ? subscribeStoredImage(name, l) : NEVER()), [name]);
@@ -68,12 +73,26 @@ export function Image({ durable = true, source, cachePolicy, onLoad, onError, ..
         discardStoredImage(name); // bad stored copy: drop it, the remote URL renders next
         return;
       }
+      setFailed(true);
       onError?.(e);
     },
     [stored, name, onError]
   );
 
-  return useCssElement(ExpoImage, { ...rest, source: resolved, cachePolicy: cachePolicy ?? "memory-disk", onLoad: handleLoad, onError: handleError }, { className: "style" });
+  // A new picture (or a retry after the network returns) gets a fresh attempt.
+  const sourceKey = remote ?? (typeof source === "number" ? String(source) : "");
+  useEffect(() => setFailed(false), [sourceKey]);
+
+  const cssElement = useCssElement(ExpoImage, { ...rest, source: resolved, cachePolicy: cachePolicy ?? "memory-disk", onLoad: handleLoad, onError: handleError }, { className: "style" });
+
+  if (failed && fallback !== "none") {
+    return (
+      <View className={rest.className} style={rest.style as never}>
+        <MediaPlaceholder kind={fallback} seed={remote ?? ""} style={{ width: "100%", height: "100%" }} />
+      </View>
+    );
+  }
+  return cssElement;
 }
 
 type IconProps = Omit<LucideProps, "ref"> & {

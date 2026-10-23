@@ -50,6 +50,7 @@ export function Avatar({ src, name, size = "md" }: AvatarProps) {
       <View style={box} className="bg-accent-soft items-center justify-center">
         {!loaded && <Text className={`${TEXT[size]} font-medium text-accent`}>{initials}</Text>}
         <Image
+          fallback="none"
           source={{ uri: src }}
           accessibilityLabel={name}
           contentFit="cover"

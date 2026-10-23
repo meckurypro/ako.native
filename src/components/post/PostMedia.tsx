@@ -4,7 +4,8 @@
 //   2+ items → a paged carousel with dots + a "2/5" counter
 // The carousel is a native paging ScrollView, so the swipe/settle physics are
 // the platform's own rather than a hand-rolled approximation.
-import { useVideoPlayer, VideoView } from "expo-video";
+import { useVideoPlayer } from "expo-video";
+import { SafeVideoView } from "../ui/SafeVideoView";
 import { memo, useCallback, useState } from "react";
 import { Pressable, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { Gesture, GestureDetector, ScrollView } from "react-native-gesture-handler";
@@ -19,7 +20,7 @@ function VideoThumb({ url }: { url: string }) {
   const player = useVideoPlayer(url, (p) => {
     p.muted = true;
   });
-  return <VideoView player={player} contentFit="cover" nativeControls={false} style={{ width: "100%", height: "100%" }} />;
+  return <SafeVideoView player={player} contentFit="cover" nativeControls={false} style={{ width: "100%", height: "100%" }} />;
 }
 
 function Slide({ url, onLoad }: { url: string; onLoad?: (ratio: number) => void }) {
