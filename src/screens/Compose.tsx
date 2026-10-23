@@ -297,6 +297,9 @@ export function Compose() {
     };
     const removeOriginal = deleteDraftOrScheduled.mutateAsync;
 
+    // Shown on the Feed while the post finishes, and swapped for the outcome the moment it is known.
+    const posting = toast("Posting…", { variant: "loading" });
+
     const result: Promise<string | null> = publishPost
       .mutateAsync(input)
       .then(async (createdPost) => {
@@ -309,6 +312,7 @@ export function Compose() {
             toast("Saved, but the old draft couldn't be removed. Delete it from Drafts.", { variant: "error" });
           }
         }
+        posting.dismiss();
         toast("Posted.", { variant: "success" });
         return (createdPost as { id: string }).id;
       })
@@ -316,6 +320,7 @@ export function Compose() {
         // Moderation rejections and other edge-function errors surface here - the message is already short and
         // direct. Reopen the editor with the form exactly as it was.
         const message = err instanceof Error ? err.message : "Couldn't post this.";
+        posting.dismiss();
         toast(message, { variant: "error" });
         setComposeRestore({ ...snapshot, error: message });
         router.push("/compose" as Href);

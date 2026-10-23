@@ -7,14 +7,15 @@
 // (web: z-[70] over z-50/60).
 import { CheckCircle2, Info, XCircle } from "lucide-react-native";
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from "react";
-import { View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 import Animated, { FadeInDown, FadeOut, LinearTransition } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useTheme } from "@/theme/ThemeProvider";
 import { Icon } from "./styled";
 import { Text } from "./Text";
 
-type ToastVariant = "default" | "success" | "error";
+type ToastVariant = "default" | "success" | "error" | "loading";
 
 interface ToastItem {
   id: number;
@@ -28,13 +29,23 @@ interface ToastOptions {
   duration?: number;
 }
 
-type ToastFn = (message: string, options?: ToastOptions) => void;
+/** Returned by every toast call: lets a "loading" toast be replaced by the real outcome the moment it is known. */
+export interface ToastHandle {
+  dismiss: () => void;
+}
+
+type ToastFn = (message: string, options?: ToastOptions) => ToastHandle;
 
 const ToastContext = createContext<ToastFn | null>(null);
 
 const DEFAULT_DURATION_MS = 2000;
+// A loading toast stays until whoever raised it dismisses it; this is only the safety net so a forgotten one can't
+// stay on screen forever.
+const LOADING_MAX_MS = 30000;
 
 function ToastIcon({ variant }: { variant: ToastVariant }) {
+  const { colors } = useTheme();
+  if (variant === "loading") return <ActivityIndicator size="small" color={colors.accent} />;
   // Toasts follow the theme (light surface + dark text in light mode, dark surface + light text in dark mode).
   if (variant === "success") return <Icon as={CheckCircle2} size={18} className="shrink-0 text-accent" />;
   if (variant === "error") return <Icon as={XCircle} size={18} className="shrink-0 text-danger" />;
@@ -82,9 +93,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     const id = nextId.current++;
     const variant = options?.variant ?? "default";
     setToasts((prev) => [...prev, { id, message, variant }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, options?.duration ?? DEFAULT_DURATION_MS);
+    const timer = setTimeout(
+      () => {
+        setToasts((prev) => prev.filter((t) => t.id !== id));
+      },
+      options?.duration ?? (variant === "loading" ? LOADING_MAX_MS : DEFAULT_DURATION_MS)
+    );
+    return {
+      dismiss: () => {
+        clearTimeout(timer);
+        setToasts((prev) => prev.filter((t) => t.id !== id));
+      },
+    };
   }, []);
 
   return (
