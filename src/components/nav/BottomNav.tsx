@@ -64,13 +64,13 @@ const BADGE_TEXT = "#FFFFFF";
 export const FAB_SIZE = 56;
 export const FAB_GAP = 16;
 
-// Two overlapping speech bubbles — a solid one in front carrying the "typing" dots, a softer one behind — so it reads
+// Two overlapping speech bubbles — a solid one in front carrying the "typing" dots, a light-orange one behind — so it reads
 // as a conversation, not a single comment (the post's comment action is a bubble with a "+", which this used to copy).
 // `knockout` is the button's own colour: it draws the dots and a thin ring that separates the two bubbles.
-function ChatIcon({ size, bubble, knockout }: { size: number; bubble: string; knockout: string }) {
+function ChatIcon({ size, bubble, knockout, back }: { size: number; bubble: string; knockout: string; back: string }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M11 2.5H18A3.5 3.5 0 0 1 21.5 6V16.5L17.8 12.5H11A3.5 3.5 0 0 1 7.5 9V6A3.5 3.5 0 0 1 11 2.5Z" fill={bubble} opacity={0.5} />
+      <Path d="M11 2.5H18A3.5 3.5 0 0 1 21.5 6V16.5L17.8 12.5H11A3.5 3.5 0 0 1 7.5 9V6A3.5 3.5 0 0 1 11 2.5Z" fill={back} />
       <Path d="M6 7.5H13A3.5 3.5 0 0 1 16.5 11V14A3.5 3.5 0 0 1 13 17.5H8.5L3.2 21.5L2.5 17.5V11A3.5 3.5 0 0 1 6 7.5Z" stroke={knockout} strokeWidth={3.2} strokeLinejoin="round" />
       <Path d="M6 7.5H13A3.5 3.5 0 0 1 16.5 11V14A3.5 3.5 0 0 1 13 17.5H8.5L3.2 21.5L2.5 17.5V11A3.5 3.5 0 0 1 6 7.5Z" fill={bubble} />
       <Circle cx={6.4} cy={12.5} r={1.2} fill={knockout} />
@@ -170,7 +170,7 @@ export function BottomNav() {
             elevation: 6,
           })}
         >
-          <ChatIcon size={30} bubble={resolvedTheme === "dark" ? colors.accent : colors.canvas} knockout={resolvedTheme === "dark" ? colors.ink : colors.accent} />
+          <ChatIcon size={30} back={resolvedTheme === "dark" ? "#F29A4A" : "#FFB874"} bubble={resolvedTheme === "dark" ? colors.accent : colors.canvas} knockout={resolvedTheme === "dark" ? colors.ink : colors.accent} />
           {unreadCount > 0 ? (
             // Straddles the tile's top-right corner. The ring is the page colour, so it reads as cut out of the
             // button instead of a flat red dot stuck on it.
