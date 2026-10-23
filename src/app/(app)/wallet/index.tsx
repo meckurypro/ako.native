@@ -9,11 +9,12 @@ import { router } from "expo-router";
 import {
   ArrowDownCircle,
   ArrowUpCircle,
-  ChevronRight,
+  Clock,
   Gem,
   Gift,
   Heart,
   Megaphone,
+  Menu,
   Receipt,
   RotateCcw,
   Sparkles,
@@ -27,6 +28,7 @@ import { FlatList, Pressable, ScrollView, View } from "react-native";
 import { useBottomNavInset } from "@/components/nav/BottomNav";
 import { Button, Icon, Text } from "@/components/ui";
 import { BrandCard, ON_BRAND, useBrandColor } from "@/components/ui/BrandCard";
+import { OptionsModal, type OptionItem } from "@/components/ui/OptionsModal";
 import { RefreshSkeleton } from "@/components/ui/RefreshSkeleton";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -81,43 +83,17 @@ function CardPill({ icon, label, onPress, primary }: { icon: LucideIcon; label: 
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
-      className="h-9 flex-1 flex-row items-center justify-center gap-1.5 rounded-full active:opacity-80"
+      className="h-11 flex-1 flex-row items-center justify-center gap-2 rounded-full active:opacity-80"
       style={
         primary
           ? { backgroundColor: "#FFFFFF" }
           : { backgroundColor: ON_BRAND.chip, borderWidth: 1, borderColor: ON_BRAND.chipBorder }
       }
     >
-      <Icon as={icon} size={16} color={fg} />
-      <Text className="text-[13px] font-semibold" style={{ color: fg }}>
+      <Icon as={icon} size={18} color={fg} />
+      <Text className="text-sm font-semibold" style={{ color: fg }}>
         {label}
       </Text>
-    </Pressable>
-  );
-}
-
-// Secondary destinations sit under the card as quiet surface tiles — the Profile's bordered, rounded-2xl,
-// accent-soft icon-chip language.
-function ShortcutTile({ icon, title, hint, onPress }: { icon: LucideIcon; title: string; hint: string; onPress: () => void }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={title}
-      className="flex-1 flex-row items-center gap-3 rounded-2xl border border-border bg-surface px-3.5 py-3 active:bg-accent-soft"
-    >
-      <View className="h-10 w-10 items-center justify-center rounded-full bg-accent-soft">
-        <Icon as={icon} size={18} className="text-accent" />
-      </View>
-      <View className="min-w-0 flex-1">
-        <Text numberOfLines={1} className="text-sm font-medium text-ink">
-          {title}
-        </Text>
-        <Text numberOfLines={1} className="text-xs text-ink-muted">
-          {hint}
-        </Text>
-      </View>
-      <Icon as={ChevronRight} size={16} className="text-ink-muted" />
     </Pressable>
   );
 }
@@ -152,6 +128,7 @@ export default function WalletScreen() {
 
   const [filter, setFilter] = useState<ActivityFilter>("all");
   const [period, setPeriod] = useState<WalletPeriod>("all");
+  const [menuOpen, setMenuOpen] = useState(false);
 
   // Period first, so the in/out summary reflects the chosen range regardless of the In/Out filter.
   const periodRows = useMemo(
@@ -211,32 +188,66 @@ export default function WalletScreen() {
     );
   }
 
-  // Pinned above the list (not part of it), so the balance card and its actions never scroll away.
+  // The hamburger: everything that used to sit around the balance card, grouped by what it's for. First the two
+  // numbers people check before asking for money out (both lead to Withdraw, which also lists past requests), then
+  // the other ways money reaches the wallet.
+  const amountBadge = (v: number) => <Text className="text-sm font-semibold text-overlay-ink">{formatUsd(v)}</Text>;
+  const menuItems: (OptionItem | "divider")[] = [
+    ...(withdrawalsEnabled
+      ? ([
+          { key: "can-withdraw", label: "Can withdraw", description: "this week", icon: <Icon as={ArrowUpCircle} size={24} className="text-overlay-ink" />, badge: amountBadge(eligibility?.available_to_request ?? 0), onSelect: () => router.push("/wallet/withdraw") },
+          { key: "in-review", label: "In review", description: "on its way to your bank", icon: <Icon as={Clock} size={24} className="text-overlay-ink" />, badge: amountBadge(inReviewUsd), onSelect: () => router.push("/wallet/withdraw") },
+          "divider",
+        ] satisfies (OptionItem | "divider")[])
+      : []),
+    { key: "gifts", label: "Gift Vault", description: "Gifts you've been given", icon: <Icon as={Gem} size={24} className="text-overlay-ink" />, onSelect: () => router.push("/wallet/gifts") },
+    ...(affiliateEnabled
+      ? ([{ key: "affiliate", label: "Affiliate", description: "Forked projects & commissions", icon: <Icon as={TrendingUp} size={24} className="text-overlay-ink" />, onSelect: () => router.push("/wallet/affiliate-links") }] satisfies OptionItem[])
+      : []),
+  ];
+
+  // Nothing on this screen is pinned: the header, the balance card and the activity all scroll together.
+  const screenHeader = (
+    <View className="-mx-4">
+      <ScreenHeader
+        title="Wallet"
+        icon={WalletIcon}
+        back={false}
+        bar
+        right={
+          <Pressable onPress={() => setMenuOpen(true)} accessibilityRole="button" accessibilityLabel="Wallet menu" hitSlop={8} className="ml-auto h-10 w-10 items-center justify-center rounded-full active:opacity-70">
+            <Icon as={Menu} size={24} className="text-ink-muted" />
+          </Pressable>
+        }
+      />
+    </View>
+  );
+
   const card = (
-    <View className="px-4 pb-1 pt-2">
+    <View className="pb-1 pt-4">
       {/* Balance card — the one bold element on the page */}
-      <BrandCard className="p-4">
+      <BrandCard className="p-6">
         <View className="flex-row items-center justify-between">
           <Text className="text-[11px] font-medium uppercase tracking-[0.16em]" style={{ color: ON_BRAND.full }}>
             Available balance
           </Text>
-          <View className="rounded-full px-2 py-px" style={{ backgroundColor: ON_BRAND.chip, borderWidth: 1, borderColor: ON_BRAND.chipBorder }}>
-            <Text className="text-[10px] font-medium tracking-wide" style={{ color: ON_BRAND.full }}>
+          <View className="rounded-full px-2.5 py-0.5" style={{ backgroundColor: ON_BRAND.chip, borderWidth: 1, borderColor: ON_BRAND.chipBorder }}>
+            <Text className="text-[11px] font-medium tracking-wide" style={{ color: ON_BRAND.full }}>
               USD
             </Text>
           </View>
         </View>
 
         {isLoading ? (
-          <Skeleton className="mb-3 mt-1 h-9 w-32 rounded-xl" />
+          <Skeleton className="mb-6 mt-3 h-12 w-40 rounded-xl" />
         ) : (
-          <Text className="mb-3 mt-1 font-display text-3xl" style={{ color: ON_BRAND.full }}>
+          <Text className="mb-6 mt-3 font-display text-5xl" style={{ color: ON_BRAND.full }}>
             {formatUsd(wallet?.balance ?? 0)}
           </Text>
         )}
 
         {depositsEnabled || withdrawalsEnabled ? (
-          <View className="flex-row gap-2">
+          <View className="flex-row gap-3">
             {depositsEnabled ? <CardPill icon={ArrowDownCircle} label="Fund" primary onPress={() => router.push("/wallet/fund")} /> : null}
             {withdrawalsEnabled ? (
               <CardPill icon={ArrowUpCircle} label="Withdraw" primary={!depositsEnabled} onPress={() => router.push("/wallet/withdraw")} />
@@ -253,30 +264,8 @@ export default function WalletScreen() {
 
   const header = (
     <View>
-      {/* Withdrawal position — the two numbers people check before asking for money out. Kept off the pinned card so
-          the balance stays one number with one job, and no stat row here echoes the Gift Vault plaque. */}
-      {withdrawalsEnabled && (eligibility || inReviewUsd > 0) ? (
-        <View className="mb-3 flex-row rounded-2xl border border-border bg-surface py-3">
-          <View className="flex-1 px-4">
-            <Text className="text-[11px] uppercase tracking-wide text-ink-muted">Can withdraw</Text>
-            <Text className="mt-0.5 font-display text-xl text-ink">{formatUsd(eligibility?.available_to_request ?? 0)}</Text>
-            <Text className="text-[11px] text-ink-muted">this week</Text>
-          </View>
-          <View className="flex-1 border-l border-border px-4">
-            <Text className="text-[11px] uppercase tracking-wide text-ink-muted">In review</Text>
-            <Text className="mt-0.5 font-display text-xl text-ink">{formatUsd(inReviewUsd)}</Text>
-            <Text className="text-[11px] text-ink-muted">on its way to your bank</Text>
-          </View>
-        </View>
-      ) : null}
-
-      <View className="mb-4 flex-row gap-3">
-        <ShortcutTile icon={Gem} title="Gift Vault" hint="Your collection of gifts" onPress={() => router.push("/wallet/gifts")} />
-        {affiliateEnabled ? (
-          <ShortcutTile icon={TrendingUp} title="Affiliate" hint="Links & earnings" onPress={() => router.push("/wallet/affiliate-links")} />
-        ) : null}
-      </View>
-
+      {screenHeader}
+      {card}
       {pending.length > 0 ? (
         <View className="mb-4 rounded-2xl border border-border bg-surface p-4">
           <Text className="text-sm font-medium text-ink">Confirming your payment…</Text>
@@ -331,15 +320,13 @@ export default function WalletScreen() {
 
   return (
     <View className="flex-1 bg-canvas">
-      <ScreenHeader title="Wallet" icon={WalletIcon} back={false} bar />
-      {card}
       <FlatList<Txn>
         showsVerticalScrollIndicator={false}
         showsHorizontalScrollIndicator={false}
         data={refreshing ? [] : rows}
         keyExtractor={(t) => t.id}
         refreshControl={refreshControl}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset + 24 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: bottomInset + 24 }}
         ListHeaderComponent={header}
         ListEmptyComponent={
           refreshing ? (
@@ -384,6 +371,8 @@ export default function WalletScreen() {
           );
         }}
       />
+
+      {menuOpen ? <OptionsModal title="Wallet" items={menuItems} onClose={() => setMenuOpen(false)} /> : null}
     </View>
   );
 }
