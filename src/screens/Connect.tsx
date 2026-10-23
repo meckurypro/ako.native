@@ -138,9 +138,11 @@ function ConnectPane({ tab, items, activityLoading, affiliatesLoading, relations
     if (affiliates.length === 0) return <EmptyNotice icon={TrendingUp} message={EMPTY_COPY.affiliates} />;
     return (
       <ScrollView {...scrollProps}>
-        {affiliates.map((r) => (
-          <AffiliateLinkRow key={r.id} relationship={r} />
-        ))}
+        <View className="gap-2">
+          {affiliates.map((r) => (
+            <AffiliateLinkRow key={r.id} relationship={r} />
+          ))}
+        </View>
       </ScrollView>
     );
   }

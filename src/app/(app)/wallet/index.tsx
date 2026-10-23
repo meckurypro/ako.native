@@ -247,43 +247,31 @@ export default function WalletScreen() {
             Funding and withdrawals are temporarily unavailable.
           </Text>
         )}
-
-        {/* Withdrawal position — the two numbers people check before asking for money out. */}
-        {withdrawalsEnabled && (eligibility || inReviewUsd > 0) ? (
-          <View className="mt-6 flex-row gap-4 pt-4" style={{ borderTopWidth: 1, borderTopColor: ON_BRAND.hairline }}>
-            <View className="flex-1">
-              <Text className="text-[11px] uppercase tracking-wide" style={{ color: ON_BRAND.high }}>
-                Can withdraw
-              </Text>
-              <Text className="mt-0.5 font-display text-xl" style={{ color: ON_BRAND.full }}>
-                {formatUsd(eligibility?.available_to_request ?? 0)}
-              </Text>
-              <Text className="text-[11px]" style={{ color: ON_BRAND.high }}>
-                this week
-              </Text>
-            </View>
-            <View className="flex-1">
-              <Text className="text-[11px] uppercase tracking-wide" style={{ color: ON_BRAND.high }}>
-                In review
-              </Text>
-              <Text className="mt-0.5 font-display text-xl" style={{ color: ON_BRAND.full }}>
-                {formatUsd(inReviewUsd)}
-              </Text>
-              <Text className="text-[11px]" style={{ color: ON_BRAND.high }}>
-                on its way to your bank
-              </Text>
-            </View>
-          </View>
-        ) : null}
       </BrandCard>
     </View>
   );
 
   const header = (
     <View>
+      {/* Withdrawal position — the two numbers people check before asking for money out. Kept off the pinned card so
+          the balance stays one number with one job, and no stat row here echoes the Gift Vault plaque. */}
+      {withdrawalsEnabled && (eligibility || inReviewUsd > 0) ? (
+        <View className="mb-3 flex-row rounded-2xl border border-border bg-surface py-3">
+          <View className="flex-1 px-4">
+            <Text className="text-[11px] uppercase tracking-wide text-ink-muted">Can withdraw</Text>
+            <Text className="mt-0.5 font-display text-xl text-ink">{formatUsd(eligibility?.available_to_request ?? 0)}</Text>
+            <Text className="text-[11px] text-ink-muted">this week</Text>
+          </View>
+          <View className="flex-1 border-l border-border px-4">
+            <Text className="text-[11px] uppercase tracking-wide text-ink-muted">In review</Text>
+            <Text className="mt-0.5 font-display text-xl text-ink">{formatUsd(inReviewUsd)}</Text>
+            <Text className="text-[11px] text-ink-muted">on its way to your bank</Text>
+          </View>
+        </View>
+      ) : null}
 
       <View className="mb-4 flex-row gap-3">
-        <ShortcutTile icon={Gem} title="Gift Vault" hint="Gifts received" onPress={() => router.push("/wallet/gifts")} />
+        <ShortcutTile icon={Gem} title="Gift Vault" hint="Your collection of gifts" onPress={() => router.push("/wallet/gifts")} />
         {affiliateEnabled ? (
           <ShortcutTile icon={TrendingUp} title="Affiliate" hint="Links & earnings" onPress={() => router.push("/wallet/affiliate-links")} />
         ) : null}

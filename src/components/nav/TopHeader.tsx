@@ -8,7 +8,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { Wordmark } from "@/components/ui/Wordmark";
-import { useUnreadCount } from "@/hooks/useNotifications";
+import { useBellUnreadCount } from "@/hooks/usePageNotifications";
 import { useIsRestricted } from "@/hooks/useAccountAccess";
 import { useCanCreateAnyProject } from "@/hooks/useCreatorKinds";
 import { useMyProfile } from "@/hooks/useProfile";
@@ -18,7 +18,7 @@ interface TopHeaderProps {
 }
 
 export function TopHeader({ leftAction = "avatar" }: TopHeaderProps) {
-  const unreadCount = useUnreadCount();
+  const unreadCount = useBellUnreadCount();
   const { data: me } = useMyProfile();
   const restricted = useIsRestricted();
   const restrictedCanCreate = useCanCreateAnyProject();

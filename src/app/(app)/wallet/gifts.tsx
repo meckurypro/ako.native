@@ -1,9 +1,10 @@
 // src/app/(app)/wallet/gifts.tsx
 //
 // Gift Vault (native): a trophy cabinet for every gift the user has received.
-//   • Plaque — total worth, gifts, artifacts and your prized piece.
-//   • Latest — newest gifts first (artwork, sender, date/time, price), filter All / Today / This week.
+//   • Plaque — the collection at a glance: gift/artifact counts and your prized piece (worth is a small caption).
 //   • Artifacts — one tile per gift type with an ×count badge; tapping opens that artifact's history.
+//   • Latest — newest gifts first (artwork, sender, date/time, price), filter All / Today / This week.
+// Wallet is for money you can move; the Vault is for things you were given. Keep them from borrowing each other's look.
 // Rarity (Everyday → Legendary) is driven by the price of a single gift.
 import { Crown, Gem, Sparkles } from "lucide-react-native";
 import { useMemo, useState } from "react";
@@ -97,7 +98,9 @@ export default function GiftVaultScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: insets.bottom + 40 }}
       >
-        {/* ── Plaque ── */}
+        {/* ── Plaque ──
+            A display case, not a balance: the hero is the collection (a centrepiece and two counts). The money
+            figure is a small caption in gold, so nothing here reads as spendable like the Wallet's balance. */}
         <View
           style={{
             borderRadius: 28,
@@ -108,56 +111,49 @@ export default function GiftVaultScreen() {
           }}
         >
           <KenteStrip height={10} />
-          <View pointerEvents="none" style={{ position: "absolute", right: -26, top: 22, opacity: 0.12 }}>
-            <Icon as={Crown} size={170} strokeWidth={0.8} color={GOLD} />
-          </View>
-          <View style={{ paddingHorizontal: 24, paddingTop: 20, paddingBottom: 24 }}>
-            <View className="flex-row items-start justify-between">
-              <View className="flex-1 pr-3">
-                <Text style={{ color: GOLD, fontSize: 11, letterSpacing: 2.2 }} className="font-medium uppercase">
-                  {profile?.username ? `@${profile.username}'s` : "Your"} collection
+          <View style={{ paddingHorizontal: 24, paddingTop: 20, paddingBottom: 24 }} className="flex-row items-center justify-between">
+            <View className="min-w-0 flex-1 pr-3">
+              <Text style={{ color: GOLD, fontSize: 11, letterSpacing: 2.2 }} className="font-medium uppercase">
+                {profile?.username ? `@${profile.username}'s` : "Your"} collection
+              </Text>
+              <Text style={{ color: CREAM }} className="mt-1 font-display text-4xl">
+                Gift Vault
+              </Text>
+              <Text style={{ color: CREAM }} className="mt-4 text-sm">
+                {isLoading ? "…" : `${totals.giftCount} ${totals.giftCount === 1 ? "gift" : "gifts"} · ${totals.artifactCount} ${totals.artifactCount === 1 ? "artifact" : "artifacts"}`}
+              </Text>
+              {!isLoading && totals.totalWorth > 0 ? (
+                <Text style={{ color: "rgba(246,231,193,0.65)" }} className="mt-1 text-xs">
+                  worth {formatUsd(totals.totalWorth)}
+                  {range === "all" ? "" : ` · ${rangeLabel}`}
                 </Text>
-                <Text style={{ color: CREAM }} className="mt-1 font-display text-4xl">
-                  Gift Vault
-                </Text>
-              </View>
-            </View>
-
-            <Text style={{ color: CREAM }} className="mt-6 font-display text-5xl">
-              {isLoading ? "…" : formatUsd(totals.totalWorth)}
-            </Text>
-            <Text style={{ color: "rgba(246,231,193,0.65)" }} className="mt-1 text-xs">
-              treasure worth{range === "all" ? "" : ` · ${rangeLabel}`}
-            </Text>
-
-            <View className="mt-5 flex-row gap-6">
-              <View>
-                <Text style={{ color: CREAM }} className="font-display text-2xl">
-                  {totals.giftCount}
-                </Text>
-                <Text style={{ color: "rgba(246,231,193,0.6)", fontSize: 11, letterSpacing: 1 }} className="uppercase">
-                  Gifts
-                </Text>
-              </View>
-              <View>
-                <Text style={{ color: CREAM }} className="font-display text-2xl">
-                  {totals.artifactCount}
-                </Text>
-                <Text style={{ color: "rgba(246,231,193,0.6)", fontSize: 11, letterSpacing: 1 }} className="uppercase">
-                  Artifacts
-                </Text>
-              </View>
-              {totals.topArtifact ? (
-                <View className="min-w-0 flex-1">
-                  <Text numberOfLines={1} style={{ color: GOLD }} className="font-display text-2xl">
-                    {totals.topArtifact.name}
-                  </Text>
-                  <Text style={{ color: "rgba(246,231,193,0.6)", fontSize: 11, letterSpacing: 1 }} className="uppercase">
-                    Prized piece
-                  </Text>
-                </View>
               ) : null}
             </View>
+
+            {totals.topArtifact ? (
+              <View className="items-center" style={{ width: 104 }}>
+                <View
+                  className="h-24 w-24 items-center justify-center"
+                  style={{
+                    borderRadius: 28,
+                    backgroundColor: RARITY_META[totals.topArtifact.rarity].glow,
+                    borderWidth: 1.5,
+                    borderColor: RARITY_META[totals.topArtifact.rarity].color,
+                  }}
+                >
+                  <View style={{ position: "absolute", top: -9 }}>
+                    <Icon as={Crown} size={16} color={GOLD} />
+                  </View>
+                  <GiftArt url={totals.topArtifact.iconUrl} size={68} />
+                </View>
+                <Text numberOfLines={1} style={{ color: CREAM }} className="mt-2 text-xs font-medium">
+                  {totals.topArtifact.name}
+                </Text>
+                <Text style={{ color: "rgba(246,231,193,0.6)", fontSize: 10, letterSpacing: 1 }} className="uppercase">
+                  Prized piece
+                </Text>
+              </View>
+            ) : null}
           </View>
           <KenteStrip height={6} />
         </View>
@@ -199,53 +195,9 @@ export default function GiftVaultScreen() {
           <Text className="py-10 text-center text-sm text-ink-muted">No gifts {rangeLabel} yet.</Text>
         ) : null}
 
-        {/* ── Latest ── */}
-        {filtered.length > 0 ? (
-          <View className="mt-8">
-            <Text className="mb-3 font-display text-lg text-ink">Latest</Text>
-            <View className="overflow-hidden rounded-2xl border border-border bg-surface">
-              {latest.map((g, i) => {
-                const r = RARITY_META[rarityFor(g.amount)];
-                return (
-                  <View
-                    key={g.id}
-                    className={`flex-row items-center gap-3 px-4 py-3 ${i > 0 ? "border-t border-border" : ""}`}
-                  >
-                    <View
-                      className="h-14 w-14 items-center justify-center rounded-2xl"
-                      style={{ backgroundColor: r.glow, borderWidth: 1, borderColor: r.color }}
-                    >
-                      <GiftArt url={g.gift_icon_url} size={42} />
-                    </View>
-                    <View className="min-w-0 flex-1">
-                      <Text numberOfLines={1} className="text-sm font-medium text-ink">
-                        {g.gift_name ?? "Gift"}
-                      </Text>
-                      <Text numberOfLines={1} className="text-xs text-ink-muted">
-                        from {senderLabel(g)}
-                      </Text>
-                      <Text className="text-xs text-ink-muted">{formatReceivedAt(g.created_at)}</Text>
-                    </View>
-                    <Text style={{ color: GOLD_DEEP }} className="text-sm font-semibold">
-                      {formatUsd(g.amount)}
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
-            {filtered.length > LATEST_PAGE ? (
-              <Pressable onPress={() => setShowAll((v) => !v)} className="mt-3 self-start">
-                <Text className="text-sm font-medium text-accent">
-                  {showAll ? "Show fewer" : `Show all ${filtered.length}`}
-                </Text>
-              </Pressable>
-            ) : null}
-          </View>
-        ) : null}
-
         {/* ── Artifacts ── */}
         {artifacts.length > 0 ? (
-          <View className="mt-10">
+          <View className="mt-8">
             <Text className="font-display text-lg text-ink">Artifacts</Text>
             <Text className="mb-3 text-xs text-ink-muted">Tap one to see everyone who sent it.</Text>
             <View className="flex-row flex-wrap" style={{ gap: 12 }}>
@@ -301,6 +253,50 @@ export default function GiftVaultScreen() {
                 );
               })}
             </View>
+          </View>
+        ) : null}
+
+        {/* ── Latest ── */}
+        {filtered.length > 0 ? (
+          <View className="mt-10">
+            <Text className="mb-3 font-display text-lg text-ink">Latest</Text>
+            <View className="overflow-hidden rounded-2xl border border-border bg-surface">
+              {latest.map((g, i) => {
+                const r = RARITY_META[rarityFor(g.amount)];
+                return (
+                  <View
+                    key={g.id}
+                    className={`flex-row items-center gap-3 px-4 py-3 ${i > 0 ? "border-t border-border" : ""}`}
+                  >
+                    <View
+                      className="h-14 w-14 items-center justify-center rounded-2xl"
+                      style={{ backgroundColor: r.glow, borderWidth: 1, borderColor: r.color }}
+                    >
+                      <GiftArt url={g.gift_icon_url} size={42} />
+                    </View>
+                    <View className="min-w-0 flex-1">
+                      <Text numberOfLines={1} className="text-sm font-medium text-ink">
+                        {g.gift_name ?? "Gift"}
+                      </Text>
+                      <Text numberOfLines={1} className="text-xs text-ink-muted">
+                        from {senderLabel(g)}
+                      </Text>
+                      <Text className="text-xs text-ink-muted">{formatReceivedAt(g.created_at)}</Text>
+                    </View>
+                    <Text style={{ color: GOLD_DEEP }} className="text-sm font-semibold">
+                      {formatUsd(g.amount)}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+            {filtered.length > LATEST_PAGE ? (
+              <Pressable onPress={() => setShowAll((v) => !v)} className="mt-3 self-start">
+                <Text className="text-sm font-medium text-accent">
+                  {showAll ? "Show fewer" : `Show all ${filtered.length}`}
+                </Text>
+              </Pressable>
+            ) : null}
           </View>
         ) : null}
       </ScrollView>

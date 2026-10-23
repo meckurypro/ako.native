@@ -19,7 +19,8 @@
 import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
-import type { NotificationWithActor } from "./useNotifications";
+import { useUnreadCount, type NotificationWithActor } from "./useNotifications";
+import { useActiveIdentity } from "./usePages";
 
 export function usePageNotifications(pageId: string | undefined) {
   const queryClient = useQueryClient();
@@ -69,6 +70,17 @@ export function usePageNotifications(pageId: string | undefined) {
 export function usePageUnreadCount(pageId: string | undefined) {
   const { data } = usePageNotifications(pageId);
   return data?.filter((n) => !n.read_at).length ?? 0;
+}
+
+// The bell's badge. Follows the active identity: in page mode it counts the page's own notifications,
+// otherwise the personal ones. (The bell used to read the personal count unconditionally, so it kept
+// showing personal unread numbers after every page notification had been marked read.)
+export function useBellUnreadCount() {
+  const { data: identity } = useActiveIdentity();
+  const pageId = identity?.mode === "page" ? identity.page.id : undefined;
+  const personal = useUnreadCount();
+  const page = usePageUnreadCount(pageId);
+  return pageId ? page : personal;
 }
 
 // Marks rows read in the cached list straight away (before the network round trip) so a tap is reflected
