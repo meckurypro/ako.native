@@ -72,13 +72,13 @@ export function GoogleAuthButton({ returnTo, label = "Continue with Google" }: G
         accessibilityState={{ disabled: loading, busy: loading }}
         disabled={loading}
         onPress={handlePress}
-        // Google's own light / dark button styles, matched to the app theme: a light button on the light theme, a
-        // dark one on the dark theme (never the inverse, which is what bg-ink / text-canvas produced).
-        className={`h-12 w-full flex-row items-center justify-center gap-3 rounded-xl px-6 active:opacity-80 ${loading ? "opacity-50" : ""}`}
-        style={{ backgroundColor: dark ? "#131314" : "#FFFFFF", borderWidth: 1, borderColor: dark ? "#8E918F" : "#747775" }}
+        // Pill-shaped, Claude-style: on the dark theme a solid white pill with dark text (no border); on the light
+        // theme a white pill with a hairline border so it still reads against the page.
+        className={`h-[52px] w-full flex-row items-center justify-center gap-3 rounded-full px-6 active:opacity-80 ${loading ? "opacity-50" : ""}`}
+        style={{ backgroundColor: "#FFFFFF", borderWidth: dark ? 0 : 1, borderColor: "#D9D6CF" }}
       >
-        <GoogleGlyph size={18} />
-        <Text style={{ color: dark ? "#E3E3E3" : "#1F1F1F" }} className="font-body text-base font-semibold">
+        <GoogleGlyph size={20} />
+        <Text style={{ color: "#141413" }} className="font-body text-base font-medium">
           {loading ? "Opening Google…" : label}
         </Text>
       </Pressable>
