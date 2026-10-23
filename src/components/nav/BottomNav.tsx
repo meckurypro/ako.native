@@ -3,8 +3,8 @@
 // Restricted (no Feed): Discover · Library · Connect · Profile. Messages has no tab — it is the
 // floating chat button above the bar (ChatFab).
 // Rendered once by the (app) layout and shown only where routes.ts says so.
-// Profile is active on your own profile or your active Page. The chat button hides while you are
-// already inside messaging (/messages/*, /page-inbox/*, /inbox).
+// Profile is active on your own profile or your active Page. The chat button shows only on the five tab
+// screens (Feed, Discover, Library, Connect, Profile) — nowhere you are in the middle of doing something.
 import { BlurView } from "expo-blur";
 import { LibraryBig, Search, User, Users } from "lucide-react-native";
 import { router, useGlobalSearchParams, usePathname, type Href } from "expo-router";
@@ -128,9 +128,10 @@ export function BottomNav() {
   };
 
   const navList = restricted ? RESTRICTED_ITEMS : FULL_ITEMS;
-  // No floating chat button while reading a post or one of its comments — nothing should sit over the conversation.
-  const onPostPage = pathname.startsWith("/post/");
-  const showChatFab = !isActive("messages") && !onPostPage;
+  // The chat button is a shortcut for browsing, not a fixture: it shows only on the five tab screens (Feed, Discover,
+  // Library, Connect, your own Profile). Anywhere you are doing something — a project, a request, a wallet screen, a
+  // thread — it stays out of the way.
+  const showChatFab = (["feed", "topics", "library", "connect", "profile"] as const).some(isActive);
 
   return (
     <>
