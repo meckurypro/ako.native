@@ -280,6 +280,12 @@ export function SignUp() {
       <Text className="mt-6 text-center text-sm text-ink-muted">
         Already have an account? <TextLink href={(addMode ? "/login?add=1" : returnTo ? `/login?redirect=${encodeURIComponent(returnTo)}` : "/login")}>Log in</TextLink>
       </Text>
+
+      {!addMode ? (
+        <Text className="mt-5 text-center text-xs text-ink-muted">
+          By continuing, you agree to our <TextLink href="/terms">Terms of Service</TextLink> and <TextLink href="/privacy">Privacy Policy</TextLink>.
+        </Text>
+      ) : null}
     </AuthScreen>
   );
 }

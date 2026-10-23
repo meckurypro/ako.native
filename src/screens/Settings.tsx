@@ -1,5 +1,5 @@
 // src/screens/Settings.tsx
-// One Settings hub: Profile, Account & security, Privacy, Appearance, Sound, Advanced (one open at a
+// One Settings hub: Profile, Account & security, Privacy, Appearance, Sound, Legal, Advanced (one open at a
 // time). /settings/profile is the same screen; /settings/appearance and /settings/advanced redirect
 // here with the matching section pre-opened.
 import { useLocalSearchParams } from "expo-router";
@@ -13,6 +13,7 @@ import { KeyboardAvoider } from "@/components/ui/KeyboardAvoider";
 import { AppUpdateCard } from "@/components/settings/AppUpdateCard";
 import { AdvancedSection } from "@/components/settings/AdvancedSection";
 import { AppearanceSection } from "@/components/settings/AppearanceSection";
+import { LegalSection } from "@/components/settings/LegalSection";
 import { NotificationsSection } from "@/components/settings/NotificationsSection";
 import { PrivacySection } from "@/components/settings/PrivacySection";
 import { ProfileSection } from "@/components/settings/ProfileSection";
@@ -28,8 +29,8 @@ import { useOwnProfile } from "@/hooks/useOwnProfile";
 import { removeSavedAccount } from "@/lib/accountSessions";
 import { APP_URL } from "@/lib/config";
 
-export type SettingsSectionId = "profile" | "security" | "privacy" | "notifications" | "appearance" | "sound" | "advanced";
-const SECTION_IDS: SettingsSectionId[] = ["profile", "security", "privacy", "notifications", "appearance", "sound", "advanced"];
+export type SettingsSectionId = "profile" | "security" | "privacy" | "notifications" | "appearance" | "sound" | "legal" | "advanced";
+const SECTION_IDS: SettingsSectionId[] = ["profile", "security", "privacy", "notifications", "appearance", "sound", "legal", "advanced"];
 
 function asSectionId(value: string | string[] | undefined): SettingsSectionId | null {
   const raw = Array.isArray(value) ? value[0] : value;
@@ -104,6 +105,7 @@ export function Settings() {
           <NotificationsSection open={openSection === "notifications"} onToggle={() => toggle("notifications")} />
           <AppearanceSection open={openSection === "appearance"} onToggle={() => toggle("appearance")} />
           <SoundSection open={openSection === "sound"} onToggle={() => toggle("sound")} />
+          <LegalSection open={openSection === "legal"} onToggle={() => toggle("legal")} />
           <AdvancedSection open={openSection === "advanced"} onToggle={() => toggle("advanced")} />
         </View>
 

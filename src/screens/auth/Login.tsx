@@ -193,6 +193,12 @@ export function Login() {
       <Text className="mt-6 text-center text-sm text-ink-muted">
         New to Akọ? <TextLink href={(addMode ? "/signup?add=1" : returnTo ? `/signup?redirect=${encodeURIComponent(returnTo)}` : "/signup")}>Create an account</TextLink>
       </Text>
+
+      {!addMode ? (
+        <Text className="mt-5 text-center text-xs text-ink-muted">
+          By continuing, you agree to our <TextLink href="/terms">Terms of Service</TextLink> and <TextLink href="/privacy">Privacy Policy</TextLink>.
+        </Text>
+      ) : null}
     </AuthScreen>
   );
 }
