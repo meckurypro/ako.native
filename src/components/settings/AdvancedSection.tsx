@@ -1,6 +1,7 @@
 // src/components/settings/AdvancedSection.tsx
-// Advanced / danger zone: deactivate the account (soft delete — wallet history is kept).
-import { AlertTriangle, SlidersHorizontal } from "lucide-react-native";
+// Advanced / danger zone: Privacy Policy and Terms of Service links, then deactivate the account (soft delete — wallet history is kept).
+import { router, type Href } from "expo-router";
+import { AlertTriangle, ChevronRight, FileText, SlidersHorizontal } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, View } from "react-native";
 
@@ -13,6 +14,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { useDeactivateAccount } from "@/hooks/usePrivacy";
 import { removeSavedAccount } from "@/lib/accountSessions";
 import { haptics } from "@/lib/haptics";
+
+const LEGAL_LINKS = [
+  { href: "/privacy", label: "Privacy Policy", description: "What we collect, why, and your choices" },
+  { href: "/terms", label: "Terms of Service", description: "The rules for using Akọ" },
+];
 
 export function AdvancedSection({ open, onToggle }: { open: boolean; onToggle: () => void }) {
   const { user } = useAuth();
@@ -41,7 +47,25 @@ export function AdvancedSection({ open, onToggle }: { open: boolean; onToggle: (
 
   return (
     <SettingsSection icon={<Icon as={SlidersHorizontal} size={18} className="text-danger" />} title="Advanced" danger open={open} onToggle={onToggle}>
-      <View className="mt-3">
+      <View className="mt-3 overflow-hidden rounded-xl border border-border">
+        {LEGAL_LINKS.map((item, i) => (
+          <Pressable
+            key={item.href}
+            onPress={() => router.push(item.href as Href)}
+            accessibilityRole="link"
+            className={`flex-row items-center gap-3 bg-canvas p-4 ${i > 0 ? "border-t border-border" : ""}`}
+          >
+            <Icon as={FileText} size={18} className="text-ink-muted" />
+            <View className="min-w-0 flex-1">
+              <Text className="text-sm font-medium text-ink">{item.label}</Text>
+              <Text className="text-xs text-ink-muted">{item.description}</Text>
+            </View>
+            <Icon as={ChevronRight} size={18} className="text-ink-muted" />
+          </Pressable>
+        ))}
+      </View>
+
+      <View className="mt-5">
         {!confirming ? (
           <Pressable onPress={() => setConfirming(true)} accessibilityRole="button" className="self-start" hitSlop={8}>
             <Text className="text-sm font-medium text-danger">Deactivate account</Text>
