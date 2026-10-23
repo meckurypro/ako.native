@@ -22,6 +22,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomNavInset } from "@/components/nav/BottomNav";
 import { useChromeScroll } from "@/components/nav/ChromeProvider";
 import { AffiliateShareSheet } from "@/components/project/AffiliateShareSheet";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useToast } from "@/components/ui/Toast";
 import { EventHighlightsSection } from "@/components/project/EventHighlightsSection";
 import { ForewordInviteModal } from "@/components/project/ForewordInviteModal";
 import { ForewordsSheet } from "@/components/project/ForewordsSheet";
@@ -38,7 +40,7 @@ import { RoleTags } from "@/components/ui/RoleTags";
 import { Text } from "@/components/ui/Text";
 import { TierBadge } from "@/components/ui/TierBadge";
 import { Wordmark } from "@/components/ui/Wordmark";
-import { useAffiliateProgram } from "@/hooks/useAffiliates";
+import { useAffiliateProgram, useMyAffiliateRelationship, useUnforkAffiliateRelationship } from "@/hooks/useAffiliates";
 import { useAuth } from "@/hooks/useAuth";
 import { isForewordSupportedType, isInviteOpen, useMyForeword, useProjectForewords } from "@/hooks/useForewords";
 import { usePrefetchBookChapters } from "@/hooks/useBookBuilder";
@@ -110,6 +112,7 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
     insets.top + 16
   );
   const [shareSheetOpen, setShareSheetOpen] = useState(false);
+  const [unforkOpen, setUnforkOpen] = useState(false);
   // Forewords: the creator's panel (also opened by ?forewords=1 from a notification) and the invitee's dialog.
   const [forewordsOpen, setForewordsOpen] = useState(params.forewords === "1");
   const [forewordModalOpen, setForewordModalOpen] = useState(false);
@@ -121,6 +124,12 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
   const showForewordInvitee = !!myForewordRow && (isInviteOpen(myForewordRow) || myForewordRow.status === "submitted" || myForewordRow.status === "approved");
   const canBecomeAffiliate = !!user && !!project && !isOwner && !!affiliateProgram?.enabled && project.price_usd > 0;
   const shareUrl = project ? getProjectUrl(project) : undefined;
+  // Already forked → the CTA becomes Unfork (confirm first). Independent of the program still being enabled:
+  // an existing fork can always be dropped.
+  const toast = useToast();
+  const myFork = useMyAffiliateRelationship(project && project.project_type !== "pitch" ? project.id : undefined).data;
+  const unfork = useUnforkAffiliateRelationship(project?.id ?? "");
+  const hasForked = !!user && !isOwner && myFork?.status === "active";
 
   useMarkProjectSeen(projectId!, project?.owner?.id);
 
@@ -317,7 +326,16 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
                 </View>
               ) : null}
 
-              {canBecomeAffiliate ? (
+              {hasForked ? (
+                <Pressable
+                  onPress={() => setUnforkOpen(true)}
+                  accessibilityRole="button"
+                  className="-mt-2 mb-4 w-full flex-row items-center justify-center gap-2 rounded-2xl bg-ink/5 py-3 active:scale-[0.98]"
+                >
+                  <Icon as={GitFork} size={16} className="text-ink-muted" />
+                  <Text className="text-sm font-semibold text-ink-muted">Unfork</Text>
+                </Pressable>
+              ) : canBecomeAffiliate ? (
                 <Pressable
                   onPress={() => setShareSheetOpen(true)}
                   accessibilityRole="button"
@@ -406,6 +424,28 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
         />
       ) : null}
       {forewordModalOpen && project ? <ForewordInviteModal projectId={project.id} onClose={() => setForewordModalOpen(false)} /> : null}
+
+      {unforkOpen && project ? (
+        <ConfirmDialog
+          title="Unfork this project?"
+          description="You stop earning on its sales, including buyers your link already brought in. What you've already earned stays."
+          confirmLabel={unfork.isPending ? "Unforking…" : "Unfork"}
+          cancelLabel="Keep"
+          onConfirm={() =>
+            unfork.mutate(undefined, {
+              onSuccess: () => {
+                setUnforkOpen(false);
+                toast("Unforked.", { variant: "success" });
+              },
+              onError: (err) => {
+                setUnforkOpen(false);
+                toast(err instanceof Error ? err.message : "Couldn't unfork.", { variant: "error" });
+              },
+            })
+          }
+          onCancel={() => setUnforkOpen(false)}
+        />
+      ) : null}
 
       {shareSheetOpen && project ? (
         <AffiliateShareSheet projectId={project.id} projectTitle={project.title} shareUrl={shareUrl} onClose={() => setShareSheetOpen(false)} />

@@ -32,7 +32,7 @@ export interface AffiliateProgram {
   updated_at: string;
 }
 
-export type AffiliateRelationshipStatus = "active" | "revoked";
+export type AffiliateRelationshipStatus = "active" | "revoked" | "unforked";
 
 export interface AffiliateRelationship {
   id: string;
@@ -208,6 +208,7 @@ export function useMyAffiliateRelationship(projectId: string | undefined) {
         .select("*")
         .eq("project_id", projectId)
         .eq("affiliate_user_id", user!.id)
+        .neq("status", "unforked")
         .maybeSingle();
       if (error) throw error;
       return data;
@@ -247,6 +248,26 @@ export function useRevokeAffiliateRelationship(projectId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["my-affiliate-relationship", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["creator-affiliate-analytics", projectId] });
+    },
+  });
+}
+
+// Drops the current user's own fork of a project. Their link stops earning at once (server-side); commission
+// already earned stays. Forking again later issues a fresh link.
+export function useUnforkAffiliateRelationship(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (): Promise<AffiliateRelationship> => {
+      const { data, error } = await supabase.rpc("unfork_affiliate_relationship", { p_project_id: projectId });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["my-affiliate-relationship", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["my-affiliate-relationships"] });
+      queryClient.invalidateQueries({ queryKey: ["my-taggable-forked-projects"] });
       queryClient.invalidateQueries({ queryKey: ["creator-affiliate-analytics", projectId] });
     },
   });
@@ -308,6 +329,7 @@ export function useMyAffiliateRelationships() {
           "*, project:projects(id, title, thumbnail_url, project_type, price_usd, promo_price_usd, slug, owner:profiles!projects_owner_id_fkey(username), posted_as_page:pages(username))"
         )
         .eq("affiliate_user_id", user!.id)
+        .neq("status", "unforked")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as unknown as AffiliateRelationshipWithProject[];
