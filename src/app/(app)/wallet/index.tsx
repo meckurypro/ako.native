@@ -1,35 +1,19 @@
 // src/app/(app)/wallet/index.tsx
 //
-// Wallet home: balance, Fund / Withdraw / Vault / Affiliate actions, recent activity, and a status banner for a
-// payment that's still being confirmed. Port of the web Wallet page.
+// Wallet home — compact, nothing behind a menu: balance card (Fund / Withdraw), the latest transaction (tap through to
+// the full history at wallet/transactions), Can withdraw / In review, and a short row of links. A status banner shows
+// while a payment is still being confirmed. Port of the web Wallet page.
 //
 // Funding always happens on the web (Paystack) and returns here by deep link.
 // Withdrawals have their own screen (wallet/withdraw); Friday-only requests, paid out Saturdays.
 import { router } from "expo-router";
-import {
-  ArrowDownCircle,
-  ArrowUpCircle,
-  Clock,
-  Gem,
-  Gift,
-  Heart,
-  Megaphone,
-  Menu,
-  Receipt,
-  RotateCcw,
-  Sparkles,
-  TrendingUp,
-  Wallet as WalletIcon,
-  type LucideIcon,
-} from "lucide-react-native";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, Pressable, ScrollView, View } from "react-native";
+import { ArrowDownCircle, ArrowUpCircle, ChevronRight, Gem, ReceiptText, TrendingUp, Wallet as WalletIcon, type LucideIcon } from "lucide-react-native";
+import { useEffect, useRef } from "react";
+import { Pressable, ScrollView, View } from "react-native";
 
 import { useBottomNavInset } from "@/components/nav/BottomNav";
 import { Button, Icon, Text } from "@/components/ui";
 import { BrandCard, ON_BRAND, useBrandColor } from "@/components/ui/BrandCard";
-import { OptionsModal, type OptionItem } from "@/components/ui/OptionsModal";
-import { RefreshSkeleton } from "@/components/ui/RefreshSkeleton";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useDeposits, useVerifyDeposit } from "@/hooks/useDeposits";
@@ -39,39 +23,7 @@ import { useWithdrawals } from "@/hooks/usePayout";
 import { useWallet, useWalletTransactions } from "@/hooks/useWallet";
 import { useWithdrawalEligibility } from "@/hooks/useWalletRates";
 import { formatUsd } from "@/lib/money";
-import { WALLET_PERIODS, inPeriod, type WalletPeriod } from "@/lib/walletPeriod";
-
-// Per-type label, icon and tint — scanning history by icon is faster than reading every line.
-const TXN_META: Record<string, { label: string; icon: LucideIcon; positiveTint: boolean }> = {
-  fund: { label: "Wallet funded", icon: ArrowDownCircle, positiveTint: true },
-  gift_sent: { label: "Gift sent", icon: Gift, positiveTint: false },
-  gift_received: { label: "Gift received", icon: Gift, positiveTint: true },
-  purchase_sent: { label: "Purchase", icon: Receipt, positiveTint: false },
-  purchase_received: { label: "Sale", icon: Receipt, positiveTint: true },
-  platform_fee: { label: "Platform fee", icon: Receipt, positiveTint: false },
-  withdrawal: { label: "Withdrawal", icon: ArrowUpCircle, positiveTint: false },
-  reversal: { label: "Reversal", icon: RotateCcw, positiveTint: true },
-  dev_credit: { label: "Dev credit", icon: Sparkles, positiveTint: true },
-  affiliate_commission: { label: "Affiliate commission", icon: TrendingUp, positiveTint: true },
-  affiliate_commission_reversal: { label: "Affiliate commission reversed", icon: RotateCcw, positiveTint: false },
-  promotion_charge: { label: "Promotion charge", icon: Megaphone, positiveTint: false },
-  promotion_refund: { label: "Promotion refund", icon: RotateCcw, positiveTint: true },
-  give_back: { label: "Give Back reward", icon: Heart, positiveTint: true },
-  give_back_reversal: { label: "Give Back reward reversed", icon: RotateCcw, positiveTint: false },
-};
-
-interface Txn {
-  id: string;
-  type: string;
-  amount: number | string;
-  created_at: string;
-}
-
-function txnDate(dateString: string): string {
-  const d = new Date(dateString);
-  const sameYear = d.getFullYear() === new Date().getFullYear();
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: sameYear ? undefined : "numeric" });
-}
+import { txnMeta, type Txn } from "@/lib/walletTxn";
 
 // Fund is the primary action: a solid white pill with deep-brand text (a light button on a dark brand surface).
 // Withdraw is its quieter translucent twin. Same pairing as web.
@@ -98,12 +50,17 @@ function CardPill({ icon, label, onPress, primary }: { icon: LucideIcon; label: 
   );
 }
 
-type ActivityFilter = "all" | "in" | "out";
-const FILTERS: { id: ActivityFilter; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "in", label: "Money in" },
-  { id: "out", label: "Money out" },
-];
+// One tile in the links row: icon in a soft circle, one-word label.
+function Tile({ icon, label, onPress }: { icon: LucideIcon; label: string; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} className="flex-1 items-center gap-2 py-1 active:opacity-70">
+      <View className="h-12 w-12 items-center justify-center rounded-full bg-accent-soft">
+        <Icon as={icon} size={22} className="text-accent" />
+      </View>
+      <Text className="text-xs text-ink">{label}</Text>
+    </Pressable>
+  );
+}
 
 const RECENT_PENDING_MS = 30 * 60 * 1000;
 
@@ -126,35 +83,11 @@ export default function WalletScreen() {
     .filter((w) => w.status === "pending" || w.status === "processing")
     .reduce((sum, w) => sum + Number(w.amount_usd), 0);
 
-  const [filter, setFilter] = useState<ActivityFilter>("all");
-  const [period, setPeriod] = useState<WalletPeriod>("all");
-  const [menuOpen, setMenuOpen] = useState(false);
+  const latest = (transactions as Txn[] | undefined)?.[0];
+  const latestMeta = latest ? txnMeta(latest.type) : null;
+  const latestAmount = latest ? Number(latest.amount) : 0;
 
-  // Period first, so the in/out summary reflects the chosen range regardless of the In/Out filter.
-  const periodRows = useMemo(
-    () => ((transactions as Txn[] | undefined) ?? []).filter((t) => inPeriod(t.created_at, period)),
-    [transactions, period],
-  );
-  const summary = useMemo(() => {
-    let moneyIn = 0;
-    let moneyOut = 0;
-    for (const t of periodRows) {
-      const amt = Number(t.amount);
-      if (amt >= 0) moneyIn += amt;
-      else moneyOut += -amt;
-    }
-    return { moneyIn, moneyOut };
-  }, [periodRows]);
-  const rows = useMemo(
-    () =>
-      periodRows.filter((t) => {
-        const amt = Number(t.amount);
-        return filter === "all" ? true : filter === "in" ? amt >= 0 : amt < 0;
-      }),
-    [periodRows, filter],
-  );
-
-  const { refreshControl, refreshing } = usePullToRefresh([refetchWallet, refetchTxns, refetchDeposits, refetchEligibility, refetchWithdrawals]);
+  const { refreshControl } = usePullToRefresh([refetchWallet, refetchTxns, refetchDeposits, refetchEligibility, refetchWithdrawals]);
 
   // A payment started in the last half hour that hasn't been confirmed yet (user closed the browser
   // early, or the webhook is slow). Confirm it automatically once per reference, and let them re-check.
@@ -181,198 +114,131 @@ export default function WalletScreen() {
     return (
       <View className="flex-1 bg-canvas">
         <ScreenHeader title="Wallet" icon={WalletIcon} back={false} bar />
-        <Text className="px-4 pt-10 text-center text-sm text-ink-muted">
-          The wallet is temporarily unavailable. Check back later.
-        </Text>
+        <Text className="px-4 pt-10 text-center text-sm text-ink-muted">Wallet unavailable. Check back soon.</Text>
       </View>
     );
   }
 
-  // The hamburger: everything that used to sit around the balance card, grouped by what it's for. First the two
-  // numbers people check before asking for money out (both lead to Withdraw, which also lists past requests), then
-  // the other ways money reaches the wallet.
-  const amountBadge = (v: number) => <Text className="text-sm font-semibold text-overlay-ink">{formatUsd(v)}</Text>;
-  const menuItems: (OptionItem | "divider")[] = [
-    ...(withdrawalsEnabled
-      ? ([
-          { key: "can-withdraw", label: "Can withdraw", description: "this week", icon: <Icon as={ArrowUpCircle} size={24} className="text-overlay-ink" />, badge: amountBadge(eligibility?.available_to_request ?? 0), onSelect: () => router.push("/wallet/withdraw") },
-          { key: "in-review", label: "In review", description: "on its way to your bank", icon: <Icon as={Clock} size={24} className="text-overlay-ink" />, badge: amountBadge(inReviewUsd), onSelect: () => router.push("/wallet/withdraw") },
-          "divider",
-        ] satisfies (OptionItem | "divider")[])
-      : []),
-    { key: "gifts", label: "Gift Vault", description: "Gifts you've been given", icon: <Icon as={Gem} size={24} className="text-overlay-ink" />, onSelect: () => router.push("/wallet/gifts") },
-    ...(affiliateEnabled
-      ? ([{ key: "affiliate", label: "Affiliate", description: "Forked projects & commissions", icon: <Icon as={TrendingUp} size={24} className="text-overlay-ink" />, onSelect: () => router.push("/wallet/affiliate-links") }] satisfies OptionItem[])
-      : []),
+  const tiles: { key: string; icon: LucideIcon; label: string; to: string }[] = [
+    { key: "transactions", icon: ReceiptText, label: "Transactions", to: "/wallet/transactions" },
+    { key: "gifts", icon: Gem, label: "Gift Vault", to: "/wallet/gifts" },
+    ...(affiliateEnabled ? [{ key: "affiliate", icon: TrendingUp, label: "Affiliate", to: "/wallet/affiliate-links" }] : []),
   ];
 
-  // Nothing on this screen is pinned: the header, the balance card and the activity all scroll together.
-  const screenHeader = (
-    <View className="-mx-4">
-      <ScreenHeader
-        title="Wallet"
-        icon={WalletIcon}
-        back={false}
-        bar
-        right={
-          <Pressable onPress={() => setMenuOpen(true)} accessibilityRole="button" accessibilityLabel="Wallet menu" hitSlop={8} className="ml-auto h-10 w-10 items-center justify-center rounded-full active:opacity-70">
-            <Icon as={Menu} size={24} className="text-ink-muted" />
-          </Pressable>
-        }
-      />
-    </View>
-  );
-
-  const card = (
-    <View className="pb-1 pt-4">
-      {/* Balance card — the one bold element on the page */}
-      <BrandCard className="p-6">
-        <View className="flex-row items-center justify-between">
-          <Text className="text-[11px] font-medium uppercase tracking-[0.16em]" style={{ color: ON_BRAND.full }}>
-            Available balance
-          </Text>
-          <View className="rounded-full px-2.5 py-0.5" style={{ backgroundColor: ON_BRAND.chip, borderWidth: 1, borderColor: ON_BRAND.chipBorder }}>
-            <Text className="text-[11px] font-medium tracking-wide" style={{ color: ON_BRAND.full }}>
-              USD
-            </Text>
-          </View>
-        </View>
-
-        {isLoading ? (
-          <Skeleton className="mb-6 mt-3 h-12 w-40 rounded-xl" />
-        ) : (
-          <Text className="mb-6 mt-3 font-display text-5xl" style={{ color: ON_BRAND.full }}>
-            {formatUsd(wallet?.balance ?? 0)}
-          </Text>
-        )}
-
-        {depositsEnabled || withdrawalsEnabled ? (
-          <View className="flex-row gap-3">
-            {depositsEnabled ? <CardPill icon={ArrowDownCircle} label="Fund" primary onPress={() => router.push("/wallet/fund")} /> : null}
-            {withdrawalsEnabled ? (
-              <CardPill icon={ArrowUpCircle} label="Withdraw" primary={!depositsEnabled} onPress={() => router.push("/wallet/withdraw")} />
-            ) : null}
-          </View>
-        ) : (
-          <Text className="text-xs" style={{ color: ON_BRAND.high }}>
-            Funding and withdrawals are temporarily unavailable.
-          </Text>
-        )}
-      </BrandCard>
-    </View>
-  );
-
-  const header = (
-    <View>
-      {screenHeader}
-      {card}
-      {pending.length > 0 ? (
-        <View className="mb-4 rounded-2xl border border-border bg-surface p-4">
-          <Text className="text-sm font-medium text-ink">Confirming your payment…</Text>
-          <Text className="mt-1 text-xs text-ink-muted">
-            If you've paid, your wallet will be credited as soon as Paystack confirms it — usually within a minute.
-          </Text>
-          <Button size="sm" variant="secondary" className="mt-3" loading={verifyDeposit.isPending} onPress={recheck}>
-            Check again
-          </Button>
-        </View>
-      ) : null}
-
-      <Text className="mb-3 mt-4 font-display text-lg text-ink">Activity</Text>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3 -mx-4" contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
-        {FILTERS.map((f) => (
-          <Pressable
-            key={f.id}
-            onPress={() => setFilter(f.id)}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: filter === f.id }}
-            className={`rounded-full border px-3.5 py-2 ${filter === f.id ? "border-accent bg-accent" : "border-border bg-surface"}`}
-          >
-            <Text className={`text-sm ${filter === f.id ? "text-canvas" : "text-ink"}`}>{f.label}</Text>
-          </Pressable>
-        ))}
-      </ScrollView>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3 -mx-4" contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
-        {WALLET_PERIODS.map((p) => (
-          <Pressable
-            key={p.id}
-            onPress={() => setPeriod(p.id)}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: period === p.id }}
-            className={`rounded-full border px-3 py-1.5 ${period === p.id ? "border-accent/40 bg-accent-soft" : "border-border"}`}
-          >
-            <Text className={`text-xs ${period === p.id ? "font-medium text-accent" : "text-ink-muted"}`}>{p.label}</Text>
-          </Pressable>
-        ))}
-      </ScrollView>
-
-      {periodRows.length > 0 ? (
-        <Text className="mb-3 px-1 text-xs text-ink-muted">
-          In <Text className="font-medium text-accent">+{formatUsd(summary.moneyIn)}</Text> · Out{" "}
-          <Text className="font-medium text-ink">-{formatUsd(summary.moneyOut)}</Text>
-          {period !== "all" ? ` · ${WALLET_PERIODS.find((p) => p.id === period)!.label.toLowerCase()}` : ""}
-        </Text>
-      ) : null}
-    </View>
-  );
-
+  // Nothing on this screen is pinned: the header and content scroll together.
   return (
     <View className="flex-1 bg-canvas">
-      <FlatList<Txn>
+      <ScrollView
         showsVerticalScrollIndicator={false}
-        showsHorizontalScrollIndicator={false}
-        data={refreshing ? [] : rows}
-        keyExtractor={(t) => t.id}
         refreshControl={refreshControl}
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: bottomInset + 24 }}
-        ListHeaderComponent={header}
-        ListEmptyComponent={
-          refreshing ? (
-            <RefreshSkeleton rows={4} />
-          ) : (
-            <View className="items-center py-10">
-              <Text className="text-sm text-ink-muted">
-                {transactions && transactions.length > 0 ? "Nothing here for this filter." : "No transactions yet."}
-              </Text>
-              {!transactions || transactions.length === 0 ? (
-                <Text className="mt-1 text-xs text-ink-muted">Everything you fund, spend, and earn will show up here.</Text>
-              ) : null}
-            </View>
-          )
-        }
-        renderItem={({ item, index }) => {
-          const meta = TXN_META[item.type] ?? { label: item.type.replace(/_/g, " "), icon: Receipt, positiveTint: false };
-          const amount = Number(item.amount);
-          const count = rows.length;
-          return (
-            <View
-              className={`flex-row items-center gap-3 border-x border-border bg-surface px-4 py-3.5 ${
-                index === 0 ? "rounded-t-2xl border-t" : "border-t"
-              } ${index === count - 1 ? "rounded-b-2xl border-b" : ""}`}
-            >
-              <View
-                className={`h-9 w-9 items-center justify-center rounded-full ${meta.positiveTint ? "bg-accent-soft" : "bg-ink/5"}`}
-              >
-                <Icon as={meta.icon} size={16} className={meta.positiveTint ? "text-accent" : "text-ink-muted"} />
-              </View>
-              <View className="min-w-0 flex-1">
-                <Text numberOfLines={1} className="text-sm text-ink">
-                  {meta.label}
-                </Text>
-                <Text className="text-xs text-ink-muted">{txnDate(item.created_at)}</Text>
-              </View>
-              <Text className={`text-sm font-medium ${amount >= 0 ? "text-accent" : "text-ink"}`}>
-                {amount >= 0 ? "+" : "-"}
-                {formatUsd(Math.abs(amount))}
-              </Text>
-            </View>
-          );
-        }}
-      />
+      >
+        <View className="-mx-4">
+          <ScreenHeader title="Wallet" icon={WalletIcon} back={false} bar />
+        </View>
 
-      {menuOpen ? <OptionsModal title="Wallet" items={menuItems} onClose={() => setMenuOpen(false)} /> : null}
+        {/* Balance card — the one bold element on the page */}
+        <View className="pt-4">
+          <BrandCard className="p-6">
+            <View className="flex-row items-center justify-between">
+              <Text className="text-[11px] font-medium uppercase tracking-[0.16em]" style={{ color: ON_BRAND.full }}>
+                Balance
+              </Text>
+              <View className="rounded-full px-2.5 py-0.5" style={{ backgroundColor: ON_BRAND.chip, borderWidth: 1, borderColor: ON_BRAND.chipBorder }}>
+                <Text className="text-[11px] font-medium tracking-wide" style={{ color: ON_BRAND.full }}>
+                  USD
+                </Text>
+              </View>
+            </View>
+
+            {isLoading ? (
+              <Skeleton className="mb-6 mt-3 h-12 w-40 rounded-xl" />
+            ) : (
+              <Text className="mb-6 mt-3 font-display text-5xl" style={{ color: ON_BRAND.full }}>
+                {formatUsd(wallet?.balance ?? 0)}
+              </Text>
+            )}
+
+            {depositsEnabled || withdrawalsEnabled ? (
+              <View className="flex-row gap-3">
+                {depositsEnabled ? <CardPill icon={ArrowDownCircle} label="Fund" primary onPress={() => router.push("/wallet/fund")} /> : null}
+                {withdrawalsEnabled ? (
+                  <CardPill icon={ArrowUpCircle} label="Withdraw" primary={!depositsEnabled} onPress={() => router.push("/wallet/withdraw")} />
+                ) : null}
+              </View>
+            ) : (
+              <Text className="text-xs" style={{ color: ON_BRAND.high }}>
+                Funding and withdrawals are paused.
+              </Text>
+            )}
+          </BrandCard>
+        </View>
+
+        {pending.length > 0 ? (
+          <View className="mt-3 flex-row items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3">
+            <View className="min-w-0 flex-1">
+              <Text className="text-sm font-medium text-ink">Confirming your payment…</Text>
+              <Text className="text-xs text-ink-muted">Usually under a minute.</Text>
+            </View>
+            <Button size="sm" variant="secondary" loading={verifyDeposit.isPending} onPress={recheck}>
+              Check
+            </Button>
+          </View>
+        ) : null}
+
+        {/* Latest transaction → full history */}
+        <Pressable
+          onPress={() => router.push("/wallet/transactions")}
+          accessibilityRole="button"
+          accessibilityLabel="Transactions"
+          className="mt-3 flex-row items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3 active:opacity-70"
+        >
+          <Text numberOfLines={1} className="min-w-0 flex-1 text-sm text-ink">
+            {latest && latestMeta ? (
+              <>
+                {latestMeta.label}{" "}
+                <Text className={`text-sm font-medium ${latestAmount >= 0 ? "text-accent" : "text-ink"}`}>
+                  {latestAmount >= 0 ? "+" : "-"}
+                  {formatUsd(Math.abs(latestAmount))}
+                </Text>
+              </>
+            ) : (
+              <Text className="text-sm text-ink-muted">No transactions yet</Text>
+            )}
+          </Text>
+          <View className="flex-row items-center">
+            <Text className="text-xs text-ink-muted">Transactions</Text>
+            <Icon as={ChevronRight} size={16} className="text-ink-muted" />
+          </View>
+        </Pressable>
+
+        {/* Can withdraw / In review */}
+        {withdrawalsEnabled ? (
+          <Pressable
+            onPress={() => router.push("/wallet/withdraw")}
+            accessibilityRole="button"
+            accessibilityLabel="Withdrawals"
+            className="mt-3 flex-row overflow-hidden rounded-2xl border border-border bg-surface active:opacity-70"
+          >
+            <View className="flex-1 px-4 py-3">
+              <Text className="text-xs text-ink-muted">Can withdraw</Text>
+              <Text className="mt-0.5 text-base font-semibold text-ink">{formatUsd(eligibility?.available_to_request ?? 0)}</Text>
+            </View>
+            <View className="w-px bg-border" />
+            <View className="flex-1 px-4 py-3">
+              <Text className="text-xs text-ink-muted">In review</Text>
+              <Text className="mt-0.5 text-base font-semibold text-ink">{formatUsd(inReviewUsd)}</Text>
+            </View>
+          </Pressable>
+        ) : null}
+
+        {/* Links */}
+        <View className="mt-3 flex-row rounded-2xl border border-border bg-surface px-2 py-3">
+          {tiles.map((t) => (
+            <Tile key={t.key} icon={t.icon} label={t.label} onPress={() => router.push(t.to as never)} />
+          ))}
+        </View>
+      </ScrollView>
     </View>
   );
 }
