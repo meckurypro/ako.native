@@ -35,8 +35,9 @@ import type {
 } from "../types/database";
 
 const PAGE_SELECT_BASE = "id, page_type, name, username, tagline, bio, avatar_url, cover_url, website_url, category_id, parent_organization_id, created_by, is_verified, is_active, follower_count, created_at, updated_at";
-// The hero slideshow settings live on the page row (see ako_page_landing_revamp.sql).
-const PAGE_SELECT = `${PAGE_SELECT_BASE}, hero_autoplay, hero_interval_seconds, hero_direction`;
+// The hero slideshow settings live on the page row (see ako_page_landing_revamp.sql), and so does the
+// chosen layout template (see ako_page_templates.sql).
+const PAGE_SELECT = `${PAGE_SELECT_BASE}, hero_autoplay, hero_interval_seconds, hero_direction, page_template`;
 
 /** Minimal page lookup by id — used where only a page_id is on hand
  * (e.g. resolving a page_role_accepted notification's target to a

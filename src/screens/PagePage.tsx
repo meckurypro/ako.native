@@ -7,6 +7,7 @@ import {
   Building2,
   Eye,
   Images,
+  LayoutTemplate,
   Link2,
   MoreHorizontal,
   Pencil,
@@ -27,6 +28,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomNavInset } from "@/components/nav/BottomNav";
 import { useChromeScroll } from "@/components/nav/ChromeProvider";
 import { PageHero } from "@/components/page/PageHero";
+import { PageTemplateLayout } from "@/components/page/PageTemplateLayout";
+import { getPageTemplate, resolveTemplateConfig, type ActionsMode } from "@/lib/pageTemplates";
 import { PageTeamShowcase } from "@/components/page/PageTeamShowcase";
 import { PostCard } from "@/components/post/PostCard";
 import { ProjectCardList } from "@/components/project/ProjectCardList";
@@ -86,31 +89,11 @@ function getWebsiteDomain(url: string): string {
   }
 }
 
-function SectionTitle({ children }: { children: string }) {
-  return (
-    <Text accessibilityRole="header" className="font-display text-xl font-semibold tracking-tight text-ink">
-      {children}
-    </Text>
-  );
-}
-
 function GlassButton({ icon, label, onPress }: { icon: typeof Plus; label: string; onPress: () => void }) {
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} hitSlop={6} className="h-10 w-10 items-center justify-center rounded-full" style={GLASS}>
       <Icon as={icon} size={22} className="text-white" />
     </Pressable>
-  );
-}
-
-// Stacked translucent bands stand in for a gradient (no gradient dependency in the app) — keeps the white
-// buttons legible on any banner image.
-function TopScrim() {
-  return (
-    <View pointerEvents="none" className="absolute inset-x-0 top-0" style={{ height: 96 }}>
-      {[0.34, 0.24, 0.14, 0.06].map((a, i) => (
-        <View key={i} style={{ flex: 1, backgroundColor: `rgba(0,0,0,${a})` }} />
-      ))}
-    </View>
   );
 }
 
@@ -254,6 +237,7 @@ export function PagePage() {
 
   const hasSlides = (slides?.length ?? 0) > 0;
   const hasFeatured = (featured?.length ?? 0) > 0;
+  const cfg = resolveTemplateConfig(getPageTemplate(page.page_template), hasSlides);
   const menuItems: (DropdownMenuItem | "divider")[] = [
     { key: "share", label: `Share ${pageModeLabel(page.page_type).toLowerCase()}`, icon: <Icon as={Redo2} size={22} className="text-overlay-ink" />, onSelect: () => void sharePage() },
     ...(isMember && isActiveHere
@@ -280,6 +264,7 @@ export function PagePage() {
       ? [
           { key: "edit", label: "Edit page", icon: <Icon as={Pencil} size={22} className="text-overlay-ink" />, onSelect: () => router.push(`/page/${page.username}/edit` as Href) } satisfies DropdownMenuItem,
           { key: "hero", label: hasSlides ? "Hero slides" : "Add hero slides", icon: <Icon as={Images} size={22} className="text-overlay-ink" />, onSelect: () => router.push(`/page/${page.username}/edit?section=hero` as Href) } satisfies DropdownMenuItem,
+          { key: "template", label: "Change template", icon: <Icon as={LayoutTemplate} size={22} className="text-overlay-ink" />, onSelect: () => router.push(`/page/${page.username}/edit?section=template` as Href) } satisfies DropdownMenuItem,
           {
             key: "preview",
             label: previewingAsVisitor ? "Exit visitor view" : "View as visitor",
@@ -313,102 +298,132 @@ export function PagePage() {
       : []),
   ];
 
-  const header = (
-    <View className="bg-canvas">
-      {/* Banner — with the back / create / options buttons floating over it. */}
-      <View className="w-full overflow-hidden bg-accent-soft" style={{ aspectRatio: BANNER_ASPECT }}>
-        {page.cover_url ? <Image source={{ uri: page.cover_url }} contentFit="cover" style={{ width: "100%", height: "100%" }} /> : <View className="h-full w-full bg-accent-soft" />}
-        <TopScrim />
-        <View className="absolute inset-x-0 top-0 flex-row items-center gap-1 px-3 pt-3">
-          <GlassButton icon={ArrowLeft} label="Back" onPress={smartBack} />
-          <View className="flex-1" />
-          {/* Only while actually ACTING as this page, so "what I create next" matches "who I'm posting as". */}
-          {isActiveHere && !restricted ? <GlassButton icon={Plus} label="Create" onPress={() => router.push("/create")} /> : null}
-          <View ref={menuButtonRef} collapsable={false}>
-            <GlassButton icon={MoreHorizontal} label="Page options" onPress={() => setMenuOpen(true)} />
-          </View>
+  // Follow / Edit / Share, dressed for wherever the template puts them (on the image, stacked, as text…).
+  const renderActions = (tone: "normal" | "overlay", layout: ActionsMode) => {
+    const overlay = tone === "overlay";
+    const text = layout === "text";
+    const stack = layout === "stack";
+    const row = layout === "row";
+    const fill = stack ? "self-stretch justify-center" : row ? "flex-1 justify-center" : "";
+    const followBox = text ? "flex-row items-center gap-1.5" : overlay ? `h-11 flex-row items-center gap-2 rounded-full bg-white px-6 active:opacity-80 ${fill}` : `h-11 flex-row items-center gap-2 rounded-full bg-cta px-6 active:opacity-80 ${fill}`;
+    const followText = text ? "text-[15px] font-semibold text-accent" : overlay ? "text-[15px] font-semibold text-black" : "text-[15px] font-semibold text-white";
+    const secondBox = text ? "flex-row items-center gap-1.5" : overlay ? `h-11 flex-row items-center gap-2 rounded-full px-5 active:opacity-80 ${fill}` : `h-11 flex-row items-center gap-2 rounded-full border border-border bg-surface px-5 active:opacity-80 ${fill}`;
+    const secondText = text ? "text-[15px] font-medium text-ink-muted" : overlay ? "text-[15px] font-semibold text-white" : "text-[15px] font-semibold text-ink";
+    const secondIcon = overlay ? "text-white" : text ? "text-ink-muted" : "text-ink";
+    const overlayGlass = overlay ? { backgroundColor: "rgba(255,255,255,0.22)" } : undefined;
+    const labelledShare = text || stack;
+    return (
+      <View className={`flex-row items-center ${stack ? "flex-col items-stretch gap-2" : text ? "gap-5" : "gap-2"} ${row ? "self-stretch" : ""}`}>
+        {showFollowButton ? (
+          <Pressable
+            onPress={() => {
+              if (!user) return router.push(`/login?redirect=/page/${page.username}` as Href);
+              haptics.selection();
+              toggleFollow.mutate(false);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={`Follow ${page.name}`}
+            className={followBox}
+          >
+            <Icon as={UserPlus} size={text ? 16 : 18} className={text ? "text-accent" : overlay ? "text-black" : "text-white"} />
+            <Text className={followText}>Follow</Text>
+          </Pressable>
+        ) : null}
+        {editorView ? (
+          <Pressable onPress={() => router.push(`/page/${page.username}/edit` as Href)} accessibilityRole="button" accessibilityLabel="Edit page" className={secondBox} style={overlayGlass}>
+            <Icon as={Pencil} size={16} className={secondIcon} />
+            <Text className={secondText}>Edit page</Text>
+          </Pressable>
+        ) : null}
+        <Pressable
+          onPress={() => void sharePage()}
+          accessibilityRole="button"
+          accessibilityLabel="Share"
+          className={labelledShare ? secondBox : `h-11 w-11 items-center justify-center rounded-full active:opacity-80 ${overlay ? "" : "border border-border bg-surface"}`}
+          style={overlayGlass}
+        >
+          <Icon as={Share2} size={labelledShare ? 16 : 19} className={secondIcon} />
+          {labelledShare ? <Text className={secondText}>Share</Text> : null}
+        </Pressable>
+      </View>
+    );
+  };
+
+  // Back / create / options. Over an image they float as glass; on a plain top they are ordinary buttons.
+  const topControls = (dark: boolean) => {
+    const plain = "h-10 w-10 items-center justify-center rounded-full bg-surface active:opacity-80";
+    const Btn = ({ icon, label, onPress }: { icon: typeof Plus; label: string; onPress: () => void }) =>
+      dark ? (
+        <GlassButton icon={icon} label={label} onPress={onPress} />
+      ) : (
+        <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} hitSlop={6} className={plain}>
+          <Icon as={icon} size={22} className="text-ink" />
+        </Pressable>
+      );
+    return (
+      <View className="flex-row items-center gap-1 px-3 pb-1 pt-3">
+        <Btn icon={ArrowLeft} label="Back" onPress={smartBack} />
+        <View className="flex-1" />
+        {/* Only while actually ACTING as this page, so "what I create next" matches "who I'm posting as". */}
+        {isActiveHere && !restricted ? <Btn icon={Plus} label="Create" onPress={() => router.push("/create")} /> : null}
+        <View ref={menuButtonRef} collapsable={false}>
+          <Btn icon={MoreHorizontal} label="Page options" onPress={() => setMenuOpen(true)} />
         </View>
       </View>
+    );
+  };
 
-      {/* Identity */}
-      <View className="px-4">
-        <View className="-mt-12 flex-row items-end justify-between gap-3">
-          <View className="rounded-full bg-canvas p-1">
-            <Avatar src={page.avatar_url} name={page.name} size="2xl" />
-          </View>
-          <View className="flex-row items-center gap-2 pb-1">
-            {showFollowButton ? (
-              <Pressable
-                onPress={() => {
-                  if (!user) return router.push(`/login?redirect=/page/${page.username}` as Href);
-                  haptics.selection();
-                  toggleFollow.mutate(false);
-                }}
-                accessibilityRole="button"
-                accessibilityLabel={`Follow ${page.name}`}
-                className="h-11 flex-row items-center gap-2 rounded-full bg-cta px-6 active:opacity-80"
-              >
-                <Icon as={UserPlus} size={18} className="text-white" />
-                <Text className="text-[15px] font-semibold text-white">Follow</Text>
-              </Pressable>
-            ) : null}
-            {editorView ? (
-              <Pressable onPress={() => router.push(`/page/${page.username}/edit` as Href)} accessibilityRole="button" accessibilityLabel="Edit page" className="h-11 flex-row items-center gap-2 rounded-full border border-border bg-surface px-5 active:opacity-80">
-                <Icon as={Pencil} size={16} className="text-ink" />
-                <Text className="text-[15px] font-semibold text-ink">Edit page</Text>
-              </Pressable>
-            ) : null}
-            <Pressable onPress={() => void sharePage()} accessibilityRole="button" accessibilityLabel="Share" className="h-11 w-11 items-center justify-center rounded-full border border-border bg-surface active:opacity-80">
-              <Icon as={Share2} size={19} className="text-ink" />
-            </Pressable>
-          </View>
-        </View>
-
-        <View ref={nameButtonRef} collapsable={false} className="mt-3 self-start">
+  const header = (
+    <PageTemplateLayout
+      page={page}
+      cfg={cfg}
+      topControls={topControls}
+      renderName={(className) => (
+        <View ref={nameButtonRef} collapsable={false} className="self-start">
           <Pressable
             onPress={() => canSwitchByName && setNameMenuOpen(true)}
             disabled={!canSwitchByName}
             accessibilityRole={canSwitchByName ? "button" : "text"}
             accessibilityLabel={canSwitchByName ? `${page.name} — switch to another page` : page.name}
           >
-            <Text accessibilityRole="header" className="font-display text-[28px] font-semibold leading-tight tracking-tight text-ink">
+            <Text accessibilityRole="header" className={className}>
               {page.name}
             </Text>
           </Pressable>
         </View>
-        {page.is_verified ? <VerifiedBadge size={15} label className="mt-1" /> : null}
-        <Text className="mt-1 text-sm text-ink-muted">
-          {pageModeLabel(page.page_type)} · @{page.username}
-        </Text>
-        {page.tagline ? <Text className="mt-2 text-base leading-snug text-ink">{page.tagline}</Text> : null}
-        {parentPage ? (
+      )}
+      renderActions={renderActions}
+      verified={page.is_verified ? <VerifiedBadge size={15} label /> : null}
+      handleLine={`${pageModeLabel(page.page_type)} · @${page.username}`}
+      tagline={page.tagline}
+      parentLine={
+        parentPage ? (
           <Text className="mt-1.5 text-xs text-ink-muted">
             {"A Subsidiary of "}
             <Text className="font-medium text-accent" accessibilityRole="link" onPress={() => router.push(`/page/${parentPage.username}` as Href)}>
               {parentPage.name}
             </Text>
           </Text>
-        ) : null}
-
-        <View className="mt-4 flex-row flex-wrap items-center gap-x-5 gap-y-2">
-          <Text className="text-sm">
-            <Text className="font-bold text-ink">{page.follower_count}</Text>
-            <Text className="text-ink-muted">{page.follower_count === 1 ? " follower" : " followers"}</Text>
-          </Text>
-          {page.website_url ? (
-            <Pressable onPress={() => void openExternal(getWebsiteHref(page.website_url!))} accessibilityRole="link" accessibilityLabel={`Website: ${getWebsiteDomain(page.website_url)}`} className="max-w-full flex-row items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1.5">
-              <Icon as={Link2} size={14} className="text-accent" />
-              <Text numberOfLines={1} className="shrink text-sm font-medium text-accent">
-                {getWebsiteDomain(page.website_url)}
-              </Text>
-            </Pressable>
-          ) : null}
-        </View>
-      </View>
-
-      {/* Landing sections */}
-      <View className="mt-8 gap-9 px-4 pb-8">
-        {previewingAsVisitor && canEditPage ? (
+        ) : null
+      }
+      followers={
+        <Text className="text-sm">
+          <Text className="font-bold text-ink">{page.follower_count}</Text>
+          <Text className="text-ink-muted">{page.follower_count === 1 ? " follower" : " followers"}</Text>
+        </Text>
+      }
+      website={
+        page.website_url ? (
+          <Pressable onPress={() => void openExternal(getWebsiteHref(page.website_url!))} accessibilityRole="link" accessibilityLabel={`Website: ${getWebsiteDomain(page.website_url)}`} className="max-w-full flex-row items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1.5">
+            <Icon as={Link2} size={14} className="text-accent" />
+            <Text numberOfLines={1} className="shrink text-sm font-medium text-accent">
+              {getWebsiteDomain(page.website_url)}
+            </Text>
+          </Pressable>
+        ) : null
+      }
+      visitorNotice={
+        previewingAsVisitor && canEditPage ? (
           <View className="flex-row items-center justify-between gap-3 rounded-xl bg-accent-soft px-4 py-2.5">
             <View className="min-w-0 flex-1 flex-row items-center gap-1.5">
               <Icon as={Eye} size={14} className="text-accent" />
@@ -419,47 +434,38 @@ export function PagePage() {
               <Text className="text-sm font-medium text-accent">Exit</Text>
             </Pressable>
           </View>
-        ) : null}
-
-        {hasSlides ? (
-          <PageHero slides={slides!} autoplay={page.hero_autoplay ?? true} intervalSeconds={page.hero_interval_seconds ?? 5} direction={page.hero_direction ?? "forward"} pageName={page.name} aspect={heroAspect} onTouchLock={setSwipeLocked} />
-        ) : null}
-
-        {page.bio ? (
-          <View>
-            <SectionTitle>About</SectionTitle>
-            <Text className="mt-2 text-[15px] leading-relaxed text-ink">{page.bio}</Text>
-          </View>
-        ) : null}
-
-        {hasFeatured ? <PageTeamShowcase members={featured!} onTouchLock={setSwipeLocked} /> : null}
-
-        {subsidiaries && subsidiaries.length > 0 ? (
-          <View>
-            <SectionTitle>Subsidiaries</SectionTitle>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              showsVerticalScrollIndicator={false}
-              onTouchStart={() => setSwipeLocked(true)}
-              onTouchEnd={() => setSwipeLocked(false)}
-              onTouchCancel={() => setSwipeLocked(false)}
-              className="-mx-4 mt-3"
-              contentContainerClassName="gap-3 px-4"
-            >
-              {subsidiaries.map((s) => (
-                <Pressable key={s.id} onPress={() => router.push(`/page/${s.username}` as Href)} accessibilityRole="link" className="w-20 shrink-0 items-center gap-1.5">
-                  <Avatar src={s.avatar_url} name={s.name} size="vn" />
-                  <Text numberOfLines={1} className="w-full text-center text-xs text-ink-muted">
-                    {s.name}
-                  </Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-          </View>
-        ) : null}
-      </View>
-    </View>
+        ) : null
+      }
+      hero={
+        hasSlides ? (
+          <PageHero slides={slides!} autoplay={page.hero_autoplay ?? true} intervalSeconds={page.hero_interval_seconds ?? 5} direction={page.hero_direction ?? "forward"} pageName={page.name} aspect={heroAspect} frame={cfg.heroFrame} onTouchLock={setSwipeLocked} />
+        ) : null
+      }
+      team={(heading) => (hasFeatured ? <PageTeamShowcase members={featured!} onTouchLock={setSwipeLocked} heading={heading} /> : null)}
+      subsidiaries={
+        subsidiaries && subsidiaries.length > 0 ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            showsVerticalScrollIndicator={false}
+            onTouchStart={() => setSwipeLocked(true)}
+            onTouchEnd={() => setSwipeLocked(false)}
+            onTouchCancel={() => setSwipeLocked(false)}
+            className="-mx-4 mt-3"
+            contentContainerClassName="gap-3 px-4"
+          >
+            {subsidiaries.map((s) => (
+              <Pressable key={s.id} onPress={() => router.push(`/page/${s.username}` as Href)} accessibilityRole="link" className="w-20 shrink-0 items-center gap-1.5">
+                <Avatar src={s.avatar_url} name={s.name} size="vn" />
+                <Text numberOfLines={1} className="w-full text-center text-xs text-ink-muted">
+                  {s.name}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        ) : null
+      }
+    />
   );
 
   // The sticky tab bar — same sliding indicator as the profile and Library.

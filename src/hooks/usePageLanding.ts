@@ -255,3 +255,18 @@ export function normalizeWebsite(input: string): string | null {
     return null;
   }
 }
+
+/** Save a page's layout template. Editors only (same rule as every other page detail). */
+export function useUpdatePageTemplate(pageId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (template: string) => {
+      const { error } = await supabase
+        .from("pages")
+        .update({ page_template: template === "classic" ? null : template })
+        .eq("id", pageId);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["page"], refetchType: "all" }),
+  });
+}

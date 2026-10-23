@@ -26,6 +26,8 @@ interface PageHeroProps {
   pageName: string;
   /** Width / height of the frame — set by the first slide. Defaults to 16:9. */
   aspect?: number;
+  /** How the frame is dressed: rounded card (default), edge-to-edge, or a quiet bordered inset. */
+  frame?: "card" | "bleed" | "inset";
   /** Lets the screen switch off its own swipe-between-tabs while a finger is on the slideshow. */
   onTouchLock?: (locked: boolean) => void;
 }
@@ -72,7 +74,7 @@ function Segment({ active, running, canAutoplay, seconds, onPress, label }: { ac
 
 const SETTLE_MS = 450; // how long a programmatic glide is allowed to run before we check for a clone
 
-export function PageHero({ slides, autoplay, intervalSeconds, direction, pageName, onTouchLock, aspect = 16 / 9 }: PageHeroProps) {
+export function PageHero({ slides, autoplay, intervalSeconds, direction, pageName, onTouchLock, aspect = 16 / 9, frame = "card" }: PageHeroProps) {
   const { height: windowHeight } = useWindowDimensions();
   // Tall frames are capped to ~70% of the screen height so a 9:16 hero never swallows the page.
   const maxFrameWidth = windowHeight * 0.7 * aspect;
@@ -195,7 +197,7 @@ export function PageHero({ slides, autoplay, intervalSeconds, direction, pageNam
       onTouchStart={() => onTouchLock?.(true)}
       onTouchEnd={() => onTouchLock?.(false)}
       onTouchCancel={() => onTouchLock?.(false)}
-      className="overflow-hidden rounded-3xl bg-surface"
+      className={`overflow-hidden bg-surface ${frame === "bleed" ? "" : frame === "inset" ? "rounded-2xl border border-border" : "rounded-3xl"}`}
       style={{ aspectRatio: aspect, width: "100%", maxWidth: maxFrameWidth, alignSelf: "center" }}
     >
       {width > 0 ? (

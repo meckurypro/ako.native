@@ -101,6 +101,8 @@ export interface Page {
   hero_autoplay?: boolean;
   hero_interval_seconds?: number;
   hero_direction?: HeroDirection;
+  // Layout template (see lib/pageTemplates.ts); null/absent = "classic".
+  page_template?: string | null;
 }
 
 // Which way the hero slideshow advances on its own.

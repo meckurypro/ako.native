@@ -9,14 +9,25 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Text } from "@/components/ui/Text";
 import type { PageMemberWithProfile } from "@/types/database";
 
-export function PageTeamShowcase({ members, onTouchLock }: { members: PageMemberWithProfile[]; onTouchLock?: (locked: boolean) => void }) {
+export function PageTeamShowcase({
+  members,
+  onTouchLock,
+  heading,
+}: {
+  members: PageMemberWithProfile[];
+  onTouchLock?: (locked: boolean) => void;
+  /** Replaces the default heading (a page template styles its own section titles). */
+  heading?: React.ReactNode;
+}) {
   if (members.length === 0) return null;
 
   return (
     <View accessibilityRole="summary">
-      <Text accessibilityRole="header" className="font-display text-xl font-semibold tracking-tight text-ink">
-        Meet the team
-      </Text>
+      {heading ?? (
+        <Text accessibilityRole="header" className="font-display text-xl font-semibold tracking-tight text-ink">
+          Meet the team
+        </Text>
+      )}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}

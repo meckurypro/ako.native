@@ -12,6 +12,7 @@ import { KeyboardAvoider } from "@/components/ui/KeyboardAvoider";
 import { MentionTextarea } from "@/components/post/MentionTextarea";
 import { MAX_TOPICS, TopicPicker } from "@/components/post/TopicPicker";
 import { PageHeroEditor } from "@/components/page/PageHeroEditor";
+import { TemplatePicker } from "@/components/page/TemplatePicker";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
@@ -74,13 +75,15 @@ export function EditPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const heroY = useRef<number | null>(null);
+  const templateY = useRef<number | null>(null);
   const scrolledToHero = useRef(false);
 
   // Arrived from the page's "…" menu → "Hero slides": bring that section into view once it has been laid out.
   function maybeScrollToHero() {
-    if (section !== "hero" || scrolledToHero.current || heroY.current === null) return;
+    const y = section === "template" ? templateY.current : section === "hero" ? heroY.current : null;
+    if (scrolledToHero.current || y === null) return;
     scrolledToHero.current = true;
-    scrollRef.current?.scrollTo({ y: Math.max(heroY.current - 8, 0), animated: true });
+    scrollRef.current?.scrollTo({ y: Math.max(y - 8, 0), animated: true });
   }
 
   useEffect(() => {
@@ -264,6 +267,16 @@ export function EditPage() {
             }}
           >
             <PageHeroEditor page={page} />
+          </View>
+
+          <View
+            className="mt-4 border-t border-border pt-6"
+            onLayout={(e) => {
+              templateY.current = e.nativeEvent.layout.y;
+              maybeScrollToHero();
+            }}
+          >
+            <TemplatePicker page={page} />
           </View>
         </View>
       </ScrollView>
