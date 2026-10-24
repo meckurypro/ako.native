@@ -42,4 +42,24 @@ export interface Txn {
   type: string;
   amount: number | string;
   created_at: string;
+  /** pending | completed | failed | reversed (wallet_transactions.status). */
+  status?: string;
+  balance_after?: number | string | null;
+  reference?: string | null;
+}
+
+// Ledger row status. "completed" reads as "Successful"; only completed rows count toward the In / Out totals and
+// the analysis. Same labels as web.
+export const TXN_STATUS_META: Record<string, { label: string; bg: string; fg: string }> = {
+  completed: { label: "Successful", bg: "bg-accent-soft", fg: "text-accent" },
+  pending: { label: "Pending", bg: "bg-ink/5", fg: "text-ink-muted" },
+  failed: { label: "Failed", bg: "bg-danger/10", fg: "text-danger" },
+  reversed: { label: "Reversed", bg: "bg-ink/5", fg: "text-ink-muted" },
+};
+
+export const TXN_STATUS_ORDER = ["completed", "pending", "failed", "reversed"] as const;
+
+export function statusMeta(status: string | undefined) {
+  const key = status ?? "completed";
+  return TXN_STATUS_META[key] ?? { label: key, bg: "bg-ink/5", fg: "text-ink-muted" };
 }

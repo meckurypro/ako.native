@@ -1,6 +1,6 @@
 // src/hooks/useWallet.ts
 import { useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "./useAuth";
 import type { GiftType, Wallet } from "../types/database";
@@ -120,5 +120,46 @@ export function useWalletTransactions() {
       return data;
     },
     enabled: !!user,
+  });
+}
+
+/**
+ * Every ledger row in [from, to) for the signed-in person (null = open end), newest first, fetched in pages so a
+ * long period is never silently cut off. Powers the Transactions screen's month / time-frame picker; the latest-30
+ * hook above stays for the Wallet screen's one-line strip. Keyed under ["wallet-transactions", userId, …] so the
+ * existing invalidations after funding / gifting / purchasing refresh it too.
+ */
+export function useWalletTransactionsInRange(from: Date | null, to: Date | null) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["wallet-transactions", user?.id, "range", from?.getTime() ?? null, to?.getTime() ?? null],
+    enabled: !!user,
+    placeholderData: keepPreviousData,
+    staleTime: 30 * 1000,
+    queryFn: async () => {
+      const { data: wallet } = await supabase.from("wallets").select("id").eq("user_id", user!.id).single();
+      if (!wallet) return [];
+
+      const PAGE = 1000;
+      const rows: any[] = [];
+      for (let offset = 0; ; offset += PAGE) {
+        let query = supabase
+          .from("wallet_transactions")
+          .select("*")
+          .eq("wallet_id", wallet.id)
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .range(offset, offset + PAGE - 1);
+        if (from) query = query.gte("created_at", from.toISOString());
+        if (to) query = query.lt("created_at", to.toISOString());
+
+        const { data, error } = await query;
+        if (error) throw error;
+        rows.push(...(data ?? []));
+        if ((data?.length ?? 0) < PAGE) break;
+      }
+      return rows;
+    },
   });
 }

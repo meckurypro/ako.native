@@ -6,8 +6,11 @@
 //
 // Funding always happens on the web (Paystack) and returns here by deep link.
 // Withdrawals have their own screen (wallet/withdraw); Friday-only requests, paid out Saturdays.
+//
+// The eye on the balance card hides every amount on this screen (balance, latest transaction, Can withdraw, In
+// review); the choice persists until it's toggled again — see useBalanceVisibility.
 import { router } from "expo-router";
-import { ArrowDownCircle, ArrowUpCircle, ChevronRight, Gem, ReceiptText, TrendingUp, Wallet as WalletIcon, type LucideIcon } from "lucide-react-native";
+import { ArrowDownCircle, ArrowUpCircle, ChevronRight, Eye, EyeOff, Gem, ReceiptText, TrendingUp, Wallet as WalletIcon, type LucideIcon } from "lucide-react-native";
 import { useEffect, useRef } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 
@@ -16,6 +19,7 @@ import { Button, Icon, Text } from "@/components/ui";
 import { BrandCard, ON_BRAND, useBrandColor } from "@/components/ui/BrandCard";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useBalanceVisibility } from "@/hooks/useBalanceVisibility";
 import { useDeposits, useVerifyDeposit } from "@/hooks/useDeposits";
 import { useFeatureFlag } from "@/hooks/useFeatureFlags";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
@@ -64,12 +68,18 @@ function Tile({ icon, label, onPress }: { icon: LucideIcon; label: string; onPre
 
 const RECENT_PENDING_MS = 30 * 60 * 1000;
 
+// What an amount shows as while the balance is hidden.
+const MASK = "••••";
+
 export default function WalletScreen() {
   const bottomInset = useBottomNavInset();
   const { data: wallet, isLoading, refetch: refetchWallet } = useWallet();
   const { data: transactions, refetch: refetchTxns } = useWalletTransactions();
   const { data: deposits, refetch: refetchDeposits } = useDeposits();
   const verifyDeposit = useVerifyDeposit();
+
+  const { hidden, toggle: toggleHidden } = useBalanceVisibility();
+  const money = (text: string) => (hidden ? MASK : text);
 
   const walletEnabled = useFeatureFlag("wallet_enabled");
   const depositsEnabled = useFeatureFlag("deposits_enabled");
@@ -141,9 +151,21 @@ export default function WalletScreen() {
         <View className="pt-4">
           <BrandCard className="p-6">
             <View className="flex-row items-center justify-between">
-              <Text className="text-[11px] font-medium uppercase tracking-[0.16em]" style={{ color: ON_BRAND.full }}>
-                Balance
-              </Text>
+              <View className="flex-row items-center gap-1.5">
+                <Text className="text-[11px] font-medium uppercase tracking-[0.16em]" style={{ color: ON_BRAND.full }}>
+                  Balance
+                </Text>
+                <Pressable
+                  onPress={toggleHidden}
+                  hitSlop={10}
+                  accessibilityRole="button"
+                  accessibilityLabel={hidden ? "Show balance" : "Hide balance"}
+                  accessibilityState={{ checked: hidden }}
+                  className="-m-1 h-8 w-8 items-center justify-center rounded-full active:opacity-70"
+                >
+                  <Icon as={hidden ? EyeOff : Eye} size={18} color={ON_BRAND.high} />
+                </Pressable>
+              </View>
               <View className="rounded-full px-2.5 py-0.5" style={{ backgroundColor: ON_BRAND.chip, borderWidth: 1, borderColor: ON_BRAND.chipBorder }}>
                 <Text className="text-[11px] font-medium tracking-wide" style={{ color: ON_BRAND.full }}>
                   USD
@@ -155,7 +177,7 @@ export default function WalletScreen() {
               <Skeleton className="mb-6 mt-3 h-12 w-40 rounded-xl" />
             ) : (
               <Text className="mb-6 mt-3 font-display text-5xl" style={{ color: ON_BRAND.full }}>
-                {formatUsd(wallet?.balance ?? 0)}
+                {money(formatUsd(wallet?.balance ?? 0))}
               </Text>
             )}
 
@@ -198,8 +220,7 @@ export default function WalletScreen() {
               <>
                 {latestMeta.label}{" "}
                 <Text className={`text-sm font-medium ${latestAmount >= 0 ? "text-accent" : "text-ink"}`}>
-                  {latestAmount >= 0 ? "+" : "-"}
-                  {formatUsd(Math.abs(latestAmount))}
+                  {hidden ? MASK : `${latestAmount >= 0 ? "+" : "-"}${formatUsd(Math.abs(latestAmount))}`}
                 </Text>
               </>
             ) : (
@@ -222,12 +243,12 @@ export default function WalletScreen() {
           >
             <View className="flex-1 px-4 py-3">
               <Text className="text-xs text-ink-muted">Can withdraw</Text>
-              <Text className="mt-0.5 text-base font-semibold text-ink">{formatUsd(eligibility?.available_to_request ?? 0)}</Text>
+              <Text className="mt-0.5 text-base font-semibold text-ink">{money(formatUsd(eligibility?.available_to_request ?? 0))}</Text>
             </View>
             <View className="w-px bg-border" />
             <View className="flex-1 px-4 py-3">
               <Text className="text-xs text-ink-muted">In review</Text>
-              <Text className="mt-0.5 text-base font-semibold text-ink">{formatUsd(inReviewUsd)}</Text>
+              <Text className="mt-0.5 text-base font-semibold text-ink">{money(formatUsd(inReviewUsd))}</Text>
             </View>
           </Pressable>
         ) : null}
