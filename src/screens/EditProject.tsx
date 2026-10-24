@@ -284,12 +284,13 @@ export function EditProject() {
     if (project.project_type === "file" && fileUploading) return setError("Your file is still uploading — wait for it to finish.");
 
     const t = project.project_type;
-    const price = t === "pitch" ? 0 : parseFloat(priceUsd) || 0;
+    // Pitches and songs are never sold (the database refuses a price on a song), so they save as free.
+    const price = t === "pitch" || t === "media" ? 0 : parseFloat(priceUsd) || 0;
     const typeError = validateTypeSpecific();
     if (typeError) return setError(typeError);
 
     let promoPrice: number | null = null;
-    if (t !== "pitch" && showPromo && promoPriceUsd.trim() !== "") {
+    if (t !== "pitch" && t !== "media" && showPromo && promoPriceUsd.trim() !== "") {
       promoPrice = parseFloat(promoPriceUsd);
       if (Number.isNaN(promoPrice) || promoPrice < 0) return setError("Promo price must be a valid amount.");
       if (promoPrice >= price) return setError("Promo price must be lower than the actual price.");
@@ -548,7 +549,7 @@ export function EditProject() {
             ) : null}
           </FormSection>
 
-          {t !== "pitch" ? (
+          {t !== "pitch" && t !== "media" ? (
             <FormSection icon={Banknote} title="Pricing" description={bookNotOwn ? "Free — it credits someone else's work." : "Free, or set a price."}>
               <PricingFields
                 type={t}

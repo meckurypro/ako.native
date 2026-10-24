@@ -379,7 +379,8 @@ export function CreateProject() {
     if (!title.trim()) return setError("Title is required.");
     if (projectType === "file" && fileUploading) return setError("Your file is still uploading — wait for it to finish.");
 
-    const price = parseFloat(priceUsd) || 0;
+    // A song is never sold (the database refuses a price on one), so it always saves as free.
+    const price = projectType === "media" ? 0 : parseFloat(priceUsd) || 0;
     const typeError = validateTypeSpecific();
     if (typeError) return setError(typeError);
     if (eligibility && !eligibility.eligible) return setError(eligibility.reasons[0]);
@@ -409,7 +410,7 @@ export function CreateProject() {
     }
 
     let promoPrice: number | null = null;
-    if (showPromo && promoPriceUsd.trim() !== "") {
+    if (projectType !== "media" && showPromo && promoPriceUsd.trim() !== "") {
       promoPrice = parseFloat(promoPriceUsd);
       if (Number.isNaN(promoPrice) || promoPrice < 0) return setError("Promo price must be a valid amount.");
       if (promoPrice >= price) return setError("Promo price must be lower than the actual price.");
@@ -632,8 +633,8 @@ export function CreateProject() {
             {projectType === "book" ? <BookFields value={bookFields} onChange={setBookFields} onError={setError} /> : null}
           </FormSection>
 
-          {/* 5 — Price. A pitch never carries one: supporters pick their own amount. */}
-          {projectType !== "pitch" ? (
+          {/* 5 — Price. A pitch never carries one: supporters pick their own amount. Neither does a song. */}
+          {projectType !== "pitch" && projectType !== "media" ? (
             <FormSection icon={Banknote} title="Pricing" description={bookNotOwn ? "Free — it credits someone else's work." : "Free, or set a price."}>
               <PricingFields
                 type={projectType}
