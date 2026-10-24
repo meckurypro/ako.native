@@ -19,6 +19,7 @@
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 
+import { saveAccount } from "./accountSessions";
 import { completeAuthLink } from "./authLink";
 import { rememberReturnTo, takeReturnTo } from "./authRedirect";
 import { supabase } from "./supabase";
@@ -31,16 +32,36 @@ export function googleRedirectUrl(): string {
 }
 
 export type GoogleSignInResult =
-  | { status: "success"; destination: string }
+  // alreadyCurrent: add-account mode, and Google's chooser handed back the account that was already signed in.
+  | { status: "success"; destination: string; alreadyCurrent?: boolean }
   | { status: "cancelled" };
+
+type ProfileSnapshot = { id: string; username: string; display_name: string; avatar_url: string | null };
+
+async function loadProfileSnapshot(userId: string): Promise<ProfileSnapshot | null> {
+  const { data } = await supabase
+    .from("profiles")
+    .select("id, username, display_name, avatar_url")
+    .eq("id", userId)
+    .single();
+  return data ?? null;
+}
 
 /**
  * Runs the whole Google flow. Resolves "cancelled" if the person closes the
  * browser; throws on a real failure (the caller shows a message).
  */
-export async function signInWithGoogle(returnTo?: string | null): Promise<GoogleSignInResult> {
+export async function signInWithGoogle(
+  returnTo?: string | null,
+  options?: { addAccount?: boolean }
+): Promise<GoogleSignInResult> {
   // Parked for BuildingAko, same as the email sign-up flow (lib/authRedirect.ts).
   rememberReturnTo(returnTo);
+
+  // "Add account": the new session is about to replace the live one, so the account that is active now is
+  // snapshotted first — tokens included — exactly like the email add-account path (useAddAccount).
+  const previousSession = options?.addAccount ? (await supabase.auth.getSession()).data.session : null;
+  const previousProfile = previousSession ? await loadProfileSnapshot(previousSession.user.id) : null;
 
   const redirectTo = googleRedirectUrl();
   const { data, error } = await supabase.auth.signInWithOAuth({
@@ -60,19 +81,52 @@ export async function signInWithGoogle(returnTo?: string | null): Promise<Google
 
   const { session } = await completeAuthLink(result.url);
 
+  if (options?.addAccount && previousSession) {
+    if (session.user.id === previousSession.user.id) {
+      return { status: "success", destination: "/feed", alreadyCurrent: true };
+    }
+    if (previousProfile) {
+      saveAccount({
+        user_id: previousProfile.id,
+        username: previousProfile.username,
+        display_name: previousProfile.display_name,
+        avatar_url: previousProfile.avatar_url,
+        access_token: previousSession.access_token,
+        refresh_token: previousSession.refresh_token,
+      });
+    }
+    const newProfile = await loadProfileSnapshot(session.user.id);
+    if (newProfile) {
+      saveAccount({
+        user_id: newProfile.id,
+        username: newProfile.username,
+        display_name: newProfile.display_name,
+        avatar_url: newProfile.avatar_url,
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+      });
+    }
+    // Best-effort, same as the email path: the switcher works on this device even if the link isn't recorded.
+    await supabase.rpc("link_accounts", { p_other_user_id: previousSession.user.id });
+  }
+
   // Not finished onboarding → Welcome (the return path stays parked for
   // BuildingAko). Finished → straight to where they were headed. Mirrors the
   // web AuthCallback. If the lookup fails, Welcome is the safe fallback —
   // AuthGate resumes at whichever step is actually right.
   const { data: profileRow } = await supabase
     .from("profiles")
-    .select("onboarding_completed, profile_setup_completed")
+    .select("onboarding_completed, profile_setup_completed, username")
     .eq("id", session.user.id)
     .single();
 
   // New Google account → pick a username + name first, then the usual onboarding.
+  // An account added from the switcher lands on its own profile, like the email add-account path.
+  const addedUsername = options?.addAccount && previousSession ? profileRow?.username : null;
   const destination = profileRow?.onboarding_completed
-    ? (takeReturnTo() ?? "/feed")
+    ? addedUsername
+      ? `/profile/${addedUsername}`
+      : (takeReturnTo() ?? "/feed")
     : profileRow?.profile_setup_completed === false
       ? "/onboarding/profile"
       : "/onboarding/welcome";

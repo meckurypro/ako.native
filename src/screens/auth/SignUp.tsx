@@ -189,12 +189,8 @@ export function SignUp() {
         </Text>
       ) : null}
 
-      {!addMode ? (
-        <>
-          <GoogleAuthButton returnTo={returnTo} label="Sign up with Google" />
-          <AuthOrDivider />
-        </>
-      ) : null}
+      <GoogleAuthButton returnTo={returnTo} label="Sign up with Google" addAccount={addMode} />
+      <AuthOrDivider />
 
       {!emailVisible ? (
         <Pressable
@@ -275,17 +271,9 @@ export function SignUp() {
         </>
       )}
 
-      {/* Add-account mode has no Google button: see the note in Login.tsx. */}
-
       <Text className="mt-6 text-center text-sm text-ink-muted">
         Already have an account? <TextLink href={(addMode ? "/login?add=1" : returnTo ? `/login?redirect=${encodeURIComponent(returnTo)}` : "/login")}>Log in</TextLink>
       </Text>
-
-      {!addMode ? (
-        <Text className="mt-5 text-center text-xs text-ink-muted">
-          By continuing, you agree to our <TextLink href="/terms">Terms of Service</TextLink> and <TextLink href="/privacy">Privacy Policy</TextLink>.
-        </Text>
-      ) : null}
     </AuthScreen>
   );
 }

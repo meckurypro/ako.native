@@ -10,6 +10,7 @@ import NetInfo from "@react-native-community/netinfo";
 
 import { GoogleGlyph } from "@/components/ui/BrandIcons";
 import { Text } from "@/components/ui/Text";
+import { useToast } from "@/components/ui/Toast";
 import { NETWORK_AUTH_MESSAGE, authErrorMessage } from "@/lib/authErrors";
 import { signInWithGoogle } from "@/lib/googleAuth";
 import { useTheme } from "@/theme/ThemeProvider";
@@ -19,6 +20,8 @@ interface GoogleAuthButtonProps {
   returnTo?: string | null;
   /** Sign-up pages read "Sign up with Google". */
   label?: string;
+  /** Adding a second account from the switcher: keep the account that is signed in now alongside the new one. */
+  addAccount?: boolean;
 }
 
 /** The quiet "or" rule between the primary Google action and the email alternative. */
@@ -32,9 +35,10 @@ export function AuthOrDivider() {
   );
 }
 
-export function GoogleAuthButton({ returnTo, label = "Continue with Google" }: GoogleAuthButtonProps) {
+export function GoogleAuthButton({ returnTo, label = "Continue with Google", addAccount = false }: GoogleAuthButtonProps) {
   const queryClient = useQueryClient();
-  const { resolvedTheme } = useTheme();
+  const toast = useToast();
+  const { resolvedTheme, setPageMode } = useTheme();
   const dark = resolvedTheme === "dark";
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,10 +55,15 @@ export function GoogleAuthButton({ returnTo, label = "Continue with Google" }: G
       return;
     }
     try {
-      const result = await signInWithGoogle(returnTo);
+      const result = await signInWithGoogle(returnTo, { addAccount });
       if (result.status === "success") {
+        // An added account starts in its own palette, never the previous account's page colours (as useAddAccount does).
+        if (addAccount && !result.alreadyCurrent) setPageMode(false);
         queryClient.clear();
         router.replace(result.destination as Href);
+        toast(result.alreadyCurrent ? "That's already your current account." : "Welcome to Akọ.", {
+          variant: result.alreadyCurrent ? "default" : "success",
+        });
         return;
       }
       // "cancelled": they closed the browser — nothing to say.

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
 import { AuthOrDivider, GoogleAuthButton } from "@/components/ui/GoogleAuthButton";
 import { PasswordField } from "@/components/ui/PasswordField";
+import { useToast } from "@/components/ui/Toast";
 import { TextLink } from "@/components/ui/TextLink";
 import { Text } from "@/components/ui/Text";
 import { Wordmark } from "@/components/ui/Wordmark";
@@ -27,6 +28,7 @@ export function Login() {
   // add=1: signing into a SECOND personal account from the account switcher.
   const addMode = add === "1";
   const addAccount = useAddAccount();
+  const toast = useToast();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -37,7 +39,7 @@ export function Login() {
   const [resent, setResent] = useState(false);
   const passwordRef = useRef<TextInput>(null);
   // Google is the primary way in; the email form is a secondary option opened on purpose.
-  // Add-account mode has no Google button, so there the form is always visible.
+  // Add-account mode keeps the form always visible (under the Google button).
   const [showEmail, setShowEmail] = useState(false);
   const emailVisible = addMode || showEmail;
 
@@ -89,6 +91,7 @@ export function Login() {
     }
 
     router.replace(redirectTo as Href);
+    toast("Welcome to Akọ.", { variant: "success" });
   }
 
   async function handleResend() {
@@ -117,12 +120,8 @@ export function Login() {
         </Text>
       ) : null}
 
-      {!addMode ? (
-        <>
-          <GoogleAuthButton returnTo={returnTo} />
-          <AuthOrDivider />
-        </>
-      ) : null}
+      <GoogleAuthButton returnTo={returnTo} addAccount={addMode} />
+      <AuthOrDivider />
 
       {!emailVisible ? (
         <Pressable
@@ -187,18 +186,9 @@ export function Login() {
         </>
       )}
 
-      {/* Add-account mode swaps the active session; the Google round trip can't carry the
-          "previous account" snapshot that needs, so it's email/password only there (no Google button above). */}
-
       <Text className="mt-6 text-center text-sm text-ink-muted">
         New to Akọ? <TextLink href={(addMode ? "/signup?add=1" : returnTo ? `/signup?redirect=${encodeURIComponent(returnTo)}` : "/signup")}>Create an account</TextLink>
       </Text>
-
-      {!addMode ? (
-        <Text className="mt-5 text-center text-xs text-ink-muted">
-          By continuing, you agree to our <TextLink href="/terms">Terms of Service</TextLink> and <TextLink href="/privacy">Privacy Policy</TextLink>.
-        </Text>
-      ) : null}
     </AuthScreen>
   );
 }
