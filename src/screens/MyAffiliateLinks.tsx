@@ -1,37 +1,47 @@
 // src/screens/MyAffiliateLinks.tsx
 // Projects you've forked to earn a commission on: your link, clicks, sales, pending and paid commission.
-// Mounted at both /activity/affiliates and /wallet/affiliate-links.
+// Mounted at both /activity/affiliates and /wallet/affiliate-links. Mirrors web's MyAffiliateLinks page:
 //
-//   • Header — Library/Connect's bold title and orange icon (with a back arrow: this screen lives under Wallet).
+//   • Header — back arrow on its own line, then the orange fork icon + bold "Forked" title and a one-line
+//              description (this page lives under Wallet, so the arrow stays).
 //   • Hero   — one premium summary card: total earned as the headline, pending/paid beneath, then the
-//              forks / clicks / sales / conversion strip. Brand-green with soft glows and white type.
-//   • Tabs   — Active / Revoked on the shared SlidingTabBar + SwipeableTabs carousel.
+//              forks / clicks / sales / conversion strip. Brand-green gradient with soft glows, white type.
+//   • Tabs   — Active / Revoked on the shared SlidingTabBar; swipe anywhere on the page to switch (SwipeToSwitch).
 //   • Cards  — ForkedProjectCard: cover, title, commission rate, a four-up stat grid and a Copy / Share action.
 //              Connect keeps using the compact AffiliateLinkRow.
+//
+// Like web, the whole page scrolls as one (hero and tabs scroll away with the cards) and the bottom nav stays up
+// (see components/nav/routes.ts).
+//
+// COLOUR NOTE: opacity-modified classes (`bg-white/15`, `text-white/70`, `bg-canvas/50`) resolve to nothing on device
+// (see OverlayPanel), which is what left this screen's tiles, glows and secondary text invisible. Everything
+// translucent here is an inline rgba value instead.
 import { isFileType } from "@/lib/fileProject";
 import { FileFolderIcon } from "@/components/project/FileFolderArt";
 import { router, type Href } from "expo-router";
 import * as Clipboard from "expo-clipboard";
-import { Check, Copy, GitFork, Image as ImageIcon, MousePointerClick, Share2, ShoppingBag, Sparkles, TrendingUp, type LucideIcon } from "lucide-react-native";
+import { ArrowLeft, Check, Copy, GitFork, Image as ImageIcon, MousePointerClick, Share2, ShoppingBag, Sparkles, TrendingUp, type LucideIcon } from "lucide-react-native";
 import { useState } from "react";
-import { Pressable, ScrollView, Share, View } from "react-native";
-import { useSharedValue } from "react-native-reanimated";
+import { Pressable, ScrollView, Share, View, type LayoutChangeEvent } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Svg, { Circle, Defs, LinearGradient, RadialGradient, Rect, Stop } from "react-native-svg";
 
-import { EmptyNotice } from "@/components/activity/EmptyNotice";
-import { ScreenHeader } from "@/components/ui/ScreenHeader";
+import { useBottomNavInset } from "@/components/nav/BottomNav";
+import { useChromeScroll } from "@/components/nav/ChromeProvider";
 import { SlidingTabBar } from "@/components/ui/SlidingTabBar";
-import { SwipeableTabs } from "@/components/ui/SwipeableTabs";
+import { SwipeToSwitch } from "@/components/ui/SwipeToSwitch";
 import { Icon, Image } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useToast } from "@/components/ui/Toast";
 import { affiliateLinkFor, useAffiliateDashboard, useCurrentCommissionPct, useAffiliateTotals, useMyAffiliateRelationships, type AffiliateRelationshipWithProject } from "@/hooks/useAffiliates";
 import { getEffectivePrice } from "@/hooks/useProjects";
+import { useSmartBack } from "@/hooks/useSmartBack";
 import { useTabState } from "@/hooks/useTabState";
 import { APP_URL } from "@/lib/config";
 import { haptics } from "@/lib/haptics";
 import { formatUsd } from "@/lib/money";
 import { getProjectUrl } from "@/lib/projectLinks";
+import { useTheme } from "@/theme/ThemeProvider";
 
 const TABS = ["active", "revoked"] as const;
 type AffiliateTab = (typeof TABS)[number];
@@ -107,52 +117,122 @@ export function AffiliateLinkRow({ relationship }: { relationship: AffiliateRela
   );
 }
 
-function HeroStat({ icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
+const WHITE = (alpha: number) => `rgba(255,255,255,${alpha})`;
+const TABULAR = { fontVariant: ["tabular-nums" as const] };
+
+/** "#RRGGBB" + alpha → rgba(), for theme colours that need transparency (modifier classes don't work on device). */
+function withAlpha(hex: string, alpha: number): string {
+  const n = parseInt(hex.replace("#", "").slice(0, 6), 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+}
+
+function HeroStat({ icon: IconComponent, label, value }: { icon: LucideIcon; label: string; value: string }) {
   return (
-    <View className="min-w-0 flex-1 rounded-2xl bg-white/15 px-3 py-2.5">
-      <Icon as={icon} size={14} className="mb-1.5 text-white/70" />
-      <Text numberOfLines={1} className="text-lg font-semibold leading-none text-white">
+    <View className="min-w-0 flex-1 rounded-2xl px-3 py-2.5" style={{ backgroundColor: WHITE(0.12), borderWidth: 1, borderColor: WHITE(0.15) }}>
+      <View className="mb-1.5">
+        <IconComponent size={14} color={WHITE(0.7)} />
+      </View>
+      <Text numberOfLines={1} className="text-lg font-semibold leading-none" style={[{ color: "#FFFFFF" }, TABULAR]}>
         {value}
       </Text>
-      <Text numberOfLines={1} className="mt-1 text-[11px] text-white/70">
+      <Text numberOfLines={1} className="mt-1 text-[11px]" style={{ color: WHITE(0.7) }}>
         {label}
       </Text>
     </View>
   );
 }
 
+/** Web's hero background: a 145° cta → accent-hover gradient with a white bloom top-right and an orange one bottom-left. */
+function HeroBackdrop({ width, height, from, to }: { width: number; height: number; from: string; to: string }) {
+  const theta = (145 * Math.PI) / 180;
+  const dx = Math.sin(theta);
+  const dy = -Math.cos(theta);
+  const half = (Math.abs(width * dx) + Math.abs(height * dy)) / 2; // CSS gradient-line half-length for this box
+  const cx = width / 2;
+  const cy = height / 2;
+  return (
+    <Svg width={width} height={height} style={{ position: "absolute", top: 0, left: 0 }} pointerEvents="none">
+      <Defs>
+        <LinearGradient id="forkHeroFill" gradientUnits="userSpaceOnUse" x1={cx - dx * half} y1={cy - dy * half} x2={cx + dx * half} y2={cy + dy * half}>
+          <Stop offset="0" stopColor={from} />
+          <Stop offset="1" stopColor={to} />
+        </LinearGradient>
+        <RadialGradient id="forkHeroWhite" cx="0.5" cy="0.5" r="0.5">
+          <Stop offset="0" stopColor="#FFFFFF" stopOpacity="0.22" />
+          <Stop offset="1" stopColor="#FFFFFF" stopOpacity="0" />
+        </RadialGradient>
+        <RadialGradient id="forkHeroOrange" cx="0.5" cy="0.5" r="0.5">
+          <Stop offset="0" stopColor="#FD5200" stopOpacity="0.165" />
+          <Stop offset="1" stopColor="#FD5200" stopOpacity="0" />
+        </RadialGradient>
+      </Defs>
+      <Rect x="0" y="0" width={width} height={height} fill="url(#forkHeroFill)" />
+      {/* 192px bloom, 64px above / 40px past the right edge; 208px bloom, 80px below / 48px past the left edge. */}
+      <Circle cx={width - 56} cy={32} r={96} fill="url(#forkHeroWhite)" />
+      <Circle cx={56} cy={height - 24} r={104} fill="url(#forkHeroOrange)" />
+    </Svg>
+  );
+}
+
 function AffiliateHero({ forks, clicks, sales, pending, paid, loading }: { forks: number; clicks: number; sales: number; pending: number; paid: number; loading: boolean }) {
+  const { colors } = useTheme();
+  const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const earned = pending + paid;
   const conversion = clicks > 0 ? Math.min(100, (sales / clicks) * 100) : 0;
+  const onLayout = (e: LayoutChangeEvent) => {
+    const { width, height } = e.nativeEvent.layout;
+    if (!size || Math.abs(size.w - width) > 0.5 || Math.abs(size.h - height) > 0.5) setSize({ w: width, h: height });
+  };
+
   return (
-    <View accessibilityLabel="Affiliate earnings summary" className="mb-5 overflow-hidden rounded-3xl bg-accent-hover p-5">
-      {/* soft light blooms — purely decorative */}
-      <View pointerEvents="none" className="absolute -right-10 -top-16 h-48 w-48 rounded-full bg-white/10" />
-      <View pointerEvents="none" className="absolute -bottom-20 -left-12 h-52 w-52 rounded-full bg-brand-orange/20" />
-
-      <View className="flex-row items-center gap-1.5">
-        <Icon as={Sparkles} size={13} className="text-white/75" />
-        <Text className="text-xs font-medium uppercase tracking-[2px] text-white/75">Total earned</Text>
+    <View
+      accessibilityLabel="Affiliate earnings summary"
+      onLayout={onLayout}
+      className="mb-6 rounded-3xl"
+      style={{ backgroundColor: colors.cta, shadowColor: colors.accent, shadowOpacity: 0.45, shadowRadius: 20, shadowOffset: { width: 0, height: 14 }, elevation: 10 }}
+    >
+      {/* The clip lives on its own layer so the card's shadow isn't cut off by overflow:hidden. */}
+      <View pointerEvents="none" className="absolute inset-0 overflow-hidden rounded-3xl">
+        {size ? <HeroBackdrop width={size.w} height={size.h} from={colors.cta} to={colors.accentHover} /> : null}
       </View>
-      <Text className="mt-2 text-[40px] font-semibold leading-[44px] tracking-tight text-white">{loading ? "…" : formatUsd(earned)}</Text>
-      <Text className="mt-2 text-sm text-white/75">
-        {formatUsd(pending)} pending • {formatUsd(paid)} paid
-      </Text>
 
-      <View className="mt-5 flex-row gap-2">
-        <HeroStat icon={GitFork} label="Forks" value={String(forks)} />
-        <HeroStat icon={MousePointerClick} label="Clicks" value={String(clicks)} />
-        <HeroStat icon={ShoppingBag} label="Sales" value={String(sales)} />
-        <HeroStat icon={TrendingUp} label="Convert" value={`${conversion >= 10 ? Math.round(conversion) : conversion.toFixed(1)}%`} />
+      <View className="p-5">
+        <View className="flex-row items-center gap-1.5">
+          <Sparkles size={13} color={WHITE(0.75)} />
+          <Text className="text-xs font-medium uppercase tracking-[1.68px]" style={{ color: WHITE(0.75) }}>
+            Total earned
+          </Text>
+        </View>
+        <Text className="mt-2 text-[40px] font-semibold leading-[40px] tracking-[-1px]" style={[{ color: "#FFFFFF" }, TABULAR]}>
+          {loading ? "…" : formatUsd(earned)}
+        </Text>
+        <View className="mt-2 flex-row flex-wrap items-center">
+          <Text className="text-sm" style={[{ color: WHITE(0.75) }, TABULAR]}>
+            {formatUsd(pending)} pending
+          </Text>
+          <Text className="mx-1.5 text-sm" style={{ color: WHITE(0.4) }}>
+            •
+          </Text>
+          <Text className="text-sm" style={[{ color: WHITE(0.75) }, TABULAR]}>
+            {formatUsd(paid)} paid
+          </Text>
+        </View>
+
+        <View className="mt-5 flex-row gap-2">
+          <HeroStat icon={GitFork} label="Forks" value={String(forks)} />
+          <HeroStat icon={MousePointerClick} label="Clicks" value={String(clicks)} />
+          <HeroStat icon={ShoppingBag} label="Sales" value={String(sales)} />
+          <HeroStat icon={TrendingUp} label="Convert" value={`${conversion >= 10 ? Math.round(conversion) : conversion.toFixed(1)}%`} />
+        </View>
       </View>
     </View>
   );
 }
 
-function CardStat({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+function CardStat({ label, value, strong, divider }: { label: string; value: string; strong?: boolean; divider?: boolean }) {
   return (
-    <View className="min-w-0 flex-1 items-center">
-      <Text numberOfLines={1} className={`text-sm ${strong ? "font-semibold text-accent" : "font-medium text-ink"}`}>
+    <View className={`min-w-0 flex-1 items-center ${divider ? "border-l border-border" : ""}`}>
+      <Text numberOfLines={1} className={`text-sm ${strong ? "font-semibold text-accent" : "font-medium text-ink"}`} style={TABULAR}>
         {value}
       </Text>
       <Text className="mt-0.5 text-[10px] uppercase tracking-wide text-ink-muted">{label}</Text>
@@ -162,6 +242,7 @@ function CardStat({ label, value, strong }: { label: string; value: string; stro
 
 function ForkedProjectCard({ relationship }: { relationship: AffiliateRelationshipWithProject }) {
   const toast = useToast();
+  const { colors } = useTheme();
   const [copied, setCopied] = useState(false);
   const revoked = relationship.status === "revoked";
   const { data: dashboard } = useAffiliateDashboard(revoked ? undefined : relationship.id);
@@ -195,9 +276,12 @@ function ForkedProjectCard({ relationship }: { relationship: AffiliateRelationsh
   }
 
   return (
-    <View className={`overflow-hidden rounded-2xl border border-border bg-surface ${revoked ? "opacity-70" : ""}`}>
+    <View
+      className={`overflow-hidden rounded-2xl border border-border bg-surface ${revoked ? "opacity-70" : ""}`}
+      style={{ shadowColor: `rgb(${colors.shadowInkRgb})`, shadowOpacity: 0.12, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 2 }}
+    >
       <Pressable onPress={() => router.push(`/projects/${relationship.project_id}` as Href)} accessibilityRole="link" accessibilityLabel={project.title} className="flex-row items-center gap-3.5 p-3.5">
-        <View className={`${isBook ? "h-[84px] w-14" : "h-[72px] w-[72px]"} shrink-0 items-center justify-center overflow-hidden rounded-xl bg-canvas`}>
+        <View className={`${isBook ? "h-[84px] w-14" : "h-[72px] w-[72px]"} shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-canvas`}>
           {isFileType(project.project_type) ? <FileFolderIcon size={56} fill /> : project.thumbnail_url ? <Image source={project.thumbnail_url} contentFit="cover" className="h-full w-full" /> : <Icon as={ImageIcon} size={20} className="text-ink-muted" />}
         </View>
         <View className="min-w-0 flex-1">
@@ -205,7 +289,9 @@ function ForkedProjectCard({ relationship }: { relationship: AffiliateRelationsh
             {project.title}
           </Text>
           <View className="mt-1.5 flex-row flex-wrap items-center gap-1.5">
-            <Text className="text-xs text-ink-muted">{formatUsd(getEffectivePrice(project))}</Text>
+            <Text className="text-xs text-ink-muted" style={TABULAR}>
+              {formatUsd(getEffectivePrice(project))}
+            </Text>
             {revoked ? (
               <View className="rounded-full border border-border bg-canvas px-2 py-0.5">
                 <Text className="text-[11px] font-medium text-ink-muted">Revoked</Text>
@@ -222,11 +308,11 @@ function ForkedProjectCard({ relationship }: { relationship: AffiliateRelationsh
 
       {!revoked ? (
         <>
-          <View className="flex-row border-y border-border bg-canvas/50 py-2.5">
+          <View className="flex-row border-y border-border py-2.5" style={{ backgroundColor: withAlpha(colors.canvas, 0.5) }}>
             <CardStat label="Clicks" value={String(dashboard?.clicks ?? 0)} />
-            <CardStat label="Sales" value={String(sales)} />
-            <CardStat label="Pending" value={formatUsd(dashboard?.pending_commission ?? 0)} />
-            <CardStat label="Paid" value={formatUsd(dashboard?.paid_commission ?? 0)} strong />
+            <CardStat label="Sales" value={String(sales)} divider />
+            <CardStat label="Pending" value={formatUsd(dashboard?.pending_commission ?? 0)} divider />
+            <CardStat label="Paid" value={formatUsd(dashboard?.paid_commission ?? 0)} strong divider />
           </View>
 
           <View className="flex-row items-center gap-2 p-3">
@@ -247,12 +333,23 @@ function ForkedProjectCard({ relationship }: { relationship: AffiliateRelationsh
   );
 }
 
+function EmptyForks({ message }: { message: string }) {
+  return (
+    <View className="mt-16 items-center gap-2">
+      <Icon as={GitFork} size={24} className="text-brand-orange" />
+      <Text className="text-center text-sm text-ink-muted">{message}</Text>
+    </View>
+  );
+}
+
 export function MyAffiliateLinks() {
   const insets = useSafeAreaInsets();
+  const smartBack = useSmartBack();
+  const bottomInset = useBottomNavInset();
+  const onScroll = useChromeScroll();
   const { data: relationships, isLoading } = useMyAffiliateRelationships();
   const [tab, setTab] = useTabState<AffiliateTab>(TABS, "active");
   const activeIndex = Math.max(TABS.indexOf(tab), 0);
-  const progress = useSharedValue(activeIndex);
 
   const visible = (relationships ?? []).filter((r) => !!r.project);
   const active = visible.filter((r) => r.status !== "revoked");
@@ -264,51 +361,59 @@ export function MyAffiliateLinks() {
     revoked: `Revoked${revoked.length ? ` · ${revoked.length}` : ""}`,
   };
 
+  function switchTab(i: number) {
+    haptics.selection();
+    setTab(TABS[i]);
+  }
+
   function renderPane(t: AffiliateTab) {
     const rows = t === "active" ? active : revoked;
     if (rows.length === 0) {
-      return <EmptyNotice icon={GitFork} message={t === "active" ? 'Projects you fork show up here. Tap "Fork & earn" on a project to start.' : "Nothing revoked."} />;
+      return <EmptyForks message={t === "active" ? 'Projects you fork show up here. Tap "Fork & earn" on a project to start.' : "Nothing revoked."} />;
     }
     return (
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: insets.bottom + 24 }}>
-        <View className="gap-3.5">
-          {rows.map((r) => (
-            <ForkedProjectCard key={r.id} relationship={r} />
-          ))}
-        </View>
-      </ScrollView>
+      <View className="gap-3.5">
+        {rows.map((r) => (
+          <ForkedProjectCard key={r.id} relationship={r} />
+        ))}
+      </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-canvas">
-      <ScreenHeader title="Forked" icon={GitFork} iconClassName="text-brand-orange" titleClassName="text-[28px] font-bold leading-tight tracking-tight text-ink" />
+    <ScrollView
+      ref={onScroll.listRef}
+      onScroll={onScroll}
+      scrollEventThrottle={16}
+      showsVerticalScrollIndicator={false}
+      className="flex-1 bg-canvas"
+      contentContainerStyle={{ paddingHorizontal: 16, paddingTop: insets.top + 16, paddingBottom: bottomInset }}
+    >
+      <Pressable onPress={smartBack} accessibilityRole="button" accessibilityLabel="Back" hitSlop={12} className="mb-4 self-start">
+        <Icon as={ArrowLeft} size={22} className="text-ink-muted" />
+      </Pressable>
+
+      <View className="mb-1 flex-row items-center gap-2.5">
+        <Icon as={GitFork} size={24} className="text-brand-orange" />
+        <Text className="text-[28px] font-bold leading-tight tracking-tight text-ink">Forked</Text>
+      </View>
+      <Text className="mb-6 text-sm text-ink-muted">Each fork has your affiliate link. Share it, earn on every sale.</Text>
+
       {isLoading ? (
-        <Text className="px-4 text-sm text-ink-muted">Loading…</Text>
+        <Text className="text-sm text-ink-muted">Loading…</Text>
       ) : visible.length === 0 ? (
-        <EmptyNotice icon={GitFork} message={'No forked projects yet. Tap "Fork & earn" on a project to start.'} />
+        <EmptyForks message={'No forked projects yet. Tap "Fork & earn" on a project to start.'} />
       ) : (
         <>
-          <View className="px-4 pt-2">
-            <AffiliateHero forks={visible.length} clicks={totals.clicks} sales={totals.sales} pending={totals.pending} paid={totals.paid} loading={totals.loading} />
-          </View>
-          <SlidingTabBar className="mx-4 mb-2" tabs={TABS.map((t) => ({ id: t, label: tabLabel[t] }))} activeIndex={activeIndex} progress={progress} onSelect={(i) => setTab(TABS[i])} />
-          <SwipeableTabs
-            index={activeIndex}
-            progress={progress}
-            onIndexChange={(i) => {
-              haptics.selection();
-              setTab(TABS[i]);
-            }}
-          >
-            {TABS.map((t) => (
-              <View key={t} style={{ flex: 1 }}>
-                {renderPane(t)}
-              </View>
-            ))}
-          </SwipeableTabs>
+          <AffiliateHero forks={visible.length} clicks={totals.clicks} sales={totals.sales} pending={totals.pending} paid={totals.paid} loading={totals.loading} />
+
+          <SlidingTabBar className="mb-5" tabs={TABS.map((t) => ({ id: t, label: tabLabel[t] }))} activeIndex={activeIndex} onSelect={switchTab} />
+
+          <SwipeToSwitch index={activeIndex} count={TABS.length} onIndexChange={switchTab} style={{ minHeight: 320 }}>
+            {renderPane(TABS[activeIndex])}
+          </SwipeToSwitch>
         </>
       )}
-    </View>
+    </ScrollView>
   );
 }

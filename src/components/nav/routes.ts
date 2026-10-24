@@ -2,7 +2,7 @@
 // Which screens show the bottom nav. On web each page rendered <BottomNav />
 // itself; on native there is ONE nav in the layout (so it persists across
 // transitions instead of remounting), and this list is the single source of
-// truth for where it appears — the same 23 pages the web showed it on.
+// truth for where it appears — the pages the web showed it on.
 //
 // Paths are matched against expo-router's pathname (route groups removed).
 import { isReservedProjectSlug, isValidProjectSlugFormat, normalizeProjectSlug } from "@/lib/projectLinks";
@@ -21,6 +21,8 @@ const SHOWS_BOTTOM_NAV: RegExp[] = [
   /^\/requests$/,
   /^\/bookmarks$/,
   /^\/wallet$/,
+  /^\/wallet\/affiliate-links$/, // Forked projects (web shows the nav here too)
+  /^\/activity\/affiliates$/, // …and its Activity entry point, same screen
   /^\/gigs$/,
   /^\/library$/,
   /^\/me$/, // the Profile tab's redirect screen — keeps the nav up while it resolves instead of a bare blank screen
