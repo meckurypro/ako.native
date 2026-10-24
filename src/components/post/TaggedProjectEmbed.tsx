@@ -3,7 +3,7 @@
 import { isFileType } from "@/lib/fileProject";
 import { FileFolderIcon } from "@/components/project/FileFolderArt";
 import { isBookType } from "@/lib/bookCover";
-import { ImageIcon, Music, Music2 } from "lucide-react-native";
+import { ImageIcon, Music2 } from "lucide-react-native";
 import { router, type Href } from "expo-router";
 import { Pressable, View } from "react-native";
 
@@ -77,72 +77,82 @@ export function TaggedProjectEmbed({
 
       {song ? (
         // Record: the cover fills a circle, faint concentric grooves and a dark rim sit over it, and a spindle hole
-        // marks the centre. Flat (no perspective tilt) so it reads as a disc lying on the post.
+        // marks the centre. Flat (no perspective tilt) so it reads as a disc lying on the post. A single music badge
+        // rides the bottom-right rim, like a verified tick on an avatar — it sits outside the disc's clipping so it
+        // can overhang.
         <View
           pointerEvents="none"
-          style={{
-            position: "absolute",
-            left: 12,
-            top: (outerH - thumbH) / 2,
-            width: thumbW,
-            height: thumbH,
-            borderRadius: thumbW / 2,
-            backgroundColor: "#171717",
-            borderWidth: 2,
-            borderColor: "rgba(20,20,20,0.9)",
-            transform: [{ rotateZ: "-8deg" }],
-            shadowColor: "#000",
-            shadowOpacity: 0.35,
-            shadowRadius: 9,
-            shadowOffset: { width: 0, height: 7 },
-            elevation: 8,
-          }}
+          style={{ position: "absolute", left: 12, top: (outerH - thumbH) / 2, width: thumbW, height: thumbH }}
         >
-          <View className="h-full w-full items-center justify-center overflow-hidden" style={{ borderRadius: thumbW / 2 }}>
-            {project.thumbnail_url ? (
-              <Image source={{ uri: project.thumbnail_url }} contentFit="cover" style={{ width: "100%", height: "100%" }} />
-            ) : null}
-            {/* Grooves. */}
-            {[0.86, 0.72, 0.58, 0.44].map((f) => (
+          <View
+            style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: thumbW,
+              height: thumbH,
+              borderRadius: thumbW / 2,
+              backgroundColor: "#171717",
+              borderWidth: 2,
+              borderColor: "rgba(20,20,20,0.9)",
+              transform: [{ rotateZ: "-8deg" }],
+              shadowColor: "#000",
+              shadowOpacity: 0.35,
+              shadowRadius: 9,
+              shadowOffset: { width: 0, height: 7 },
+              elevation: 8,
+            }}
+          >
+            <View className="h-full w-full items-center justify-center overflow-hidden" style={{ borderRadius: thumbW / 2 }}>
+              {project.thumbnail_url ? (
+                <Image source={{ uri: project.thumbnail_url }} contentFit="cover" style={{ width: "100%", height: "100%" }} />
+              ) : null}
+              {/* Grooves. */}
+              {[0.86, 0.72, 0.58, 0.44].map((f) => (
+                <View
+                  key={f}
+                  style={{
+                    position: "absolute",
+                    width: thumbW * f,
+                    height: thumbW * f,
+                    borderRadius: (thumbW * f) / 2,
+                    borderWidth: 1,
+                    borderColor: "rgba(0,0,0,0.18)",
+                  }}
+                />
+              ))}
+              {/* Spindle hole. */}
               <View
-                key={f}
+                className="bg-surface"
                 style={{
                   position: "absolute",
-                  width: thumbW * f,
-                  height: thumbW * f,
-                  borderRadius: (thumbW * f) / 2,
-                  borderWidth: 1,
-                  borderColor: "rgba(0,0,0,0.18)",
+                  width: thumbW * 0.16,
+                  height: thumbW * 0.16,
+                  borderRadius: thumbW * 0.08,
+                  borderWidth: 3,
+                  borderColor: "rgba(20,20,20,0.75)",
                 }}
               />
-            ))}
-            {/* Spindle hole. */}
-            <View
-              className="bg-surface"
-              style={{
-                position: "absolute",
-                width: thumbW * 0.16,
-                height: thumbW * 0.16,
-                borderRadius: thumbW * 0.08,
-                borderWidth: 3,
-                borderColor: "rgba(20,20,20,0.75)",
-              }}
-            />
-            {/* Two small notes, low on the right — enough to say "song" without crowding the cover. */}
-            <Icon
-              as={Music2}
-              size={Math.round(thumbW * 0.19)}
-              strokeWidth={2.4}
-              className="text-white"
-              style={{ position: "absolute", right: thumbW * 0.17, bottom: thumbW * 0.2, opacity: 0.9 }}
-            />
-            <Icon
-              as={Music}
-              size={Math.round(thumbW * 0.13)}
-              strokeWidth={2.4}
-              className="text-white"
-              style={{ position: "absolute", right: thumbW * 0.09, bottom: thumbW * 0.34, opacity: 0.8 }}
-            />
+            </View>
+          </View>
+          {/* The song badge: brand-orange disc, white note, surface-coloured ring so it separates from the cover. */}
+          <View
+            className="items-center justify-center rounded-full bg-brand-orange border-surface"
+            style={{
+              position: "absolute",
+              width: 28,
+              height: 28,
+              right: -4,
+              bottom: -2,
+              borderWidth: 2.5,
+              shadowColor: "#000",
+              shadowOpacity: 0.3,
+              shadowRadius: 3,
+              shadowOffset: { width: 0, height: 2 },
+              elevation: 4,
+            }}
+          >
+            <Icon as={Music2} size={14} strokeWidth={2.6} className="text-white" />
           </View>
         </View>
       ) : (
