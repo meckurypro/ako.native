@@ -3,7 +3,7 @@
 import { isFileType } from "@/lib/fileProject";
 import { FileFolderIcon } from "@/components/project/FileFolderArt";
 import { isBookType } from "@/lib/bookCover";
-import { ImageIcon, Music2 } from "lucide-react-native";
+import { ImageIcon, Music, Music2 } from "lucide-react-native";
 import { router, type Href } from "expo-router";
 import { Pressable, View } from "react-native";
 
@@ -101,9 +101,7 @@ export function TaggedProjectEmbed({
           <View className="h-full w-full items-center justify-center overflow-hidden" style={{ borderRadius: thumbW / 2 }}>
             {project.thumbnail_url ? (
               <Image source={{ uri: project.thumbnail_url }} contentFit="cover" style={{ width: "100%", height: "100%" }} />
-            ) : (
-              <Icon as={Music2} size={24} className="text-white" />
-            )}
+            ) : null}
             {/* Grooves. */}
             {[0.86, 0.72, 0.58, 0.44].map((f) => (
               <View
@@ -129,6 +127,21 @@ export function TaggedProjectEmbed({
                 borderWidth: 3,
                 borderColor: "rgba(20,20,20,0.75)",
               }}
+            />
+            {/* Two small notes, low on the right — enough to say "song" without crowding the cover. */}
+            <Icon
+              as={Music2}
+              size={Math.round(thumbW * 0.19)}
+              strokeWidth={2.4}
+              className="text-white"
+              style={{ position: "absolute", right: thumbW * 0.17, bottom: thumbW * 0.2, opacity: 0.9 }}
+            />
+            <Icon
+              as={Music}
+              size={Math.round(thumbW * 0.13)}
+              strokeWidth={2.4}
+              className="text-white"
+              style={{ position: "absolute", right: thumbW * 0.09, bottom: thumbW * 0.34, opacity: 0.8 }}
             />
           </View>
         </View>
