@@ -114,6 +114,7 @@ export function EditProject() {
 
   const [fileFields, setFileFields] = useState<FileFieldsValue>(EMPTY_FILE_FIELDS);
   const [fileUploading, setFileUploading] = useState(false);
+  const [mediaUploading, setMediaUploading] = useState(false);
   const [urlFields, setUrlFields] = useState<UrlFieldsValue>(EMPTY_URL_FIELDS);
   const [mediaFields, setMediaFields] = useState<MediaFieldsValue>(EMPTY_MEDIA_FIELDS);
   const [eventFields, setEventFields] = useState<EventFieldsValue>(EMPTY_EVENT_FIELDS);
@@ -282,6 +283,7 @@ export function EditProject() {
     if (!title.trim()) return setError("Title is required.");
     // Saving now would keep the OLD file while the new one is still going up — hold until it lands.
     if (project.project_type === "file" && fileUploading) return setError("Your file is still uploading — wait for it to finish.");
+    if (project.project_type === "media" && mediaUploading) return setError("Your file is still uploading — wait for it to finish.");
 
     const t = project.project_type;
     // Pitches and songs are never sold (the database refuses a price on a song), so they save as free.
@@ -514,7 +516,7 @@ export function EditProject() {
           </FormSection>
 
           <FormSection icon={PROJECT_TYPE_ICONS[t]} title={`${PROJECT_TYPE_LABELS[t]} details`}>
-            {t === "media" ? <MediaFields value={mediaFields} onChange={setMediaFields} onError={setError} /> : null}
+            {t === "media" ? <MediaFields value={mediaFields} onChange={setMediaFields} onError={setError} onUploadingChange={setMediaUploading} /> : null}
             {t === "file" ? <FileFields value={fileFields} onChange={setFileFields} onError={setError} maxFiles={maxFiles} onUploadingChange={setFileUploading} /> : null}
             {t === "url" ? <UrlFields value={urlFields} onChange={setUrlFields} /> : null}
             {t === "event" ? <EventFields value={eventFields} onChange={setEventFields} /> : null}
@@ -596,7 +598,7 @@ export function EditProject() {
       </ScrollView>
 
       <FormFooter error={error} bottomInset={insets.bottom}>
-        <Button onPress={() => void handleSubmit()} loading={updateProject.isPending} disabled={project.project_type === "file" && fileUploading}>
+        <Button onPress={() => void handleSubmit()} loading={updateProject.isPending} disabled={(project.project_type === "file" && fileUploading) || (project.project_type === "media" && mediaUploading)}>
           Save changes
         </Button>
       </FormFooter>

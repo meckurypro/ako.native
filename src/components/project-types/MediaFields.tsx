@@ -4,12 +4,13 @@
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { FileUp, Image as ImageIcon, Music, Video as VideoIcon, type LucideIcon } from "lucide-react-native";
+import { useCallback, useEffect, useState } from "react";
 import { Pressable, View } from "react-native";
 
 import { FormField } from "@/components/ui/FormField";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
-import { useUploadProjectFile } from "@/hooks/useUploadProjectFile";
+import { UPLOAD_CANCELLED, useUploadProjectFile } from "@/hooks/useUploadProjectFile";
 import { fromDocumentPickerAsset, fromImagePickerAsset, type LocalFile } from "@/lib/localFile";
 
 export interface MediaChannelValue {
@@ -101,10 +102,30 @@ interface MediaFieldsProps {
   value: MediaFieldsValue;
   onChange: (value: MediaFieldsValue) => void;
   onError: (message: string) => void;
+  /** True while any channel is still uploading, so the screen can refuse to save a half-uploaded project. */
+  onUploadingChange?: (uploading: boolean) => void;
 }
 
-function MediaChannelFields({ config, value, onChange, onError }: { config: ChannelConfig; value: MediaChannelValue; onChange: (v: MediaChannelValue) => void; onError: (m: string) => void }) {
+function MediaChannelFields({
+  config,
+  value,
+  onChange,
+  onError,
+  onBusyChange,
+}: {
+  config: ChannelConfig;
+  value: MediaChannelValue;
+  onChange: (v: MediaChannelValue) => void;
+  onError: (m: string) => void;
+  onBusyChange: (busy: boolean) => void;
+}) {
   const uploadFile = useUploadProjectFile();
+
+  useEffect(() => {
+    onBusyChange(uploadFile.isPending);
+    return () => onBusyChange(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uploadFile.isPending]);
 
   async function handleChoose() {
     try {
@@ -113,6 +134,8 @@ function MediaChannelFields({ config, value, onChange, onError }: { config: Chan
       const path = await uploadFile.mutateAsync(file);
       onChange({ ...value, file_path: path, file_name: file.name });
     } catch (err) {
+      // Cancelling is the person's own choice, not a failure.
+      if (err instanceof Error && err.message === UPLOAD_CANCELLED) return;
       onError(err instanceof Error ? err.message : "File upload failed.");
     }
   }
@@ -129,9 +152,22 @@ function MediaChannelFields({ config, value, onChange, onError }: { config: Chan
         >
           <Icon as={FileUp} size={16} className="text-ink-muted" />
           <Text numberOfLines={1} className="flex-1 text-sm text-ink-muted">
-            {uploadFile.isPending ? "Uploading…" : value.file_name ? value.file_name : value.file_path ? "File uploaded — tap to replace" : "Choose file"}
+            {uploadFile.isPending ? `Uploading… ${uploadFile.progress}%` : value.file_name ? value.file_name : value.file_path ? "File uploaded — tap to replace" : "Choose file"}
           </Text>
         </Pressable>
+        {uploadFile.isPending ? (
+          <View className="mt-2">
+            <View className="h-1.5 w-full overflow-hidden rounded-full bg-border" accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: uploadFile.progress }}>
+              <View className="h-1.5 rounded-full bg-accent" style={{ width: `${Math.min(100, Math.max(2, uploadFile.progress))}%` }} />
+            </View>
+            <View className="mt-1.5 flex-row items-start justify-between gap-3">
+              <Text className="flex-1 text-xs text-ink-muted">Large files take a few minutes — keep the app open until it finishes.</Text>
+              <Pressable onPress={uploadFile.cancel} accessibilityRole="button" hitSlop={8}>
+                <Text className="text-xs font-medium text-danger">Cancel</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
         {value.file_path && !uploadFile.isPending ? (
           <Pressable onPress={() => onChange({ ...value, file_path: null, file_name: null })} accessibilityRole="button" className="mt-1.5 self-start">
             <Text className="text-xs text-danger">Remove upload</Text>
@@ -155,7 +191,15 @@ function MediaChannelFields({ config, value, onChange, onError }: { config: Chan
   );
 }
 
-export function MediaFields({ value, onChange, onError }: MediaFieldsProps) {
+export function MediaFields({ value, onChange, onError, onUploadingChange }: MediaFieldsProps) {
+  const [busy, setBusy] = useState<Record<string, boolean>>({});
+  const anyBusy = Object.values(busy).some(Boolean);
+  const reportBusy = useCallback((key: string, isBusy: boolean) => setBusy((b) => (b[key] === isBusy ? b : { ...b, [key]: isBusy })), []);
+  useEffect(() => {
+    onUploadingChange?.(anyBusy);
+  }, [anyBusy, onUploadingChange]);
+  useEffect(() => () => onUploadingChange?.(false), [onUploadingChange]);
+
   return (
     <View className="mb-4">
       <Text className="mb-1.5 text-sm font-medium text-ink-muted">
@@ -180,7 +224,14 @@ export function MediaFields({ value, onChange, onError }: MediaFieldsProps) {
       </View>
 
       {CHANNELS.filter((c) => value[c.key].enabled).map((config) => (
-        <MediaChannelFields key={config.key} config={config} value={value[config.key]} onChange={(channel) => onChange({ ...value, [config.key]: channel })} onError={onError} />
+        <MediaChannelFields
+          key={config.key}
+          config={config}
+          value={value[config.key]}
+          onChange={(channel) => onChange({ ...value, [config.key]: channel })}
+          onError={onError}
+          onBusyChange={(isBusy) => reportBusy(config.key, isBusy)}
+        />
       ))}
 
       {!value.audio.enabled && !value.video.enabled && !value.image.enabled ? (

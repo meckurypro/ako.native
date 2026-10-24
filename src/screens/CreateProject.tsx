@@ -149,6 +149,7 @@ export function CreateProject() {
   // Per-type field state is kept separately so switching type never discards what was entered.
   const [fileFields, setFileFields] = useState<FileFieldsValue>(EMPTY_FILE_FIELDS);
   const [fileUploading, setFileUploading] = useState(false);
+  const [mediaUploading, setMediaUploading] = useState(false);
   const [urlFields, setUrlFields] = useState<UrlFieldsValue>(EMPTY_URL_FIELDS);
   const [mediaFields, setMediaFields] = useState<MediaFieldsValue>(EMPTY_MEDIA_FIELDS);
   const [eventFields, setEventFields] = useState<EventFieldsValue>(EMPTY_EVENT_FIELDS);
@@ -378,6 +379,7 @@ export function CreateProject() {
     setError(null);
     if (!title.trim()) return setError("Title is required.");
     if (projectType === "file" && fileUploading) return setError("Your file is still uploading — wait for it to finish.");
+    if (projectType === "media" && mediaUploading) return setError("Your file is still uploading — wait for it to finish.");
 
     // A song is never sold (the database refuses a price on one), so it always saves as free.
     const price = projectType === "media" ? 0 : parseFloat(priceUsd) || 0;
@@ -621,7 +623,7 @@ export function CreateProject() {
 
           {/* 4 — Whatever this type needs. */}
           <FormSection icon={PROJECT_TYPE_ICONS[projectType]} title={`${PROJECT_TYPE_LABELS[projectType]} details`}>
-            {projectType === "media" ? <MediaFields value={mediaFields} onChange={setMediaFields} onError={setError} /> : null}
+            {projectType === "media" ? <MediaFields value={mediaFields} onChange={setMediaFields} onError={setError} onUploadingChange={setMediaUploading} /> : null}
             {projectType === "file" ? <FileFields value={fileFields} onChange={setFileFields} onError={setError} maxFiles={maxFiles} onUploadingChange={setFileUploading} /> : null}
             {projectType === "url" ? <UrlFields value={urlFields} onChange={setUrlFields} /> : null}
             {projectType === "event" ? <EventFields value={eventFields} onChange={setEventFields} /> : null}
@@ -663,7 +665,7 @@ export function CreateProject() {
       </ScrollView>
 
       <FormFooter error={error} bottomInset={insets.bottom}>
-        <Button onPress={() => void handleSubmit()} loading={submitting} disabled={projectType === "file" && fileUploading}>
+        <Button onPress={() => void handleSubmit()} loading={submitting} disabled={(projectType === "file" && fileUploading) || (projectType === "media" && mediaUploading)}>
           {isDraftType ? "Create draft" : projectType === "pitch" ? "Publish pitch" : "Publish project"}
         </Button>
       </FormFooter>
