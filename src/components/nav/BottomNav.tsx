@@ -58,7 +58,7 @@ const FULL_ITEMS: NavItem[] = [FEED, DISCOVER, LIBRARY, CONNECT, PROFILE];
 const RESTRICTED_ITEMS: NavItem[] = [DISCOVER, LIBRARY, CONNECT, PROFILE];
 
 /** Unread badge: one crisp notification red in both themes (the semantic `danger` tone is muted and read as muddy on the button). */
-const BADGE_BG = "#D8453A";
+const BADGE_BG = "#CF4136";
 const BADGE_TEXT = "#FFFFFF";
 
 export const FAB_SIZE = 56;

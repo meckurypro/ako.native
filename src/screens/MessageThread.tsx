@@ -836,7 +836,7 @@ export function MessageThread() {
                 setShowNewMessagePill(false);
               }}
               accessibilityRole="button"
-              className="flex-row items-center gap-1 rounded-full bg-accent px-3 py-1.5"
+              className="flex-row items-center gap-1 rounded-full bg-cta px-3 py-1.5"
               style={{ elevation: 4 }}
             >
               <Text className="text-xs font-medium text-white">New messages</Text>
@@ -917,13 +917,13 @@ export function MessageThread() {
                 disabled={sendMessage.isPending}
                 accessibilityRole="button"
                 accessibilityLabel="Send"
-                className={`h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent active:bg-accent-hover ${sendMessage.isPending ? "opacity-50" : ""}`}
+                className={`h-11 w-11 shrink-0 items-center justify-center rounded-full bg-cta active:opacity-80 ${sendMessage.isPending ? "opacity-50" : ""}`}
               >
                 <Icon as={Send} size={20} className="text-white" />
               </Pressable>
             ) : (
               <GestureDetector gesture={micGesture}>
-                <View accessibilityRole="button" accessibilityLabel="Hold to record a voice message" className="h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent">
+                <View accessibilityRole="button" accessibilityLabel="Hold to record a voice message" className="h-11 w-11 shrink-0 items-center justify-center rounded-full bg-cta">
                   <Icon as={Mic} size={20} className="text-white" />
                 </View>
               </GestureDetector>

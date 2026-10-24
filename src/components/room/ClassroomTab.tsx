@@ -235,12 +235,12 @@ export function ClassroomTab({ projectId, isHost }: { projectId: string; isHost:
               onSubmitEditing={handlePost}
             />
             {draft.trim() ? (
-              <Pressable onPress={handlePost} disabled={postToRoom.isPending} accessibilityRole="button" accessibilityLabel="Post" className={`shrink-0 rounded-full bg-accent p-2.5 ${postToRoom.isPending ? "opacity-50" : ""}`}>
+              <Pressable onPress={handlePost} disabled={postToRoom.isPending} accessibilityRole="button" accessibilityLabel="Post" className={`shrink-0 rounded-full bg-cta p-2.5 ${postToRoom.isPending ? "opacity-50" : ""}`}>
                 <Icon as={Send} size={16} className="text-white" />
               </Pressable>
             ) : (
               <GestureDetector gesture={micGesture}>
-                <View accessibilityRole="button" accessibilityLabel="Hold to record a voice lecture" className="shrink-0 rounded-full bg-accent p-2.5">
+                <View accessibilityRole="button" accessibilityLabel="Hold to record a voice lecture" className="shrink-0 rounded-full bg-cta p-2.5">
                   <Icon as={Mic} size={16} className="text-white" />
                 </View>
               </GestureDetector>

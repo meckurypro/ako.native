@@ -125,7 +125,7 @@ export function MediaComposeModal({ kind, files: initialFiles, onClose, onSend }
             onPress={() => onSend(files, caption, hd)}
             accessibilityRole="button"
             accessibilityLabel={files.length > 1 ? `Send ${files.length} items` : "Send"}
-            className="h-11 w-11 items-center justify-center rounded-full bg-accent active:bg-accent-hover"
+            className="h-11 w-11 items-center justify-center rounded-full bg-cta active:opacity-80"
           >
             <Icon as={Send} size={20} color="#FFFFFF" />
             {files.length > 1 ? (

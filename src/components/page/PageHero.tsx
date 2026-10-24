@@ -65,7 +65,7 @@ function Segment({ active, running, canAutoplay, seconds, onPress, label }: { ac
 
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ selected: active }} hitSlop={{ top: 10, bottom: 10 }}>
-      <View className="h-1 overflow-hidden rounded-full" style={{ width: active ? 36 : 16, backgroundColor: "rgba(255,255,255,0.4)" }}>
+      <View className="h-1 overflow-hidden rounded-full" style={{ width: active ? 36 : 16, backgroundColor: "rgba(255,255,255,0.5)" }}>
         {active ? <Animated.View className="h-full rounded-full bg-white" style={fillStyle} /> : null}
       </View>
     </Pressable>
@@ -264,7 +264,7 @@ export function PageHero({ slides, autoplay, intervalSeconds, direction, pageNam
               accessibilityLabel={userPaused ? "Play slideshow" : "Pause slideshow"}
               hitSlop={8}
               className="absolute right-3 top-3 h-8 w-8 items-center justify-center rounded-full"
-              style={{ backgroundColor: "rgba(0,0,0,0.35)" }}
+              style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
             >
               <Icon as={userPaused ? Play : Pause} size={14} className="text-white" />
             </Pressable>

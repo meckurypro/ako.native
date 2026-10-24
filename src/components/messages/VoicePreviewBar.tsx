@@ -90,7 +90,7 @@ export function VoicePreviewBar({ url, durationSec, peaks, sending, viewOnce, on
           onPress={toggle}
           accessibilityRole="button"
           accessibilityLabel={status.playing ? "Pause preview" : "Play preview"}
-          className="h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent"
+          className="h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cta"
         >
           <Icon as={status.playing ? Pause : Play} size={15} fill="#FFFFFF" className="text-white" />
         </Pressable>
@@ -110,7 +110,7 @@ export function VoicePreviewBar({ url, durationSec, peaks, sending, viewOnce, on
             accessibilityRole="switch"
             accessibilityState={{ checked: !!viewOnce }}
             accessibilityLabel={viewOnce ? "View once enabled — tap to allow replay" : "Enable view once"}
-            className={`h-6 w-6 shrink-0 items-center justify-center rounded-full ${viewOnce ? "bg-accent" : "bg-ink-muted-a15"}`}
+            className={`h-6 w-6 shrink-0 items-center justify-center rounded-full ${viewOnce ? "bg-cta" : "bg-ink-muted-a15"}`}
           >
             <Text className={`text-[11px] font-bold ${viewOnce ? "text-white" : "text-ink-muted"}`}>1</Text>
           </Pressable>
@@ -122,7 +122,7 @@ export function VoicePreviewBar({ url, durationSec, peaks, sending, viewOnce, on
         disabled={sending}
         accessibilityRole="button"
         accessibilityLabel="Send voice message"
-        className={`shrink-0 rounded-full bg-accent p-2.5 ${sending ? "opacity-50" : ""}`}
+        className={`shrink-0 rounded-full bg-cta p-2.5 ${sending ? "opacity-50" : ""}`}
       >
         <Icon as={Send} size={18} className="text-white" />
       </Pressable>

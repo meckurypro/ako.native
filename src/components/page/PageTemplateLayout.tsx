@@ -17,6 +17,9 @@ const GAP = { tight: "gap-6", cozy: "gap-9", airy: "gap-12" } as const;
 const TOP = { tight: "mt-6", cozy: "mt-8", airy: "mt-10" } as const;
 
 // Stacked translucent bands stand in for a gradient (no gradient dependency in the app).
+// White text drawn over a cover image: a soft dark halo keeps it readable even where the image is bright.
+export const TEXT_SHADOW = { textShadowColor: "rgba(0,0,0,0.55)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 8 } as const;
+
 function Scrim({ position, height, alphas }: { position: "top" | "bottom"; height: number | string; alphas: number[] }) {
   return (
     <View pointerEvents="none" className={`absolute inset-x-0 ${position === "top" ? "top-0" : "bottom-0"}`} style={{ height: height as number }}>
@@ -99,8 +102,9 @@ export interface PageTemplateLayoutProps {
   handleLine: string;
   tagline: string | null;
   parentLine: ReactNode;
-  followers: ReactNode;
-  website: ReactNode;
+  /** Receive the tone so they can dress for a dark cover scrim ("overlay") or the page canvas ("normal"). */
+  followers: (tone: "normal" | "overlay") => ReactNode;
+  website: (tone: "normal" | "overlay") => ReactNode;
   visitorNotice: ReactNode;
   /** The hero slideshow (already framed), or null. */
   hero: ReactNode;
@@ -122,7 +126,7 @@ export function PageTemplateLayout(p: PageTemplateLayoutProps) {
       <Image source={{ uri: page.avatar_url }} contentFit="cover" style={{ width: px, height: px, borderRadius: radius }} />
     ) : (
       <View style={{ width: px, height: px, borderRadius: radius }} className="items-center justify-center bg-accent-soft">
-        <Text style={{ fontSize: px * 0.34 }} className="font-medium text-accent">
+        <Text style={{ fontSize: px * 0.34 }} className="font-medium text-accent-hover">
           {page.name
             .split(" ")
             .map((w) => w[0])
@@ -144,17 +148,19 @@ export function PageTemplateLayout(p: PageTemplateLayoutProps) {
   const statsBlock = (tone: "normal" | "overlay", justify: string) => {
     if (cfg.stats === "none") return null;
     if (cfg.stats === "tiles") {
+      const site = p.website("normal");
       return (
         <View className="mt-4 flex-row gap-2">
-          <View className="flex-1 rounded-2xl border border-border bg-surface px-4 py-3">{p.followers}</View>
-          {p.website ? <View className="min-w-0 flex-1 rounded-2xl border border-border bg-surface px-4 py-3">{p.website}</View> : null}
+          <View className="flex-1 rounded-2xl border border-border bg-surface px-4 py-3">{p.followers("normal")}</View>
+          {site ? <View className="min-w-0 flex-1 rounded-2xl border border-border bg-surface px-4 py-3">{site}</View> : null}
         </View>
       );
     }
+    // Each piece dresses itself for its tone: over the cover the followers text must be light, not the page's dark ink.
     return (
-      <View className={`mt-4 flex-row flex-wrap items-center gap-x-5 gap-y-2 ${justify}`} style={tone === "overlay" ? { opacity: 0.95 } : undefined}>
-        {p.followers}
-        {p.website}
+      <View className={`mt-4 flex-row flex-wrap items-center gap-x-5 gap-y-2 ${justify}`}>
+        {p.followers(tone)}
+        {p.website(tone)}
       </View>
     );
   };
@@ -174,7 +180,7 @@ export function PageTemplateLayout(p: PageTemplateLayoutProps) {
         <View className="absolute inset-x-0 top-0">{p.topControls(dark)}</View>
         {overlay ? (
           <>
-            <Scrim position="bottom" height="70%" alphas={[0.08, 0.16, 0.3, 0.46, 0.64, 0.8]} />
+            <Scrim position="bottom" height="78%" alphas={[0.12, 0.24, 0.4, 0.58, 0.74, 0.86]} />
             <View className={`absolute inset-x-0 bottom-0 px-4 pb-5 ${center ? "items-center" : ""}`}>
               <View className={center ? "items-center" : "flex-row items-end gap-3"}>
                 {avatarBox(cfg.avatarSize, false)}
@@ -182,14 +188,14 @@ export function PageTemplateLayout(p: PageTemplateLayoutProps) {
                   {p.renderName(`${nameCls(center ? "text-4xl" : "text-[28px]")} text-white`)}
                   <View className={`mt-1 flex-row flex-wrap items-center gap-x-2 ${center ? "justify-center" : ""}`}>
                     {p.verified}
-                    <Text className="text-sm" style={{ color: "rgba(255,255,255,0.8)" }}>
+                    <Text className="text-sm" style={{ color: "rgba(255,255,255,0.92)", ...TEXT_SHADOW }}>
                       {p.handleLine}
                     </Text>
                   </View>
                 </View>
               </View>
               {p.tagline ? (
-                <Text className={`mt-2 text-base leading-snug ${center ? "text-center" : ""}`} style={{ color: "rgba(255,255,255,0.9)" }}>
+                <Text className={`mt-2 text-base leading-snug ${center ? "text-center" : ""}`} style={{ color: "#FFFFFF", ...TEXT_SHADOW }}>
                   {p.tagline}
                 </Text>
               ) : null}
@@ -203,7 +209,7 @@ export function PageTemplateLayout(p: PageTemplateLayoutProps) {
   } else if (cfg.banner === "backdrop") {
     top = (
       <View pointerEvents="none" className="absolute inset-x-0 top-0 overflow-hidden" style={{ height: 320 }}>
-        {hasCover ? <Image source={{ uri: page.cover_url! }} contentFit="cover" blurRadius={40} style={{ width: "100%", height: "100%", opacity: 0.5 }} /> : <View className="h-full w-full bg-accent-soft" />}
+        {hasCover ? <Image source={{ uri: page.cover_url! }} contentFit="cover" blurRadius={40} style={{ width: "100%", height: "100%", opacity: 0.3 }} /> : <View className="h-full w-full bg-accent-soft" />}
       </View>
     );
   }

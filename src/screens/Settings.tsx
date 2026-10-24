@@ -88,7 +88,7 @@ export function Settings() {
               }}
               accessibilityRole="button"
               accessibilityLabel="Change profile photo"
-              className="absolute -bottom-1 -right-1 h-9 w-9 items-center justify-center rounded-full border-[3px] border-canvas bg-accent"
+              className="absolute -bottom-1 -right-1 h-9 w-9 items-center justify-center rounded-full border-[3px] border-canvas bg-cta"
             >
               <Icon as={Camera} size={16} className="text-white" />
             </Pressable>

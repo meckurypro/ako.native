@@ -21,6 +21,7 @@
   --color-accent: #3D5A45;
   --color-accent-hover: #2F4636;
   --color-accent-soft: #E3E9E1;
+  --color-cta: #3D5A45; /* primary-button fill that carries WHITE text (>=4.5:1); == accent in light, darker in dark */
   --color-border: #E9E4D8;
   --color-danger: #A64B3F;
   --color-pushback: #B8862E;

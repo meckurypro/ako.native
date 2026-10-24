@@ -158,12 +158,12 @@ export function RoomChat({ projectId, conversationId, canPost, cantPostReason }:
               style={{ fontFamily: "Inter_400Regular" }}
             />
             {content.trim() ? (
-              <Pressable onPress={handleSend} disabled={sendMessage.isPending} accessibilityRole="button" accessibilityLabel="Send" className={`shrink-0 rounded-full bg-accent p-2.5 ${sendMessage.isPending ? "opacity-50" : ""}`}>
+              <Pressable onPress={handleSend} disabled={sendMessage.isPending} accessibilityRole="button" accessibilityLabel="Send" className={`shrink-0 rounded-full bg-cta p-2.5 ${sendMessage.isPending ? "opacity-50" : ""}`}>
                 <Icon as={Send} size={16} className="text-white" />
               </Pressable>
             ) : (
               <GestureDetector gesture={micGesture}>
-                <View accessibilityRole="button" accessibilityLabel="Hold to record a voice note" className="shrink-0 rounded-full bg-accent p-2.5">
+                <View accessibilityRole="button" accessibilityLabel="Hold to record a voice note" className="shrink-0 rounded-full bg-cta p-2.5">
                   <Icon as={Mic} size={16} className="text-white" />
                 </View>
               </GestureDetector>

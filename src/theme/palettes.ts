@@ -17,6 +17,8 @@ export interface Palette {
   accent: string;
   accentHover: string;
   accentSoft: string;
+  /** Fill for primary buttons that carry WHITE text (>=4.5:1). Equals accent in light palettes; darker in dark ones, where the bright accent alone fails. */
+  cta: string;
   border: string;
   danger: string;
   pushback: string;
@@ -63,6 +65,7 @@ const light: Palette = {
   accent: "#3D5A45",
   accentHover: "#2F4636",
   accentSoft: "#E3E9E1",
+  cta: "#3D5A45",
   border: "#E9E4D8",
   danger: "#A64B3F",
   pushback: "#B8862E",
@@ -107,6 +110,7 @@ const dark: Palette = {
   accent: "#4CAE7C",
   accentHover: "#63C695",
   accentSoft: "#17281F",
+  cta: "#377F5B",
   border: "#232220",
   danger: "#C97C6B",
   pushback: "#D9A857",
@@ -150,6 +154,7 @@ const pageLight: Palette = {
   accent: "#A8501F",
   accentHover: "#7E3B16",
   accentSoft: "#F0DCC9",
+  cta: "#A8501F",
   border: "#EDDFCB",
   highlight: "#F0C08A",
   bubbleMine: "#A8501F",
@@ -167,6 +172,7 @@ const pageDark: Palette = {
   accent: "#D9773D",
   accentHover: "#EF9159",
   accentSoft: "#2B1912",
+  cta: "#A95D30",
   border: "#2E2015",
   highlight: "#5C3018",
   bubbleMine: "#7E3B16",
@@ -213,6 +219,7 @@ export function paletteToCssVars(p: Palette): Record<`--${string}`, string> {
     "--color-accent": p.accent,
     "--color-accent-hover": p.accentHover,
     "--color-accent-soft": p.accentSoft,
+    "--color-cta": p.cta,
     "--color-border": p.border,
     "--color-danger": p.danger,
     "--color-pushback": p.pushback,

@@ -28,7 +28,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomNavInset } from "@/components/nav/BottomNav";
 import { useChromeScroll } from "@/components/nav/ChromeProvider";
 import { PageHero } from "@/components/page/PageHero";
-import { PageTemplateLayout } from "@/components/page/PageTemplateLayout";
+import { PageTemplateLayout, TEXT_SHADOW } from "@/components/page/PageTemplateLayout";
 import { getPageTemplate, resolveTemplateConfig, type ActionsMode } from "@/lib/pageTemplates";
 import { PageTeamShowcase } from "@/components/page/PageTeamShowcase";
 import { PostCard } from "@/components/post/PostCard";
@@ -75,7 +75,7 @@ const ALL_TABS = ["projects", "posts"] as const;
 const RESTRICTED_TABS = ["projects"] as const;
 const TAB_LABEL = { projects: "Projects", posts: "Posts" } as const;
 
-const GLASS = { backgroundColor: "rgba(0,0,0,0.35)" } as const;
+const GLASS = { backgroundColor: "rgba(0,0,0,0.5)" } as const;
 
 function getWebsiteHref(url: string): string {
   return /^https?:\/\//i.test(url) ? url : `https://${url}`;
@@ -386,7 +386,7 @@ export function PagePage() {
             accessibilityRole={canSwitchByName ? "button" : "text"}
             accessibilityLabel={canSwitchByName ? `${page.name} — switch to another page` : page.name}
           >
-            <Text accessibilityRole="header" className={className}>
+            <Text accessibilityRole="header" className={className} style={className.includes("text-white") ? TEXT_SHADOW : undefined}>
               {page.name}
             </Text>
           </Pressable>
@@ -406,28 +406,40 @@ export function PagePage() {
           </Text>
         ) : null
       }
-      followers={
-        <Text className="text-sm">
-          <Text className="font-bold text-ink">{page.follower_count}</Text>
-          <Text className="text-ink-muted">{page.follower_count === 1 ? " follower" : " followers"}</Text>
-        </Text>
-      }
-      website={
-        page.website_url ? (
-          <Pressable onPress={() => void openExternal(getWebsiteHref(page.website_url!))} accessibilityRole="link" accessibilityLabel={`Website: ${getWebsiteDomain(page.website_url)}`} className="max-w-full flex-row items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1.5">
-            <Icon as={Link2} size={14} className="text-accent" />
-            <Text numberOfLines={1} className="shrink text-sm font-medium text-accent">
+      followers={(tone) => {
+        // "overlay" = drawn over the dark cover scrim (Spotlight / Poster): light text. Otherwise the page's own ink.
+        const onImage = tone === "overlay";
+        return (
+          <Text className="text-sm" style={onImage ? TEXT_SHADOW : undefined}>
+            <Text className={`font-bold ${onImage ? "text-white" : "text-ink"}`}>{page.follower_count}</Text>
+            <Text className={onImage ? "text-white/90" : "text-ink-muted"}>{page.follower_count === 1 ? " follower" : " followers"}</Text>
+          </Text>
+        );
+      }}
+      website={(tone) => {
+        if (!page.website_url) return null;
+        const onImage = tone === "overlay";
+        return (
+          <Pressable
+            onPress={() => void openExternal(getWebsiteHref(page.website_url!))}
+            accessibilityRole="link"
+            accessibilityLabel={`Website: ${getWebsiteDomain(page.website_url)}`}
+            className={`max-w-full flex-row items-center gap-1.5 rounded-full px-3 py-1.5 ${onImage ? "" : "bg-accent-soft"}`}
+            style={onImage ? { backgroundColor: "rgba(255,255,255,0.22)", borderWidth: 1, borderColor: "rgba(255,255,255,0.3)" } : undefined}
+          >
+            <Icon as={Link2} size={14} className={onImage ? "text-white" : "text-accent-hover"} />
+            <Text numberOfLines={1} className={`shrink text-sm font-medium ${onImage ? "text-white" : "text-accent-hover"}`}>
               {getWebsiteDomain(page.website_url)}
             </Text>
           </Pressable>
-        ) : null
-      }
+        );
+      }}
       visitorNotice={
         previewingAsVisitor && canEditPage ? (
           <View className="flex-row items-center justify-between gap-3 rounded-xl bg-accent-soft px-4 py-2.5">
             <View className="min-w-0 flex-1 flex-row items-center gap-1.5">
-              <Icon as={Eye} size={14} className="text-accent" />
-              <Text className="flex-1 text-sm text-accent">You're viewing this page as a visitor.</Text>
+              <Icon as={Eye} size={14} className="text-accent-hover" />
+              <Text className="flex-1 text-sm text-accent-hover">You're viewing this page as a visitor.</Text>
             </View>
             <Pressable onPress={() => setPreviewingAsVisitor(false)} accessibilityRole="button" accessibilityLabel="Exit visitor view" hitSlop={8} className="flex-row items-center gap-1">
               <Icon as={X} size={14} className="text-accent" />

@@ -68,7 +68,7 @@ export function TemplateThumb({ cfg }: { cfg: PageTemplateConfig }) {
         {cfg.heroFirst ? hero : null}
         {cfg.banner === "backdrop" ? <View className="-mx-1.5 -mt-1.5 h-9 bg-accent/20" /> : null}
         {hasBanner ? (
-          <View className={`-mx-1.5 -mt-1.5 justify-end px-1.5 pb-1 ${overlay ? "bg-ink/70" : SOFT}`} style={{ height: bannerH }}>
+          <View className={`-mx-1.5 -mt-1.5 justify-end px-1.5 pb-1 ${overlay ? "bg-black/70" : SOFT}`} style={{ height: bannerH }}>
             {overlay ? (
               <View className={center ? "items-center gap-[3px]" : "flex-row items-end gap-1"}>
                 <Dot size={cfg.avatarSize} shape={cfg.avatarShape} />

@@ -571,7 +571,7 @@ export function ProfilePage() {
                   onPress={() => router.push("/settings/profile")}
                   accessibilityRole="button"
                   accessibilityLabel="Change profile photo"
-                  className="absolute -bottom-1 -right-1 h-9 w-9 items-center justify-center rounded-full border-[3px] border-canvas bg-accent"
+                  className="absolute -bottom-1 -right-1 h-9 w-9 items-center justify-center rounded-full border-[3px] border-canvas bg-cta"
                 >
                   <Icon as={Plus} size={18} strokeWidth={2.75} className="text-white" />
                 </Pressable>
@@ -711,7 +711,7 @@ export function ProfilePage() {
                     disabled={followBusy}
                     accessibilityRole="button"
                     className={`h-11 flex-row items-center justify-center gap-2 rounded-xl ${followBusy ? "opacity-40" : ""} ${
-                      hasPendingRequest ? "bg-accent-soft" : isFollowedByUser ? "bg-pushback-a15" : "bg-accent"
+                      hasPendingRequest ? "bg-accent-soft" : isFollowedByUser ? "bg-pushback-a15" : "bg-cta"
                     }`}
                   >
                     <Icon
