@@ -193,6 +193,10 @@ export function useCompleteProfileSetup() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["onboarding-status", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["my-profile", user?.id] });
+      // useAuth caches (and persists) the signed-in user's own username forever. The signup-time username is
+      // derived from the email, so without this /me and the Profile tab keep pointing at it after the person
+      // picks theirs — "Profile not found."
+      await queryClient.invalidateQueries({ queryKey: ["my-username"], refetchType: "all" });
       queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
   });
