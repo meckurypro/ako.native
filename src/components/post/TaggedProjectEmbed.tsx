@@ -3,7 +3,7 @@
 import { isFileType } from "@/lib/fileProject";
 import { FileFolderIcon } from "@/components/project/FileFolderArt";
 import { isBookType } from "@/lib/bookCover";
-import { ImageIcon } from "lucide-react-native";
+import { ImageIcon, Music2 } from "lucide-react-native";
 import { router, type Href } from "expo-router";
 import { Pressable, View } from "react-native";
 
@@ -51,6 +51,8 @@ export function TaggedProjectEmbed({
   // and below, and is tilted in perspective like a physical card resting on the post. The Pressable's own height
   // holds the whole thumbnail, so the overflow reserves its space and stays tappable.
   const book = isBookType(project.project_type);
+  // A song (a "media" project) gets a record instead of a tilted card: same box, same spot, but round.
+  const song = project.project_type === "media";
   const thumbW = book ? 84 : 96;
   const thumbH = book ? 120 : 96;
   const outerH = thumbH + 8;
@@ -73,32 +75,91 @@ export function TaggedProjectEmbed({
         </Text>
       </View>
 
-      <View
-        pointerEvents="none"
-        className="absolute rounded-lg bg-surface"
-        style={{
-          left: 12,
-          top: (outerH - thumbH) / 2,
-          width: thumbW,
-          height: thumbH,
-          transform: [{ perspective: 600 }, { rotateY: "16deg" }, { rotateX: "4deg" }, { rotateZ: "-6deg" }],
-          shadowColor: "#000",
-          shadowOpacity: 0.35,
-          shadowRadius: 9,
-          shadowOffset: { width: 0, height: 7 },
-          elevation: 8,
-        }}
-      >
-        <View className="h-full w-full items-center justify-center overflow-hidden rounded-lg border border-white-a25">
-          {isFileType(project.project_type) ? (
-            <FileFolderIcon size={thumbW} fill />
-          ) : project.thumbnail_url ? (
-            <Image source={{ uri: project.thumbnail_url }} contentFit="cover" style={{ width: "100%", height: "100%" }} />
-          ) : (
-            <Icon as={ImageIcon} size={22} className="text-ink-muted" />
-          )}
+      {song ? (
+        // Record: the cover fills a circle, faint concentric grooves and a dark rim sit over it, and a spindle hole
+        // marks the centre. Flat (no perspective tilt) so it reads as a disc lying on the post.
+        <View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            left: 12,
+            top: (outerH - thumbH) / 2,
+            width: thumbW,
+            height: thumbH,
+            borderRadius: thumbW / 2,
+            backgroundColor: "#171717",
+            borderWidth: 2,
+            borderColor: "rgba(20,20,20,0.9)",
+            transform: [{ rotateZ: "-8deg" }],
+            shadowColor: "#000",
+            shadowOpacity: 0.35,
+            shadowRadius: 9,
+            shadowOffset: { width: 0, height: 7 },
+            elevation: 8,
+          }}
+        >
+          <View className="h-full w-full items-center justify-center overflow-hidden" style={{ borderRadius: thumbW / 2 }}>
+            {project.thumbnail_url ? (
+              <Image source={{ uri: project.thumbnail_url }} contentFit="cover" style={{ width: "100%", height: "100%" }} />
+            ) : (
+              <Icon as={Music2} size={24} className="text-white" />
+            )}
+            {/* Grooves. */}
+            {[0.86, 0.72, 0.58, 0.44].map((f) => (
+              <View
+                key={f}
+                style={{
+                  position: "absolute",
+                  width: thumbW * f,
+                  height: thumbW * f,
+                  borderRadius: (thumbW * f) / 2,
+                  borderWidth: 1,
+                  borderColor: "rgba(0,0,0,0.18)",
+                }}
+              />
+            ))}
+            {/* Spindle hole. */}
+            <View
+              className="bg-surface"
+              style={{
+                position: "absolute",
+                width: thumbW * 0.16,
+                height: thumbW * 0.16,
+                borderRadius: thumbW * 0.08,
+                borderWidth: 3,
+                borderColor: "rgba(20,20,20,0.75)",
+              }}
+            />
+          </View>
         </View>
-      </View>
+      ) : (
+        <View
+          pointerEvents="none"
+          className="absolute rounded-lg bg-surface"
+          style={{
+            left: 12,
+            top: (outerH - thumbH) / 2,
+            width: thumbW,
+            height: thumbH,
+            transform: [{ perspective: 600 }, { rotateY: "16deg" }, { rotateX: "4deg" }, { rotateZ: "-6deg" }],
+            shadowColor: "#000",
+            shadowOpacity: 0.35,
+            shadowRadius: 9,
+            shadowOffset: { width: 0, height: 7 },
+            elevation: 8,
+          }}
+        >
+          <View className="h-full w-full items-center justify-center overflow-hidden rounded-lg border border-white-a25">
+            {isFileType(project.project_type) ? (
+              <FileFolderIcon size={thumbW} fill />
+            ) : project.thumbnail_url ? (
+              <Image source={{ uri: project.thumbnail_url }} contentFit="cover" style={{ width: "100%", height: "100%" }} />
+            ) : (
+              <Icon as={ImageIcon} size={22} className="text-ink-muted" />
+            )}
+          </View>
+        </View>
+      )}
     </Pressable>
   );
 }
