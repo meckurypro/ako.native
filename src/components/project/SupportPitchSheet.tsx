@@ -7,6 +7,8 @@ import { SheetFrame } from "@/components/ui/SheetFrame";
 import { Text } from "@/components/ui/Text";
 import { useSupportPitch } from "@/hooks/useProjectTypeDetails";
 import { useTheme } from "@/theme/ThemeProvider";
+import { useErrorNotice } from "@/components/ui/ErrorNotice";
+import { friendlyError, isInsufficientBalance } from "@/lib/friendlyError";
 
 interface SupportPitchSheetProps {
   projectId: string;
@@ -21,6 +23,7 @@ export function SupportPitchSheet({ projectId, projectTitle, onClose, onSupporte
   const [message, setMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
   const supportPitch = useSupportPitch(projectId);
+  const notifyError = useErrorNotice();
 
   async function handleSubmit() {
     setError(null);
@@ -33,7 +36,8 @@ export function SupportPitchSheet({ projectId, projectTitle, onClose, onSupporte
       await supportPitch.mutateAsync({ amountUsd, message: message.trim() || undefined });
       onSupported();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't process your support.");
+      if (isInsufficientBalance(err)) notifyError(err, "Couldn't process your support.");
+      else setError(friendlyError(err, "Couldn't process your support."));
     }
   }
 

@@ -17,6 +17,7 @@ import { useCreateReshare } from "@/hooks/usePosts";
 import type { RepostSource } from "@/types/database";
 import { useTheme } from "@/theme/ThemeProvider";
 import { RepostEmbed } from "./RepostEmbed";
+import { friendlyError } from "@/lib/friendlyError";
 
 interface ReshareSheetProps {
   postId: string;
@@ -44,7 +45,7 @@ export function ReshareSheet({ postId, source, onClose }: ReshareSheetProps) {
       onClose();
       toast("Reposted.", { variant: "success" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't repost this.");
+      setError(friendlyError(err, "Couldn't repost this."));
     }
   }
 
@@ -56,7 +57,7 @@ export function ReshareSheet({ postId, source, onClose }: ReshareSheetProps) {
       onClose();
       toast("Posted.", { variant: "success" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't post this.");
+      setError(friendlyError(err, "Couldn't post this."));
     }
   }
 

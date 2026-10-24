@@ -27,6 +27,7 @@ import { contentCounterClass, postContentLimit } from "@/lib/textLimits";
 import { useMyProfile } from "@/hooks/useProfile";
 import { useTheme } from "@/theme/ThemeProvider";
 import type { PostWithAuthor } from "@/types/database";
+import { friendlyError } from "@/lib/friendlyError";
 
 const HEADING_LIMIT = 50;
 
@@ -129,7 +130,7 @@ export function EditPost() {
       // only the fallback.
       await returnAfterSave({ fallback: `/post/${postId}` });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't save changes.");
+      setError(friendlyError(err, "Couldn't save changes."));
     }
   }
 

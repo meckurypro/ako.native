@@ -19,6 +19,7 @@ import { useProject } from "@/hooks/useProjects";
 import { haptics } from "@/lib/haptics";
 import { MONO_FONT } from "@/theme/mono";
 import { useTheme } from "@/theme/ThemeProvider";
+import { friendlyError } from "@/lib/friendlyError";
 
 export function EventCheckIn() {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
@@ -202,7 +203,7 @@ export function EventCheckIn() {
                       onPress={() =>
                         checkIn.mutate(ticket.id, {
                           onSuccess: () => haptics.success(),
-                          onError: (e) => toast(e instanceof Error && e.message ? e.message : "Couldn't check in.", { variant: "error" }),
+                          onError: (e) => toast(friendlyError(e, "Couldn't check in."), { variant: "error" }),
                         })
                       }
                       disabled={checkIn.isPending}

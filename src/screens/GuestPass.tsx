@@ -26,6 +26,7 @@ import { formatFileSize } from "@/lib/chatMedia";
 import { formatPassRemaining, safeHref } from "@/lib/guestPass";
 import { getProjectPath } from "@/lib/projectLinks";
 import { useTheme } from "@/theme/ThemeProvider";
+import { friendlyError } from "@/lib/friendlyError";
 
 function Shell({ children, right }: { children: ReactNode; right?: ReactNode }) {
   const insets = useSafeAreaInsets();
@@ -155,7 +156,7 @@ function useFileOpener(token: string, onExpired: () => void) {
       await WebBrowser.openBrowserAsync(r.url);
     } catch (e) {
       if (e instanceof GuestPassExpiredError) onExpired();
-      else toast(e instanceof Error ? e.message : "Couldn't open that file.", { variant: "error" });
+      else toast(friendlyError(e, "Couldn't open that file."), { variant: "error" });
     }
   }
   return { open, pending: fetcher.isPending };

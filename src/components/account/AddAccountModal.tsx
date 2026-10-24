@@ -10,6 +10,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Text } from "@/components/ui/Text";
 import { useAddAccount } from "@/hooks/useAccountSwitcher";
 import { useTheme } from "@/theme/ThemeProvider";
+import { friendlyError } from "@/lib/friendlyError";
 
 interface AddAccountModalProps {
   onClose: () => void;
@@ -31,7 +32,7 @@ export function AddAccountModal({ onClose, onAdded }: AddAccountModalProps) {
       await addAccount.mutateAsync({ email: email.trim(), password });
       onAdded();
     } catch (err) {
-      setError(err instanceof Error && err.message ? err.message : "Couldn't sign into that account.");
+      setError(friendlyError(err, "Couldn't sign into that account."));
     }
   }
 

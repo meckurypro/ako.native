@@ -4,6 +4,7 @@ import { Room, RoomEvent, Track, type Participant } from "livekit-client";
 import { supabase } from "../lib/supabase";
 import { useSound } from "./useSound";
 import { useToast } from "../components/Toast";
+import { friendlyError } from "@/lib/friendlyError";
 
 export interface CallParticipantView {
   identity: string;
@@ -124,7 +125,7 @@ export function useLiveKitRoom(projectId: string | undefined) {
       toast("You joined the meeting.", { variant: "success" });
     } catch (err) {
       setConnectionState("error");
-      setErrorMessage(err instanceof Error ? err.message : "Couldn't join the meeting.");
+      setErrorMessage(friendlyError(err, "Couldn't join the meeting."));
       play("error");
     }
   }, [projectId, refreshParticipants, play]);

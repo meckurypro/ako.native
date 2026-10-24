@@ -13,8 +13,8 @@ import { Button } from "@/components/ui/Button";
 import { SheetFrame } from "@/components/ui/SheetFrame";
 import { Icon, Image } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
+import { useErrorNotice } from "@/components/ui/ErrorNotice";
 import { useToast } from "@/components/ui/Toast";
-import { PurchaseError } from "@/components/wallet/PurchaseError";
 import { usePurchaseOffer, type Offer } from "@/hooks/useOffers";
 import { formatUsd } from "@/lib/money";
 
@@ -94,19 +94,18 @@ function OfferCard({
 
 export function OfferNudgeSheet({ projectId, projectTitle, singlePrice, offers, onBuySingle, onClose }: OfferNudgeSheetProps) {
   const toast = useToast();
+  const notifyError = useErrorNotice();
   const purchaseOffer = usePurchaseOffer();
-  const [error, setError] = useState<string | null>(null);
   const [buyingId, setBuyingId] = useState<string | null>(null);
 
   async function handleBuyOffer(offer: Offer) {
-    setError(null);
     setBuyingId(offer.id);
     try {
       const result = await purchaseOffer.mutateAsync(offer.id);
       toast(`Unlocked ${result.purchases.length} projects 🎉`, { variant: "success" });
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't complete the purchase.");
+      notifyError(err, "Couldn't complete the purchase.");
     } finally {
       setBuyingId(null);
     }
@@ -127,8 +126,6 @@ export function OfferNudgeSheet({ projectId, projectTitle, singlePrice, offers, 
           ))}
         </View>
       ) : null}
-
-      {error ? <PurchaseError message={error} className="mt-3" /> : null}
 
       <Pressable
         onPress={() => {

@@ -21,6 +21,7 @@ import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 import { ExternalLinkDialog } from "@/components/ui/ExternalLinkDialog";
 import { PortalHost } from "@/components/ui/Portal";
 import { SystemNavigationBar } from "@/components/ui/SystemNavigationBar";
+import { ErrorNoticeProvider } from "@/components/ui/ErrorNotice";
 import { ToastProvider } from "@/components/ui/Toast";
 import {
   storePendingAffiliateClick,
@@ -124,10 +125,12 @@ function Shell() {
         <ToastProvider>
           {/* Toasts paint above everything the host layers (sheets 50, modals 60). */}
           <PortalHost>
-            <GlobalEffects />
-            <ThemedStack />
-            <UpdatePrompt />
-            <ExternalLinkDialog />
+            <ErrorNoticeProvider>
+              <GlobalEffects />
+              <ThemedStack />
+              <UpdatePrompt />
+              <ExternalLinkDialog />
+            </ErrorNoticeProvider>
           </PortalHost>
         </ToastProvider>
       </ErrorBoundary>

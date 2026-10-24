@@ -60,6 +60,7 @@ import { addToCalendar } from "@/lib/calendar";
 import { pageModeLabel } from "@/lib/pageRoles";
 import { getProjectUrl } from "@/lib/projectLinks";
 import { openExternal } from "@/lib/openExternal";
+import { friendlyError } from "@/lib/friendlyError";
 
 export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: string } = {}) {
   const params = useLocalSearchParams<{ projectId?: string; forewords?: string }>();
@@ -439,7 +440,7 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
               },
               onError: (err) => {
                 setUnforkOpen(false);
-                toast(err instanceof Error ? err.message : "Couldn't unfork.", { variant: "error" });
+                toast(friendlyError(err, "Couldn't unfork."), { variant: "error" });
               },
             })
           }

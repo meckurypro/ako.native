@@ -1,13 +1,12 @@
 // src/components/project/book/BookLockedView.tsx
 // Shown to a signed-in non-owner who hasn't bought (or been granted) the book.
-import { PurchaseError } from "@/components/wallet/PurchaseError";
 import { Image as ImageIcon, Lock } from "lucide-react-native";
-import { useState } from "react";
 import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ArrowLeft } from "lucide-react-native";
 
 import { Image, Icon } from "@/components/ui/styled";
+import { useErrorNotice } from "@/components/ui/ErrorNotice";
 import { Text } from "@/components/ui/Text";
 import { useSmartBack } from "@/hooks/useSmartBack";
 
@@ -22,7 +21,7 @@ interface BookLockedViewProps {
 export function BookLockedView({ title, thumbnailUrl, price, onBuy, buying }: BookLockedViewProps) {
   const insets = useSafeAreaInsets();
   const smartBack = useSmartBack();
-  const [error, setError] = useState<string | null>(null);
+  const notifyError = useErrorNotice();
 
   return (
     <View className="flex-1 items-center justify-center gap-4 bg-canvas px-6">
@@ -43,11 +42,10 @@ export function BookLockedView({ title, thumbnailUrl, price, onBuy, buying }: Bo
       </View>
       <Pressable
         onPress={async () => {
-          setError(null);
           try {
             await onBuy();
           } catch (err) {
-            setError(err instanceof Error ? err.message : "Couldn't complete purchase.");
+            notifyError(err, "Couldn't complete purchase.");
           }
         }}
         disabled={buying}
@@ -56,7 +54,6 @@ export function BookLockedView({ title, thumbnailUrl, price, onBuy, buying }: Bo
       >
         <Text className="text-sm font-medium text-canvas">{buying ? "Processing…" : `Buy for $${price.toFixed(2)}`}</Text>
       </Pressable>
-      {error && <PurchaseError message={error} className="text-center" />}
     </View>
   );
 }

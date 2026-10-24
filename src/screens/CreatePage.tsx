@@ -30,6 +30,7 @@ import { APP_URL } from "@/lib/config";
 import { displayedRoleLabel } from "@/lib/pageRoles";
 import { supabase } from "@/lib/supabase";
 import type { PageType } from "@/types/database";
+import { friendlyError } from "@/lib/friendlyError";
 
 type UsernameStatus = "idle" | "checking" | "available" | "taken" | "error";
 
@@ -151,7 +152,7 @@ export function CreatePage() {
       router.replace(`/page/${page.username}` as Href);
       toast(`${name.trim()} created successfully.`, { variant: "success" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't create that page.");
+      setError(friendlyError(err, "Couldn't create that page."));
     }
   }
 

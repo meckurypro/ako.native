@@ -36,6 +36,8 @@ import { useSmartBack } from "@/hooks/useSmartBack";
 import { useWallet } from "@/hooks/useWallet";
 import { formatUsd } from "@/lib/money";
 import { supabase } from "@/lib/supabase";
+import { useErrorNotice } from "@/components/ui/ErrorNotice";
+import { friendlyError, isInsufficientBalance } from "@/lib/friendlyError";
 
 interface PromotablePost {
   id: string;
@@ -84,6 +86,7 @@ function Panel({ children, className = "" }: { children: ReactNode; className?: 
 }
 
 export function PromoteComposer() {
+  const notifyError = useErrorNotice();
   const { postId } = useLocalSearchParams<{ postId: string }>();
   const insets = useSafeAreaInsets();
   const smartBack = useSmartBack();
@@ -136,7 +139,7 @@ export function PromoteComposer() {
       if (existingPromotion.status === "paused") await resumePromotion.mutateAsync(existingPromotion.id);
       else await pausePromotion.mutateAsync(existingPromotion.id);
     } catch (err) {
-      setLifecycleError(err instanceof Error ? err.message : "Couldn't update this campaign.");
+      setLifecycleError(friendlyError(err, "Couldn't update this campaign."));
     }
   }
 
@@ -147,7 +150,7 @@ export function PromoteComposer() {
     try {
       await terminatePromotion.mutateAsync(existingPromotion.id);
     } catch (err) {
-      setLifecycleError(err instanceof Error ? err.message : "Couldn't terminate this campaign.");
+      setLifecycleError(friendlyError(err, "Couldn't terminate this campaign."));
     }
   }
 
@@ -164,7 +167,7 @@ export function PromoteComposer() {
       setShowExtendForm(false);
       setExtendDays("1");
     } catch (err) {
-      setLifecycleError(err instanceof Error ? err.message : "Couldn't extend this campaign.");
+      setLifecycleError(friendlyError(err, "Couldn't extend this campaign."));
     }
   }
 
@@ -209,7 +212,8 @@ export function PromoteComposer() {
       });
       router.replace(`/post/${postId}` as Href);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't submit this campaign.");
+      if (isInsufficientBalance(err)) notifyError(err, "Couldn't submit this campaign.");
+      else setError(friendlyError(err, "Couldn't submit this campaign."));
     }
   }
 

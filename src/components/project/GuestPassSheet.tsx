@@ -14,6 +14,7 @@ import { useToast } from "@/components/ui/Toast";
 import { formatCountdown, useCountdown } from "@/hooks/useCountdown";
 import { useCreateGuestPass, useGuestPasses, useRevokeGuestPass, type GuestPassRow } from "@/hooks/useGuestPass";
 import { GUEST_PASS_HOURS, getGuestPassUrl } from "@/lib/guestPass";
+import { friendlyError } from "@/lib/friendlyError";
 
 function PassRow({ row, fresh, revoking, onRevoke }: { row: GuestPassRow; fresh: boolean; revoking: boolean; onRevoke: () => void }) {
   const toast = useToast();
@@ -105,7 +106,7 @@ export function GuestPassSheet({
       await Clipboard.setStringAsync(getGuestPassUrl(row.token)).catch(() => {});
       toast("Pass link created and copied.", { variant: "success" });
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Couldn't create the pass.", { variant: "error" });
+      toast(friendlyError(e, "Couldn't create the pass."), { variant: "error" });
     }
   }
 
@@ -114,7 +115,7 @@ export function GuestPassSheet({
       await revoke.mutateAsync(passId);
       toast("Pass revoked. That link no longer works.", { variant: "success" });
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Couldn't revoke the pass.", { variant: "error" });
+      toast(friendlyError(e, "Couldn't revoke the pass."), { variant: "error" });
     }
   }
 

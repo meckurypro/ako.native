@@ -14,6 +14,7 @@ import { formatCountdown, useCountdown } from "@/hooks/useCountdown";
 import { useRoomMeetings, useScheduleRoomMeeting, type RoomMeeting } from "@/hooks/useRoom";
 import { haptics } from "@/lib/haptics";
 import { useTheme } from "@/theme/ThemeProvider";
+import { friendlyError } from "@/lib/friendlyError";
 
 function MeetingRow({ meeting, onJoin }: { meeting: RoomMeeting; onJoin: () => void }) {
   const remainingMs = useCountdown(meeting.scheduled_at) ?? new Date(meeting.scheduled_at).getTime() - Date.now();
@@ -61,7 +62,7 @@ export function MeetingsTab({ projectId, isHost }: { projectId: string; isHost: 
       setShowScheduler(false);
       haptics.success();
     } catch (e) {
-      toast(e instanceof Error && e.message ? e.message : "Couldn't schedule the meeting.", { variant: "error" });
+      toast(friendlyError(e, "Couldn't schedule the meeting."), { variant: "error" });
     }
   }
 

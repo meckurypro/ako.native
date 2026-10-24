@@ -11,6 +11,7 @@ import { Text } from "@/components/ui/Text";
 import { useUploadProjectThumbnail } from "@/hooks/useUploadProjectThumbnail";
 import { pickImages } from "@/lib/pickImage";
 import { MAX_SUPPORTING_IMAGES } from "@/lib/projectImages";
+import { friendlyError } from "@/lib/friendlyError";
 
 export function SupportingImagesField({
   urls,
@@ -41,7 +42,7 @@ export function SupportingImagesField({
         const { url } = await upload.mutateAsync(file);
         added.push(url);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Image upload failed.");
+        setError(friendlyError(err, "Image upload failed."));
         break;
       } finally {
         setPending((p) => Math.max(0, p - 1));

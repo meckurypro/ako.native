@@ -23,6 +23,7 @@ import { LEGACY_MEMBER_PERMISSIONS, resolvePagePermissions, samePermissions, typ
 import { useSearchPeople } from "@/hooks/useSearch";
 import { useTheme } from "@/theme/ThemeProvider";
 import type { PageMemberWithProfile, ProfileWithRoles } from "@/types/database";
+import { friendlyError } from "@/lib/friendlyError";
 
 function Person({ src, name, children }: { src: string | null; name: string; children: React.ReactNode }) {
   return (
@@ -128,7 +129,7 @@ export function PageTeam() {
       { user_id: m.user_id, featured: !m.show_on_page },
       {
         onSuccess: () => toast(m.show_on_page ? `${m.profile.display_name} is hidden from the page.` : `${m.profile.display_name} now shows on the page.`, { variant: "success" }),
-        onError: (err) => toast(err instanceof Error ? err.message : "Couldn't update that.", { variant: "error" }),
+        onError: (err) => toast(friendlyError(err, "Couldn't update that."), { variant: "error" }),
       }
     );
   }
@@ -156,7 +157,7 @@ export function PageTeam() {
       setInvitePermissions({ ...LEGACY_MEMBER_PERMISSIONS });
       toast("Invite sent.", { variant: "success" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't send that invite.");
+      setError(friendlyError(err, "Couldn't send that invite."));
     } finally {
       setSubmitting(false);
     }

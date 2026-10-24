@@ -13,6 +13,7 @@ import { useCreateComment } from "@/hooks/useComments";
 import { CONTENT_LIMIT, contentCounterClass } from "@/lib/textLimits";
 import type { Stance } from "@/types/database";
 import { MentionTextarea } from "./MentionTextarea";
+import { friendlyError } from "@/lib/friendlyError";
 
 // Every class string is spelled out in full so Tailwind can see it at build time.
 export const STANCE_COLORS: Record<
@@ -115,7 +116,7 @@ export function StanceComposer({ postId, stance, onClose, parentCommentId }: Sta
       setContent("");
       onClose();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Couldn't post this.";
+      const message = friendlyError(err, "Couldn't post this.");
       setError(message);
       toast(message, { variant: "error" });
     }

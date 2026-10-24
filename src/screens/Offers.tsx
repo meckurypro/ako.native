@@ -29,6 +29,7 @@ import {
 } from "@/hooks/useOffers";
 import { PROJECT_TYPE_LABELS } from "@/hooks/useProjects";
 import { formatUsd } from "@/lib/money";
+import { friendlyError } from "@/lib/friendlyError";
 
 function Thumb({ url, size, isFile }: { url: string | null; size: number; isFile?: boolean }) {
   return (
@@ -152,7 +153,7 @@ function OfferEditorSheet({ offer, onClose }: { offer: Offer | null; onClose: ()
       }
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't save the offer.");
+      setError(friendlyError(err, "Couldn't save the offer."));
     }
   }
 
@@ -241,7 +242,7 @@ export function Offers() {
       await deleteOffer.mutateAsync(deleting.id);
       toast("Offer deleted.", { variant: "success" });
     } catch (err) {
-      toast(err instanceof Error ? err.message : "Couldn't delete the offer.", { variant: "error" });
+      toast(friendlyError(err, "Couldn't delete the offer."), { variant: "error" });
     } finally {
       setDeleting(null);
     }

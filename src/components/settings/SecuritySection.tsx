@@ -11,6 +11,7 @@ import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useChangePassword } from "@/hooks/usePrivacy";
 import { haptics } from "@/lib/haptics";
+import { friendlyError } from "@/lib/friendlyError";
 
 const MIN_PASSWORD = 8;
 
@@ -40,7 +41,7 @@ export function SecuritySection({ open, onToggle }: { open: boolean; onToggle: (
     }
   }
 
-  const error = localError ?? (changePassword.isError ? (changePassword.error instanceof Error ? changePassword.error.message : "Couldn't change your password.") : null);
+  const error = localError ?? (changePassword.isError ? friendlyError(changePassword.error, "Couldn't change your password.") : null);
 
   return (
     <SettingsSection icon={<Icon as={KeyRound} size={18} className="text-ink-muted" />} title="Account & security" open={open} onToggle={onToggle}>

@@ -83,6 +83,7 @@ import { ReshareSheet } from "./ReshareSheet";
 import { StanceComposer } from "./StanceComposer";
 import { TagPeopleSheet } from "./TagPeopleSheet";
 import { TaggedProjectEmbed, type TaggedProjectSummary } from "./TaggedProjectEmbed";
+import { friendlyError } from "@/lib/friendlyError";
 
 // Android adds invisible top/bottom padding to every Text line; web has none. It is a *style* in RN 0.86, not a prop.
 const NO_FONT_PADDING = { includeFontPadding: false } as const;
@@ -628,7 +629,7 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
           onConfirm={() => {
             setShowPrioritizeConfirm(false);
             prioritizePost.mutate(post.id, {
-              onError: (err) => setPrioritizeError(err instanceof Error ? err.message : "Couldn't prioritize this post."),
+              onError: (err) => setPrioritizeError(friendlyError(err, "Couldn't prioritize this post.")),
             });
           }}
           onCancel={() => setShowPrioritizeConfirm(false)}

@@ -95,6 +95,7 @@ import { pickDocument, pickGalleryImages, takePhoto } from "@/lib/pickChatMedia"
 import { formatLastSeen } from "@/lib/presence";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/theme/ThemeProvider";
+import { friendlyError } from "@/lib/friendlyError";
 
 function useConversationHeader(conversationId: string) {
   const { user } = useAuth();

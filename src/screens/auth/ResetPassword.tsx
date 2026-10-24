@@ -16,6 +16,7 @@ import { authErrorMessage, raceAuth, SLOW_AUTH_MESSAGE } from "@/lib/authErrors"
 import { authRedirectUrl } from "@/lib/authLink";
 import { isNetworkError } from "@/lib/offlineBoot";
 import { supabase } from "@/lib/supabase";
+import { friendlyError } from "@/lib/friendlyError";
 
 type Step = "email" | "sent" | "new_password" | "done";
 
@@ -83,7 +84,7 @@ export function ResetPassword() {
     setLoading(false);
 
     if (updateError) {
-      setError(authErrorMessage(updateError, updateError.message));
+      setError(authErrorMessage(updateError, friendlyError(updateError, "Couldn't update your password. Please try again.")));
       return;
     }
 

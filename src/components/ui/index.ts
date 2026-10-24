@@ -20,6 +20,7 @@ export { Icon, Image } from "./styled";
 export { Text } from "./Text";
 export { TierBadge } from "./TierBadge";
 export { ToastProvider, useToast } from "./Toast";
+export { ErrorNoticeProvider, useErrorNotice } from "./ErrorNotice";
 export { Toggle } from "./Toggle";
 export { UnavailableNotice } from "./UnavailableNotice";
 export { VerifiedBadge } from "./VerifiedBadge";

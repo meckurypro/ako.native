@@ -28,6 +28,7 @@ import { useGiftTypes, useTopGiftTypeIds, useWallet } from "@/hooks/useWallet";
 import { giftIconSource } from "@/lib/giftAssets";
 import { haptics } from "@/lib/haptics";
 import type { GiftType } from "@/types/database";
+import { friendlyError } from "@/lib/friendlyError";
 
 interface GiftPickerProps {
   recipientId: string;
@@ -171,7 +172,7 @@ function Body(props: GiftPickerProps & { step: Step; setStep: (s: Step) => void 
       haptics.success();
       setStep("sent");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't send gift.");
+      setError(friendlyError(err, "Couldn't send gift."));
     }
   }
 

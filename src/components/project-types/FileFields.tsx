@@ -25,6 +25,7 @@ import {
 import { fromDocumentPickerAsset } from "@/lib/localFile";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/theme/ThemeProvider";
+import { friendlyError } from "@/lib/friendlyError";
 
 export interface FileSlot {
   /** Local React key only — never sent anywhere. */
@@ -259,7 +260,7 @@ function FileSlotRow({ index, slot, showNumber, canRemove, onPatch, onRemove, on
       // id: null — a different file is a new file; the old saved row (if any) is dropped when the project saves.
       onPatch({ id: null, file_path: path, original_name: file.name, size_bytes: file.size > 0 ? file.size : null });
     } catch (err) {
-      onError(err instanceof Error ? err.message : "File upload failed.");
+      onError(friendlyError(err, "File upload failed."));
     } finally {
       setUploadingName(null);
       // The picker copied the file into the app's cache so it could be read; a 1GB upload shouldn't leave a 1GB copy.

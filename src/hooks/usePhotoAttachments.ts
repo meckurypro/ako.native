@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { fromImagePickerAsset } from "@/lib/localFile";
 import { useUploadPostMedia } from "./useUploadPostMedia";
+import { friendlyError } from "@/lib/friendlyError";
 
 export const MAX_MEDIA_FILES = 4;
 
@@ -37,7 +38,7 @@ export function usePhotoAttachments(initial: string[] = []) {
         const url = await uploadMedia.mutateAsync(fromImagePickerAsset(asset));
         setMediaUrls((prev) => [...prev, url]);
       } catch (err) {
-        setUploadError(err instanceof Error ? err.message : "Upload failed.");
+        setUploadError(friendlyError(err, "Upload failed."));
         break;
       }
     }

@@ -17,6 +17,7 @@ import { useMyPendingMusicCredits, useRespondToMusicCredit } from "@/hooks/useMu
 import { useMyPendingPageInvites, useRespondToPageInvite } from "@/hooks/usePages";
 import { haptics } from "@/lib/haptics";
 import { CONTRIBUTOR_ROLE_LABELS } from "@/types/music";
+import { friendlyError } from "@/lib/friendlyError";
 
 // `light` = the themed surface-card look the web uses for the collaboration + music-credit dialogs
 // (surface card, ink text, outlined Decline); the Page invite uses the dark overlay panel via <Modal>.
@@ -141,7 +142,7 @@ export function PageInviteResponseModal({ pageId, onClose }: { pageId: string; o
           onClose();
           if (accept && invite) router.push(`/page/${invite.page.username}` as Href);
         },
-        onError: (err) => setError(err instanceof Error ? err.message : "Couldn't respond to this invite."),
+        onError: (err) => setError(friendlyError(err, "Couldn't respond to this invite.")),
       }
     );
   }
@@ -184,7 +185,7 @@ export function CollaborationInviteResponseModal({ target, targetId, onClose }: 
           toast(accept ? "You're now a collaborator." : "Invite declined.", { variant: "success" });
           if (accept) router.push((target === "post" ? `/post/${targetId}` : `/projects/${targetId}`) as Href);
         },
-        onError: (err) => setError(err instanceof Error ? err.message : "Couldn't respond to this invite."),
+        onError: (err) => setError(friendlyError(err, "Couldn't respond to this invite.")),
       }
     );
   }
@@ -275,7 +276,7 @@ export function MusicCreditResponseModal({ catalogueId, onClose }: { catalogueId
             router.push(`/projects/${result.gig_id}` as Href);
           } else toast(accept ? "Credit accepted." : "Credit declined.", { variant: "success" });
         },
-        onError: (err) => setError(err instanceof Error ? err.message : "Couldn't respond to this credit."),
+        onError: (err) => setError(friendlyError(err, "Couldn't respond to this credit.")),
       }
     );
   }

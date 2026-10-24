@@ -17,6 +17,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { authErrorMessage, raceAuth, SLOW_AUTH_MESSAGE } from "@/lib/authErrors";
 import { safeReturnPath } from "@/lib/authRedirect";
 import { supabase } from "@/lib/supabase";
+import { friendlyError } from "@/lib/friendlyError";
 
 export function Login() {
   const { user, loading: authLoading } = useAuth();
@@ -64,7 +65,7 @@ export function Login() {
         router.replace(`/profile/${newProfile.username}` as Href);
       } catch (err) {
         setLoading(false);
-        setError(authErrorMessage(err, err instanceof Error && err.message ? err.message : "Incorrect email or password."));
+        setError(authErrorMessage(err, friendlyError(err, "Incorrect email or password.")));
       }
       return;
     }

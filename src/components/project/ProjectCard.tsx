@@ -11,7 +11,6 @@ import { OptionsModal } from "@/components/ui/OptionsModal";
 import { canZipFiles, formatFileSize } from "@/lib/fileProject";
 import { useProjectFiles, type ProjectFile } from "@/hooks/useProjectFiles";
 import { ProjectFilesList } from "@/components/project/ProjectFilesList";
-import { PurchaseError } from "@/components/wallet/PurchaseError";
 import {
   Archive,
   KeyRound,
@@ -61,6 +60,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { DropdownMenu, type DropdownMenuItem } from "@/components/ui/DropdownMenu";
 import { Icon, Image } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
+import { useErrorNotice } from "@/components/ui/ErrorNotice";
 import { useToast } from "@/components/ui/Toast";
 import { UnlockReveal } from "@/components/ui/UnlockReveal";
 import { useAffiliateProgram } from "@/hooks/useAffiliates";
@@ -168,6 +168,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
   const pathname = usePathname();
   const { colors, resolvedTheme } = useTheme();
   const toast = useToast();
+  const notifyError = useErrorNotice();
   // Ownership is judged against the identity being acted as: a project created
   // personally is NOT a Page's own, even though owner_id is the same user.
   const ownership = useProjectOwnership();
@@ -215,7 +216,6 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
   const canBecomeAffiliate = !!user && !isOwner && !!affiliateProgram?.enabled && project.price_usd > 0;
   const isMemberQuery = useIsProjectMember(project.id, project.is_private);
 
-  const [error, setError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const showDetails = !concealDetails || detailsOpen;
@@ -332,11 +332,10 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
   // The plain single-project purchase.
   async function buyThisOnly() {
     if (!requireUser()) return;
-    setError(null);
     try {
       await purchaseProject.mutateAsync(project.id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Purchase failed.");
+      notifyError(err, "Purchase failed.");
     }
   }
 
@@ -344,7 +343,6 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
   // "just this one"); otherwise buy straight away.
   async function handleBuy() {
     if (!requireUser()) return;
-    setError(null);
     const suggestable = !isFree && OFFER_ELIGIBLE_TYPES.includes(project.project_type);
     if (suggestable && (await offerNudge.offerBeforeBuy())) return;
     await buyThisOnly();
@@ -357,23 +355,21 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
 
   async function handleBookGig() {
     if (!requireUser()) return;
-    setError(null);
     try {
       const { conversationId } = await bookGig.mutateAsync(project.id);
       router.push(`/messages/${conversationId}` as Href);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Booking failed.");
+      notifyError(err, "Booking failed.");
     }
   }
 
   async function handleMessage(draftMessage?: string) {
     if (!requireUser()) return;
-    setError(null);
     try {
       const conversationId = await startConversation.mutateAsync(project.owner_id);
       router.push((draftMessage ? { pathname: "/messages/[conversationId]", params: { conversationId, draftMessage } } : `/messages/${conversationId}`) as Href);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't start conversation.");
+      notifyError(err, "Couldn't start conversation.");
     }
   }
 
@@ -390,20 +386,18 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
   /** Signed-URL downloads open in the system browser, which handles save/preview. */
   async function openSigned(mutation: ReturnType<typeof useGetProjectFile>, args: Parameters<ReturnType<typeof useGetProjectFile>["mutateAsync"]>[0], fallback: string) {
     if (!requireUser()) return;
-    setError(null);
     try {
       const url = await mutation.mutateAsync(args);
       await Linking.openURL(url);
       logFreeAccessIfNeeded("download");
     } catch (err) {
-      setError(await resolveFunctionErrorMessage(err, fallback));
+      notifyError(await resolveFunctionErrorMessage(err, fallback), fallback);
     }
   }
 
   /** File projects download in-app so the download only counts once every byte is on the device. */
   async function handleDownloadFile(file?: ProjectFile) {
     if (!requireUser()) return;
-    setError(null);
     try {
       // A specific file from the list, or the project's first (a one-file project).
       const target = file ?? projectFiles?.[0] ?? null;
@@ -417,33 +411,31 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
       logFreeAccessIfNeeded("download");
     } catch (err) {
       if (err instanceof DownloadCancelledError) return; // the person stopped it — not an error
-      setError(await resolveFunctionErrorMessage(err, "Couldn't download the file."));
+      notifyError(await resolveFunctionErrorMessage(err, "Couldn't download the file."), "Couldn't download the file.");
     }
   }
 
   /** "Download all" for a multi-file project: as one zip, or one by one into a folder. The whole batch counts as one download. */
   async function handleDownloadAll(mode: DownloadAllMode) {
     if (!requireUser()) return;
-    setError(null);
     try {
       const saved = await downloadAllFiles.mutateAsync({ projectId: project.id, title: project.title, mode });
       logFreeAccessIfNeeded("download");
       if (mode === "each") toast(`Saved ${saved} files`, { variant: "success" });
     } catch (err) {
       if (err instanceof DownloadCancelledError) return; // the person stopped it — not an error
-      setError(await resolveFunctionErrorMessage(err, "Couldn't download the files."));
+      notifyError(await resolveFunctionErrorMessage(err, "Couldn't download the files."), "Couldn't download the files.");
     }
   }
 
   async function loadStream(mutation: ReturnType<typeof useGetProjectFile>, kind: "audio" | "video" | "image", set: (url: string) => void, fallback: string) {
     if (!requireUser()) return;
-    setError(null);
     try {
       const url = await mutation.mutateAsync({ projectId: project.id, kind });
       set(url);
       logFreeAccessIfNeeded("stream");
     } catch (err) {
-      setError(await resolveFunctionErrorMessage(err, fallback));
+      notifyError(await resolveFunctionErrorMessage(err, fallback), fallback);
     }
   }
   const handlePlayAudio = () => loadStream(getAudioStream, "audio", setAudioSrc, "Couldn't load audio.");
@@ -451,12 +443,11 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
   const handleViewImage = () => loadStream(getImageStream, "image", setImageSrc, "Couldn't load image.");
 
   async function copyText(text: string, onDone: () => void) {
-    setError(null);
     try {
       await Clipboard.setStringAsync(text);
       onDone();
     } catch {
-      setError("Couldn't copy link.");
+      notifyError("Couldn't copy link.", "Couldn't copy link.");
     }
   }
 
@@ -477,7 +468,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
       await deleteProject.mutateAsync(project.id);
       toast(`${project.title} deleted.`, { variant: "success" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't delete this project.");
+      notifyError(err, "Couldn't delete this project.");
     }
   }
 
@@ -899,8 +890,6 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
             ) : null}
 
             {concealDetails && detailsOpen && detailsSlot ? <View className="mt-4">{detailsSlot}</View> : null}
-
-            {error ? <PurchaseError message={error} className="mt-2" /> : null}
 
             {/* Media: the playable preview is the card's thumbnail; this holds the "full thing" links and the private image. */}
             {isMedia && mediaDetails ? (

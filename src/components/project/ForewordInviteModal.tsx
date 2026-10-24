@@ -30,6 +30,7 @@ import {
 } from "@/hooks/useForewords";
 import { useProject } from "@/hooks/useProjects";
 import { haptics } from "@/lib/haptics";
+import { friendlyError } from "@/lib/friendlyError";
 
 type Mode = "overview" | "compose" | "confirm-decline" | "confirm-withdraw";
 
@@ -97,7 +98,7 @@ export function ForewordInviteModal({ projectId, onClose }: { projectId: string;
           toast(hasWritten ? "Sent for the creator to review." : "Foreword sent to the creator.", { variant: "success" });
           onClose();
         },
-        onError: (err) => setError(err instanceof Error ? err.message : "Couldn't send your foreword."),
+        onError: (err) => setError(friendlyError(err, "Couldn't send your foreword.")),
       }
     );
   }
@@ -109,7 +110,7 @@ export function ForewordInviteModal({ projectId, onClose }: { projectId: string;
         toast("Invite declined.", { variant: "success" });
         onClose();
       },
-      onError: (err) => setError(err instanceof Error ? err.message : "Couldn't decline this invite."),
+      onError: (err) => setError(friendlyError(err, "Couldn't decline this invite.")),
     });
   }
 
@@ -120,7 +121,7 @@ export function ForewordInviteModal({ projectId, onClose }: { projectId: string;
         toast("Foreword withdrawn.", { variant: "success" });
         onClose();
       },
-      onError: (err) => setError(err instanceof Error ? err.message : "Couldn't withdraw your foreword."),
+      onError: (err) => setError(friendlyError(err, "Couldn't withdraw your foreword.")),
     });
   }
 

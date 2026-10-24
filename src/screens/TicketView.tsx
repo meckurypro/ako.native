@@ -20,6 +20,7 @@ import { useFeedDoorway } from "@/hooks/useFeedDoorway";
 import { useProject } from "@/hooks/useProjects";
 import { useEventDetails } from "@/hooks/useProjectTypeDetails";
 import { MONO_FONT } from "@/theme/mono";
+import { friendlyError } from "@/lib/friendlyError";
 
 function imageExtension(url: string): string {
   const match = url.split("?")[0].match(/\.(png|jpe?g|webp)$/i);
@@ -46,7 +47,7 @@ export function TicketView() {
       if (!(await Sharing.isAvailableAsync())) throw new Error("Sharing isn't available on this device.");
       await Sharing.shareAsync(downloaded.uri, { dialogTitle: "Save ticket" });
     } catch (e) {
-      toast(e instanceof Error && e.message ? e.message : "Couldn't save the ticket.", { variant: "error" });
+      toast(friendlyError(e, "Couldn't save the ticket."), { variant: "error" });
     } finally {
       setSaving(false);
     }

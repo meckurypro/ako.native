@@ -15,6 +15,7 @@ import { Icon, Image } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useAddEventHighlight, useDeleteEventHighlight, useEventHighlights, type EventHighlight } from "@/hooks/useEventHighlights";
 import { fromDocumentPickerAsset, fromImagePickerAsset } from "@/lib/localFile";
+import { friendlyError } from "@/lib/friendlyError";
 
 function AudioHighlight({ url }: { url: string }) {
   const player = useAudioPlayer(url);
@@ -83,7 +84,7 @@ export function EventHighlightsSection({ projectId, isOwner }: { projectId: stri
       const file = await getFile();
       if (file) await addHighlight.mutateAsync({ file });
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : "Couldn't upload that file.");
+      setUploadError(friendlyError(err, "Couldn't upload that file."));
     }
   }
 

@@ -16,7 +16,6 @@ import { BookReaderSkeleton } from "@/components/project/book/BookReaderSkeleton
 import { BookReflowReader } from "@/components/project/book/BookReflowReader";
 import { OfflineUnavailable } from "@/components/project/OfflineUnavailable";
 import { Text } from "@/components/ui/Text";
-import { useToast } from "@/components/ui/Toast";
 import { useOfferNudge } from "@/hooks/useOffers";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsOnline } from "@/hooks/useIsOnline";
@@ -28,6 +27,7 @@ import { useBookChapters, usePublishBook } from "@/hooks/useBookBuilder";
 import { useIsProjectMember } from "@/hooks/useProjectMembers";
 import { getProjectUrl } from "@/lib/projectLinks";
 import { getEffectivePrice, isProjectFree, useHasPurchased, useProject, usePurchaseProject } from "@/hooks/useProjects";
+import { useErrorNotice } from "@/components/ui/ErrorNotice";
 
 export function Book() {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
@@ -57,7 +57,7 @@ export function Book() {
   const purchaseProject = usePurchaseProject();
   // If this book is part of one of the creator's offers, Buy suggests the bundle first.
   const offerNudge = useOfferNudge(projectId ?? "");
-  const toast = useToast();
+  const notifyError = useErrorNotice();
 
   const ordered = useMemo(() => (chapters ?? []).slice().sort((a, b) => a.sort_order - b.sort_order), [chapters]);
 
@@ -94,7 +94,7 @@ export function Book() {
             onBuySingle={() => {
               purchaseProject
                 .mutateAsync(project.id)
-                .catch((err) => toast(err instanceof Error ? err.message : "Couldn't complete purchase.", { variant: "error" }));
+                .catch((err) => notifyError(err, "Couldn't complete purchase."));
             }}
             onClose={offerNudge.close}
           />

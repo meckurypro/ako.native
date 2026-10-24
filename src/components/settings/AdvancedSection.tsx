@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useDeactivateAccount } from "@/hooks/usePrivacy";
 import { removeSavedAccount } from "@/lib/accountSessions";
 import { haptics } from "@/lib/haptics";
+import { friendlyError } from "@/lib/friendlyError";
 
 const LEGAL_LINKS = [
   { href: "/privacy", label: "Privacy Policy", description: "What we collect, why, and your choices" },
@@ -40,7 +41,7 @@ export function AdvancedSection({ open, onToggle }: { open: boolean; onToggle: (
       haptics.success();
       toast("Account deactivated.", { variant: "success" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't deactivate account.");
+      setError(friendlyError(err, "Couldn't deactivate account."));
       setDeactivating(false);
     }
   }

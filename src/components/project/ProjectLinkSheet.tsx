@@ -15,6 +15,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCheckProjectSlugAvailable, useSetProjectSlug, useSuggestProjectSlugAlternatives, type Project } from "@/hooks/useProjects";
 import { getProjectSlugFormatError, getProjectUrl, normalizeProjectSlug } from "@/lib/projectLinks";
 import { useTheme } from "@/theme/ThemeProvider";
+import { friendlyError } from "@/lib/friendlyError";
 
 export function ProjectLinkSheet({ project, onClose }: { project: Project; onClose: () => void }) {
   const { colors } = useTheme();
@@ -62,7 +63,7 @@ export function ProjectLinkSheet({ project, onClose }: { project: Project; onClo
       toast("Custom URL updated.", { variant: "success" });
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't update the link. Please try again.");
+      setError(friendlyError(err, "Couldn't update the link. Please try again."));
     }
   }
 

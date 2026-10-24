@@ -22,6 +22,7 @@ import { formatUsd } from "@/lib/money";
 import { buildTransactionsCsv, shareCsv } from "@/lib/walletCsv";
 import { periodBounds, periodFileSlug, periodLabel, ymOf, type TxnPeriod } from "@/lib/walletRange";
 import { statusMeta, txnMeta, TXN_STATUS_ORDER, type Txn } from "@/lib/walletTxn";
+import { friendlyError } from "@/lib/friendlyError";
 
 type Direction = "all" | "in" | "out";
 type Panel = "category" | "status" | null;
@@ -129,7 +130,7 @@ export default function WalletTransactionsScreen() {
       loadingToast.dismiss();
     } catch (err) {
       loadingToast.dismiss();
-      toast(err instanceof Error ? err.message : "Couldn't prepare the download.", { variant: "error" });
+      toast(friendlyError(err, "Couldn't prepare the download."), { variant: "error" });
     } finally {
       setSharing(false);
     }

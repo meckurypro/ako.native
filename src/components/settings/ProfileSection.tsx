@@ -22,6 +22,7 @@ import { useUploadAvatar } from "@/hooks/useUploadAvatar";
 import { haptics } from "@/lib/haptics";
 import { pickSingleImage } from "@/lib/pickImage";
 import { supabase } from "@/lib/supabase";
+import { friendlyError } from "@/lib/friendlyError";
 
 type UsernameStatus = "idle" | "checking" | "available" | "taken" | "error";
 const USERNAME_DEBOUNCE_MS = 400;
@@ -113,7 +114,7 @@ export function ProfileSection({ open, onToggle, photoRequest = 0, onAvatarChang
       setAvatarUrl(url);
       onAvatarChange?.(url);
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : "Upload failed.");
+      setUploadError(friendlyError(err, "Upload failed."));
     }
   }
 
@@ -186,7 +187,7 @@ export function ProfileSection({ open, onToggle, photoRequest = 0, onAvatarChang
         replaceWith: usernameChanged ? `/profile/${normalizedUsername}` : undefined,
       });
     } catch (err) {
-      setProfileError(err instanceof Error ? err.message : "Couldn't save changes.");
+      setProfileError(friendlyError(err, "Couldn't save changes."));
     }
   }
 

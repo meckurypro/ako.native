@@ -21,7 +21,6 @@ import { WebView, type WebViewMessageEvent } from "react-native-webview";
 import { BookLockedView } from "@/components/project/book/BookLockedView";
 import { ForewordPreviewBar } from "@/components/project/ForewordPreviewBar";
 import { OfferNudgeSheet } from "@/components/project/OfferNudgeSheet";
-import { useToast } from "@/components/ui/Toast";
 import { useOfferNudge } from "@/hooks/useOffers";
 import { Sheet } from "@/components/project/book/ReaderSheets";
 import { Button } from "@/components/ui/Button";
@@ -41,6 +40,7 @@ import { useSmartBack } from "@/hooks/useSmartBack";
 import { READER_THEMES, type ReaderThemeId, type ReaderThemeSpec } from "@/lib/bookReaderTheme";
 import { resolveFunctionErrorMessage } from "@/lib/functionErrors";
 import { PDF_VIEWER_BASE_URL, buildPdfViewerHtml } from "@/lib/pdfPageViewerHtml";
+import { useErrorNotice } from "@/components/ui/ErrorNotice";
 
 const SAVE_DEBOUNCE_MS = 900;
 const BRIGHTNESS_KEY = "ako-reader-brightness";
@@ -96,7 +96,7 @@ export function BookPdfPageReader({ projectId }: { projectId: string }) {
   const purchaseProject = usePurchaseProject();
   // If this book is part of one of the creator's offers, Buy suggests the bundle first.
   const offerNudge = useOfferNudge(projectId);
-  const toast = useToast();
+  const notifyError = useErrorNotice();
   const getBookFile = useGetProjectFile();
   const { data: savedProgress, isLoading: progressLoading } = usePdfReadingProgress(projectId, user?.id);
   const saveProgress = useSavePdfReadingProgress(projectId, user?.id);
@@ -310,7 +310,7 @@ export function BookPdfPageReader({ projectId }: { projectId: string }) {
             onBuySingle={() => {
               purchaseProject
                 .mutateAsync(project.id)
-                .catch((err) => toast(err instanceof Error ? err.message : "Couldn't complete purchase.", { variant: "error" }));
+                .catch((err) => notifyError(err, "Couldn't complete purchase."));
             }}
             onClose={offerNudge.close}
           />

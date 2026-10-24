@@ -18,6 +18,7 @@ import {
 } from "@/hooks/useAffiliates";
 import { runAfterDismiss } from "@/hooks/useBackDismiss";
 import { useFeatureFlag } from "@/hooks/useFeatureFlags";
+import { friendlyError } from "@/lib/friendlyError";
 
 // Where forked projects (and their affiliate links) live.
 export const FORKED_PROJECTS_PATH = "/wallet/affiliate-links";
@@ -50,7 +51,7 @@ function Body({ projectId }: { projectId: string }) {
       await createRelationship.mutateAsync();
       goToForks();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't fork this project.");
+      setError(friendlyError(err, "Couldn't fork this project."));
     }
   }
 

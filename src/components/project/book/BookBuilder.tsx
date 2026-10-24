@@ -34,6 +34,7 @@ import { ForewordsSheet } from "@/components/project/ForewordsSheet";
 import { useProjectForewords } from "@/hooks/useForewords";
 import { BookChapterEditor } from "./BookChapterEditor";
 import { useTheme } from "@/theme/ThemeProvider";
+import { friendlyError } from "@/lib/friendlyError";
 
 interface BookBuilderProps {
   projectId: string;
@@ -93,7 +94,7 @@ export function BookBuilder({ projectId, project, chapters, publishBook }: BookB
       await draft.save();
       haptics.light();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't save.");
+      setError(friendlyError(err, "Couldn't save."));
     }
   }
 
@@ -104,7 +105,7 @@ export function BookBuilder({ projectId, project, chapters, publishBook }: BookB
       leave(leaveAction);
     } catch (err) {
       setLeaveAction(null);
-      setError(err instanceof Error ? err.message : "Couldn't save.");
+      setError(friendlyError(err, "Couldn't save."));
     }
   }
 
@@ -133,7 +134,7 @@ export function BookBuilder({ projectId, project, chapters, publishBook }: BookB
       // The web builder uploads but never writes the URL back, so the cover was lost on reload; save it here.
       await updateProject.mutateAsync({ id: projectId, thumbnail_url: uploaded.url, thumbnail_width: uploaded.width, thumbnail_height: uploaded.height });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Cover upload failed.");
+      setError(friendlyError(err, "Cover upload failed."));
     }
   }
 
@@ -153,7 +154,7 @@ export function BookBuilder({ projectId, project, chapters, publishBook }: BookB
       // Back to wherever the builder was opened from, refreshed.
       await returnAfterSave({ fallback: `/books/${projectId}` });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't publish.");
+      setError(friendlyError(err, "Couldn't publish."));
     }
   }
 

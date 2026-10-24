@@ -12,6 +12,7 @@ import { Text } from "@/components/ui/Text";
 import { useFeatureFlag } from "@/hooks/useFeatureFlags";
 import { useUploadProjectFile } from "@/hooks/useUploadProjectFile";
 import { fromDocumentPickerAsset } from "@/lib/localFile";
+import { friendlyError } from "@/lib/friendlyError";
 
 export type BookContentSource = "link" | "upload" | "authored";
 
@@ -109,7 +110,7 @@ export function BookFields({
       const path = await uploadFile.mutateAsync(file);
       onChange({ ...value, file_path: path, file_name: file.name });
     } catch (err) {
-      onError(err instanceof Error ? err.message : "File upload failed.");
+      onError(friendlyError(err, "File upload failed."));
     }
   }
 

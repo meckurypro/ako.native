@@ -43,6 +43,7 @@ import { supabase } from "@/lib/supabase";
 import { CONTENT_LIMIT, contentCounterClass, postContentLimit } from "@/lib/textLimits";
 import type { MusicSearchResult } from "@/types/music";
 import { useTheme } from "@/theme/ThemeProvider";
+import { friendlyError } from "@/lib/friendlyError";
 
 const HEADING_LIMIT = 50;
 const MAX_MEDIA_FILES = 4;
@@ -241,7 +242,7 @@ export function Compose() {
         const url = await uploadMedia.mutateAsync(fromImagePickerAsset(asset));
         setMediaUrls((prev) => [...prev, url]);
       } catch (err) {
-        setUploadError(err instanceof Error ? err.message : "Upload failed.");
+        setUploadError(friendlyError(err, "Upload failed."));
         break;
       }
     }
@@ -319,7 +320,7 @@ export function Compose() {
       .catch((err) => {
         // Moderation rejections and other edge-function errors surface here - the message is already short and
         // direct. Reopen the editor with the form exactly as it was.
-        const message = err instanceof Error ? err.message : "Couldn't post this.";
+        const message = friendlyError(err, "Couldn't post this.");
         posting.dismiss();
         toast(message, { variant: "error" });
         setComposeRestore({ ...snapshot, error: message });
@@ -365,7 +366,7 @@ export function Compose() {
         router.replace("/activity/scheduled" as Href);
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Couldn't post this.";
+      const message = friendlyError(err, "Couldn't post this.");
       setError(message);
       toast(message, { variant: "error" });
     }
@@ -386,7 +387,7 @@ export function Compose() {
       leaveGuard.allowLeaving();
       router.replace("/activity/drafts" as Href);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Couldn't save this draft.";
+      const message = friendlyError(err, "Couldn't save this draft.");
       setError(message);
       toast(message, { variant: "error" });
       leaveGuard.stay();

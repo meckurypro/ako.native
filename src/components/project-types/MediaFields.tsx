@@ -12,6 +12,7 @@ import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { UPLOAD_CANCELLED, useUploadProjectFile } from "@/hooks/useUploadProjectFile";
 import { fromDocumentPickerAsset, fromImagePickerAsset, type LocalFile } from "@/lib/localFile";
+import { friendlyError } from "@/lib/friendlyError";
 
 export interface MediaChannelValue {
   enabled: boolean;
@@ -136,7 +137,7 @@ function MediaChannelFields({
     } catch (err) {
       // Cancelling is the person's own choice, not a failure.
       if (err instanceof Error && err.message === UPLOAD_CANCELLED) return;
-      onError(err instanceof Error ? err.message : "File upload failed.");
+      onError(friendlyError(err, "File upload failed."));
     }
   }
 

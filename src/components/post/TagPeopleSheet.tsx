@@ -10,6 +10,7 @@ import { Text } from "@/components/ui/Text";
 import type { MentionCandidate } from "@/hooks/useMentions";
 import { useSetTaggedUsers, useTaggedUsers, type TagTarget } from "@/hooks/useTagging";
 import { PeoplePicker } from "./PeoplePicker";
+import { friendlyError } from "@/lib/friendlyError";
 
 export function TagPeopleSheet({ target, targetId, onClose }: { target: TagTarget; targetId: string; onClose: () => void }) {
   const { data: tagged, isLoading } = useTaggedUsers(target, targetId);
@@ -23,7 +24,7 @@ export function TagPeopleSheet({ target, targetId, onClose }: { target: TagTarge
       { targetId, userIds: selected.map((p) => p.id) },
       {
         onSuccess: () => setShowPicker(false),
-        onError: (err) => setError(err instanceof Error ? err.message : "Couldn't update tags."),
+        onError: (err) => setError(friendlyError(err, "Couldn't update tags.")),
       }
     );
   }

@@ -35,6 +35,7 @@ import { BANNER_ASPECT, normalizeWebsite } from "@/hooks/usePageLanding";
 import { useUploadAvatar } from "@/hooks/useUploadAvatar";
 import { cropToAspect } from "@/lib/cropImage";
 import { pickSingleImage } from "@/lib/pickImage";
+import { friendlyError } from "@/lib/friendlyError";
 
 export function EditPage() {
   const { username, section } = useLocalSearchParams<{ username: string; section?: string }>();
@@ -127,7 +128,7 @@ export function EditPage() {
       if (kind === "avatar") setAvatarUrl(url);
       else setCoverUrl(url);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed.");
+      setError(friendlyError(err, "Upload failed."));
     } finally {
       setBusy(false);
     }
@@ -156,7 +157,7 @@ export function EditPage() {
       toast("Page updated.", { variant: "success" });
       await returnAfterSave({ fallback: `/page/${page.username}` });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't save those changes.");
+      setError(friendlyError(err, "Couldn't save those changes."));
     }
   }
 

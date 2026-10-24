@@ -16,6 +16,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useAffiliateProgram, useCreatorAffiliateAnalytics, useSetAffiliateProgram } from "@/hooks/useAffiliates";
 import { useFeatureFlag } from "@/hooks/useFeatureFlags";
 import { formatUsd } from "@/lib/money";
+import { friendlyError } from "@/lib/friendlyError";
 
 function StatTile({ label, value }: { label: string; value: string }) {
   return (
@@ -79,7 +80,7 @@ export function AffiliateProgramSheet({ projectId, projectTitle, priceUsd, onClo
       toast(enabled ? "Affiliate program updated." : "Affiliate program disabled.", { variant: "success" });
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't save affiliate settings.");
+      setError(friendlyError(err, "Couldn't save affiliate settings."));
     }
   }
 

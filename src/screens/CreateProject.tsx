@@ -88,6 +88,7 @@ import {
   type ProjectDraftData,
 } from "@/lib/projectDraft";
 import { CONTENT_LIMIT, contentCounterClass } from "@/lib/textLimits";
+import { friendlyError } from "@/lib/friendlyError";
 
 export function CreateProject() {
   const insets = useSafeAreaInsets();
@@ -328,7 +329,7 @@ export function CreateProject() {
       setThumbnailUrl(url);
       setThumbnailRatio({ width, height });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Thumbnail upload failed.");
+      setError(friendlyError(err, "Thumbnail upload failed."));
     }
   }
 
@@ -406,7 +407,7 @@ export function CreateProject() {
         });
         goToCreated();
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Couldn't create project.");
+        setError(friendlyError(err, "Couldn't create project."));
       }
       return;
     }
@@ -508,7 +509,7 @@ export function CreateProject() {
       }
       goToCreated();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't create project.");
+      setError(friendlyError(err, "Couldn't create project."));
     }
   }
 

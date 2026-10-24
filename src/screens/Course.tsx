@@ -65,6 +65,7 @@ import { buildReaderModel, readMinutes } from "@/lib/lessonFormat";
 import { EditorToolbar } from "@/components/ui/EditorToolbar";
 import { useUndoRedo } from "@/hooks/useUndoRedo";
 import { useTheme } from "@/theme/ThemeProvider";
+import { friendlyError } from "@/lib/friendlyError";
 
 interface LessonFormValue {
   title: string;
@@ -272,7 +273,7 @@ export function Course() {
   // Lessons complete when the learner taps "Complete & continue" (or, for video, when it ends).
   const markComplete = setLessonComplete.mutate;
 
-  const fail = useCallback((e: unknown) => toast(e instanceof Error && e.message ? e.message : "Something went wrong.", { variant: "error" }), [toast]);
+  const fail = useCallback((e: unknown) => toast(friendlyError(e, "Something went wrong."), { variant: "error" }), [toast]);
 
   async function handlePublishCourse() {
     try {

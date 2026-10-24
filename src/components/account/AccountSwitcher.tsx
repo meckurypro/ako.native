@@ -19,6 +19,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useMyProfile } from "@/hooks/useProfile";
 import { runAfterDismiss } from "@/hooks/useBackDismiss";
 import { haptics } from "@/lib/haptics";
+import { friendlyError } from "@/lib/friendlyError";
 
 function SwitcherBody() {
   const { close } = useSheet();
@@ -55,7 +56,7 @@ function SwitcherBody() {
             switchAccount.mutate(account, {
               onSuccess: () => runAfterDismiss(close, () => router.replace(`/profile/${account.username}` as Href)),
               onError: (err) => {
-                setSwitchError(err instanceof Error ? err.message : "Couldn't switch accounts.");
+                setSwitchError(friendlyError(err, "Couldn't switch accounts."));
                 refreshSavedAccounts();
               },
             });

@@ -19,6 +19,7 @@ import { haptics } from "@/lib/haptics";
 import { pickSingleImage } from "@/lib/pickImage";
 import { useTheme } from "@/theme/ThemeProvider";
 import { BookRichText } from "./BookRichText";
+import { friendlyError } from "@/lib/friendlyError";
 
 type Sel = { start: number; end: number };
 
@@ -82,7 +83,7 @@ export function BookChapterEditor({
       onChange(r.text);
       setForced({ start: r.start, end: r.end });
     } catch (err) {
-      setImageError(err instanceof Error ? err.message : "Couldn't upload that image.");
+      setImageError(friendlyError(err, "Couldn't upload that image."));
     }
   }
 

@@ -17,6 +17,7 @@ import { useIsOnline } from "@/hooks/useIsOnline";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { isNetworkError } from "@/lib/networkErrors";
 import { useTheme } from "@/theme/ThemeProvider";
+import { friendlyError } from "@/lib/friendlyError";
 
 export interface PostListItem {
   id: string;
@@ -41,10 +42,9 @@ interface PostListProps<T extends PostListItem> {
 }
 
 function ListError({ error }: { error: unknown }) {
-  const e = error as { message?: string; hint?: string } | null;
   return (
     <Text className="break-words px-4 py-10 text-center text-sm text-danger">
-      {`Couldn't load the feed: ${e?.message ?? String(error)}${e?.hint ? ` — hint: ${e.hint}` : ""}`}
+      {friendlyError(error, "Couldn't load the feed. Pull down to try again.")}
     </Text>
   );
 }

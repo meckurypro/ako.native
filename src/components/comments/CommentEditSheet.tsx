@@ -9,6 +9,7 @@ import { Text } from "@/components/ui/Text";
 import { useToast } from "@/components/ui/Toast";
 import { useUpdateComment, type CommentWithAuthor } from "@/hooks/useComments";
 import { useTheme } from "@/theme/ThemeProvider";
+import { friendlyError } from "@/lib/friendlyError";
 
 const COMMENT_LIMIT = 2000; // matches create-comment / update-comment
 
@@ -30,7 +31,7 @@ export function CommentEditSheet({ comment, onClose }: { comment: CommentWithAut
       toast("Comment updated.", { variant: "success" });
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't save your edit.");
+      setError(friendlyError(err, "Couldn't save your edit."));
     }
   }
 
