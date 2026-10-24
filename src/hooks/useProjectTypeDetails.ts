@@ -169,7 +169,7 @@ export function useGigSamples(gigProjectId: string | undefined) {
     queryKey: ["project-gig-samples", gigProjectId],
     queryFn: async (): Promise<Project[]> => {
       const { data: links, error: linksError } = await supabase
-        .from("project_gig_samples")
+        .from("gig_works")
         .select("sample_project_id, sort_order")
         .eq("gig_project_id", gigProjectId)
         .order("sort_order");
@@ -213,7 +213,7 @@ export function useGigsFeaturingProject(sampleProjectId: string | undefined) {
     queryFn: async (): Promise<FeaturingGig[]> => {
       if (!sampleProjectId) return [];
       const { data: links, error: linksError } = await supabase
-        .from("project_gig_samples")
+        .from("gig_works")
         .select("gig_project_id")
         .eq("sample_project_id", sampleProjectId);
       if (linksError) throw linksError;

@@ -28,6 +28,8 @@ import {
 } from "@/components/project-types/FileFields";
 import { EMPTY_GIG_FIELDS, GigFields, type GigFieldsValue } from "@/components/project-types/GigFields";
 import { EMPTY_MEDIA_FIELDS, MediaFields, mediaFieldsAreValid, type MediaFieldsValue } from "@/components/project-types/MediaFields";
+import { NEW_ARTIST_GIG, SongGigField } from "@/components/project-types/SongGigField";
+import { useEnsureArtistGig } from "@/hooks/usePortfolio";
 import { EMPTY_MEETING_FIELDS, MeetingFields, type MeetingFieldsValue } from "@/components/project-types/MeetingFields";
 import { EMPTY_PITCH_FIELDS, PitchFields, type PitchFieldsValue } from "@/components/project-types/PitchFields";
 import { EMPTY_ROOM_FIELDS, RoomFields, type RoomFieldsValue } from "@/components/project-types/RoomFields";
@@ -151,6 +153,9 @@ export function CreateProject() {
   const [fileFields, setFileFields] = useState<FileFieldsValue>(EMPTY_FILE_FIELDS);
   const [fileUploading, setFileUploading] = useState(false);
   const [mediaUploading, setMediaUploading] = useState(false);
+  // A song lives under an artist gig: a gig id, or NEW_ARTIST_GIG to scaffold one on save. "" until the picker settles.
+  const [songGig, setSongGig] = useState("");
+  const ensureArtistGig = useEnsureArtistGig();
   const [urlFields, setUrlFields] = useState<UrlFieldsValue>(EMPTY_URL_FIELDS);
   const [mediaFields, setMediaFields] = useState<MediaFieldsValue>(EMPTY_MEDIA_FIELDS);
   const [eventFields, setEventFields] = useState<EventFieldsValue>(EMPTY_EVENT_FIELDS);
@@ -424,8 +429,16 @@ export function CreateProject() {
     const cleanDeliverables = gigFields.deliverables.map((d) => d.trim()).filter(Boolean);
 
     try {
+      // A song needs a gig. "New gig" scaffolds the Music Artist gig first, so the song never exists without one.
+      let parentGigId: string | undefined;
+      if (projectType === "media") {
+        if (!songGig) return setError("Pick a gig.");
+        parentGigId = songGig === NEW_ARTIST_GIG ? await ensureArtistGig.mutateAsync() : songGig;
+      }
+
       const created = await createProject.mutateAsync({
         title: title.trim(),
+        parent_gig_id: parentGigId,
         description: description.trim() || undefined,
         project_type: projectType,
         posted_as_page_id: postingAsPage?.id,
@@ -624,6 +637,7 @@ export function CreateProject() {
 
           {/* 4 — Whatever this type needs. */}
           <FormSection icon={PROJECT_TYPE_ICONS[projectType]} title={`${PROJECT_TYPE_LABELS[projectType]} details`}>
+            {projectType === "media" ? <SongGigField value={songGig} onChange={setSongGig} /> : null}
             {projectType === "media" ? <MediaFields value={mediaFields} onChange={setMediaFields} onError={setError} onUploadingChange={setMediaUploading} /> : null}
             {projectType === "file" ? <FileFields value={fileFields} onChange={setFileFields} onError={setError} maxFiles={maxFiles} onUploadingChange={setFileUploading} /> : null}
             {projectType === "url" ? <UrlFields value={urlFields} onChange={setUrlFields} /> : null}

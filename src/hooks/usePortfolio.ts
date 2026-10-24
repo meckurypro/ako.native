@@ -9,7 +9,7 @@
 // A role answers "how did this person contribute" (Cinematographer).
 // A category answers "what kind of work can visitors explore"
 // (Film). See section 3 of the spec doc for the full mapping.
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "./useAuth";
 import type { Project, ProjectType } from "./useProjects";
@@ -110,7 +110,7 @@ export function usePortfolioCategoryProjects(accountId: string | undefined, cate
       if (gigProjectIds.length === 0) return [];
 
       const { data: sampleRows, error: sampleError } = await supabase
-        .from("project_gig_samples")
+        .from("gig_works")
         .select("sample_project_id")
         .in("gig_project_id", gigProjectIds);
       if (sampleError) throw sampleError;
@@ -259,7 +259,7 @@ export function useEligibleGigSampleProjects(excludeProjectId?: string) {
       const [ownRes, collabRes] = await Promise.all([
         supabase
           .from("projects")
-          .select("id, title, thumbnail_url, project_type")
+          .select("id, title, thumbnail_url, project_type, parent_gig_id")
           .eq("owner_id", user.id)
           .neq("project_type", "gig"),
         supabase
@@ -273,7 +273,11 @@ export function useEligibleGigSampleProjects(excludeProjectId?: string) {
       if (ownRes.error) throw ownRes.error;
       if (collabRes.error) throw collabRes.error;
 
-      const own = (ownRes.data ?? []) as EligibleGigSample[];
+      // A gig's own songs already show under it (projects.parent_gig_id) — offering them as samples too would just
+      // list them twice. Songs under a *different* gig stay eligible.
+      const own = ((ownRes.data ?? []) as (EligibleGigSample & { parent_gig_id: string | null })[]).filter(
+        (p) => !excludeProjectId || p.parent_gig_id !== excludeProjectId
+      );
       const collaborated = ((collabRes.data ?? []) as any[])
         .map((row) => (Array.isArray(row.project) ? row.project[0] : row.project))
         .filter((p): p is any => !!p && p.project_type !== "gig" && p.status === "active")
@@ -355,6 +359,35 @@ export function useMyGigs() {
         .sort((a, b) => Number(a.is_complete) - Number(b.is_complete));
     },
     enabled: !!user,
+  });
+}
+
+/**
+ * The gigs a song can live under: this account's own Artist-category gigs that are still live. A song always lives
+ * under one of these (projects.parent_gig_id), so this is the picker's list.
+ */
+export function useArtistGigs() {
+  const query = useMyGigs();
+  const data = (query.data ?? []).filter(
+    (g) => g.category === "Artist" && (g.status === "active" || g.status === "draft")
+  );
+  return { data, isLoading: query.isLoading };
+}
+
+/**
+ * Scaffolds the signed-in account's Music Artist gig (or returns the one they already have) — see the
+ * ensure_artist_gig() RPC in supabase/ako_songs_under_gigs.sql. A new gig comes back incomplete: the owner sets it
+ * up properly later. This is how a musician with no gig yet can still post a song.
+ */
+export function useEnsureArtistGig() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (): Promise<string> => {
+      const { data, error } = await supabase.rpc("ensure_artist_gig");
+      if (error) throw error;
+      return data as string;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["my-gigs"], refetchType: "all" }),
   });
 }
 

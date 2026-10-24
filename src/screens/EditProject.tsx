@@ -4,6 +4,8 @@
 // text, topics, the type's own fields, price/promo, affiliate program, custom
 // URL, privacy and access — can change.
 import { FileFolderHero } from "@/components/project/FileFolderArt";
+import { NEW_ARTIST_GIG, SongGigField } from "@/components/project-types/SongGigField";
+import { useEnsureArtistGig } from "@/hooks/usePortfolio";
 import { BOOK_COVER_ERROR, BOOK_COVER_RATIO, isBookCoverRatio } from "@/lib/bookCover";
 import { Banknote, CircleDot, Eye, EyeOff, Image as ImageIcon, Link2, Lock, Percent, Ticket, Type, Users } from "lucide-react-native";
 import { router, useLocalSearchParams } from "expo-router";
@@ -116,6 +118,9 @@ export function EditProject() {
   const [fileFields, setFileFields] = useState<FileFieldsValue>(EMPTY_FILE_FIELDS);
   const [fileUploading, setFileUploading] = useState(false);
   const [mediaUploading, setMediaUploading] = useState(false);
+  // The gig a song lives under (a gig id, or NEW_ARTIST_GIG to scaffold one on save).
+  const [songGig, setSongGig] = useState("");
+  const ensureArtistGig = useEnsureArtistGig();
   const [urlFields, setUrlFields] = useState<UrlFieldsValue>(EMPTY_URL_FIELDS);
   const [mediaFields, setMediaFields] = useState<MediaFieldsValue>(EMPTY_MEDIA_FIELDS);
   const [eventFields, setEventFields] = useState<EventFieldsValue>(EMPTY_EVENT_FIELDS);
@@ -166,6 +171,7 @@ export function EditProject() {
       setSupportingImageUrls(project.supporting_image_urls ?? []);
       if (project.thumbnail_width && project.thumbnail_height) setThumbnailRatio({ width: project.thumbnail_width, height: project.thumbnail_height });
       if (project.project_type === "url") setUrlFields({ url: project.external_url ?? "" });
+      if (project.project_type === "media") setSongGig(project.parent_gig_id ?? "");
       if (project.promo_price_usd !== null) {
         setShowPromo(true);
         setPromoPriceUsd(String(project.promo_price_usd));
@@ -201,7 +207,8 @@ export function EditProject() {
         role_id: existingGigDetails?.role_id ?? "",
         tagline: existingGigDetails?.tagline ?? "",
         delivery_estimate: existingGigDetails?.delivery_estimate ?? "",
-        sample_project_ids: existingGigSamples.map((p) => p.id),
+        // A gig's own songs come back in this list too, but they're not samples — the form only edits samples.
+        sample_project_ids: existingGigSamples.filter((p) => p.parent_gig_id !== projectId).map((p) => p.id),
         revisions_included: existingGigDetails?.revisions_included?.toString() ?? "",
         deliverables: existingGigDetails?.deliverables ?? [],
         faq: existingGigDetails?.faq ?? [],
@@ -300,6 +307,13 @@ export function EditProject() {
     }
 
     try {
+      // A song always has a gig. "New gig" scaffolds the Music Artist gig first.
+      let parentGigId: string | undefined;
+      if (t === "media") {
+        if (!songGig) return setError("Pick a gig.");
+        parentGigId = songGig === NEW_ARTIST_GIG ? await ensureArtistGig.mutateAsync() : songGig;
+      }
+
       // Files first: it's the part the database can refuse (limit, ownership), so if it does, nothing else changes.
       if (t === "file") {
         await saveProjectFiles.mutateAsync({ projectId, files: fileFieldsToInputs(fileFields) });
@@ -309,6 +323,7 @@ export function EditProject() {
         title: title.trim(),
         description: description.trim() || null,
         project_type: t,
+        parent_gig_id: parentGigId,
         external_url: t === "url" ? urlFields.url.trim() || null : project.external_url,
         // File projects: the files are saved by set_project_files above, which also keeps file_path in step.
         file_path: t === "file" ? undefined : project.file_path,
@@ -517,6 +532,7 @@ export function EditProject() {
           </FormSection>
 
           <FormSection icon={PROJECT_TYPE_ICONS[t]} title={`${PROJECT_TYPE_LABELS[t]} details`}>
+            {t === "media" ? <SongGigField value={songGig} onChange={setSongGig} /> : null}
             {t === "media" ? <MediaFields value={mediaFields} onChange={setMediaFields} onError={setError} onUploadingChange={setMediaUploading} /> : null}
             {t === "file" ? <FileFields value={fileFields} onChange={setFileFields} onError={setError} maxFiles={maxFiles} onUploadingChange={setFileUploading} /> : null}
             {t === "url" ? <UrlFields value={urlFields} onChange={setUrlFields} /> : null}

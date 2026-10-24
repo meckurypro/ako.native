@@ -310,6 +310,9 @@ export interface Project {
   // to posts.author_id — owner_id is still always the creating user;
   // this marks which page (if any) the project is attributed to.
   posted_as_page_id: string | null;
+  // A song (project_type "media") lives under one of its owner's artist gigs — that gig's project id. Always set for
+  // media, null for everything else (database rule: see supabase/ako_songs_under_gigs.sql).
+  parent_gig_id?: string | null;
   title: string;
   description: string | null;
   external_url: string | null;
@@ -594,6 +597,8 @@ interface CreateProjectInput {
   // enforces the caller is actually an active member of this page —
   // this is never trusted client-side alone.
   posted_as_page_id?: string;
+  // Required for a song: the artist gig it lives under (a gig of the signed-in user's).
+  parent_gig_id?: string;
   topic_ids?: string[];
   event_details?: EventDetailsInput;
   meeting_details?: MeetingDetailsInput;
@@ -790,6 +795,8 @@ interface UpdateProjectInput {
   promo_price_usd?: number | null;
   status?: ProjectStatus;
   is_private?: boolean;
+  // A song moving to another of the owner's artist gigs. undefined = leave it where it is.
+  parent_gig_id?: string;
   // undefined = leave topics untouched (e.g. a status-only change).
   // An array — including [] — replaces the full topic set.
   topic_ids?: string[];

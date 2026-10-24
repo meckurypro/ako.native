@@ -255,7 +255,10 @@ export function ProfilePage() {
   const visibleProjects = projects?.filter((p) => p.status !== "archived");
 
   const mediaProjects = useMemo(() => {
-    const owned = (visibleProjects ?? []).filter((p) => p.project_type === "media" && !p.is_private && !categorizedProjectIds?.has(p.id));
+    // The owner's own songs aren't listed here any more: every song lives under one of their artist gigs
+    // (parent_gig_id) and shows there — on the gig and in its category tab. Only songs you're credited on, on someone
+    // else's gig, still land in this tab.
+    const owned = (visibleProjects ?? []).filter((p) => p.project_type === "media" && !p.parent_gig_id && !p.is_private && !categorizedProjectIds?.has(p.id));
     const byId = new Map(owned.map((p) => [p.id, p]));
     for (const p of collaboratorMedia ?? []) if (!categorizedProjectIds?.has(p.id)) byId.set(p.id, p);
     return [...byId.values()].sort((a, b) => b.created_at.localeCompare(a.created_at));
@@ -264,6 +267,8 @@ export function ProfilePage() {
   const typeCategoriesPresent = new Set((typeCategories ?? []).map((c) => c.project_type));
   const fallbackProjects = visibleProjects?.filter((p) => {
     if (p.project_type === "gig") return false;
+    // A song lives under its gig — never a loose card in the Projects tab.
+    if (p.parent_gig_id) return false;
     if (p.project_type === "media" && p.status === "active" && !p.is_private) return false;
     if (categorizedProjectIds?.has(p.id)) return false;
     if (TYPE_CATEGORY_TYPES.has(p.project_type) && typeCategoriesPresent.has(p.project_type) && p.status === "active" && !p.is_private) return false;
