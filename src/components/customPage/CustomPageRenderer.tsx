@@ -37,6 +37,9 @@ import { BottomScrim, GlassBackdrop } from "./Gradients";
 import { HeroSlides } from "./HeroSlides";
 import { Reveal, RevealContext, useRevealBus } from "./Reveal";
 
+const AKO_ICON_ON_DARK = require("../../../assets/images/app-icon-dark-without-tagline.png");
+const AKO_ICON_ON_LIGHT = require("../../../assets/images/app-icon-light-without-tagline.png");
+
 type Palette = ReturnType<typeof resolvePalette>;
 
 export interface CustomPageActions {
@@ -806,9 +809,18 @@ function Footer({ ctx, slug }: { ctx: Ctx; slug?: string }) {
       ) : null}
       {/* Fixed by Akọ — not part of the config, so a page owner can't remove or restyle it. */}
       <View style={{ alignItems: "center", gap: 4, paddingTop: 16, borderTopWidth: 1, borderTopColor: ctx.t.rule }}>
-        <Text className={ctx.t.bodyFont} style={{ color: ctx.t.muted, fontSize: 12 }}>
-          Powered by Akọ
-        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <Text className={ctx.t.bodyFont} style={{ color: ctx.t.muted, fontSize: 12 }}>
+            Powered by
+          </Text>
+          {/* Icon matches the page's own surface: the dark-surface artwork on dark pages, the light one on light pages. */}
+          <Image
+            source={ctx.p.onSecondary === "#FFFFFF" ? AKO_ICON_ON_DARK : AKO_ICON_ON_LIGHT}
+            accessibilityLabel="Akọ"
+            contentFit="contain"
+            style={{ height: 16, width: 16 * (ctx.p.onSecondary === "#FFFFFF" ? 1536 / 826 : 1620 / 821) }}
+          />
+        </View>
         {ctx.preview ? (
           <Text className={ctx.t.bodyFont} style={{ color: ctx.t.text, fontSize: 12, textDecorationLine: "underline" }}>
             Create your own custom page
