@@ -3,6 +3,7 @@
 // Understands Ako's "emoji section" convention ("🎯 GOAL", "🪜 STEPS", "🔧 WHEN IT BREAKS" …) and a
 // small Markdown subset (#, -, 1., >, ``` fences, **bold**, `code`), so owners can type either.
 // KEEP IDENTICAL in ako (web) and ako.native — change both together.
+import { lessonMinutes } from "./courseTypes";
 
 export type Tone = "goal" | "success" | "warn" | "danger" | "tip" | "plain";
 
@@ -350,6 +351,10 @@ export interface ReaderLesson {
   module_id: string;
   content: string | null;
   media_url: string | null;
+  lesson_type?: string | null;
+  video_path?: string | null;
+  video_duration?: number | null;
+  data?: unknown;
 }
 export interface ReaderModule<L extends ReaderLesson = ReaderLesson> {
   id: string;
@@ -368,7 +373,7 @@ export function buildReaderModel<L extends ReaderLesson>(modules: ReaderModule<L
   const total = flat.length;
   const done = flat.filter((l) => completed.has(l.id)).length;
   const next = flat.find((l) => !completed.has(l.id)) ?? null;
-  const minutesLeft = flat.filter((l) => !completed.has(l.id)).reduce((s, l) => s + (l.media_url ? 5 : readMinutes(l.content)), 0);
+  const minutesLeft = flat.filter((l) => !completed.has(l.id)).reduce((s, l) => s + lessonMinutes(l), 0);
   const perModule = new Map<string, ModuleProgress>();
   for (const m of modules) {
     const d = m.lessons.filter((l) => completed.has(l.id)).length;

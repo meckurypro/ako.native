@@ -10,6 +10,7 @@ import { randomUUID } from "expo-crypto";
 
 import { APP_URL } from "./config";
 import type { LocalFile } from "./localFile";
+import { SHAPE_BY_ID, SHAPES, type ShapeDef } from "./customPageShapes";
 import { supabase } from "./supabase";
 
 export const CUSTOM_PAGES_BUCKET = "custom-pages";
@@ -26,6 +27,8 @@ export const LIMITS = {
   hero: 8,
   gallery: 24,
   caption: 160,
+  navItems: 6,
+  navLabel: 24,
   fileBytes: 100 * 1024 * 1024,
   imageBytes: 8 * 1024 * 1024,
 } as const;
@@ -62,7 +65,7 @@ export interface CustomPageImage {
 export interface CustomPageConfig {
   v?: number;
   identity?: { name?: string; tagline?: string; intro?: string; copyright?: string; icon_path?: string };
-  brand?: { primary?: string; secondary?: string; accent?: string; hero?: CustomPageImage[] };
+  brand?: { primary?: string; secondary?: string; accent?: string; hero?: CustomPageImage[]; background?: CustomPageBackground };
   contact?: { email?: string; phone?: string; address?: string };
   gallery?: CustomPageImage[];
   ctas?: CustomPageCta[];
@@ -72,6 +75,10 @@ export interface CustomPageConfig {
   seo?: { share_image_path?: string };
   /** Optional share button on the public page. Off unless the creator turns it on. */
   share?: { enabled?: boolean; look?: ShareLook; position?: SharePosition };
+  /** A picture laid over the top of the page, optionally clipped to a shape. */
+  foreground?: CustomPageForeground;
+  /** A menu whose items scroll the visitor to a section of the page. */
+  nav?: CustomPageNav;
 }
 
 export interface CustomPageRow {
@@ -236,6 +243,303 @@ export function resolveDesign(config: CustomPageConfig): { style: StyleId; templ
   return { style, template, animation };
 }
 
+// ── Design presets ──────────────────────────────────────────────────────────────────────────────────────────
+// A preset is everything on the editor's Design tab that is a *choice* — style, template, animation and the share
+// button. Colours, content and uploaded images are not part of it. Presets belong to the person (not a page), so one
+// can be applied to any of their pages, on web or native. Stored by supabase/ako_custom_pages.sql (custom_page_presets).
+export const PRESET_LIMIT = 20;
+export const PRESET_NAME_MAX = 40;
+
+export interface PresetDesign {
+  style: StyleId;
+  template: TemplateId;
+  animation: AnimationId;
+  share: { enabled: boolean; look: ShareLook; position: SharePosition };
+}
+
+export interface DesignPreset {
+  id: string;
+  name: string;
+  /** As stored. Always read it through resolvePresetDesign(): a preset saved before a style was renamed still opens. */
+  design: Partial<PresetDesign> | null;
+  updated_at: string;
+}
+
+/** The design choices a config currently has, with the same fallbacks the renderer uses. */
+export function designOfConfig(config: CustomPageConfig): PresetDesign {
+  return { ...resolveDesign(config), share: resolveShare(config) };
+}
+
+/** A stored preset as a complete design (anything missing or no longer offered falls back to the defaults). */
+export function resolvePresetDesign(raw: DesignPreset["design"]): PresetDesign {
+  const d = raw ?? {};
+  return designOfConfig({ design: { style: d.style, template: d.template, animation: d.animation }, share: d.share });
+}
+
+/** Puts a preset's choices onto a config. Everything else (colours, content, images, link-preview image) is untouched. */
+export function applyPresetToConfig(config: CustomPageConfig, raw: DesignPreset["design"]): CustomPageConfig {
+  const p = resolvePresetDesign(raw);
+  return {
+    ...config,
+    design: { ...config.design, style: p.style, template: p.template, animation: p.animation },
+    share: { ...config.share, ...p.share },
+  };
+}
+
+/** Whether a config's design is exactly this preset's. A switched-off share button ignores its look and position. */
+export function presetMatchesConfig(config: CustomPageConfig, raw: DesignPreset["design"]): boolean {
+  const a = designOfConfig(config);
+  const b = resolvePresetDesign(raw);
+  if (a.style !== b.style || a.template !== b.template || a.animation !== b.animation) return false;
+  if (a.share.enabled !== b.share.enabled) return false;
+  return !a.share.enabled || (a.share.look === b.share.look && a.share.position === b.share.position);
+}
+
+/** "Midnight · Poster · Fade in · Share button" — the one-line reminder of what a preset holds. */
+export function describePreset(raw: DesignPreset["design"]): string {
+  const p = resolvePresetDesign(raw);
+  const label = <T extends { id: string; label: string }>(list: T[], id: string) => list.find((x) => x.id === id)?.label ?? id;
+  return [label(STYLES, p.style), label(TEMPLATES, p.template), label(ANIMATIONS, p.animation), p.share.enabled ? "Share button" : null]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+// ── Background image ────────────────────────────────────────────────────────────────────────────────────────
+/** How the picture fills the page. "auto" lets the template decide. */
+export type BackgroundFit = "auto" | "cover" | "stretch" | "tile";
+/** The treatment laid on the picture. "auto" lets the template decide. */
+export type BackgroundLook = "auto" | "clear" | "soft" | "dim" | "mono" | "warm" | "cool" | "vivid";
+
+export interface CustomPageBackground {
+  path?: string;
+  fit?: BackgroundFit;
+  look?: BackgroundLook;
+}
+
+export const BACKGROUND_FITS: { id: BackgroundFit; label: string; blurb: string }[] = [
+  { id: "auto", label: "Automatic", blurb: "Your template picks what suits it best." },
+  { id: "cover", label: "Fill", blurb: "Fills the screen and crops the edges. Never distorted." },
+  { id: "stretch", label: "Stretch", blurb: "Stretched to the screen exactly. Can distort the picture." },
+  { id: "tile", label: "Tile", blurb: "Repeats a small picture or pattern across the page." },
+];
+
+export const BACKGROUND_LOOKS: { id: BackgroundLook; label: string; blurb: string }[] = [
+  { id: "auto", label: "Automatic", blurb: "Your template picks a treatment that keeps text readable." },
+  { id: "clear", label: "Clear", blurb: "The picture as it is, with only a light veil for readability." },
+  { id: "soft", label: "Soft blur", blurb: "Gently blurred so your content stands out." },
+  { id: "dim", label: "Dimmed", blurb: "Darkened, for a moody backdrop." },
+  { id: "mono", label: "Black and white", blurb: "Drains the colour." },
+  { id: "warm", label: "Warm", blurb: "A golden, sunlit tint." },
+  { id: "cool", label: "Cool", blurb: "A crisp blue tint." },
+  { id: "vivid", label: "Vivid", blurb: "Richer colour and contrast." },
+];
+
+export interface BackgroundTreatment {
+  fit: "cover" | "stretch" | "tile";
+  look: Exclude<BackgroundLook, "auto">;
+  /** Extra scale so blurred edges never show. */
+  zoom: number;
+}
+
+/** What each template does with a background when the creator leaves fit/look on "auto". */
+export const BACKGROUND_BY_TEMPLATE: Record<TemplateId, BackgroundTreatment> = {
+  showcase: { fit: "cover", look: "soft", zoom: 1.08 },
+  stacked: { fit: "cover", look: "soft", zoom: 1.08 },
+  brochure: { fit: "cover", look: "soft", zoom: 1.08 },
+  spotlight: { fit: "cover", look: "dim", zoom: 1.02 },
+  linkcard: { fit: "cover", look: "soft", zoom: 1.12 },
+  split: { fit: "cover", look: "soft", zoom: 1.08 },
+  portfolio: { fit: "cover", look: "dim", zoom: 1.02 },
+  bento: { fit: "cover", look: "soft", zoom: 1.08 },
+  poster: { fit: "cover", look: "vivid", zoom: 1.02 },
+};
+
+/** CSS filter for each look, and how heavy a readability veil it needs (0..1). */
+export const LOOK_CSS: Record<Exclude<BackgroundLook, "auto">, { filter: string; veil: number }> = {
+  clear: { filter: "none", veil: 0.28 },
+  soft: { filter: "blur(6px) saturate(1.1)", veil: 0.34 },
+  dim: { filter: "brightness(0.62)", veil: 0.12 },
+  mono: { filter: "grayscale(1) contrast(1.05)", veil: 0.3 },
+  warm: { filter: "sepia(0.35) saturate(1.2) hue-rotate(-10deg)", veil: 0.3 },
+  cool: { filter: "hue-rotate(15deg) saturate(0.9) brightness(0.96)", veil: 0.3 },
+  vivid: { filter: "saturate(1.5) contrast(1.08)", veil: 0.3 },
+};
+
+export function resolveBackground(config: CustomPageConfig): { path: string; fit: BackgroundTreatment["fit"]; look: BackgroundTreatment["look"]; zoom: number } | null {
+  const bg = config.brand?.background;
+  if (!bg?.path) return null;
+  const base = BACKGROUND_BY_TEMPLATE[resolveDesign(config).template];
+  const fit = BACKGROUND_FITS.some((f) => f.id === bg.fit && f.id !== "auto") ? (bg.fit as BackgroundTreatment["fit"]) : base.fit;
+  const look = BACKGROUND_LOOKS.some((l) => l.id === bg.look && l.id !== "auto") ? (bg.look as BackgroundTreatment["look"]) : base.look;
+  return { path: bg.path, fit, look, zoom: fit === "cover" ? base.zoom : 1 };
+}
+
+// ── Foreground image ────────────────────────────────────────────────────────────────────────────────────────
+export interface CustomPageForeground {
+  path?: string;
+  /** A shape id, or "none" to show the picture unclipped. */
+  shape?: string;
+  /** Width as a percentage of the stage (the first screen of the page). */
+  size?: number;
+  /** Centre of the picture, as a percentage of the stage. */
+  x?: number;
+  y?: number;
+  /** Degrees, clockwise. */
+  rotation?: number;
+  /** Which part of the picture shows inside the shape. zoom 1 = whole fit, x/y = focal point (0..100). */
+  crop?: { zoom?: number; x?: number; y?: number };
+  shadow?: { enabled?: boolean; intensity?: number; angle?: number };
+}
+
+export const FOREGROUND_LIMITS = {
+  size: [8, 100],
+  pos: [0, 100],
+  rotation: [-180, 180],
+  zoom: [1, 4],
+  intensity: [0, 100],
+  angle: [0, 360],
+} as const;
+
+export const FOREGROUND_DEFAULTS = {
+  shape: "circle",
+  size: 56,
+  x: 50,
+  y: 38,
+  rotation: 0,
+  crop: { zoom: 1, x: 50, y: 50 },
+  shadow: { enabled: false, intensity: 45, angle: 60 },
+} as const;
+
+const clamp = (v: unknown, [lo, hi]: readonly [number, number], fallback: number) =>
+  typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : fallback;
+
+export interface ResolvedForeground {
+  path: string;
+  /** null = unclipped */
+  shape: ShapeDef | null;
+  size: number;
+  x: number;
+  y: number;
+  rotation: number;
+  crop: { zoom: number; x: number; y: number };
+  shadow: { enabled: boolean; intensity: number; angle: number };
+}
+
+export function resolveForeground(config: CustomPageConfig): ResolvedForeground | null {
+  const fg = config.foreground;
+  if (!fg?.path) return null;
+  const shape = fg.shape === "none" ? null : SHAPE_BY_ID[fg.shape ?? ""] ?? SHAPE_BY_ID[FOREGROUND_DEFAULTS.shape];
+  return {
+    path: fg.path,
+    shape,
+    size: clamp(fg.size, FOREGROUND_LIMITS.size, FOREGROUND_DEFAULTS.size),
+    x: clamp(fg.x, FOREGROUND_LIMITS.pos, FOREGROUND_DEFAULTS.x),
+    y: clamp(fg.y, FOREGROUND_LIMITS.pos, FOREGROUND_DEFAULTS.y),
+    rotation: clamp(fg.rotation, FOREGROUND_LIMITS.rotation, 0),
+    crop: {
+      zoom: clamp(fg.crop?.zoom, FOREGROUND_LIMITS.zoom, 1),
+      x: clamp(fg.crop?.x, FOREGROUND_LIMITS.pos, 50),
+      y: clamp(fg.crop?.y, FOREGROUND_LIMITS.pos, 50),
+    },
+    shadow: {
+      enabled: fg.shadow?.enabled === true,
+      intensity: clamp(fg.shadow?.intensity, FOREGROUND_LIMITS.intensity, FOREGROUND_DEFAULTS.shadow.intensity),
+      angle: clamp(fg.shadow?.angle, FOREGROUND_LIMITS.angle, FOREGROUND_DEFAULTS.shadow.angle),
+    },
+  };
+}
+
+/**
+ * Turns the shadow controls into pixels. The angle is the direction the shadow falls, measured clockwise from
+ * "to the right" (0 = right, 90 = down, 180 = left, 270 = up), so it stays put when the picture is rotated.
+ */
+export function shadowGeometry(intensity: number, angle: number) {
+  const rad = (angle * Math.PI) / 180;
+  const distance = 2 + intensity * 0.28;
+  return {
+    dx: Math.round(Math.cos(rad) * distance * 10) / 10,
+    dy: Math.round(Math.sin(rad) * distance * 10) / 10,
+    blur: Math.round((4 + intensity * 0.4) * 10) / 10,
+    alpha: Math.round((0.18 + intensity * 0.0042) * 100) / 100,
+  };
+}
+
+export { SHAPES };
+
+// ── Menu (nav) ──────────────────────────────────────────────────────────────────────────────────────────────
+export type NavTarget = "top" | "about" | "buttons" | "document" | "gallery" | "contact";
+export type ScrollAnimationId = "smooth" | "ease-out" | "spring" | "bounce" | "slow" | "snap" | "instant";
+export type NavPosition = "top" | "bottom";
+export type NavLook = "bar" | "pill";
+
+export interface CustomPageNavItem {
+  id: string;
+  label: string;
+  target: NavTarget;
+}
+
+export interface CustomPageNav {
+  enabled?: boolean;
+  items?: CustomPageNavItem[];
+  scroll?: ScrollAnimationId;
+  position?: NavPosition;
+  look?: NavLook;
+}
+
+export const NAV_TARGETS: { id: NavTarget; label: string; hint: string }[] = [
+  { id: "top", label: "Top of page", hint: "Back to the very start." },
+  { id: "about", label: "Page message", hint: "Your welcome note." },
+  { id: "buttons", label: "Buttons", hint: "Your buttons." },
+  { id: "document", label: "Document", hint: "The document card." },
+  { id: "gallery", label: "Gallery", hint: "Your photos." },
+  { id: "contact", label: "Contact", hint: "Contact details and the message form." },
+];
+
+export const SCROLL_ANIMATIONS: { id: ScrollAnimationId; label: string; blurb: string; ms: number }[] = [
+  { id: "smooth", label: "Smooth", blurb: "Eases in and out. A safe, polished default.", ms: 700 },
+  { id: "ease-out", label: "Glide", blurb: "Starts fast and settles gently.", ms: 800 },
+  { id: "spring", label: "Spring", blurb: "Overshoots a touch, then settles back.", ms: 900 },
+  { id: "bounce", label: "Bounce", blurb: "Lands and bounces. Playful.", ms: 1100 },
+  { id: "slow", label: "Slow drift", blurb: "A long, calm cinematic scroll.", ms: 1400 },
+  { id: "snap", label: "Snap", blurb: "Quick and decisive.", ms: 260 },
+  { id: "instant", label: "Instant", blurb: "Jumps straight there, no animation.", ms: 0 },
+];
+
+export function resolveNav(config: CustomPageConfig): { enabled: boolean; items: CustomPageNavItem[]; scroll: ScrollAnimationId; position: NavPosition; look: NavLook } {
+  const n = config.nav ?? {};
+  const items = (n.items ?? [])
+    .filter((i) => i && typeof i.label === "string" && i.label.trim() && NAV_TARGETS.some((t) => t.id === i.target))
+    .slice(0, LIMITS.navItems);
+  return {
+    enabled: n.enabled === true && items.length > 0,
+    items,
+    scroll: SCROLL_ANIMATIONS.some((a) => a.id === n.scroll) ? (n.scroll as ScrollAnimationId) : "smooth",
+    position: n.position === "bottom" ? "bottom" : "top",
+    look: n.look === "pill" ? "pill" : "bar",
+  };
+}
+
+/** Which targets this page can actually scroll to, given what it contains. Mirrors what the templates render. */
+export function availableNavTargets(config: CustomPageConfig): NavTarget[] {
+  const out: NavTarget[] = ["top"];
+  if (config.identity?.intro?.trim()) out.push("about");
+  if ((config.ctas ?? []).some((c) => c.label.trim())) out.push("buttons");
+  if (config.document?.path) out.push("document");
+  if ((config.gallery?.length ?? 0) > 0) out.push("gallery");
+  const c = config.contact ?? {};
+  if (c.email || c.phone || c.address || config.engagement?.inquiry !== false) out.push("contact");
+  return out;
+}
+
+export function newNavId(existing: CustomPageNavItem[]): string {
+  const used = new Set(existing.map((n) => n.id));
+  for (let i = 1; i < 100; i++) {
+    const id = `nav-${i}`;
+    if (!used.has(id)) return id;
+  }
+  return `nav-${Date.now().toString(36)}`;
+}
+
 // ── Colours ─────────────────────────────────────────────────────────────────────────────────────────────────
 const HEX = /^#[0-9a-fA-F]{6}$/;
 export const isHex = (v: string | undefined): v is string => !!v && HEX.test(v);
@@ -389,10 +693,14 @@ export function draftProblem(c: CustomPageConfig): string | null {
     if (cta.label.trim().length > LIMITS.ctaLabel) return `Button ${i + 1}: the label must be ${LIMITS.ctaLabel} characters or fewer.`;
     if ((cta.url ?? "").length > 500) return `Button ${i + 1}: the link is too long.`;
   }
+  for (const [i, item] of (c.nav?.items ?? []).entries()) {
+    if ((item.label ?? "").trim().length > LIMITS.navLabel) return `Menu item ${i + 1}: the label must be ${LIMITS.navLabel} characters or fewer.`;
+  }
+  if ((c.nav?.items?.length ?? 0) > LIMITS.navItems) return `Use up to ${LIMITS.navItems} menu items.`;
   return null;
 }
 
-export type EditorStage = "identity" | "brand" | "content" | "buttons" | "contact" | "design";
+export type EditorStage = "identity" | "brand" | "media" | "content" | "buttons" | "contact" | "menu" | "design";
 
 /**
  * Client twin of the strict check publish_custom_page() runs. Returns what to fix and which editor stage holds it, so
@@ -406,6 +714,9 @@ export function publishProblem(c: CustomPageConfig): { message: string; stage: E
   for (const cta of c.ctas ?? []) {
     const message = ctaProblem(cta, c);
     if (message) return { message, stage: "buttons" };
+  }
+  for (const [i, item] of (c.nav?.items ?? []).entries()) {
+    if (!item.label.trim()) return { message: `Menu item ${i + 1} needs a label.`, stage: "menu" };
   }
   return null;
 }

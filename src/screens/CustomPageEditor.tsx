@@ -11,6 +11,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BrandColorFields } from "@/components/customPage/ColorPicker";
 import { CustomPageRenderer } from "@/components/customPage/CustomPageRenderer";
 import { Choice, Field, FilePicker, ImageList, Input, Section, SingleImage } from "@/components/customPage/EditorParts";
+import { BackgroundEditor, ForegroundEditor, MenuEditor } from "@/components/customPage/MediaEditors";
+import { DesignPresets } from "@/components/customPage/DesignPresets";
 import { Button } from "@/components/ui/Button";
 import { KeyboardAvoider } from "@/components/ui/KeyboardAvoider";
 import { Portal } from "@/components/ui/Portal";
@@ -50,8 +52,10 @@ import { friendlyError } from "@/lib/friendlyError";
 const STAGES = [
   { id: "identity", label: "Identity" },
   { id: "brand", label: "Brand" },
+  { id: "media", label: "Pictures" },
   { id: "content", label: "Content" },
   { id: "buttons", label: "Buttons" },
+  { id: "menu", label: "Menu" },
   { id: "contact", label: "Contact" },
   { id: "design", label: "Design" },
 ] as const;
@@ -85,6 +89,8 @@ export function CustomPageEditor() {
 
   const [config, setConfig] = useState<CustomPageConfig | null>(null);
   const [stage, setStage] = useState<StageId>("identity");
+  // While a picture is being dragged into place the form must not scroll under the finger.
+  const [dragging, setDragging] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>("saved");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -268,7 +274,7 @@ export function CustomPageEditor() {
         </ScrollView>
       </View>
 
-      <ScrollView ref={bodyScroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 24, paddingBottom: insets.bottom + 48 }}>
+      <ScrollView ref={bodyScroll} scrollEnabled={!dragging} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 24, paddingBottom: insets.bottom + 48 }}>
         {stage === "identity" ? (
           <Section title="Page identity" intro="The name, tagline and message at the top of your page.">
             <Field label="Page name" count={(config.identity?.name ?? "").length} max={LIMITS.name}>
@@ -306,6 +312,43 @@ export function CustomPageEditor() {
               pageId={pageId}
               onChange={(hero) => set("brand", { hero })}
             />
+          </Section>
+        ) : null}
+
+        {stage === "media" ? (
+          <Section title="Pictures" intro="A background behind your page, and a picture laid over the top of it.">
+            <BackgroundEditor
+              config={config}
+              ownerId={ownerId}
+              pageId={pageId}
+              onChange={(background) =>
+                update((c) => {
+                  const { background: _gone, ...brand } = c.brand ?? {};
+                  void _gone;
+                  return { ...c, brand: background ? { ...brand, background } : brand };
+                })
+              }
+            />
+            <View className="my-6 border-t border-border" />
+            <ForegroundEditor
+              config={config}
+              ownerId={ownerId}
+              pageId={pageId}
+              onDragging={setDragging}
+              onChange={(foreground) =>
+                update((c) => {
+                  const { foreground: _gone, ...rest } = c;
+                  void _gone;
+                  return foreground ? { ...rest, foreground } : rest;
+                })
+              }
+            />
+          </Section>
+        ) : null}
+
+        {stage === "menu" ? (
+          <Section title="Menu" intro="Links that glide visitors to a part of your page.">
+            <MenuEditor config={config} onChange={(nav) => update((c) => ({ ...c, nav }))} />
           </Section>
         ) : null}
 
@@ -421,6 +464,7 @@ export function CustomPageEditor() {
 
         {stage === "design" ? (
           <Section title="Design" intro="Pick a style, a layout and how sections appear.">
+            <DesignPresets config={config} onChange={update} />
             <Field label="Style">
               <View className="gap-2.5">
                 {STYLES.map((s) => (

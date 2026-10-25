@@ -12,9 +12,9 @@
 // design values are just short slugs in the config.
 import { router, type Href } from "expo-router";
 import { ArrowRight, Download, ExternalLink, FileText, Mail, MapPin, MessageCircle, Phone } from "lucide-react-native";
-import { useRef, useState, type ReactNode } from "react";
-import Svg, { Path } from "react-native-svg";
-import { ActivityIndicator, Platform, Pressable, ScrollView, Share, useWindowDimensions, View, type ViewStyle } from "react-native";
+import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode, type RefObject } from "react";
+import Svg, { ClipPath, Defs, Image as SvgImage, Path } from "react-native-svg";
+import { AccessibilityInfo, ActivityIndicator, Image as RNImage, Platform, Pressable, ScrollView, Share, StyleSheet, useWindowDimensions, View, type ViewStyle } from "react-native";
 
 import { Image } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
@@ -23,18 +23,29 @@ import { useFileDownload } from "@/hooks/useFileDownload";
 import { haptics } from "@/lib/haptics";
 import { openExternal } from "@/lib/openExternal";
 import {
+  LOOK_CSS,
+  availableNavTargets,
   customPageUrl,
+  isHex,
   publicFileUrl,
+  readableOn,
+  resolveBackground,
   resolveDesign,
+  resolveForeground,
+  resolveNav,
   resolveShare,
   resolvePalette,
+  shadowGeometry,
   withAlpha,
+  type ResolvedForeground,
   type AnimationId,
   type CustomPageConfig,
   type CustomPageCta,
   type StyleId,
   type TemplateId,
 } from "../../lib/customPage";
+import { animateScroll } from "../../lib/customPageScroll";
+import { scaleShapePath } from "../../lib/customPageShapes";
 import { FloatView, GradientFill, Marquee, ShineSweep, StyleBackdrop, useWidth, type Glow } from "./Fx";
 import { BottomScrim, GlassBackdrop } from "./Gradients";
 import { HeroSlides } from "./HeroSlides";
@@ -453,6 +464,18 @@ interface Ctx {
   actions: CustomPageActions;
   safeTop: number;
   safeBottom: number;
+  /** Space the page menu takes at the top / bottom, so floating pieces (the share button) stay clear of it. */
+  navInset: { top: number; bottom: number };
+  /** The real safe-area insets, for the menu itself (page content gets 0 where the menu has taken over). */
+  navInsetSafe: { top: number; bottom: number };
+}
+
+/** Section anchors: each shared section registers a view here so the menu can find where it sits on the page. */
+type AnchorName = "about" | "buttons" | "document" | "gallery" | "contact";
+const AnchorContext = createContext<((name: AnchorName) => RefObject<View | null>) | null>(null);
+function useAnchor(name: AnchorName): RefObject<View | null> | undefined {
+  const get = useContext(AnchorContext);
+  return get ? get(name) : undefined;
 }
 
 const buttonRadius = (t: Tokens) => t.btnRadius ?? (t.radius > 20 ? 999 : Math.min(t.radius, 12));
@@ -596,11 +619,12 @@ function CtaButton({ cta, primary, ctx, block }: { cta: CustomPageCta; primary: 
 }
 
 function CtaGroup({ ctx, block, left }: { ctx: Ctx; block?: boolean; left?: boolean }) {
+  const anchor = useAnchor("buttons");
   // A draft can hold a button that has no label yet — never draw an empty pill for it.
   const ctas = (ctx.config.ctas ?? []).filter((c) => c.label.trim());
   if (!ctas.length) return null;
   return (
-    <View style={block ? { gap: 12 } : { flexDirection: "row", flexWrap: "wrap", gap: 12, justifyContent: left ? "flex-start" : "center" }}>
+    <View ref={anchor} collapsable={false} style={block ? { gap: 12 } : { flexDirection: "row", flexWrap: "wrap", gap: 12, justifyContent: left ? "flex-start" : "center" }}>
       {ctas.map((c, i) => (
         <CtaButton key={c.id} cta={c} primary={i === 0} ctx={ctx} block={block} />
       ))}
@@ -640,16 +664,20 @@ function Logo({ ctx, size = 64, ring }: { ctx: Ctx; size?: number; ring?: boolea
 }
 
 function Intro({ ctx, left }: { ctx: Ctx; left?: boolean }) {
+  const anchor = useAnchor("about");
   const intro = ctx.config.identity?.intro?.trim();
   if (!intro) return null;
   return (
-    <Body ctx={ctx} style={{ fontSize: 17, lineHeight: 27, textAlign: left ? "left" : "center", maxWidth: 672, alignSelf: left ? "flex-start" : "center" }}>
-      {intro}
-    </Body>
+    <View ref={anchor} collapsable={false} style={{ alignSelf: left ? "flex-start" : "center", maxWidth: 672 }}>
+      <Body ctx={ctx} style={{ fontSize: 17, lineHeight: 27, textAlign: left ? "left" : "center" }}>
+        {intro}
+      </Body>
+    </View>
   );
 }
 
 function DocumentCard({ ctx }: { ctx: Ctx }) {
+  const anchor = useAnchor("document");
   const { busy, label: downloadLabel, start: startDownload } = useFileDownload();
   const doc = ctx.config.document;
   if (!doc?.path) return null;
@@ -657,6 +685,7 @@ function DocumentCard({ ctx }: { ctx: Ctx }) {
   const dl = publicFileUrl(doc.path, { download: doc.file_name || `${doc.title || "document"}.pdf` });
   const radius = buttonRadius(ctx.t);
   return (
+    <View ref={anchor} collapsable={false}>
     <Card ctx={ctx} center>
       <View style={{ marginBottom: 12, opacity: 0.85 }}>
         <FileText size={34} color={ctx.t.text} />
@@ -700,12 +729,14 @@ function DocumentCard({ ctx }: { ctx: Ctx }) {
         </Pressable>
       </View>
     </Card>
+    </View>
   );
 }
 
 type GalleryVariant = "grid" | "small" | "big" | "bento";
 
 function Gallery({ ctx, variant = "grid", items: override }: { ctx: Ctx; variant?: GalleryVariant; items?: { path: string; caption?: string }[] }) {
+  const anchor = useAnchor("gallery");
   const items = override ?? ctx.config.gallery ?? [];
   const [open, setOpen] = useState<number | null>(null);
   if (!items.length) return null;
@@ -758,13 +789,16 @@ function Gallery({ ctx, variant = "grid", items: override }: { ctx: Ctx; variant
   }
   return (
     <>
-      {body}
+      <View ref={anchor} collapsable={false}>
+        {body}
+      </View>
       {open !== null && urls.length > 0 ? <MediaViewer mediaUrls={urls} startIndex={Math.min(open, urls.length - 1)} onClose={() => setOpen(null)} /> : null}
     </>
   );
 }
 
 function Contact({ ctx }: { ctx: Ctx }) {
+  const anchor = useAnchor("contact");
   const c = ctx.config.contact ?? {};
   const inquiry = ctx.config.engagement?.inquiry !== false;
   if (!c.email && !c.phone && !c.address && !inquiry) return null;
@@ -783,6 +817,7 @@ function Contact({ ctx }: { ctx: Ctx }) {
     </Pressable>
   );
   return (
+    <View ref={anchor} collapsable={false}>
     <Card ctx={ctx}>
       <Heading ctx={ctx} small>
         Get in touch
@@ -803,6 +838,7 @@ function Contact({ ctx }: { ctx: Ctx }) {
         </Pressable>
       ) : null}
     </Card>
+    </View>
   );
 }
 
@@ -1491,7 +1527,7 @@ function ShareButton({ ctx, slug }: { ctx: Ctx; slug?: string }) {
     </View>
   );
 
-  const vertical = floating ? { bottom: ctx.safeBottom + 18 } : { top: ctx.safeTop + place.top };
+  const vertical = floating ? { bottom: ctx.safeBottom + ctx.navInset.bottom + 18 } : { top: ctx.safeTop + place.top };
   // Centring: stretch a full-width row and let it centre its single child (no measuring needed).
   const horizontal: ViewStyle = side === "left" ? { left: 14 } : side === "right" ? { right: 14 } : { left: 0, right: 0, alignItems: "center" };
 
@@ -1511,6 +1547,188 @@ function ShareButton({ ctx, slug }: { ctx: Ctx; slug?: string }) {
   );
 }
 
+// ── Background, foreground and menu ─────────────────────────────────────────────────────────────────────────────
+const NAV_BAR_H = 48;
+const NAV_PILL_H = 44;
+const NAV_PILL_PAD = 10;
+
+/** The page's background picture, behind everything. Looks use RN's `filter` style; "soft" uses the image's own blur. */
+function BackgroundLayer({ ctx }: { ctx: Ctx }) {
+  const bg = resolveBackground(ctx.config);
+  const uri = bg ? publicFileUrl(bg.path) : null;
+  if (!bg || !uri) return null;
+  const look = LOOK_CSS[bg.look];
+  // Blur is Android-only as a style filter, so it goes through the image's blurRadius, which works on both.
+  const filter = look.filter.replace(/blur\([^)]*\)\s*/, "").trim();
+  const veil = isHex(ctx.t.text) ? readableOn(ctx.t.text) : "#14120F";
+  const fill = StyleSheet.absoluteFill;
+  const picture =
+    bg.fit === "tile" ? (
+      <RNImage source={{ uri }} resizeMode="repeat" style={[fill, { transform: [{ scale: bg.zoom }] }]} />
+    ) : (
+      <Image
+        source={{ uri }}
+        contentFit={bg.fit === "stretch" ? "fill" : "cover"}
+        blurRadius={bg.look === "soft" ? 14 : 0}
+        durable={false}
+        fallback="none"
+        style={[fill, { transform: [{ scale: bg.zoom }] }]}
+      />
+    );
+  return (
+    <View pointerEvents="none" style={fill}>
+      <View style={[fill, { overflow: "hidden" }, filter && filter !== "none" ? ({ filter } as ViewStyle) : null]}>{picture}</View>
+      <View style={[fill, { backgroundColor: withAlpha(veil, look.veil) }]} />
+    </View>
+  );
+}
+
+/**
+ * The picture laid over the top of the page. Everything is in pixels of a "stage" (4:5, up to 640 wide) measured on
+ * layout. Shape clipping is an SVG clip path scaled to the box; the shadow wraps the rotating layer, so it keeps
+ * falling in the chosen direction however the picture is turned.
+ */
+export function ForegroundArt({ fg, uri, stageW }: { fg: ResolvedForeground; uri: string; stageW: number }) {
+  const clipId = `fg${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
+  const [nat, setNat] = useState<{ w: number; h: number } | null>(null);
+  useEffect(() => {
+    let live = true;
+    RNImage.getSize(
+      uri,
+      (w, h) => live && setNat({ w, h }),
+      () => {}
+    );
+    return () => {
+      live = false;
+    };
+  }, [uri]);
+
+  const stageH = stageW * 1.25;
+  const boxW = (stageW * fg.size) / 100;
+  const boxH = fg.shape ? boxW / fg.shape.aspect : nat ? (boxW * nat.h) / nat.w : boxW;
+  const left = (stageW * fg.x) / 100 - boxW / 2;
+  const top = (stageH * fg.y) / 100 - boxH / 2;
+  const sh = fg.shadow.enabled ? shadowGeometry(fg.shadow.intensity, fg.shadow.angle) : null;
+  const shadowStyle: ViewStyle | undefined = sh
+    ? Platform.OS === "android"
+      ? ({ filter: [{ dropShadow: { offsetX: sh.dx, offsetY: sh.dy, standardDeviation: sh.blur / 2, color: `rgba(0,0,0,${sh.alpha})` } }] } as unknown as ViewStyle)
+      : { shadowColor: "#000", shadowOpacity: sh.alpha, shadowRadius: sh.blur / 2, shadowOffset: { width: sh.dx, height: sh.dy } }
+    : undefined;
+
+  // Where the picture sits inside the box. Same maths as the web: cover at the focal point, then zoom about that point.
+  if (!nat || boxW <= 0 || boxH <= 0) return null;
+  let art: ReactNode;
+  if (fg.shape) {
+    const k = Math.max(boxW / nat.w, boxH / nat.h);
+    const dw = nat.w * k;
+    const dh = nat.h * k;
+    const fx = fg.crop.x / 100;
+    const fy = fg.crop.y / 100;
+    const l0 = (boxW - dw) * fx;
+    const t0 = (boxH - dh) * fy;
+    const ox = boxW * fx;
+    const oy = boxH * fy;
+    const z = fg.crop.zoom;
+    art = (
+      <Svg width={boxW} height={boxH} viewBox={`0 0 ${boxW} ${boxH}`}>
+        <Defs>
+          <ClipPath id={clipId}>
+            <Path d={scaleShapePath(fg.shape.path, boxW, boxH)} />
+          </ClipPath>
+        </Defs>
+        <SvgImage x={ox + z * (l0 - ox)} y={oy + z * (t0 - oy)} width={dw * z} height={dh * z} href={{ uri }} preserveAspectRatio="none" clipPath={`url(#${clipId})`} />
+      </Svg>
+    );
+  } else {
+    art = <Image source={{ uri }} contentFit="fill" durable={false} fallback="none" style={{ width: boxW, height: boxH }} />;
+  }
+  return (
+    <View style={[{ position: "absolute", left, top, width: boxW, height: boxH }, shadowStyle]}>
+      <View style={{ width: boxW, height: boxH, transform: fg.rotation ? [{ rotate: `${fg.rotation}deg` }] : undefined }}>{art}</View>
+    </View>
+  );
+}
+
+/** The picture laid over the top of the page, in a 4:5 "stage" up to 640 wide. */
+function ForegroundLayer({ ctx }: { ctx: Ctx }) {
+  const fg = resolveForeground(ctx.config);
+  const uri = fg ? publicFileUrl(fg.path) : null;
+  const [stageW, setStageW] = useState(0);
+  if (!fg || !uri) return null;
+  return (
+    <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, alignItems: "center", zIndex: 6 }}>
+      <View style={{ width: "100%", maxWidth: 640, aspectRatio: 4 / 5 }} onLayout={(e) => setStageW(e.nativeEvent.layout.width)}>
+        {stageW > 0 ? <ForegroundArt fg={fg} uri={uri} stageW={stageW} /> : null}
+      </View>
+    </View>
+  );
+}
+
+/** The page menu: a bar or a floating pill. It sits outside the scroller, so it stays put while the page moves. */
+function NavBar({ ctx, active, onGo }: { ctx: Ctx; active: string | null; onGo: (id: string, target: string) => void }) {
+  const nav = resolveNav(ctx.config);
+  const available = availableNavTargets(ctx.config);
+  const items = nav.items.filter((i) => available.includes(i.target));
+  if (!items.length) return null;
+  const top = nav.position === "top";
+  const pill = nav.look === "pill";
+  const surface = withAlpha(isHex(ctx.t.text) ? readableOn(ctx.t.text) : "#FFFFFF", 0.92);
+  const edge = withAlpha(isHex(ctx.t.text) ? ctx.t.text : "#000000", 0.14);
+  const inset = top ? ctx.navInsetSafe.top : ctx.navInsetSafe.bottom;
+  const list = (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      accessibilityRole="menu"
+      contentContainerStyle={{ alignItems: "center", gap: 4, paddingHorizontal: pill ? 6 : 12, minWidth: pill ? undefined : "100%", justifyContent: pill ? "flex-start" : "center" }}
+      style={[
+        { flexGrow: 0, height: pill ? NAV_PILL_H : NAV_BAR_H, backgroundColor: surface },
+        pill
+          ? { borderRadius: 999, borderWidth: 1, borderColor: edge, maxWidth: "100%", shadowColor: "#000", shadowOpacity: 0.25, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 6 }
+          : top
+            ? { borderBottomWidth: StyleSheet.hairlineWidth, borderColor: edge }
+            : { borderTopWidth: StyleSheet.hairlineWidth, borderColor: edge },
+      ]}
+    >
+      {items.map((item) => {
+        const on = item.id === active;
+        return (
+          <Pressable
+            key={item.id}
+            onPress={() => onGo(item.id, item.target)}
+            accessibilityRole="menuitem"
+            accessibilityLabel={item.label}
+            accessibilityState={{ selected: on }}
+            hitSlop={4}
+            style={{
+              height: pill ? 34 : NAV_BAR_H,
+              paddingHorizontal: 14,
+              justifyContent: "center",
+              borderRadius: pill ? 999 : 0,
+              backgroundColor: on && pill ? ctx.p.accent : "transparent",
+              borderBottomWidth: !pill && top ? 3 : 0,
+              borderTopWidth: !pill && !top ? 3 : 0,
+              borderColor: on ? ctx.p.accent : "transparent",
+            }}
+          >
+            <Text className={`${ctx.t.bodyFont} font-semibold`} style={{ fontSize: 14, color: on && pill ? ctx.p.onAccent : ctx.t.text, opacity: on || pill ? 1 : 0.72 }}>
+              {item.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </ScrollView>
+  );
+  if (pill) {
+    return (
+      <View pointerEvents="box-none" style={{ alignItems: "center", paddingHorizontal: 12, paddingTop: top ? inset + NAV_PILL_PAD : NAV_PILL_PAD, paddingBottom: top ? NAV_PILL_PAD : inset + NAV_PILL_PAD }}>
+        {list}
+      </View>
+    );
+  }
+  return <View style={{ paddingTop: top ? inset : 0, paddingBottom: top ? 0 : inset, backgroundColor: surface }}>{list}</View>;
+}
+
 const LAYOUTS: Record<TemplateId, (props: { ctx: Ctx; slug?: string }) => ReactNode> = {
   showcase: Showcase,
   stacked: Stacked,
@@ -1527,7 +1745,25 @@ export function CustomPageRenderer({ config, preview = false, actions = {}, slug
   const { style, template, animation } = resolveDesign(config);
   const p = resolvePalette(config);
   const t = styleTokens(style, p);
-  const ctx: Ctx = { config, p, t, style, animation, preview, actions, safeTop, safeBottom };
+  const nav = resolveNav(config);
+  const hasNav = nav.enabled && nav.items.some((i) => availableNavTargets(config).includes(i.target));
+  const navTop = hasNav && nav.position === "top";
+  const navBottom = hasNav && nav.position === "bottom";
+  const navH = nav.look === "pill" ? NAV_PILL_H + NAV_PILL_PAD * 2 : NAV_BAR_H;
+  // The menu sits outside the scroller and takes the status-bar / home-indicator room itself, so the page doesn't pad twice.
+  const ctx: Ctx = {
+    config,
+    p,
+    t,
+    style,
+    animation,
+    preview,
+    actions,
+    safeTop: navTop ? 0 : safeTop,
+    safeBottom: navBottom ? 0 : safeBottom,
+    navInset: { top: 0, bottom: navBottom ? navH + safeBottom : 0 },
+    navInsetSafe: { top: safeTop, bottom: safeBottom },
+  };
   const Layout = LAYOUTS[template];
   const shareOn = resolveShare(config).enabled;
   const edge = shareEdge(config);
@@ -1535,26 +1771,114 @@ export function CustomPageRenderer({ config, preview = false, actions = {}, slug
   const contentRef = useRef<View>(null);
   bus.contentRef = contentRef;
 
+  // ── Menu: where each section sits, which one is showing, and the animated scroll ──
+  const scrollRef = useRef<ScrollView>(null);
+  const anchors = useRef<Partial<Record<AnchorName, RefObject<View | null>>>>({});
+  const getAnchor = useRef((name: AnchorName) => (anchors.current[name] ??= { current: null })).current;
+  const ys = useRef<Record<string, number>>({});
+  const scrollY = useRef(0);
+  const viewH = useRef(0);
+  const contentH = useRef(0);
+  const cancelScroll = useRef<(() => void) | null>(null);
+  const [active, setActive] = useState<string | null>(null);
+  const offset = navTop || !hasNav ? 8 : 12;
+
+  const measure = (then?: () => void) => {
+    const root = contentRef.current;
+    const names = Object.keys(anchors.current) as AnchorName[];
+    if (!root || !names.length) return then?.();
+    let left = names.length;
+    const done = () => {
+      if (--left === 0) then?.();
+    };
+    for (const name of names) {
+      const node = anchors.current[name]?.current;
+      if (!node) {
+        delete ys.current[name];
+        done();
+        continue;
+      }
+      node.measureLayout(
+        root,
+        (_x, y) => {
+          ys.current[name] = y;
+          done();
+        },
+        done
+      );
+    }
+  };
+
+  const spy = () => {
+    if (!hasNav) return;
+    let current: string | null = null;
+    for (const item of nav.items) {
+      if (item.target === "top") current = current ?? item.id;
+      else if (ys.current[item.target] !== undefined && ys.current[item.target] - offset - 24 <= scrollY.current) current = item.id;
+    }
+    setActive((prev) => (prev === current ? prev : current));
+  };
+
+  const go = (id: string, target: string) => {
+    cancelScroll.current?.();
+    setActive(id);
+    const run = (reduceMotion: boolean) =>
+      measure(() => {
+        const raw = target === "top" ? 0 : ys.current[target];
+        if (raw === undefined) return;
+        const max = Math.max(0, contentH.current - viewH.current);
+        const to = Math.max(0, Math.min(max, raw - (target === "top" ? 0 : offset)));
+        cancelScroll.current = animateScroll({
+          from: scrollY.current,
+          to,
+          animation: nav.scroll,
+          reduceMotion,
+          // Overshooting curves (spring, bounce) are held inside the page so the bar never opens a gap.
+          set: (y) => scrollRef.current?.scrollTo({ y: Math.max(0, Math.min(max, y)), animated: false }),
+        });
+      });
+    AccessibilityInfo.isReduceMotionEnabled().then(run, () => run(false));
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: t.pageBg }}>
       {t.glass ? <GlassBackdrop primary={p.primary} accent={p.accent} /> : t.backdrop ? <StyleBackdrop base={t.backdrop.base} glows={t.backdrop.glows} drift={t.backdrop.drift} /> : null}
+      <BackgroundLayer ctx={ctx} />
+      {navTop ? <NavBar ctx={ctx} active={active} onGo={go} /> : null}
       <RevealContext.Provider value={bus}>
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          showsHorizontalScrollIndicator={false}
-          scrollEventThrottle={16}
-          contentInsetAdjustmentBehavior="never"
-          onLayout={(e) => bus.see(e.nativeEvent.layout.height)}
-          onScroll={(e) => bus.see(e.nativeEvent.contentOffset.y + e.nativeEvent.layoutMeasurement.height)}
-        >
-          <View ref={contentRef} collapsable={false}>
-            <Layout ctx={ctx} slug={slug} />
-            {shareOn && edge === "top" ? <ShareButton ctx={ctx} slug={slug} /> : null}
-          </View>
-        </ScrollView>
+        <AnchorContext.Provider value={getAnchor}>
+          <ScrollView
+            ref={scrollRef}
+            showsVerticalScrollIndicator={false}
+            showsHorizontalScrollIndicator={false}
+            scrollEventThrottle={16}
+            contentInsetAdjustmentBehavior="never"
+            onLayout={(e) => {
+              viewH.current = e.nativeEvent.layout.height;
+              bus.see(e.nativeEvent.layout.height);
+            }}
+            onContentSizeChange={(_w, h) => {
+              contentH.current = h;
+              measure(spy);
+            }}
+            onScrollBeginDrag={() => cancelScroll.current?.()}
+            onScroll={(e) => {
+              scrollY.current = e.nativeEvent.contentOffset.y;
+              bus.see(e.nativeEvent.contentOffset.y + e.nativeEvent.layoutMeasurement.height);
+              spy();
+            }}
+          >
+            <View ref={contentRef} collapsable={false}>
+              <Layout ctx={ctx} slug={slug} />
+              <ForegroundLayer ctx={ctx} />
+              {shareOn && edge === "top" ? <ShareButton ctx={ctx} slug={slug} /> : null}
+            </View>
+          </ScrollView>
+        </AnchorContext.Provider>
         {/* Bottom positions float over the scroller so they stay put while the page moves. */}
         {shareOn && edge === "bottom" ? <ShareButton ctx={ctx} slug={slug} /> : null}
       </RevealContext.Provider>
+      {navBottom ? <NavBar ctx={ctx} active={active} onGo={go} /> : null}
     </View>
   );
 }

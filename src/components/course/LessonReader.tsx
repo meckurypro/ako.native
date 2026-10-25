@@ -7,11 +7,13 @@ import { AppState, Pressable, ScrollView, View, type NativeScrollEvent, type Nat
 import Animated, { FadeIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { LessonMedia } from "@/components/project/LessonMedia";
+import { LessonMedia, UploadedVideo } from "@/components/project/LessonMedia";
+import { QuizPlayer } from "@/components/course/QuizPlayer";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import type { CourseLesson } from "@/hooks/useCourseBuilder";
-import { parseLesson, readMinutes } from "@/lib/lessonFormat";
+import { formatDuration, lessonMinutes, lessonTypeLabel, lessonTypeOf, parseQuiz } from "@/lib/courseTypes";
+import { parseLesson } from "@/lib/lessonFormat";
 
 import { LessonRenderer } from "./LessonRenderer";
 import { ProgressBar } from "./ProgressBar";
@@ -48,7 +50,12 @@ export function LessonReader(props: LessonReaderProps) {
   const { lesson, hasAccess, completed, hasNext, nextLocked } = props;
   const insets = useSafeAreaInsets();
   const emoji = useMemo(() => parseLesson(lesson.content).emoji, [lesson.content]);
-  const minutes = lesson.media_url ? null : readMinutes(lesson.content);
+  const type = lessonTypeOf(lesson);
+  const hasVideo = !!(lesson.video_path || lesson.media_url);
+  const minutes = type === "text" ? lessonMinutes(lesson) : null;
+  const questions = type === "quiz" ? parseQuiz(lesson.data).questions.length : 0;
+  // A quiz is finished by passing it, not by pressing continue.
+  const mustPass = type === "quiz" && hasAccess && !completed;
   const isLast = !hasNext;
 
   // ── Position tracking: how far down the lesson (and, for hosted video, how far into it) the learner is. ──
@@ -119,7 +126,11 @@ export function LessonReader(props: LessonReaderProps) {
     [queue]
   );
 
-  const primary = !hasAccess
+  const primary = mustPass
+    ? "Pass the quiz to continue"
+    : type === "assignment" && hasAccess && !completed
+      ? "Mark as done"
+      : !hasAccess
     ? hasNext && !nextLocked
       ? "Next lesson"
       : "Unlock the full course"
@@ -183,6 +194,18 @@ export function LessonReader(props: LessonReaderProps) {
                 <Text className="text-[12.5px] text-ink-muted">{minutes} min read</Text>
               </View>
             ) : null}
+            {type === "video" && lesson.video_duration ? (
+              <View className="flex-row items-center gap-1.5">
+                <Icon as={Clock} size={13} className="text-ink-muted" />
+                <Text className="text-[12.5px] text-ink-muted">{formatDuration(lesson.video_duration)}</Text>
+              </View>
+            ) : null}
+            {type === "quiz" || type === "assignment" ? (
+              <Text className="text-[12.5px] text-ink-muted">
+                {lessonTypeLabel(type)}
+                {questions > 0 ? ` · ${questions} question${questions === 1 ? "" : "s"}` : ""}
+              </Text>
+            ) : null}
             {!hasAccess && lesson.is_free_preview ? (
               <View className="flex-row items-center gap-1.5">
                 <Icon as={Eye} size={13} className="text-accent" />
@@ -197,14 +220,26 @@ export function LessonReader(props: LessonReaderProps) {
             ) : null}
           </View>
 
-          {lesson.media_url ? <LessonMedia url={lesson.media_url} onWatched={props.onWatched} startAt={resumeSeconds} onTime={onPosition ? handleMediaTime : undefined} /> : null}
+          {lesson.video_path ? (
+            <UploadedVideo
+              path={lesson.video_path}
+              width={lesson.video_width}
+              height={lesson.video_height}
+              onWatched={props.onWatched}
+              startAt={resumeSeconds}
+              onTime={onPosition ? handleMediaTime : undefined}
+            />
+          ) : lesson.media_url ? (
+            <LessonMedia url={lesson.media_url} onWatched={props.onWatched} startAt={resumeSeconds} onTime={onPosition ? handleMediaTime : undefined} />
+          ) : null}
           {lesson.content ? (
             <LessonRenderer content={lesson.content} />
-          ) : !lesson.media_url ? (
+          ) : !hasVideo && type !== "quiz" ? (
             <Text className="text-ink-muted">No content yet.</Text>
           ) : null}
+          {type === "quiz" ? <QuizPlayer key={lesson.id} data={lesson.data} completed={completed} onPassed={props.onWatched} /> : null}
 
-          {hasAccess ? (
+          {hasAccess && type !== "quiz" ? (
             <Pressable
               onPress={props.onToggleComplete}
               disabled={props.pending}
@@ -235,9 +270,9 @@ export function LessonReader(props: LessonReaderProps) {
         </Pressable>
         <Pressable
           onPress={props.onPrimary}
-          disabled={props.pending}
+          disabled={props.pending || mustPass}
           accessibilityRole="button"
-          className={`h-12 flex-1 flex-row items-center justify-center gap-2 rounded-2xl bg-accent active:bg-accent-hover ${props.pending ? "opacity-60" : ""}`}
+          className={`h-12 flex-1 flex-row items-center justify-center gap-2 rounded-2xl bg-accent active:bg-accent-hover ${props.pending || mustPass ? "opacity-60" : ""}`}
         >
           {!hasAccess && !(hasNext && !nextLocked) ? <Icon as={Lock} size={16} className="text-canvas" /> : null}
           <Text className="text-[15px] font-semibold text-canvas">{primary}</Text>

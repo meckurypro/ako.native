@@ -6,6 +6,7 @@ import { useEvent } from "expo";
 import { useVideoPlayer } from "expo-video";
 import { SafeVideoView } from "../ui/SafeVideoView";
 import { PlayCircle } from "lucide-react-native";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { Pressable, View } from "react-native";
 import { WebView } from "react-native-webview";
@@ -14,6 +15,7 @@ import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useDuckWhile } from "@/hooks/useDuckWhile";
 import { APP_URL } from "@/lib/config";
+import { signedCourseVideoUrl } from "@/lib/courseVideo";
 import { openExternal } from "@/lib/openExternal";
 
 type EmbedKind = { type: "youtube" | "vimeo"; embedUrl: string } | { type: "video" } | { type: "link" };
@@ -27,7 +29,20 @@ export function resolveEmbed(url: string): EmbedKind {
   return { type: "link" };
 }
 
-function DirectVideo({ url, onWatched, startAt, onTime }: { url: string; onWatched: () => void; startAt?: number | null; onTime?: (seconds: number) => void }) {
+function DirectVideo({
+  url,
+  onWatched,
+  startAt,
+  onTime,
+  portrait = false,
+}: {
+  url: string;
+  onWatched: () => void;
+  startAt?: number | null;
+  onTime?: (seconds: number) => void;
+  /** 9:16 video: shown as a tall frame that fills; full screen simply fills the screen. */
+  portrait?: boolean;
+}) {
   const player = useVideoPlayer(url);
   const seeked = useRef(false);
 
@@ -58,10 +73,48 @@ function DirectVideo({ url, onWatched, startAt, onTime }: { url: string; onWatch
   }, [player, onWatched]);
 
   return (
-    <View className="mb-2 aspect-video w-full overflow-hidden rounded-xl bg-canvas">
-      <SafeVideoView player={player} nativeControls fullscreenOptions={{ enable: true }} style={{ width: "100%", height: "100%" }} />
+    <View
+      className={`mb-2 overflow-hidden rounded-xl bg-black ${portrait ? "self-center" : "aspect-video w-full"}`}
+      style={portrait ? { aspectRatio: 9 / 16, width: "62%" } : undefined}
+    >
+      <SafeVideoView
+        player={player}
+        nativeControls
+        contentFit={portrait ? "cover" : "contain"}
+        fullscreenOptions={{ enable: true }}
+        style={{ width: "100%", height: "100%" }}
+      />
     </View>
   );
+}
+
+/** A video uploaded to the private course-videos bucket: fetches a signed link, then plays it like any direct video. */
+export function UploadedVideo({
+  path,
+  width,
+  height,
+  onWatched,
+  startAt,
+  onTime,
+}: {
+  path: string;
+  width?: number | null;
+  height?: number | null;
+  onWatched: () => void;
+  startAt?: number | null;
+  onTime?: (seconds: number) => void;
+}) {
+  const signed = useQuery({ queryKey: ["course-video-url", path], queryFn: () => signedCourseVideoUrl(path), staleTime: 5 * 3600_000, retry: 1 });
+  if (signed.isError) {
+    return (
+      <View className="mb-2 aspect-video w-full items-center justify-center rounded-xl bg-surface px-4">
+        <Text className="text-center text-sm text-ink-muted">This video isn't available right now.</Text>
+      </View>
+    );
+  }
+  if (!signed.data) return <View className="mb-2 aspect-video w-full rounded-xl bg-surface" />;
+  const portrait = !!width && !!height && height > width;
+  return <DirectVideo url={signed.data} onWatched={onWatched} startAt={startAt} onTime={onTime} portrait={portrait} />;
 }
 
 export function LessonMedia({
