@@ -13,11 +13,12 @@
 import { router, type Href } from "expo-router";
 import { Download, ExternalLink, FileText, Mail, MapPin, MessageCircle, Phone } from "lucide-react-native";
 import { useRef, useState, type ReactNode } from "react";
-import { Pressable, ScrollView, useWindowDimensions, View, type ViewStyle } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, useWindowDimensions, View, type ViewStyle } from "react-native";
 
 import { Image } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { MediaViewer } from "@/components/post/MediaViewer";
+import { useFileDownload } from "@/hooks/useFileDownload";
 import { haptics } from "@/lib/haptics";
 import { openExternal } from "@/lib/openExternal";
 import {
@@ -552,11 +553,21 @@ function ButtonFace({ btn, radius, ctx, icon, label, block, pressed, shine }: { 
 function CtaButton({ cta, primary, ctx, block }: { cta: CustomPageCta; primary: boolean; ctx: Ctx; block?: boolean }) {
   const btn = primary ? ctx.t.primary : ctx.t.secondary;
   const c = btn.color;
-  const icon =
+  const { busy, start: startDownload } = useFileDownload();
+  const isDownload = cta.action === "download";
+  const baseIcon =
     cta.action === "download" ? <Download size={17} color={c} /> : cta.action === "email" ? <Mail size={17} color={c} /> : cta.action === "call" ? <Phone size={17} color={c} /> : cta.action === "message" || cta.action === "inquiry" ? <MessageCircle size={17} color={c} /> : cta.action === "url" ? <ExternalLink size={16} color={c} /> : undefined;
+  const icon = isDownload && busy ? <ActivityIndicator size="small" color={c} /> : baseIcon;
   return (
     <Pressable
-      onPress={() => runCta(cta, ctx)}
+      disabled={busy}
+      accessibilityState={{ busy }}
+      onPress={() => {
+        if (!isDownload) return runCta(cta, ctx);
+        if (ctx.preview || busy) return;
+        ctx.actions.onCta?.(cta);
+        void startDownload(ctaHref(cta, ctx.config));
+      }}
       onPressIn={() => {
         if (!ctx.preview && (ctx.t.hard || ctx.t.shine || ctx.t.pressScale)) haptics.light();
       }}
@@ -568,7 +579,7 @@ function CtaButton({ cta, primary, ctx, block }: { cta: CustomPageCta; primary: 
         width: block ? "100%" : undefined,
       })}
     >
-      {({ pressed }) => <ButtonFace btn={btn} radius={buttonRadius(ctx.t)} ctx={ctx} icon={icon} label={cta.label} block={block} pressed={pressed} shine={primary && ctx.t.shine} />}
+      {({ pressed }) => <ButtonFace btn={btn} radius={buttonRadius(ctx.t)} ctx={ctx} icon={icon} label={isDownload && busy ? "Preparing…" : cta.label} block={block} pressed={pressed} shine={primary && ctx.t.shine} />}
     </Pressable>
   );
 }
@@ -628,6 +639,7 @@ function Intro({ ctx, left }: { ctx: Ctx; left?: boolean }) {
 }
 
 function DocumentCard({ ctx }: { ctx: Ctx }) {
+  const { busy, start: startDownload } = useFileDownload();
   const doc = ctx.config.document;
   if (!doc?.path) return null;
   const view = publicFileUrl(doc.path);
@@ -659,13 +671,21 @@ function DocumentCard({ ctx }: { ctx: Ctx }) {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Download"
+          accessibilityState={{ busy }}
+          disabled={busy}
           onPress={() => {
-            if (ctx.preview || !dl) return;
+            if (ctx.preview || !dl || busy) return;
             ctx.actions.onDocumentDownload?.();
-            void openExternal(dl);
+            void startDownload(dl);
           }}
         >
-          <ButtonFace btn={ctx.t.secondary} radius={radius} ctx={ctx} icon={<Download size={17} color={ctx.t.secondary.color} />} label="Download" />
+          <ButtonFace
+            btn={ctx.t.secondary}
+            radius={radius}
+            ctx={ctx}
+            icon={busy ? <ActivityIndicator size="small" color={ctx.t.secondary.color} /> : <Download size={17} color={ctx.t.secondary.color} />}
+            label={busy ? "Preparing…" : "Download"}
+          />
         </Pressable>
       </View>
     </Card>
