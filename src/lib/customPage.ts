@@ -139,20 +139,29 @@ export interface CustomPageStats {
 }
 
 // ── Design vocabulary ───────────────────────────────────────────────────────────────────────────────────────
-export type StyleId = "minimalist" | "glass" | "elegant";
-export type TemplateId = "showcase" | "stacked" | "brochure";
-export type AnimationId = "none" | "fade" | "slide-up" | "zoom" | "stagger";
+export type StyleId = "minimalist" | "glass" | "elegant" | "midnight" | "aurora" | "bold" | "soft" | "neo";
+export type TemplateId = "showcase" | "stacked" | "brochure" | "spotlight" | "linkcard" | "split" | "portfolio";
+export type AnimationId = "none" | "fade" | "slide-up" | "zoom" | "stagger" | "blur" | "pop" | "slide-left" | "tilt";
 
 export const STYLES: { id: StyleId; label: string; blurb: string }[] = [
   { id: "minimalist", label: "Minimalist", blurb: "Clean, airy, lots of white space." },
   { id: "glass", label: "Glass", blurb: "Frosted panels floating over your colours." },
   { id: "elegant", label: "Elegant", blurb: "Serif headlines and a quiet, formal tone." },
+  { id: "midnight", label: "Midnight", blurb: "Deep dark with a soft glow, glowing buttons and a light-sweep shine." },
+  { id: "aurora", label: "Aurora", blurb: "Slowly drifting gradient colours, frosted panels and white pill buttons." },
+  { id: "bold", label: "Bold", blurb: "Huge heavy headlines, chunky rounded buttons and strong contrast." },
+  { id: "soft", label: "Soft", blurb: "Pastel light, floating cards, gentle shadows and a calm glow." },
+  { id: "neo", label: "Neo", blurb: "Thick outlines and hard shadows that press down when tapped." },
 ];
 
 export const TEMPLATES: { id: TemplateId; label: string; blurb: string }[] = [
   { id: "showcase", label: "Showcase", blurb: "Full-width hero slideshow, then message, gallery and buttons." },
   { id: "stacked", label: "Stacked", blurb: "Logo first, then a hero image and your buttons as cards." },
   { id: "brochure", label: "Brochure", blurb: "Built to put a document front and centre with read and download buttons." },
+  { id: "spotlight", label: "Spotlight", blurb: "A full-screen hero with a giant title and your buttons on top of the image." },
+  { id: "linkcard", label: "Link card", blurb: "A compact link-in-bio card: round logo, stacked buttons, small images." },
+  { id: "split", label: "Split", blurb: "Big image beside your story and buttons. Stacks on phones." },
+  { id: "portfolio", label: "Portfolio", blurb: "Big headline, then a bento grid of large and small images." },
 ];
 
 export const ANIMATIONS: { id: AnimationId; label: string }[] = [
@@ -161,6 +170,10 @@ export const ANIMATIONS: { id: AnimationId; label: string }[] = [
   { id: "slide-up", label: "Slide up" },
   { id: "zoom", label: "Zoom in" },
   { id: "stagger", label: "Staggered reveal" },
+  { id: "blur", label: "Blur in" },
+  { id: "pop", label: "Pop" },
+  { id: "slide-left", label: "Slide in" },
+  { id: "tilt", label: "Tilt in" },
 ];
 
 export const DEFAULT_COLORS = { primary: "#3D5A45", secondary: "#F7F4EF", accent: "#B8862E" } as const;

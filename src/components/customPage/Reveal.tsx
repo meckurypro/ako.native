@@ -4,7 +4,7 @@
 // transform. If a section can't be measured it is shown at once — a section must never stay invisible.
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { View, type ViewStyle } from "react-native";
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withTiming } from "react-native-reanimated";
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withSpring, withTiming } from "react-native-reanimated";
 
 import type { AnimationId } from "../../lib/customPage";
 
@@ -90,13 +90,17 @@ export function Reveal({
       return;
     }
     const delay = animation === "stagger" ? index * STAGGER_MS : 0;
-    progress.value = withDelay(delay, withTiming(1, { duration: DURATION }));
+    progress.value = withDelay(delay, animation === "pop" ? withSpring(1, { damping: 11, stiffness: 140 }) : withTiming(1, { duration: DURATION }));
   }, [shown, skip, animation, index, progress]);
 
   const animated = useAnimatedStyle(() => {
     const p = progress.value;
     if (animation === "zoom") return { opacity: p, transform: [{ scale: 0.95 + 0.05 * p }] };
     if (animation === "slide-up" || animation === "stagger") return { opacity: p, transform: [{ translateY: (1 - p) * SLIDE }] };
+    if (animation === "blur") return { opacity: p, transform: [{ translateY: (1 - p) * 10 }, { scale: 0.97 + 0.03 * p }] };
+    if (animation === "pop") return { opacity: Math.min(1, p * 1.6), transform: [{ scale: 0.86 + 0.14 * p }, { translateY: (1 - p) * 14 }] };
+    if (animation === "slide-left") return { opacity: p, transform: [{ translateX: (1 - p) * -36 }] };
+    if (animation === "tilt") return { opacity: p, transform: [{ perspective: 900 }, { rotateX: `${(1 - p) * 10}deg` }, { translateY: (1 - p) * 26 }] };
     return { opacity: p };
   });
 
