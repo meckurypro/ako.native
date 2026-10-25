@@ -71,7 +71,7 @@ export interface CustomPageConfig {
   design?: { style?: string; template?: string; animation?: string };
   seo?: { share_image_path?: string };
   /** Optional share button on the public page. Off unless the creator turns it on. */
-  share?: { enabled?: boolean; look?: ShareLook };
+  share?: { enabled?: boolean; look?: ShareLook; position?: SharePosition };
 }
 
 export interface CustomPageRow {
@@ -176,9 +176,17 @@ export const TEMPLATES: { id: TemplateId; label: string; blurb: string }[] = [
 export type ShareLook = "auto" | "minimal" | "round" | "pill";
 export const SHARE_LOOKS: ShareLook[] = ["auto", "minimal", "round", "pill"];
 
-export function resolveShare(config: CustomPageConfig): { enabled: boolean; look: ShareLook } {
+/** Where the creator wants the share button. The template decides the exact spot so it stays findable and clear of content. */
+export type SharePosition = "top-left" | "top-right" | "bottom-left" | "bottom-right" | "center";
+export const SHARE_POSITIONS: SharePosition[] = ["top-right", "top-left", "bottom-right", "bottom-left", "center"];
+
+export function resolveShare(config: CustomPageConfig): { enabled: boolean; look: ShareLook; position: SharePosition } {
   const sh = config.share ?? {};
-  return { enabled: sh.enabled === true, look: SHARE_LOOKS.includes(sh.look as ShareLook) ? (sh.look as ShareLook) : "auto" };
+  return {
+    enabled: sh.enabled === true,
+    look: SHARE_LOOKS.includes(sh.look as ShareLook) ? (sh.look as ShareLook) : "auto",
+    position: SHARE_POSITIONS.includes(sh.position as SharePosition) ? (sh.position as SharePosition) : "top-right",
+  };
 }
 
 export const ANIMATIONS: { id: AnimationId; label: string }[] = [

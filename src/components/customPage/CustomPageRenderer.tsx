@@ -11,8 +11,9 @@
 // Add a style by extending styleTokens(); add a template by adding an entry to LAYOUTS. Neither touches the database —
 // design values are just short slugs in the config.
 import { router, type Href } from "expo-router";
-import { Download, ExternalLink, FileText, Mail, MapPin, MessageCircle, Phone, Share2 } from "lucide-react-native";
+import { Download, ExternalLink, FileText, Mail, MapPin, MessageCircle, Phone } from "lucide-react-native";
 import { useRef, useState, type ReactNode } from "react";
+import Svg, { Path } from "react-native-svg";
 import { ActivityIndicator, Platform, Pressable, ScrollView, Share, useWindowDimensions, View, type ViewStyle } from "react-native";
 
 import { Image } from "@/components/ui/styled";
@@ -1377,27 +1378,52 @@ function Poster({ ctx, slug }: { ctx: Ctx; slug?: string }) {
 }
 
 // ── Share button ────────────────────────────────────────────────────────────────────────────────────────────
-// Optional, creator-controlled (config.share). The template decides where it sits; the creator picks its look, or
-// "auto" lets it inherit the page style's own button shape. Mirrors the web ShareButton.
-const SHARE_PLACEMENT: Record<TemplateId, { top: number; media?: boolean }> = {
-  // Full-bleed hero first: the button floats over the picture.
-  showcase: { top: 10, media: true },
-  spotlight: { top: 10, media: true },
-  stacked: { top: 10 },
-  brochure: { top: 10 },
-  linkcard: { top: 10 },
-  split: { top: 10 },
-  portfolio: { top: 10 },
-  bento: { top: 10 },
+// Optional, creator-controlled (config.share). Mirrors the web ShareButton: the creator picks a position and a look; the
+// template decides the exact spot so the button never lands on the title or logo.
+//  · top-left / top-right: a corner at the top of the page, scrolls with the content.
+//  · bottom-left / bottom-right: floats above the bottom edge (and the home indicator) while the page scrolls.
+//  · center: horizontally centred, in whichever of top or bottom is clear in that template.
+
+/** The share glyph (traced from the supplied artwork). */
+function ShareIcon({ size, color }: { size: number; color: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="97 97 360 360">
+      <Path d="M105.6 449.2C140 373.4 197.2 329.9 271.2 323.4L279 322.8L279.2 365.5C279.5 403.7 279.7 408.4 281.1 409.3C282.6 410.2 305.5 390.8 340.5 358.9C342.7 356.9 364.1 337.8 388 316.5C455.2 256.5 457 254.9 457 253.6C457 252.9 438.2 235.5 415.3 214.9C392.3 194.3 370.8 175 367.5 172C364.1 169 353.3 159.3 343.5 150.4C333.6 141.6 316.1 125.9 304.7 115.6C291.7 104 283.2 97 282.2 97.2C280.6 97.5 280.5 101.1 280.2 139.7L280 181.9L275.7 182.4C273.4 182.7 268.8 183.2 265.5 183.5C246.7 185.4 226.1 191.4 207.5 200.5C148 229.4 110.2 292.3 99.3 380.5C97.5 395.3 96.8 448.7 98.3 454.2C99.6 459 101.9 457.5 105.6 449.2Z" fill={color} />
+    </Svg>
+  );
+}
+
+const SHARE_PLACEMENT: Record<TemplateId, { top: number; media?: boolean; center: "top" | "bottom" }> = {
+  // Full-bleed hero first: the top floats over the picture and the title sits low, so top-centre is clear.
+  showcase: { top: 10, media: true, center: "top" },
+  spotlight: { top: 10, media: true, center: "top" },
+  // A centred logo and title start right under the top edge, so a centred button goes to the bottom instead.
+  stacked: { top: 10, center: "bottom" },
+  brochure: { top: 10, center: "bottom" },
+  linkcard: { top: 10, center: "bottom" },
+  // Left-aligned headers leave the top edge clear.
+  split: { top: 10, center: "top" },
+  portfolio: { top: 10, center: "top" },
+  bento: { top: 10, center: "top" },
   // Poster opens with the scrolling banner (24 margin + ~56 tall), so the button sits just beneath it.
-  poster: { top: 24 + 56 + 14 },
+  poster: { top: 24 + 56 + 14, center: "top" },
 };
 
+/** Which edge the button lives on for this page. Layout code uses it to mount the button in the right place. */
+function shareEdge(config: CustomPageConfig): "top" | "bottom" {
+  const { position } = resolveShare(config);
+  const template = resolveDesign(config).template;
+  return position === "center" ? SHARE_PLACEMENT[template].center : position.startsWith("bottom") ? "bottom" : "top";
+}
+
 function ShareButton({ ctx, slug }: { ctx: Ctx; slug?: string }) {
-  const { look } = resolveShare(ctx.config);
+  const { look, position } = resolveShare(ctx.config);
   const template = resolveDesign(ctx.config).template;
   const place = SHARE_PLACEMENT[template];
-  const onMedia = !!place.media && (ctx.config.brand?.hero?.length ?? 0) > 0;
+  const edge = shareEdge(ctx.config);
+  const floating = edge === "bottom";
+  const side: "left" | "right" | "center" = position === "center" ? "center" : position.endsWith("left") ? "left" : "right";
+  const onMedia = !floating && !!place.media && (ctx.config.brand?.hero?.length ?? 0) > 0;
   const name = ctx.config.identity?.name?.trim() || "this page";
   const size = 44;
 
@@ -1415,21 +1441,30 @@ function ShareButton({ ctx, slug }: { ctx: Ctx; slug?: string }) {
 
   const btn = ctx.t.secondary;
   const radius = look === "auto" ? buttonRadius(ctx.t) : 999;
-  const iconColor = look === "minimal" ? (onMedia ? "#FFFFFF" : ctx.t.text) : look === "round" ? (onMedia ? "#FFFFFF" : ctx.t.text) : btn.color;
+  // Floating over unknown content needs a surface that reads on anything, so round gets the dark glass chip there.
+  const dark = onMedia || floating;
+  const iconColor = look === "minimal" ? (onMedia ? "#FFFFFF" : ctx.t.text) : look === "round" ? (dark ? "#FFFFFF" : ctx.t.text) : btn.color;
   let surface: ViewStyle;
   if (look === "minimal") surface = { backgroundColor: "transparent" };
-  else if (look === "round") surface = { backgroundColor: onMedia ? "rgba(0,0,0,0.38)" : withAlpha(ctx.t.text, 0.1) };
+  else if (look === "round") surface = { backgroundColor: dark ? "rgba(0,0,0,0.5)" : withAlpha(ctx.t.text, 0.1) };
   else surface = { backgroundColor: btn.gradient ? btn.gradient[0] : btn.backgroundColor, borderWidth: btn.borderWidth ?? 1, borderColor: btn.borderColor, ...btn.shadow };
   const hard = (look === "auto" || look === "pill") ? ctx.t.hard : undefined;
+  const lift: ViewStyle | undefined =
+    floating && look === "round"
+      ? { shadowColor: "#000", shadowOpacity: 0.25, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 6 }
+      : floating && look === "minimal"
+        ? { shadowColor: "#000", shadowOpacity: 0.35, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } }
+        : undefined;
 
   const face = (
     <View
       style={[
         { height: size, minWidth: size, borderRadius: radius, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8, paddingHorizontal: look === "pill" ? 16 : 0 },
         surface,
+        lift,
       ]}
     >
-      <Share2 size={look === "minimal" ? 22 : 18} color={iconColor} />
+      <ShareIcon size={look === "minimal" ? 22 : 18} color={iconColor} />
       {look === "pill" ? (
         <Text className={`${ctx.t.bodyFont} font-semibold`} style={{ color: btn.color, fontSize: 14 }}>
           Share
@@ -1438,8 +1473,12 @@ function ShareButton({ ctx, slug }: { ctx: Ctx; slug?: string }) {
     </View>
   );
 
+  const vertical = floating ? { bottom: ctx.safeBottom + 18 } : { top: ctx.safeTop + place.top };
+  // Centring: stretch a full-width row and let it centre its single child (no measuring needed).
+  const horizontal: ViewStyle = side === "left" ? { left: 14 } : side === "right" ? { right: 14 } : { left: 0, right: 0, alignItems: "center" };
+
   return (
-    <View style={{ position: "absolute", top: ctx.safeTop + place.top, right: 14, zIndex: 10 }}>
+    <View pointerEvents="box-none" style={{ position: "absolute", zIndex: 10, ...vertical, ...horizontal }}>
       <Pressable accessibilityRole="button" accessibilityLabel="Share this page" hitSlop={8} onPress={() => void run()} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
         {hard ? (
           <View style={{ paddingRight: 4, paddingBottom: 4 }}>
@@ -1472,6 +1511,8 @@ export function CustomPageRenderer({ config, preview = false, actions = {}, slug
   const t = styleTokens(style, p);
   const ctx: Ctx = { config, p, t, style, animation, preview, actions, safeTop, safeBottom };
   const Layout = LAYOUTS[template];
+  const shareOn = resolveShare(config).enabled;
+  const edge = shareEdge(config);
   const bus = useRevealBus();
   const contentRef = useRef<View>(null);
   bus.contentRef = contentRef;
@@ -1490,9 +1531,11 @@ export function CustomPageRenderer({ config, preview = false, actions = {}, slug
         >
           <View ref={contentRef} collapsable={false}>
             <Layout ctx={ctx} slug={slug} />
-            {resolveShare(config).enabled ? <ShareButton ctx={ctx} slug={slug} /> : null}
+            {shareOn && edge === "top" ? <ShareButton ctx={ctx} slug={slug} /> : null}
           </View>
         </ScrollView>
+        {/* Bottom positions float over the scroller so they stay put while the page moves. */}
+        {shareOn && edge === "bottom" ? <ShareButton ctx={ctx} slug={slug} /> : null}
       </RevealContext.Provider>
     </View>
   );
