@@ -141,8 +141,10 @@ export interface CustomPageStats {
 }
 
 // ── Design vocabulary ───────────────────────────────────────────────────────────────────────────────────────
-export type StyleId = "minimalist" | "glass" | "elegant" | "midnight" | "aurora" | "bold" | "soft" | "neo" | "clay" | "chrome" | "mono" | "organic";
-export type TemplateId = "showcase" | "stacked" | "brochure" | "spotlight" | "linkcard" | "split" | "portfolio" | "bento" | "poster";
+export type StyleId = "minimalist" | "glass" | "elegant" | "midnight" | "aurora" | "bold" | "soft" | "neo" | "clay" | "chrome" | "mono" | "organic"
+  | "forge" | "noir" | "nebula" | "duotone" | "sand" | "confetti" | "skyline" | "azure" | "aqua" | "candy" | "ultraviolet";
+export type TemplateId = "showcase" | "stacked" | "brochure" | "spotlight" | "linkcard" | "split" | "portfolio" | "bento" | "poster"
+  | "console" | "showreel" | "frame" | "duo" | "portrait" | "arch" | "banner" | "diagonal" | "wave" | "diamond" | "float";
 export type AnimationId = "none" | "fade" | "slide-up" | "zoom" | "stagger" | "blur" | "pop" | "slide-left" | "tilt" | "bounce";
 
 export const STYLES: { id: StyleId; label: string; blurb: string }[] = [
@@ -158,6 +160,17 @@ export const STYLES: { id: StyleId; label: string; blurb: string }[] = [
   { id: "chrome", label: "Chrome", blurb: "Y2K silver gloss, iridescent colour clouds and shiny metal buttons." },
   { id: "mono", label: "Mono", blurb: "Stark black and white, hairline rules and sharp uppercase buttons." },
   { id: "organic", label: "Organic", blurb: "Earthy warmth, blob-shaped cards, a touch of paper grain and serif headlines." },
+  { id: "forge", label: "Forge", blurb: "Charcoal and glowing orange, techno capitals and slanted buttons." },
+  { id: "noir", label: "Noir Copper", blurb: "Near-black with warm copper headings and cut-corner buttons." },
+  { id: "nebula", label: "Nebula", blurb: "Deep indigo fading to magenta, tall condensed capitals and outlined pill buttons." },
+  { id: "duotone", label: "Duotone", blurb: "Pale grey and black, whisper-light type and tiny black buttons." },
+  { id: "sand", label: "Sand", blurb: "Warm taupe neutrals, outlined headlines and square outline buttons." },
+  { id: "confetti", label: "Confetti", blurb: "Cream paper, serif headlines and scattered pastel shapes." },
+  { id: "skyline", label: "Skyline", blurb: "Pale sky blue, bold navy type, dotted corners and flowing waves." },
+  { id: "azure", label: "Azure", blurb: "Crisp white and flat blue geometry, friendly rounded sans and clear buttons." },
+  { id: "aqua", label: "Aqua Fluid", blurb: "Mint-to-teal gradient with soft liquid shapes and navy buttons." },
+  { id: "candy", label: "Candy 3D", blurb: "Blush and lilac with glossy pastel spheres and indigo buttons." },
+  { id: "ultraviolet", label: "Ultraviolet", blurb: "Deep purple, glossy neon spheres and pink gradient buttons." },
 ];
 
 export const TEMPLATES: { id: TemplateId; label: string; blurb: string }[] = [
@@ -170,6 +183,17 @@ export const TEMPLATES: { id: TemplateId; label: string; blurb: string }[] = [
   { id: "portfolio", label: "Portfolio", blurb: "Big headline, then a bento grid of large and small images." },
   { id: "bento", label: "Bento", blurb: "Everything in tiles of different sizes: hero, logo, tagline, buttons and more." },
   { id: "poster", label: "Poster", blurb: "A scrolling name ticker, giant type and a tilted image. Loud and memorable." },
+  { id: "console", label: "Console", blurb: "Big headline on the left, image bleeding off the right edge, ghost-letter backdrop." },
+  { id: "showreel", label: "Showreel", blurb: "Full-bleed hero with a floating card that has Previous and Next for your images." },
+  { id: "frame", label: "Frame", blurb: "A rounded window: small intro line, giant title, image in the middle and arrows at the side." },
+  { id: "duo", label: "Duo", blurb: "Light half with your words, dark half with a tilted image and a vertical contact rail." },
+  { id: "portrait", label: "Portrait", blurb: "Two-tone outlined title beside a round image on a tinted panel." },
+  { id: "arch", label: "Arch", blurb: "Monogram and serif title beside an arch-shaped image with playful shapes around it." },
+  { id: "banner", label: "Banner", blurb: "A bold statement on the left and a round image on a white disc with floating accents." },
+  { id: "diagonal", label: "Diagonal", blurb: "Image cut on a slant with layered colour blades, like an agency cover." },
+  { id: "wave", label: "Wave", blurb: "Two-tone title and an image set in flowing layered waves." },
+  { id: "diamond", label: "Diamond", blurb: "Image in a tilted diamond frame with bold angled colour blocks." },
+  { id: "float", label: "Float", blurb: "Soft floating image surrounded by drifting glossy spheres." },
 ];
 
 /** How the share button looks. "auto" inherits the page style's own button shape. */
