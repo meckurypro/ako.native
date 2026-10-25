@@ -61,7 +61,8 @@ import {
 import { useFeedDoorway } from "@/hooks/useFeedDoorway";
 import { isProjectFree, useHasPurchased, useProject } from "@/hooks/useProjects";
 import { haptics } from "@/lib/haptics";
-import { buildReaderModel, readMinutes } from "@/lib/lessonFormat";
+import { lessonTypeOf, lessonMinutes, formatDuration, parseQuiz } from "@/lib/courseTypes";
+import { buildReaderModel } from "@/lib/lessonFormat";
 import { EditorToolbar } from "@/components/ui/EditorToolbar";
 import { useUndoRedo } from "@/hooks/useUndoRedo";
 import { useTheme } from "@/theme/ThemeProvider";
@@ -663,6 +664,14 @@ export function Course() {
                                   content: value.content.trim() || undefined,
                                   mediaUrl: value.mediaUrl.trim() || undefined,
                                   isFreePreview: value.isFreePreview,
+                                  // The app edits title, text and link only; type, quiz and uploaded video stay as built on the web.
+                                  lessonType: lessonTypeOf(l),
+                                  data: l.data,
+                                  videoPath: l.video_path,
+                                  videoWidth: l.video_width,
+                                  videoHeight: l.video_height,
+                                  videoDuration: l.video_duration,
+                                  previousVideoPath: l.video_path,
                                 });
                                 setEditingLessonId(null);
                               } catch (e) {
@@ -690,11 +699,11 @@ export function Course() {
                             )}
                           </Pressable>
                           <Pressable onPress={() => selectLesson(l)} disabled={locked} accessibilityRole="button" accessibilityState={{ disabled: locked, selected: isSelected }} className="min-w-0 flex-1 flex-row items-center gap-1.5">
-                            <Icon as={l.media_url ? PlayCircle : FileText} size={13} className="text-ink-muted" />
+                            <Icon as={lessonTypeOf(l) === "video" ? PlayCircle : FileText} size={13} className="text-ink-muted" />
                             <Text numberOfLines={1} className={`shrink text-sm ${locked ? "text-ink-muted" : "text-ink"}`}>
                               {m.is_foreword_managed ? "" : `${moduleNumberOf(m.id)}.${lessonIdx + 1}  `}{l.title}
                             </Text>
-                            <Text className="shrink-0 text-[11px] text-ink-muted">{l.media_url ? "video" : `${readMinutes(l.content)} min`}</Text>
+                            <Text className="shrink-0 text-[11px] text-ink-muted">{lessonTypeOf(l) === "video" ? formatDuration(l.video_duration) || "video" : lessonTypeOf(l) === "quiz" ? `quiz · ${parseQuiz(l.data).questions.length} q` : lessonTypeOf(l) === "assignment" ? "task" : `${lessonMinutes(l)} min`}</Text>
                             {!hasAccess && l.is_free_preview && <Text className="text-[11px] font-medium text-accent">Preview</Text>}
                           </Pressable>
                           {isOwner && !m.is_foreword_managed && (
@@ -741,6 +750,7 @@ export function Course() {
                             content: value.content.trim() || undefined,
                             mediaUrl: value.mediaUrl.trim() || undefined,
                             isFreePreview: value.isFreePreview,
+                            lessonType: value.mediaUrl.trim() ? "video" : "text",
                             sortOrder: m.lessons.length,
                           });
                           setLessonDraftFor(null);
