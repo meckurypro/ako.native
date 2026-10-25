@@ -70,6 +70,8 @@ export interface CustomPageConfig {
   engagement?: { inquiry?: boolean };
   design?: { style?: string; template?: string; animation?: string };
   seo?: { share_image_path?: string };
+  /** Optional share button on the public page. Off unless the creator turns it on. */
+  share?: { enabled?: boolean; look?: ShareLook };
 }
 
 export interface CustomPageRow {
@@ -169,6 +171,15 @@ export const TEMPLATES: { id: TemplateId; label: string; blurb: string }[] = [
   { id: "bento", label: "Bento", blurb: "Everything in tiles of different sizes: hero, logo, tagline, buttons and more." },
   { id: "poster", label: "Poster", blurb: "A scrolling name ticker, giant type and a tilted image. Loud and memorable." },
 ];
+
+/** How the share button looks. "auto" inherits the page style's own button shape. */
+export type ShareLook = "auto" | "minimal" | "round" | "pill";
+export const SHARE_LOOKS: ShareLook[] = ["auto", "minimal", "round", "pill"];
+
+export function resolveShare(config: CustomPageConfig): { enabled: boolean; look: ShareLook } {
+  const sh = config.share ?? {};
+  return { enabled: sh.enabled === true, look: SHARE_LOOKS.includes(sh.look as ShareLook) ? (sh.look as ShareLook) : "auto" };
+}
 
 export const ANIMATIONS: { id: AnimationId; label: string }[] = [
   { id: "none", label: "None" },

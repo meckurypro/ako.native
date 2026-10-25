@@ -89,6 +89,7 @@ export function CustomPageView({ page }: { page: PublicCustomPage }) {
           onCta: (cta) => recordCustomPageEvent(page.id, cta.action === "download" ? "download" : "cta_click", visitorId(), cta.id),
           onDocumentRead: () => recordCustomPageEvent(page.id, "cta_click", visitorId(), "document"),
           onDocumentDownload: () => recordCustomPageEvent(page.id, "download", visitorId(), "document"),
+          onShare: () => recordCustomPageEvent(page.id, "cta_click", visitorId(), "share"),
           onOpenInquiry: () => setInquiryOpen(true),
           onMessageOwner: () => void messageOwner(),
           onCreateYours: () => {

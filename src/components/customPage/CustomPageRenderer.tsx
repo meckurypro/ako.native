@@ -11,9 +11,9 @@
 // Add a style by extending styleTokens(); add a template by adding an entry to LAYOUTS. Neither touches the database —
 // design values are just short slugs in the config.
 import { router, type Href } from "expo-router";
-import { Download, ExternalLink, FileText, Mail, MapPin, MessageCircle, Phone } from "lucide-react-native";
+import { Download, ExternalLink, FileText, Mail, MapPin, MessageCircle, Phone, Share2 } from "lucide-react-native";
 import { useRef, useState, type ReactNode } from "react";
-import { ActivityIndicator, Pressable, ScrollView, useWindowDimensions, View, type ViewStyle } from "react-native";
+import { ActivityIndicator, Platform, Pressable, ScrollView, Share, useWindowDimensions, View, type ViewStyle } from "react-native";
 
 import { Image } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
@@ -22,8 +22,10 @@ import { useFileDownload } from "@/hooks/useFileDownload";
 import { haptics } from "@/lib/haptics";
 import { openExternal } from "@/lib/openExternal";
 import {
+  customPageUrl,
   publicFileUrl,
   resolveDesign,
+  resolveShare,
   resolvePalette,
   withAlpha,
   type AnimationId,
@@ -49,6 +51,8 @@ export interface CustomPageActions {
   onMessageOwner?: () => void;
   onDocumentRead?: () => void;
   onDocumentDownload?: () => void;
+  /** The share button was used. Analytics hook only. */
+  onShare?: () => void;
   /** "Create your own custom page" footer link. */
   onCreateYours?: () => void;
 }
@@ -1372,6 +1376,84 @@ function Poster({ ctx, slug }: { ctx: Ctx; slug?: string }) {
   );
 }
 
+// ── Share button ────────────────────────────────────────────────────────────────────────────────────────────
+// Optional, creator-controlled (config.share). The template decides where it sits; the creator picks its look, or
+// "auto" lets it inherit the page style's own button shape. Mirrors the web ShareButton.
+const SHARE_PLACEMENT: Record<TemplateId, { top: number; media?: boolean }> = {
+  // Full-bleed hero first: the button floats over the picture.
+  showcase: { top: 10, media: true },
+  spotlight: { top: 10, media: true },
+  stacked: { top: 10 },
+  brochure: { top: 10 },
+  linkcard: { top: 10 },
+  split: { top: 10 },
+  portfolio: { top: 10 },
+  bento: { top: 10 },
+  // Poster opens with the scrolling banner (24 margin + ~56 tall), so the button sits just beneath it.
+  poster: { top: 24 + 56 + 14 },
+};
+
+function ShareButton({ ctx, slug }: { ctx: Ctx; slug?: string }) {
+  const { look } = resolveShare(ctx.config);
+  const template = resolveDesign(ctx.config).template;
+  const place = SHARE_PLACEMENT[template];
+  const onMedia = !!place.media && (ctx.config.brand?.hero?.length ?? 0) > 0;
+  const name = ctx.config.identity?.name?.trim() || "this page";
+  const size = 44;
+
+  const run = async () => {
+    if (ctx.preview) return;
+    haptics.light();
+    ctx.actions.onShare?.();
+    const url = slug ? customPageUrl(slug) : "";
+    try {
+      await Share.share(Platform.OS === "ios" ? { message: name, url } : { title: name, message: url ? `${name}\n${url}` : name });
+    } catch {
+      /* the sheet failed to open — nothing useful to show */
+    }
+  };
+
+  const btn = ctx.t.secondary;
+  const radius = look === "auto" ? buttonRadius(ctx.t) : 999;
+  const iconColor = look === "minimal" ? (onMedia ? "#FFFFFF" : ctx.t.text) : look === "round" ? (onMedia ? "#FFFFFF" : ctx.t.text) : btn.color;
+  let surface: ViewStyle;
+  if (look === "minimal") surface = { backgroundColor: "transparent" };
+  else if (look === "round") surface = { backgroundColor: onMedia ? "rgba(0,0,0,0.38)" : withAlpha(ctx.t.text, 0.1) };
+  else surface = { backgroundColor: btn.gradient ? btn.gradient[0] : btn.backgroundColor, borderWidth: btn.borderWidth ?? 1, borderColor: btn.borderColor, ...btn.shadow };
+  const hard = (look === "auto" || look === "pill") ? ctx.t.hard : undefined;
+
+  const face = (
+    <View
+      style={[
+        { height: size, minWidth: size, borderRadius: radius, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8, paddingHorizontal: look === "pill" ? 16 : 0 },
+        surface,
+      ]}
+    >
+      <Share2 size={look === "minimal" ? 22 : 18} color={iconColor} />
+      {look === "pill" ? (
+        <Text className={`${ctx.t.bodyFont} font-semibold`} style={{ color: btn.color, fontSize: 14 }}>
+          Share
+        </Text>
+      ) : null}
+    </View>
+  );
+
+  return (
+    <View style={{ position: "absolute", top: ctx.safeTop + place.top, right: 14, zIndex: 10 }}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Share this page" hitSlop={8} onPress={() => void run()} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
+        {hard ? (
+          <View style={{ paddingRight: 4, paddingBottom: 4 }}>
+            <View pointerEvents="none" style={{ position: "absolute", left: 4, top: 4, right: 0, bottom: 0, borderRadius: radius, backgroundColor: hard }} />
+            {face}
+          </View>
+        ) : (
+          face
+        )}
+      </Pressable>
+    </View>
+  );
+}
+
 const LAYOUTS: Record<TemplateId, (props: { ctx: Ctx; slug?: string }) => ReactNode> = {
   showcase: Showcase,
   stacked: Stacked,
@@ -1408,6 +1490,7 @@ export function CustomPageRenderer({ config, preview = false, actions = {}, slug
         >
           <View ref={contentRef} collapsable={false}>
             <Layout ctx={ctx} slug={slug} />
+            {resolveShare(config).enabled ? <ShareButton ctx={ctx} slug={slug} /> : null}
           </View>
         </ScrollView>
       </RevealContext.Provider>
