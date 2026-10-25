@@ -117,8 +117,8 @@ export function CustomPages() {
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: bottomInset }}
       >
         <Text className="mb-5 text-sm leading-5 text-ink-muted">
-          A custom page is a small website that lives at its own link on Akọ, like <Text className="text-ink">myako.site/your-name</Text>. Use it for an event, a church, a
-          shop, a brochure or a portfolio.
+          A custom page is a small website that lives at its own link on Akọ, like <Text className="text-ink">myako.site/your-name</Text>. Use it for a product, a business, a
+          brand, a shop, a brochure or a portfolio.
         </Text>
 
         {isLoading ? <Text className="text-sm text-ink-muted">Loading…</Text> : null}
@@ -214,7 +214,7 @@ function CreateDialog({ onClose, onCreated }: { onClose: () => void; onCreated: 
           value={name}
           onChangeText={setName}
           maxLength={80}
-          placeholder="St. Anne's Harvest"
+          placeholder="PromptIQ"
           placeholderTextColor={colors.inkMuted}
           autoFocus
           accessibilityLabel="Page name"
@@ -231,7 +231,7 @@ function CreateDialog({ onClose, onCreated }: { onClose: () => void; onCreated: 
               setSlug(v.toLowerCase().replace(/\s+/g, "-"));
             }}
             maxLength={60}
-            placeholder="st-anne"
+            placeholder="promptiq"
             placeholderTextColor={colors.inkMuted}
             autoCapitalize="none"
             autoCorrect={false}
