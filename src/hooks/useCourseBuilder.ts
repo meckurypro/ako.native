@@ -52,28 +52,74 @@ export function useCourseModules(projectId: string | undefined) {
         .order("sort_order", { ascending: true });
       if (modulesError) throw modulesError;
 
+      // Someone who hasn't bought gets no module rows back (RLS). They still see the outline — titles and types only —
+      // through course_outline(); lessons flagged as free previews then come back in full from the lessons query.
+      type OutlineRow = {
+        module_id: string; module_title: string; module_sort: number;
+        lesson_id: string | null; lesson_title: string | null; lesson_sort: number | null;
+        lesson_type: string | null; video_duration: number | null; is_free_preview: boolean;
+      };
+      let outline: OutlineRow[] = [];
+      if ((modules ?? []).length === 0) {
+        const { data: rows } = await supabase.rpc("course_outline", { p_project_id: projectId });
+        outline = (rows ?? []) as OutlineRow[];
+      }
+      const moduleIds = (modules ?? []).length > 0 ? (modules ?? []).map((m) => m.id) : Array.from(new Set(outline.map((r) => r.module_id)));
+
       const { data: lessons, error: lessonsError } = await supabase
         .from("course_lessons")
         .select("*")
-        .in("module_id", (modules ?? []).map((m) => m.id))
+        .in("module_id", moduleIds)
         .order("sort_order", { ascending: true });
       if (lessonsError) throw lessonsError;
 
-      return (modules ?? []).map((m) => ({
-        ...m,
-        lessons: (lessons ?? [])
-          .filter((l) => l.module_id === m.id)
-          .map((l) => ({
-            ...l,
-            is_free_preview: l.is_free_preview ?? false,
-            lesson_type: l.lesson_type ?? (l.media_url || l.video_path ? "video" : "text"),
-            video_path: l.video_path ?? null,
-            video_width: l.video_width ?? null,
-            video_height: l.video_height ?? null,
-            video_duration: l.video_duration ?? null,
-            data: l.data ?? null,
-          })) as CourseLesson[],
-      }));
+      const normalise = (l: Record<string, any>) =>
+        ({
+          ...l,
+          is_free_preview: l.is_free_preview ?? false,
+          lesson_type: l.lesson_type ?? (l.media_url || l.video_path ? "video" : "text"),
+          video_path: l.video_path ?? null,
+          video_width: l.video_width ?? null,
+          video_height: l.video_height ?? null,
+          video_duration: l.video_duration ?? null,
+          data: l.data ?? null,
+        }) as CourseLesson;
+
+      if ((modules ?? []).length > 0) {
+        return (modules ?? []).map((m) => ({
+          ...m,
+          lessons: (lessons ?? []).filter((l) => l.module_id === m.id).map(normalise),
+        }));
+      }
+
+      const byModule = new Map<string, OutlineRow[]>();
+      for (const r of outline) byModule.set(r.module_id, [...(byModule.get(r.module_id) ?? []), r]);
+      const full = new Map((lessons ?? []).map((l) => [l.id as string, l]));
+      return Array.from(byModule.entries()).map(([id, rows]) => ({
+        id,
+        project_id: projectId as string,
+        title: rows[0].module_title,
+        sort_order: rows[0].module_sort,
+        is_foreword_managed: false,
+        lessons: rows
+          .filter((r) => r.lesson_id)
+          .map((r) =>
+            // Previews arrive whole; every other lesson is a locked placeholder (no content, link or video path).
+            full.has(r.lesson_id as string)
+              ? normalise(full.get(r.lesson_id as string)!)
+              : normalise({
+                  id: r.lesson_id,
+                  module_id: id,
+                  title: r.lesson_title ?? "",
+                  content: null,
+                  media_url: null,
+                  sort_order: r.lesson_sort ?? 0,
+                  is_free_preview: false,
+                  lesson_type: r.lesson_type,
+                  video_duration: r.video_duration,
+                }),
+          ),
+      })) as CourseModule[];
     },
     enabled: !!projectId,
   });
@@ -340,6 +386,12 @@ export interface CourseDetails {
   objectives: string[];
   requirements: string[];
   audience: string[];
+  /** Promo video: an upload (private bucket) or a pasted link. Shown to anyone deciding whether to buy. */
+  promo_video_path: string | null;
+  promo_url: string | null;
+  promo_width: number | null;
+  promo_height: number | null;
+  promo_duration: number | null;
 }
 
 export function useCourseDetails(projectId: string | undefined) {
@@ -352,7 +404,7 @@ export function useCourseDetails(projectId: string | undefined) {
         return null;
       }
       return data
-        ? { ...data, objectives: data.objectives ?? [], requirements: data.requirements ?? [], audience: data.audience ?? [], language: data.language ?? "English" }
+        ? { ...data, objectives: data.objectives ?? [], requirements: data.requirements ?? [], audience: data.audience ?? [], language: data.language ?? "English", promo_video_path: data.promo_video_path ?? null, promo_url: data.promo_url ?? null, promo_width: data.promo_width ?? null, promo_height: data.promo_height ?? null, promo_duration: data.promo_duration ?? null }
         : null;
     },
     enabled: !!projectId,
@@ -365,7 +417,7 @@ export function useSaveCourseDetails(projectId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     meta: { blocking: true },
-    mutationFn: async (input: CourseDetailsInput) => {
+    mutationFn: async (input: CourseDetailsInput & { previousPromoPath?: string | null }) => {
       const clean = (xs: string[]) => xs.map((x) => x.trim()).filter(Boolean);
       const { error } = await supabase.from("course_details").upsert(
         {
@@ -376,11 +428,17 @@ export function useSaveCourseDetails(projectId: string) {
           objectives: clean(input.objectives),
           requirements: clean(input.requirements),
           audience: clean(input.audience),
+          promo_video_path: input.promo_video_path,
+          promo_url: input.promo_video_path ? null : input.promo_url?.trim() || null,
+          promo_width: input.promo_video_path ? input.promo_width : null,
+          promo_height: input.promo_video_path ? input.promo_height : null,
+          promo_duration: input.promo_video_path ? input.promo_duration : null,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "project_id" }
       );
       if (error) throw error;
+      if (input.previousPromoPath && input.previousPromoPath !== input.promo_video_path) void removeCourseVideos([input.previousPromoPath]);
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["course-details", projectId] }),
   });

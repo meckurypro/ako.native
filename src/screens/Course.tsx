@@ -37,6 +37,7 @@ import { useToast } from "@/components/ui/Toast";
 import { OfflineUnavailable } from "@/components/project/OfflineUnavailable";
 import { useIsOnline } from "@/hooks/useIsOnline";
 import { useSeedOfflineProject } from "@/hooks/useSeedOfflineProject";
+import { CoursePromo } from "@/components/course/CoursePromo";
 import { useReturnAfterSave } from "@/hooks/useReturnAfterSave";
 import { useAuth } from "@/hooks/useAuth";
 import { useProjectOwnership } from "@/hooks/useProjectOwnership";
@@ -513,6 +514,8 @@ export function Course() {
             {allComplete && courseDoorway.visible && <FeedDoorway context="course_complete" onEnter={courseDoorway.markEnteredFeed} />}
           </>
         )}
+
+        {!hasAccess && <CoursePromo projectId={projectId} />}
 
         {!hasAccess && (
           <View className="mb-5 mt-2 items-center gap-2 rounded-xl border border-border bg-surface p-4">
