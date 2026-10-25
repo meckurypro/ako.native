@@ -34,6 +34,7 @@ import {
   Wallet2,
   Hand,
   HelpCircle,
+  Inbox,
   type LucideIcon,
 } from "lucide-react-native";
 import { memo, useCallback, useEffect, useState } from "react";
@@ -103,6 +104,8 @@ const TYPE_CONFIG: Record<string, { icon: LucideIcon; verb: string }> = {
   project_forked: { icon: GitFork, verb: "forked your project" },
   // A forker tagged the project they forked in a post. target_type "post", preview_text = project title.
   forked_project_tagged: { icon: Tag, verb: "tagged your project in a post" },
+  // A visitor sent a message through a Custom Page's inquiry form. Actor is null for signed-out visitors.
+  custom_page_inquiry: { icon: Inbox, verb: "sent a message to your custom page" },
   collaboration_invite: { icon: Users, verb: "invited you to collaborate" },
   collaboration_accepted: { icon: UserCheck, verb: "accepted your collaboration invite" },
   collaboration_declined: { icon: UserX, verb: "declined your collaboration invite" },

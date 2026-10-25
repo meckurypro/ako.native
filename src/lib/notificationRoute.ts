@@ -64,6 +64,8 @@ export function notificationLink(n: RoutableNotification): string | null {
     const route = n.project_type ? PROJECT_TYPE_ROUTE[n.project_type] : undefined;
     return route ? route(n.target_id) : `/projects/${n.target_id}`;
   }
+  // A visitor's inquiry on a Custom Page opens that page's control room (its messages live there).
+  if (n.target_type === "custom_page" && n.target_id) return `/me/custom-pages/${n.target_id}`;
   if (n.target_type === "promotion" || n.target_type === "withdrawal") return "/wallet";
   if (n.target_type === "comment" && n.target_id) {
     return n.comment_post_id ? `/post/${n.comment_post_id}/comment/${n.target_id}` : null;
