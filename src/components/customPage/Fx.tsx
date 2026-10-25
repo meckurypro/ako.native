@@ -3,7 +3,7 @@
 // The app has no linear-gradient dependency, so gradients are react-native-svg fills. Everything here only animates
 // opacity / transform and stands still when the system "reduce motion" setting is on.
 import { useEffect, useId, useState, type ReactNode } from "react";
-import { StyleSheet, View, type ViewStyle } from "react-native";
+import { ScrollView, StyleSheet, View, type ViewStyle } from "react-native";
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withSequence, withTiming } from "react-native-reanimated";
 import Svg, { Defs, LinearGradient, RadialGradient, Rect, Stop } from "react-native-svg";
 
@@ -94,4 +94,27 @@ export function FloatView({ children, style }: { children: ReactNode; style?: Vi
 export function useWidth() {
   const [w, setW] = useState(0);
   return { w, onLayout: (e: { nativeEvent: { layout: { width: number } } }) => setW(e.nativeEvent.layout.width) };
+}
+
+/** Endless horizontal ticker (Poster). Children are one repeat of the strip; it is drawn twice and slid by one repeat. */
+export function Marquee({ children, speed = 60 }: { children: ReactNode; speed?: number }) {
+  const reduce = useReducedMotion();
+  const [w, setW] = useState(0);
+  const x = useSharedValue(0);
+  useEffect(() => {
+    if (reduce || w <= 0) return;
+    x.value = 0;
+    x.value = withRepeat(withTiming(-w, { duration: (w / speed) * 1000, easing: Easing.linear }), -1);
+  }, [reduce, w, speed, x]);
+  const anim = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
+  return (
+    <ScrollView horizontal scrollEnabled={false} showsHorizontalScrollIndicator={false} pointerEvents="none">
+      <Animated.View style={[{ flexDirection: "row" }, anim]}>
+        <View onLayout={(e) => setW(e.nativeEvent.layout.width)} style={{ flexDirection: "row", flexShrink: 0 }}>
+          {children}
+        </View>
+        <View style={{ flexDirection: "row", flexShrink: 0 }}>{children}</View>
+      </Animated.View>
+    </ScrollView>
+  );
 }

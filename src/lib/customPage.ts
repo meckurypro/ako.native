@@ -139,9 +139,9 @@ export interface CustomPageStats {
 }
 
 // ── Design vocabulary ───────────────────────────────────────────────────────────────────────────────────────
-export type StyleId = "minimalist" | "glass" | "elegant" | "midnight" | "aurora" | "bold" | "soft" | "neo";
-export type TemplateId = "showcase" | "stacked" | "brochure" | "spotlight" | "linkcard" | "split" | "portfolio";
-export type AnimationId = "none" | "fade" | "slide-up" | "zoom" | "stagger" | "blur" | "pop" | "slide-left" | "tilt";
+export type StyleId = "minimalist" | "glass" | "elegant" | "midnight" | "aurora" | "bold" | "soft" | "neo" | "clay" | "chrome" | "mono" | "organic";
+export type TemplateId = "showcase" | "stacked" | "brochure" | "spotlight" | "linkcard" | "split" | "portfolio" | "bento" | "poster";
+export type AnimationId = "none" | "fade" | "slide-up" | "zoom" | "stagger" | "blur" | "pop" | "slide-left" | "tilt" | "bounce";
 
 export const STYLES: { id: StyleId; label: string; blurb: string }[] = [
   { id: "minimalist", label: "Minimalist", blurb: "Clean, airy, lots of white space." },
@@ -152,6 +152,10 @@ export const STYLES: { id: StyleId; label: string; blurb: string }[] = [
   { id: "bold", label: "Bold", blurb: "Huge heavy headlines, chunky rounded buttons and strong contrast." },
   { id: "soft", label: "Soft", blurb: "Pastel light, floating cards, gentle shadows and a calm glow." },
   { id: "neo", label: "Neo", blurb: "Thick outlines and hard shadows that press down when tapped." },
+  { id: "clay", label: "Clay", blurb: "Soft inflated shapes, pastel depth and buttons that squish when pressed." },
+  { id: "chrome", label: "Chrome", blurb: "Y2K silver gloss, iridescent colour clouds and shiny metal buttons." },
+  { id: "mono", label: "Mono", blurb: "Stark black and white, hairline rules and sharp uppercase buttons." },
+  { id: "organic", label: "Organic", blurb: "Earthy warmth, blob-shaped cards, a touch of paper grain and serif headlines." },
 ];
 
 export const TEMPLATES: { id: TemplateId; label: string; blurb: string }[] = [
@@ -162,6 +166,8 @@ export const TEMPLATES: { id: TemplateId; label: string; blurb: string }[] = [
   { id: "linkcard", label: "Link card", blurb: "A compact link-in-bio card: round logo, stacked buttons, small images." },
   { id: "split", label: "Split", blurb: "Big image beside your story and buttons. Stacks on phones." },
   { id: "portfolio", label: "Portfolio", blurb: "Big headline, then a bento grid of large and small images." },
+  { id: "bento", label: "Bento", blurb: "Everything in tiles of different sizes: hero, logo, tagline, buttons and more." },
+  { id: "poster", label: "Poster", blurb: "A scrolling name ticker, giant type and a tilted image. Loud and memorable." },
 ];
 
 export const ANIMATIONS: { id: AnimationId; label: string }[] = [
@@ -174,6 +180,7 @@ export const ANIMATIONS: { id: AnimationId; label: string }[] = [
   { id: "pop", label: "Pop" },
   { id: "slide-left", label: "Slide in" },
   { id: "tilt", label: "Tilt in" },
+  { id: "bounce", label: "Bounce" },
 ];
 
 export const DEFAULT_COLORS = { primary: "#3D5A45", secondary: "#F7F4EF", accent: "#B8862E" } as const;

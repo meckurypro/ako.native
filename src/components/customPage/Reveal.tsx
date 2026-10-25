@@ -90,7 +90,7 @@ export function Reveal({
       return;
     }
     const delay = animation === "stagger" ? index * STAGGER_MS : 0;
-    progress.value = withDelay(delay, animation === "pop" ? withSpring(1, { damping: 11, stiffness: 140 }) : withTiming(1, { duration: DURATION }));
+    progress.value = withDelay(delay, animation === "pop" ? withSpring(1, { damping: 11, stiffness: 140 }) : animation === "bounce" ? withSpring(1, { damping: 7, stiffness: 120 }) : withTiming(1, { duration: DURATION }));
   }, [shown, skip, animation, index, progress]);
 
   const animated = useAnimatedStyle(() => {
@@ -99,6 +99,7 @@ export function Reveal({
     if (animation === "slide-up" || animation === "stagger") return { opacity: p, transform: [{ translateY: (1 - p) * SLIDE }] };
     if (animation === "blur") return { opacity: p, transform: [{ translateY: (1 - p) * 10 }, { scale: 0.97 + 0.03 * p }] };
     if (animation === "pop") return { opacity: Math.min(1, p * 1.6), transform: [{ scale: 0.86 + 0.14 * p }, { translateY: (1 - p) * 14 }] };
+    if (animation === "bounce") return { opacity: Math.min(1, p * 2), transform: [{ translateY: (1 - p) * -36 }, { scale: 0.96 + 0.04 * p }] };
     if (animation === "slide-left") return { opacity: p, transform: [{ translateX: (1 - p) * -36 }] };
     if (animation === "tilt") return { opacity: p, transform: [{ perspective: 900 }, { rotateX: `${(1 - p) * 10}deg` }, { translateY: (1 - p) * 26 }] };
     return { opacity: p };

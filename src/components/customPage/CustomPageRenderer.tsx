@@ -5,8 +5,8 @@
 // Mirrors the web renderer (src/components/customPage/CustomPageRenderer.tsx) — keep the two in step.
 //
 // Three decisions are kept apart on purpose:
-//   • style     — the visual language (minimalist / glass / elegant / midnight / aurora / bold / soft / neo): surfaces, type, corners, micro-interactions.
-//   • template  — the arrangement of sections (showcase / stacked / brochure / spotlight / linkcard / split / portfolio).
+//   • style     — the visual language (minimalist / glass / elegant / midnight / aurora / bold / soft / neo / clay / chrome / mono / organic): surfaces, type, corners, micro-interactions.
+//   • template  — the arrangement of sections (showcase / stacked / brochure / spotlight / linkcard / split / portfolio / bento / poster).
 //   • animation — how sections arrive (a preset, applied uniformly; never per element).
 // Add a style by extending styleTokens(); add a template by adding an entry to LAYOUTS. Neither touches the database —
 // design values are just short slugs in the config.
@@ -31,7 +31,7 @@ import {
   type StyleId,
   type TemplateId,
 } from "../../lib/customPage";
-import { FloatView, GradientFill, ShineSweep, StyleBackdrop, useWidth, type Glow } from "./Fx";
+import { FloatView, GradientFill, Marquee, ShineSweep, StyleBackdrop, useWidth, type Glow } from "./Fx";
 import { BottomScrim, GlassBackdrop } from "./Gradients";
 import { HeroSlides } from "./HeroSlides";
 import { Reveal, RevealContext, useRevealBus } from "./Reveal";
@@ -107,6 +107,10 @@ interface Tokens {
   logoRound?: number;
   headingScale?: number;
   headingTracking?: number;
+  /** Press scale for buttons (Clay squishes harder). */
+  pressScale?: number;
+  /** Per-corner card radii for blob shapes (Organic). */
+  cardCorners?: ViewStyle;
 }
 
 function styleTokens(style: StyleId, p: Palette): Tokens {
@@ -125,6 +129,132 @@ function styleTokens(style: StyleId, p: Palette): Tokens {
       primary: { backgroundColor: p.accent, color: p.onAccent, borderColor: p.accent },
       secondary: { backgroundColor: `rgba(${tint},0.14)`, color: p.onPrimary, borderColor: `rgba(${tint},0.34)` },
       rule: `rgba(${tint},0.28)`,
+    };
+  }
+  if (style === "clay") {
+    const darkBg = p.onSecondary === "#FFFFFF";
+    return {
+      glass: false,
+      pageBg: p.secondary,
+      backdrop: {
+        base: p.secondary,
+        glows: [
+          { cx: 0.15, cy: 0, r: 0.8, color: p.accent, opacity: 0.22 },
+          { cx: 1, cy: 0.4, r: 0.7, color: p.primary, opacity: 0.14 },
+        ],
+      },
+      text: p.onSecondary,
+      muted: withAlpha(darkBg ? "#FFFFFF" : "#000000", 0.66),
+      headingFont: "font-body",
+      bodyFont: "font-body",
+      card: { backgroundColor: darkBg ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.8)", borderWidth: 1, borderColor: darkBg ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,1)" },
+      cardShadow: darkBg ? undefined : { shadowColor: "#141428", shadowOpacity: 0.2, shadowRadius: 22, shadowOffset: { width: 0, height: 16 }, elevation: 5 },
+      radius: 36,
+      primary: {
+        backgroundColor: p.primary,
+        color: p.onPrimary,
+        borderColor: "transparent",
+        gradient: [mix(p.primary, "#FFFFFF", 0.22), p.primary],
+        shadow: { shadowColor: p.primary, shadowOpacity: 0.55, shadowRadius: 16, shadowOffset: { width: 0, height: 12 }, elevation: 7 },
+      },
+      secondary: {
+        backgroundColor: darkBg ? "rgba(255,255,255,0.12)" : "#FFFFFF",
+        color: p.onSecondary,
+        borderColor: "transparent",
+        shadow: darkBg ? undefined : { shadowColor: "#141428", shadowOpacity: 0.16, shadowRadius: 12, shadowOffset: { width: 0, height: 8 }, elevation: 3 },
+      },
+      rule: withAlpha(darkBg ? "#FFFFFF" : "#000000", 0.12),
+      btnRadius: 999,
+      logoRound: 0.38,
+      float: true,
+      pressScale: 0.93,
+      headingScale: 1.1,
+      headingTracking: -0.8,
+    };
+  }
+  if (style === "chrome") {
+    const ink = "#1A1D29";
+    return {
+      glass: false,
+      pageBg: "#E3E8F2",
+      backdrop: {
+        base: "#E3E8F2",
+        glows: [
+          { cx: 0.18, cy: 0, r: 0.85, color: p.accent, opacity: 0.5 },
+          { cx: 0.92, cy: 0.18, r: 0.7, color: "#5AC8FF", opacity: 0.5 },
+          { cx: 0.5, cy: 1, r: 0.95, color: "#FF96E1", opacity: 0.42 },
+        ],
+      },
+      text: ink,
+      muted: "rgba(26,29,41,0.66)",
+      headingFont: "font-body",
+      bodyFont: "font-body",
+      card: { backgroundColor: "rgba(255,255,255,0.62)", borderWidth: 1, borderColor: "rgba(255,255,255,0.95)" },
+      cardShadow: { shadowColor: "#28325A", shadowOpacity: 0.22, shadowRadius: 22, shadowOffset: { width: 0, height: 14 }, elevation: 4 },
+      radius: 22,
+      primary: {
+        backgroundColor: "#CBD1E0",
+        color: ink,
+        borderColor: "#8F98B0",
+        gradient: ["#FDFEFF", "#AFB7CB"],
+        shadow: { shadowColor: "#1E2850", shadowOpacity: 0.4, shadowRadius: 10, shadowOffset: { width: 0, height: 6 }, elevation: 5 },
+      },
+      secondary: { backgroundColor: "rgba(255,255,255,0.45)", color: ink, borderColor: "rgba(255,255,255,0.95)" },
+      rule: "rgba(26,29,41,0.18)",
+      btnRadius: 999,
+      shine: true,
+      float: true,
+      logoRound: 0.3,
+      headingTracking: -0.8,
+    };
+  }
+  if (style === "mono") {
+    const dark = p.onSecondary === "#FFFFFF";
+    const paper = dark ? "#0A0A0A" : "#F6F6F3";
+    const ink = dark ? "#F6F6F3" : "#0A0A0A";
+    return {
+      glass: false,
+      pageBg: paper,
+      text: ink,
+      muted: withAlpha(ink, 0.6),
+      headingFont: "font-body",
+      bodyFont: "font-body",
+      card: { backgroundColor: "transparent", borderTopWidth: 1, borderColor: ink },
+      radius: 0,
+      primary: { backgroundColor: ink, color: paper, borderColor: ink, uppercase: true, letterSpacing: 1.6, fontSize: 12 },
+      secondary: { backgroundColor: "transparent", color: ink, borderColor: ink, uppercase: true, letterSpacing: 1.6, fontSize: 12 },
+      rule: withAlpha(ink, 0.25),
+      btnRadius: 0,
+      logoRound: 0,
+      headingTracking: -1.2,
+    };
+  }
+  if (style === "organic") {
+    const darkBg = p.onSecondary === "#FFFFFF";
+    const edge = withAlpha(darkBg ? "#FFFFFF" : "#000000", 0.1);
+    return {
+      glass: false,
+      pageBg: p.secondary,
+      backdrop: {
+        base: p.secondary,
+        glows: [
+          { cx: 0.92, cy: 0.06, r: 0.8, color: p.accent, opacity: 0.26 },
+          { cx: 0, cy: 0.58, r: 0.8, color: p.primary, opacity: 0.16 },
+        ],
+      },
+      text: p.onSecondary,
+      muted: withAlpha(darkBg ? "#FFFFFF" : "#000000", 0.64),
+      headingFont: "font-display",
+      bodyFont: "font-reading",
+      card: { backgroundColor: withAlpha(p.primary, darkBg ? 0.22 : 0.07), borderWidth: 1, borderColor: edge },
+      cardCorners: { borderTopLeftRadius: 46, borderTopRightRadius: 66, borderBottomRightRadius: 40, borderBottomLeftRadius: 70 },
+      radius: 36,
+      primary: { backgroundColor: p.primary, color: p.onPrimary, borderColor: p.primary },
+      secondary: { backgroundColor: "transparent", color: p.onSecondary, borderColor: withAlpha(darkBg ? "#FFFFFF" : "#000000", 0.28) },
+      rule: withAlpha(darkBg ? "#FFFFFF" : "#000000", 0.16),
+      btnRadius: 999,
+      logoRound: 0.42,
+      float: true,
     };
   }
   if (style === "midnight") {
@@ -428,13 +558,13 @@ function CtaButton({ cta, primary, ctx, block }: { cta: CustomPageCta; primary: 
     <Pressable
       onPress={() => runCta(cta, ctx)}
       onPressIn={() => {
-        if (!ctx.preview && (ctx.t.hard || ctx.t.shine)) haptics.light();
+        if (!ctx.preview && (ctx.t.hard || ctx.t.shine || ctx.t.pressScale)) haptics.light();
       }}
       accessibilityRole="button"
       accessibilityLabel={cta.label}
       style={({ pressed }) => ({
         opacity: ctx.t.hard ? 1 : pressed ? 0.88 : 1,
-        transform: ctx.t.hard ? [] : [{ scale: pressed ? 0.97 : 1 }],
+        transform: ctx.t.hard ? [] : [{ scale: pressed ? ctx.t.pressScale ?? 0.97 : 1 }],
         width: block ? "100%" : undefined,
       })}
     >
@@ -457,7 +587,7 @@ function CtaGroup({ ctx, block, left }: { ctx: Ctx; block?: boolean; left?: bool
 }
 
 function Card({ ctx, children, center }: { ctx: Ctx; children: ReactNode; center?: boolean }) {
-  const inner = <View style={[{ padding: 24, borderRadius: ctx.t.radius }, ctx.t.card, ctx.t.cardShadow, center ? { alignItems: "center" } : null]}>{children}</View>;
+  const inner = <View style={[{ padding: 24, borderRadius: ctx.t.radius }, ctx.t.card, ctx.t.cardCorners, ctx.t.cardShadow, center ? { alignItems: "center" } : null]}>{children}</View>;
   if (ctx.t.hard) {
     return (
       <View style={{ paddingRight: 6, paddingBottom: 6 }}>
@@ -1085,6 +1215,131 @@ function Portfolio({ ctx, slug }: { ctx: Ctx; slug?: string }) {
   );
 }
 
+function Bento({ ctx, slug }: { ctx: Ctx; slug?: string }) {
+  const id = ctx.config.identity ?? {};
+  const hero = ctx.config.brand?.hero ?? [];
+  const hasHero = hero.length > 0;
+  const icon = publicFileUrl(id.icon_path);
+  const tile = [{ borderRadius: ctx.t.radius, overflow: "hidden" as const }, ctx.t.card, ctx.t.cardCorners, ctx.t.cardShadow];
+  const head = (c: string, size: number) => ({ color: c, fontSize: size, lineHeight: size * 1.02, letterSpacing: -size * 0.03 });
+  return (
+    <>
+      <View style={{ paddingHorizontal: 16, paddingTop: 32 + ctx.safeTop, width: "100%", maxWidth: 1000, alignSelf: "center", gap: 12 }}>
+        <Reveal animation={ctx.animation} index={0}>
+          <View style={{ flexDirection: "row", gap: 12, height: 300 }}>
+            <View style={[tile, { flex: 2, justifyContent: "flex-end", padding: 20 }, hasHero ? null : { backgroundColor: ctx.p.accent, borderWidth: 0 }]}>
+              {hasHero ? <HeroSlides images={hero} aspectRatio={0.8} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, width: undefined, height: undefined, aspectRatio: undefined }} /> : null}
+              {hasHero ? <BottomScrim /> : null}
+              <Text className={`${ctx.t.headingFont} font-bold`} style={head(hasHero ? "#fff" : ctx.p.onAccent, 30)}>
+                {id.name}
+              </Text>
+            </View>
+            <View style={{ flex: 1, gap: 12 }}>
+              <View style={[tile, { flex: 1, alignItems: "center", justifyContent: "center" }]}>
+                {icon ? <Logo ctx={ctx} size={64} /> : <Text className={`${ctx.t.headingFont} font-bold`} style={head(ctx.t.text, 36)}>{(id.name ?? "•").slice(0, 1)}</Text>}
+              </View>
+              <View style={[tile, { flex: 1, justifyContent: "flex-end", padding: 14, backgroundColor: ctx.p.primary, borderWidth: 0 }]}>
+                <Text className={`${ctx.t.bodyFont} font-semibold`} style={{ color: ctx.p.onPrimary, fontSize: 14, lineHeight: 19 }}>
+                  {id.tagline || "Welcome"}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </Reveal>
+        <Reveal animation={ctx.animation} index={1}>
+          <View style={[tile, { padding: 22, gap: 20 }]}>
+            <Intro ctx={ctx} left />
+            <CtaGroup ctx={ctx} left />
+          </View>
+        </Reveal>
+        {(ctx.config.gallery?.length ?? 0) > 0 ? (
+          <Reveal animation={ctx.animation} index={2}>
+            <Gallery ctx={ctx} variant="bento" />
+          </Reveal>
+        ) : null}
+        {ctx.config.document?.path ? (
+          <Reveal animation={ctx.animation} index={3}>
+            <DocumentCard ctx={ctx} />
+          </Reveal>
+        ) : null}
+        <Reveal animation={ctx.animation} index={4}>
+          <Contact ctx={ctx} />
+        </Reveal>
+      </View>
+      <Footer ctx={ctx} slug={slug} />
+    </>
+  );
+}
+
+function Poster({ ctx, slug }: { ctx: Ctx; slug?: string }) {
+  const { width } = useWindowDimensions();
+  const id = ctx.config.identity ?? {};
+  const hero = ctx.config.brand?.hero ?? [];
+  const word = id.name ?? "";
+  const items = [word, id.tagline || word];
+  const big = Math.min(150, Math.max(56, width * 0.19));
+  return (
+    <>
+      <View style={{ marginTop: 24 + ctx.safeTop, backgroundColor: ctx.p.accent, transform: [{ rotate: "-1deg" }, { scale: 1.04 }], overflow: "hidden" }}>
+        <Marquee>
+          {[0, 1, 2, 3].map((n) =>
+            items.map((t, i) => (
+              <View key={`${n}-${i}`} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 10 }}>
+                <Text className={`${ctx.t.headingFont} font-bold`} style={{ color: ctx.p.onAccent, fontSize: 28, paddingHorizontal: 20 }} numberOfLines={1}>
+                  {t}
+                </Text>
+                <Text style={{ color: ctx.p.onAccent, opacity: 0.7, fontSize: 24, paddingHorizontal: 8 }}>✦</Text>
+              </View>
+            ))
+          )}
+        </Marquee>
+      </View>
+      <View style={{ gap: 32, paddingTop: 44 }}>
+        <Section ctx={ctx} i={0} wide>
+          <View style={{ gap: 14, alignItems: "flex-start" }}>
+            <Logo ctx={ctx} size={52} />
+            <Text className={`${ctx.t.headingFont} font-bold`} style={{ color: ctx.t.text, fontSize: big, lineHeight: big * 0.88, letterSpacing: -big * 0.04 }}>
+              {word}
+            </Text>
+            {id.tagline ? (
+              <Text className={`${ctx.t.bodyFont} font-medium`} style={{ color: ctx.t.muted, fontSize: 20, lineHeight: 28, maxWidth: 480 }}>
+                {id.tagline}
+              </Text>
+            ) : null}
+          </View>
+        </Section>
+        {hero.length > 0 ? (
+          <Section ctx={ctx} i={1} wide>
+            <View style={{ overflow: "hidden", borderRadius: Math.min(ctx.t.radius + 4, 28), transform: [{ rotate: "-2deg" }], shadowColor: "#000", shadowOpacity: 0.3, shadowRadius: 22, shadowOffset: { width: 0, height: 14 }, elevation: 8, marginHorizontal: 8 }}>
+              <HeroSlides images={hero} aspectRatio={4 / 3} />
+            </View>
+          </Section>
+        ) : null}
+        <Section ctx={ctx} i={2} wide>
+          <View style={{ gap: 22, alignItems: "flex-start" }}>
+            <Intro ctx={ctx} left />
+            <CtaGroup ctx={ctx} left />
+          </View>
+        </Section>
+        {ctx.config.document?.path ? (
+          <Section ctx={ctx} i={3}>
+            <DocumentCard ctx={ctx} />
+          </Section>
+        ) : null}
+        {(ctx.config.gallery?.length ?? 0) > 0 ? (
+          <Section ctx={ctx} i={4} wide>
+            <Gallery ctx={ctx} variant="bento" />
+          </Section>
+        ) : null}
+        <Section ctx={ctx} i={5}>
+          <Contact ctx={ctx} />
+        </Section>
+      </View>
+      <Footer ctx={ctx} slug={slug} />
+    </>
+  );
+}
+
 const LAYOUTS: Record<TemplateId, (props: { ctx: Ctx; slug?: string }) => ReactNode> = {
   showcase: Showcase,
   stacked: Stacked,
@@ -1093,6 +1348,8 @@ const LAYOUTS: Record<TemplateId, (props: { ctx: Ctx; slug?: string }) => ReactN
   linkcard: Linkcard,
   split: Split,
   portfolio: Portfolio,
+  bento: Bento,
+  poster: Poster,
 };
 
 export function CustomPageRenderer({ config, preview = false, actions = {}, slug, safeTop = 0, safeBottom = 0 }: Props) {
