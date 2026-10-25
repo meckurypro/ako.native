@@ -25,6 +25,7 @@ const SHOWS_BOTTOM_NAV: RegExp[] = [
   /^\/activity\/affiliates$/, // …and its Activity entry point, same screen
   /^\/gigs$/,
   /^\/library$/,
+  /^\/me\/custom-pages$/, // Custom pages list (the create flow, editor and manage screens are full-screen)
   /^\/me$/, // the Profile tab's redirect screen — keeps the nav up while it resolves instead of a bare blank screen
   /^\/connect$/,
   /^\/inbox$/,

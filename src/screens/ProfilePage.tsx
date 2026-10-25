@@ -15,6 +15,7 @@ import {
   BellOff,
   Briefcase,
   Building2,
+  LayoutTemplate,
   ChevronDown,
   Clock,
   Eye,
@@ -465,6 +466,7 @@ export function ProfilePage() {
           : ([
               { key: "gigs", label: "Your Gigs", icon: <Icon as={Briefcase} size={22} className="text-overlay-ink" />, onSelect: () => router.push("/gigs") },
               { key: "page", label: "Page", icon: <Icon as={Building2} size={22} className="text-overlay-ink" />, onSelect: () => setPagesOpen(true) },
+              { key: "custom-pages", label: "Custom page", icon: <Icon as={LayoutTemplate} size={22} className="text-overlay-ink" />, onSelect: () => router.push("/me/custom-pages") },
             ] satisfies DropdownMenuItem[])),
         { key: "wallet", label: "Wallet", icon: <Icon as={Wallet} size={22} className="text-overlay-ink" />, onSelect: () => router.push("/wallet") },
       ]

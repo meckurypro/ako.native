@@ -1,0 +1,348 @@
+// src/lib/customPage.ts
+//
+// Custom Pages — the low-code landing page a person (or a parish, shop, event…) publishes at myako.site/<slug>.
+// Not to be confused with a Page (pages/PagePage.tsx), which is an account-like identity. A Custom Page is only a
+// published document: a JSON config rendered through a style + template.
+//
+// The server (supabase/ako_custom_pages.sql → custom_page_config_problem) is the validator that matters; the limits
+// below mirror it so the editor can stop a person before a round trip.
+import { randomUUID } from "expo-crypto";
+
+import { APP_URL } from "./config";
+import type { LocalFile } from "./localFile";
+import { supabase } from "./supabase";
+
+export const CUSTOM_PAGES_BUCKET = "custom-pages";
+
+export const LIMITS = {
+  name: 80,
+  tagline: 140,
+  intro: 1500,
+  copyright: 160,
+  address: 240,
+  docTitle: 120,
+  ctaLabel: 40,
+  ctas: 6,
+  hero: 8,
+  gallery: 24,
+  caption: 160,
+  fileBytes: 30 * 1024 * 1024,
+  imageBytes: 8 * 1024 * 1024,
+} as const;
+
+export type CtaAction = "url" | "ako" | "message" | "inquiry" | "download" | "email" | "call";
+
+export const CTA_ACTIONS: { value: CtaAction; label: string; hint: string }[] = [
+  { value: "url", label: "Open a link", hint: "Any website address" },
+  { value: "download", label: "Download a file", hint: "A PDF, document or image you upload" },
+  { value: "inquiry", label: "Send an inquiry", hint: "Opens the inquiry form on your page" },
+  { value: "message", label: "Message on Akọ", hint: "Opens a chat with you (needs an Akọ account)" },
+  { value: "ako", label: "Open something on Akọ", hint: "A link to a project, profile or post" },
+  { value: "email", label: "Email you", hint: "Uses the email address from your contact details" },
+  { value: "call", label: "Call you", hint: "Uses the phone number from your contact details" },
+];
+
+export interface CustomPageCta {
+  id: string;
+  label: string;
+  action: CtaAction;
+  /** url / ako actions */
+  url?: string;
+  /** download action — storage path inside the custom-pages bucket */
+  file_path?: string;
+  /** Original file name, so the download keeps a sensible name. */
+  file_name?: string;
+}
+
+export interface CustomPageImage {
+  path: string;
+  caption?: string;
+}
+
+export interface CustomPageConfig {
+  v?: number;
+  identity?: { name?: string; tagline?: string; intro?: string; copyright?: string; icon_path?: string };
+  brand?: { primary?: string; secondary?: string; accent?: string; hero?: CustomPageImage[] };
+  contact?: { email?: string; phone?: string; address?: string };
+  gallery?: CustomPageImage[];
+  ctas?: CustomPageCta[];
+  document?: { path?: string; title?: string; file_name?: string };
+  engagement?: { inquiry?: boolean };
+  design?: { style?: string; template?: string; animation?: string };
+  seo?: { share_image_path?: string };
+}
+
+export interface CustomPageRow {
+  id: string;
+  owner_id: string;
+  slug: string;
+  name: string;
+  visibility: "public" | "unlisted" | "private";
+  is_published: boolean;
+  draft: CustomPageConfig;
+  published: CustomPageConfig | null;
+  published_at: string | null;
+  referred_by_page_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CustomPageSummary {
+  id: string;
+  slug: string;
+  name: string;
+  visibility: "public" | "unlisted" | "private";
+  is_published: boolean;
+  has_unpublished_changes: boolean;
+  published_at: string | null;
+  updated_at: string;
+  icon_path: string | null;
+  new_inquiries: number;
+  views_30d: number;
+}
+
+export interface PublicCustomPage {
+  id: string;
+  slug: string;
+  name: string;
+  /** live | unpublished | private — the last two are only ever returned to the owner. */
+  state: "live" | "unpublished" | "private";
+  is_owner: boolean;
+  visibility: "public" | "unlisted" | "private";
+  published_at: string | null;
+  config: CustomPageConfig;
+  owner: { id: string; username: string; display_name: string; avatar_url: string | null };
+}
+
+export interface CustomPageInquiry {
+  id: string;
+  page_id: string;
+  sender_id: string | null;
+  name: string;
+  contact: string;
+  subject: string | null;
+  message: string;
+  status: "new" | "read" | "archived";
+  created_at: string;
+}
+
+export interface CustomPageStats {
+  days: number;
+  views: number;
+  visitors: number;
+  clicks: number;
+  downloads: number;
+  inquiries: number;
+  create_clicks: number;
+  per_cta: { cta_id: string; event_type: "cta_click" | "download"; count: number }[];
+  daily: { day: string; views: number }[];
+}
+
+// ── Design vocabulary ───────────────────────────────────────────────────────────────────────────────────────
+export type StyleId = "minimalist" | "glass" | "elegant";
+export type TemplateId = "showcase" | "stacked" | "brochure";
+export type AnimationId = "none" | "fade" | "slide-up" | "zoom" | "stagger";
+
+export const STYLES: { id: StyleId; label: string; blurb: string }[] = [
+  { id: "minimalist", label: "Minimalist", blurb: "Clean, airy, lots of white space." },
+  { id: "glass", label: "Glass", blurb: "Frosted panels floating over your colours." },
+  { id: "elegant", label: "Elegant", blurb: "Serif headlines and a quiet, formal tone." },
+];
+
+export const TEMPLATES: { id: TemplateId; label: string; blurb: string }[] = [
+  { id: "showcase", label: "Showcase", blurb: "Full-width hero slideshow, then message, gallery and buttons." },
+  { id: "stacked", label: "Stacked", blurb: "Logo first, then a hero image and your buttons as cards." },
+  { id: "brochure", label: "Brochure", blurb: "Built to put a document front and centre with read and download buttons." },
+];
+
+export const ANIMATIONS: { id: AnimationId; label: string }[] = [
+  { id: "none", label: "None" },
+  { id: "fade", label: "Fade in" },
+  { id: "slide-up", label: "Slide up" },
+  { id: "zoom", label: "Zoom in" },
+  { id: "stagger", label: "Staggered reveal" },
+];
+
+export const DEFAULT_COLORS = { primary: "#3D5A45", secondary: "#F7F4EF", accent: "#B8862E" } as const;
+
+export function resolveDesign(config: CustomPageConfig): { style: StyleId; template: TemplateId; animation: AnimationId } {
+  const d = config.design ?? {};
+  const style = STYLES.some((s) => s.id === d.style) ? (d.style as StyleId) : "minimalist";
+  const template = TEMPLATES.some((t) => t.id === d.template) ? (d.template as TemplateId) : "showcase";
+  const animation = ANIMATIONS.some((a) => a.id === d.animation) ? (d.animation as AnimationId) : "fade";
+  return { style, template, animation };
+}
+
+// ── Colours ─────────────────────────────────────────────────────────────────────────────────────────────────
+const HEX = /^#[0-9a-fA-F]{6}$/;
+export const isHex = (v: string | undefined): v is string => !!v && HEX.test(v);
+
+function luminance(hex: string): number {
+  const channel = (i: number) => {
+    const c = parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * channel(0) + 0.7152 * channel(1) + 0.0722 * channel(2);
+}
+
+/** Black or white — whichever reads better on `bg`. */
+export function readableOn(bg: string): "#14120F" | "#FFFFFF" {
+  return luminance(bg) > 0.4 ? "#14120F" : "#FFFFFF";
+}
+
+export function resolvePalette(config: CustomPageConfig) {
+  const b = config.brand ?? {};
+  const primary = isHex(b.primary) ? b.primary : DEFAULT_COLORS.primary;
+  const secondary = isHex(b.secondary) ? b.secondary : DEFAULT_COLORS.secondary;
+  const accent = isHex(b.accent) ? b.accent : DEFAULT_COLORS.accent;
+  return {
+    primary,
+    secondary,
+    accent,
+    onPrimary: readableOn(primary),
+    onSecondary: readableOn(secondary),
+    onAccent: readableOn(accent),
+  };
+}
+
+// ── Files ───────────────────────────────────────────────────────────────────────────────────────────────────
+export function publicFileUrl(path: string | undefined | null, opts?: { download?: string }): string | null {
+  if (!path) return null;
+  const { data } = supabase.storage.from(CUSTOM_PAGES_BUCKET).getPublicUrl(path, opts?.download ? { download: opts.download } : undefined);
+  return data.publicUrl;
+}
+
+const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const FILE_TYPES = [
+  ...IMAGE_TYPES,
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "text/csv",
+  "text/plain",
+];
+
+export function fileProblem(file: Pick<LocalFile, "type" | "size">, kind: "image" | "file"): string | null {
+  const allowed = kind === "image" ? IMAGE_TYPES : FILE_TYPES;
+  if (!allowed.includes(file.type)) {
+    return kind === "image"
+      ? "Please choose a JPEG, PNG, WebP or GIF image."
+      : "That file type isn't supported. Use a PDF, Office document, CSV, text file or image.";
+  }
+  const max = kind === "image" ? LIMITS.imageBytes : LIMITS.fileBytes;
+  if (file.size > max) return `That file is too large (max ${Math.round(max / 1024 / 1024)} MB).`;
+  return null;
+}
+
+export function storagePathFor(ownerId: string, pageId: string, file: Pick<LocalFile, "name">): string {
+  const ext = (file.name.split(".").pop() ?? "bin").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 8) || "bin";
+  const rand = randomUUID().replace(/-/g, "").slice(0, 12);
+  return `${ownerId}/${pageId}/${rand}.${ext}`;
+}
+
+// ── Links ───────────────────────────────────────────────────────────────────────────────────────────────────
+export const customPagePath = (slug: string) => `/${slug}`;
+export const customPageUrl = (slug: string) => `${APP_URL}/${slug}`;
+
+export function newCtaId(existing: CustomPageCta[]): string {
+  const used = new Set(existing.map((c) => c.id));
+  for (let i = 1; i < 100; i++) {
+    const id = `cta-${i}`;
+    if (!used.has(id)) return id;
+  }
+  return `cta-${Date.now().toString(36)}`;
+}
+
+/** Why a CTA can't be saved yet, or null. Mirrors the server rules. */
+export function ctaProblem(cta: CustomPageCta, config: CustomPageConfig): string | null {
+  if (!cta.label.trim()) return "Give every button a label.";
+  if (cta.action === "url" && !/^https?:\/\/\S+$/i.test(cta.url ?? "")) return "Link buttons need an address starting with http:// or https://.";
+  if (cta.action === "ako" && !/^\/[A-Za-z0-9/_.~%?=&#-]*$/.test(cta.url ?? "")) return "An Akọ button needs a link like /your-project.";
+  if (cta.action === "download" && !cta.file_path) return "Upload the file this button should download.";
+  if (cta.action === "email" && !config.contact?.email) return "Add an email address under Contact first.";
+  if (cta.action === "call" && !config.contact?.phone) return "Add a phone number under Contact first.";
+  return null;
+}
+
+/** Hex to rgba — for glass panels. */
+export function withAlpha(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+const VISITOR_KEY = "ako:cp-visitor";
+/** Anonymous, per-install id so reopening the app isn't counted as a new visitor. Never leaves analytics. */
+export function visitorId(): string {
+  try {
+    let v = localStorage.getItem(VISITOR_KEY);
+    if (!v) {
+      v = randomUUID().replace(/-/g, "");
+      localStorage.setItem(VISITOR_KEY, v);
+    }
+    return v;
+  } catch {
+    return randomUUID().replace(/-/g, "");
+  }
+}
+
+const REF_KEY = "ako:cp-ref";
+export function rememberReferrer(slug: string) {
+  try {
+    sessionStorage.setItem(REF_KEY, slug);
+  } catch {
+    /* attribution is best-effort */
+  }
+}
+export function takeReferrer(): string | null {
+  try {
+    return sessionStorage.getItem(REF_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Client twin of custom_page_config_problem(..., p_strict := false): what the server refuses even for a DRAFT.
+ * Lengths and shapes only. A half-typed email, an unfinished button or an empty label must never block autosave.
+ */
+export function draftProblem(c: CustomPageConfig): string | null {
+  const id = c.identity ?? {};
+  if ((id.name ?? "").length > LIMITS.name) return `Page name must be ${LIMITS.name} characters or fewer.`;
+  if ((id.tagline ?? "").length > LIMITS.tagline) return `Tagline must be ${LIMITS.tagline} characters or fewer.`;
+  if ((id.intro ?? "").length > LIMITS.intro) return `The page message must be ${LIMITS.intro} characters or fewer.`;
+  if ((id.copyright ?? "").length > LIMITS.copyright) return `The copyright line must be ${LIMITS.copyright} characters or fewer.`;
+  const ct = c.contact ?? {};
+  if ((ct.email ?? "").length > 120) return "That email address is too long.";
+  if ((ct.phone ?? "").length > 30) return "That phone number is too long.";
+  if ((ct.address ?? "").length > LIMITS.address) return `The address must be ${LIMITS.address} characters or fewer.`;
+  if ((c.document?.title ?? "").length > LIMITS.docTitle) return `The document title must be ${LIMITS.docTitle} characters or fewer.`;
+  for (const [i, cta] of (c.ctas ?? []).entries()) {
+    if (cta.label.trim().length > LIMITS.ctaLabel) return `Button ${i + 1}: the label must be ${LIMITS.ctaLabel} characters or fewer.`;
+    if ((cta.url ?? "").length > 500) return `Button ${i + 1}: the link is too long.`;
+  }
+  return null;
+}
+
+export type EditorStage = "identity" | "brand" | "content" | "buttons" | "contact" | "design";
+
+/**
+ * Client twin of the strict check publish_custom_page() runs. Returns what to fix and which editor stage holds it, so
+ * "Publish" can explain itself and jump there instead of failing with a server message.
+ */
+export function publishProblem(c: CustomPageConfig): { message: string; stage: EditorStage } | null {
+  if (!c.identity?.name?.trim()) return { message: "Give your page a name before publishing.", stage: "identity" };
+  const ct = c.contact ?? {};
+  if (ct.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(ct.email)) return { message: "Enter a valid contact email address.", stage: "contact" };
+  if (ct.phone && !/^[0-9+()\-\s.]{5,30}$/.test(ct.phone)) return { message: "Enter a valid contact phone number.", stage: "contact" };
+  for (const cta of c.ctas ?? []) {
+    const message = ctaProblem(cta, c);
+    if (message) return { message, stage: "buttons" };
+  }
+  return null;
+}
