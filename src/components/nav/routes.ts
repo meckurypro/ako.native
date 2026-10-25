@@ -5,6 +5,7 @@
 // truth for where it appears — the pages the web showed it on.
 //
 // Paths are matched against expo-router's pathname (route groups removed).
+import { isKnownCustomPageSlug } from "@/lib/customPageSlugs";
 import { isReservedProjectSlug, isValidProjectSlugFormat, normalizeProjectSlug } from "@/lib/projectLinks";
 
 const SHOWS_BOTTOM_NAV: RegExp[] = [
@@ -50,7 +51,8 @@ function isProjectSlugPath(pathname: string): boolean {
   const match = /^\/([^/]+)$/.exec(pathname);
   if (!match) return false;
   const slug = normalizeProjectSlug(match[1]); // the screen resolves slugs case-insensitively, so must this
-  return isValidProjectSlugFormat(slug) && !isReservedProjectSlug(slug);
+  // A slug that turned out to be a Custom Page is its own website: no app nav (see lib/customPageSlugs).
+  return isValidProjectSlugFormat(slug) && !isReservedProjectSlug(slug) && !isKnownCustomPageSlug(slug);
 }
 
 export function showsBottomNav(pathname: string): boolean {

@@ -17,6 +17,7 @@ import { haptics } from "@/lib/haptics";
 import { FAB_GAP, FAB_SIZE } from "./BottomNav";
 import { useChrome } from "./ChromeProvider";
 import { showsBottomNav } from "./routes";
+import { useCustomPageSlugsVersion } from "@/lib/customPageSlugs";
 
 const ARROW_SIZE = 44;
 const FAB_RIGHT = 16;
@@ -26,6 +27,7 @@ const CENTER_OFFSET = (FAB_SIZE - ARROW_SIZE) / 2;
 export function ScrollToTopButton() {
   const { showScrollTop, scrollToTopRef, navHeight } = useChrome();
   const pathname = usePathname();
+  useCustomPageSlugsVersion();
   const insets = useSafeAreaInsets();
 
   if (!showScrollTop) return null;

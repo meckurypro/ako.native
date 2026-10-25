@@ -25,6 +25,7 @@ import { NAV_BLUR_INTENSITY } from "@/theme/blur";
 import { useTheme } from "@/theme/ThemeProvider";
 import { useChrome } from "./ChromeProvider";
 import { NAV_PATH, showsBottomNav, type NavKey } from "./routes";
+import { useCustomPageSlugsVersion } from "@/lib/customPageSlugs";
 
 interface IconProps {
   size?: number;
@@ -82,6 +83,7 @@ function ChatIcon({ size, bubble, knockout, back }: { size: number; bubble: stri
 
 export function BottomNav() {
   const pathname = usePathname();
+  useCustomPageSlugsVersion(); // a slug learned to be a Custom Page takes the nav away
   const params = useGlobalSearchParams<{ username?: string }>();
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
@@ -290,6 +292,7 @@ export function BottomNav() {
 /** Bottom padding lists/scroll views need so their last item clears the nav. */
 export function useBottomNavInset(): number {
   const pathname = usePathname();
+  useCustomPageSlugsVersion();
   const insets = useSafeAreaInsets();
   const { navHeight } = useChrome();
   return showsBottomNav(pathname) ? Math.max(navHeight, 72 + insets.bottom) + 8 : insets.bottom + 16;

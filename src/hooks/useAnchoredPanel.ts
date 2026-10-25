@@ -12,6 +12,7 @@ import { useAnimatedStyle } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { showsBottomNav } from "@/components/nav/routes";
+import { useCustomPageSlugsVersion } from "@/lib/customPageSlugs";
 import { useKeyboardHeight } from "@/components/ui/KeyboardAvoider";
 
 const EDGE = 16;
@@ -23,6 +24,7 @@ export function useAnchoredPanel() {
   const { width: windowW, height: windowH } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
+  useCustomPageSlugsVersion();
   const keyboard = useKeyboardHeight();
 
   const topLimit = insets.top + EDGE;
