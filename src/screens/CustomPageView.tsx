@@ -92,6 +92,7 @@ export function CustomPageView({ page }: { page: PublicCustomPage }) {
           onShare: () => recordCustomPageEvent(page.id, "cta_click", visitorId(), "share"),
           onOpenInquiry: () => setInquiryOpen(true),
           onMessageOwner: () => void messageOwner(),
+          signedIn: !!user,
           onCreateYours: () => {
             rememberReferrer(page.slug);
             recordCustomPageEvent(page.id, "create_click", visitorId());

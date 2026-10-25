@@ -11,7 +11,7 @@
 // Add a style by extending styleTokens(); add a template by adding an entry to LAYOUTS. Neither touches the database —
 // design values are just short slugs in the config.
 import { router, type Href } from "expo-router";
-import { Download, ExternalLink, FileText, Mail, MapPin, MessageCircle, Phone } from "lucide-react-native";
+import { ArrowRight, Download, ExternalLink, FileText, Mail, MapPin, MessageCircle, Phone } from "lucide-react-native";
 import { useRef, useState, type ReactNode } from "react";
 import Svg, { Path } from "react-native-svg";
 import { ActivityIndicator, Platform, Pressable, ScrollView, Share, useWindowDimensions, View, type ViewStyle } from "react-native";
@@ -56,6 +56,8 @@ export interface CustomPageActions {
   onShare?: () => void;
   /** "Create your own custom page" footer link. */
   onCreateYours?: () => void;
+  /** True when the visitor is signed in to Akọ — the footer then offers a quiet way back into the app. */
+  signedIn?: boolean;
 }
 
 interface Props {
@@ -846,6 +848,21 @@ function Footer({ ctx, slug }: { ctx: Ctx; slug?: string }) {
             </Text>
           </Pressable>
         )}
+        {/* Signed-in visitors land here with the app's navigation hidden behind the page — a quiet way back in. */}
+        {!ctx.preview && ctx.actions.signedIn ? (
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel="Open Akọ"
+            hitSlop={10}
+            onPress={() => router.replace("/" as Href)}
+            style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4, opacity: 0.8 }}
+          >
+            <Text className={ctx.t.bodyFont} style={{ color: ctx.t.muted, fontSize: 12 }}>
+              Open Akọ
+            </Text>
+            <ArrowRight size={12} color={ctx.t.muted} />
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );
