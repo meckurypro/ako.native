@@ -18,7 +18,7 @@ A Custom Page is **not** a "Page" (`/page/:username`, an account-like identity).
 | Key | Contents |
 | --- | --- |
 | `identity` | `name`, `tagline`, `intro`, `copyright`, `icon_path` |
-| `brand` | `primary`, `secondary`, `accent` (hex), `hero[{path}]` up to 8 |
+| `brand` | `primary`, `secondary`, `accent` (hex), `hero[{path}]` up to 8, `background{path, fit, look}` |
 | `contact` | `email`, `phone`, `address` |
 | `gallery` | `[{path, caption}]` up to 24 |
 | `ctas` | up to 6 of `{id, label, action, url?, file_path?, file_name?}` |
@@ -27,6 +27,8 @@ A Custom Page is **not** a "Page" (`/page/:username`, an account-like identity).
 | `design` | `{style, template, animation}` as short slugs |
 | `share` | `{enabled, look, position}` for the optional share button |
 | `seo` | `{share_image_path}` |
+| `foreground` | `{path, shape, size, x, y, rotation, crop{zoom,x,y}, shadow{enabled,intensity,angle}}` — a picture laid over the first screen |
+| `nav` | `{enabled, items[{id,label,target}] up to 6, scroll, position, look}` — a menu that scrolls to sections |
 
 Button actions: `url`, `ako` (internal link), `message` (opens an Akọ chat with the owner), `inquiry`, `download`, `email`, `call`.
 
@@ -49,6 +51,14 @@ On the Design tab a creator can save their current look as a named preset and br
 - Applying a preset replaces the page's design choices straight away and the draft autosaves as usual.
 - The row stores the design as JSON. Reading goes through `resolvePresetDesign()` so a preset that names a style or template that no longer exists falls back to the default instead of breaking.
 - Table `custom_page_presets` (RLS on, owners read their own rows). Writes: `save_custom_page_preset`, `delete_custom_page_preset`. Read: `list_my_custom_page_presets`. The validator `custom_page_preset_problem()` is internal.
+
+## Background, foreground and menu
+
+- **Background** (`brand.background`): one picture behind the whole page. `fit` (auto, cover, stretch, tile) and `look` (auto, clear, soft, dim, mono, warm, cool, vivid). "auto" lets the template decide: see `BACKGROUND_BY_TEMPLATE`. A readability veil in the opposite colour of the style's text is always laid on top.
+- **Foreground** (`foreground`): a picture over the first screen ("stage", 4:5, max 640 px wide). `x`, `y` (centre) and `size` are percentages of the stage. `shape` is one of 20 clip shapes (`src/lib/customPageShapes.ts`) or `none`. `crop` chooses what shows inside the shape. The drop shadow is on an outer element so its `angle` (0 = right, 90 = down) stays fixed when the picture is rotated.
+- **Menu** (`nav`): items point at a section (`top`, `about`, `buttons`, `document`, `gallery`, `contact`), found through view refs registered by the shared section components (`useAnchor`), so every template supports it. `scroll` picks the animation (smooth, ease-out, spring, bounce, slow, snap, instant), run frame by frame by `src/lib/customPageScroll.ts` driving `ScrollView.scrollTo`.
+
+Native notes: the foreground is clipped with an SVG clip path (`scaleShapePath` scales the 0..1 shape to the box); the drop shadow uses iOS shadow props and Android's `dropShadow` filter (Android 12+); a tiled background uses `resizeMode="repeat"`; the menu sits outside the scroller, so it never moves with the page.
 
 ## Backend
 

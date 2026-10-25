@@ -167,6 +167,18 @@ create trigger guard_project_slug_vs_pages
 -- ---- Config validation. Drafts save leniently (p_strict = false: lengths and shapes only, so a half-typed email or an
 -- ---- unfinished button never blocks autosave); publishing validates strictly. Client twins: draftProblem / publishProblem
 -- ---- in src/lib/customPage.ts. -----------------------------------------------------------------------------------
+-- ---- Numeric range helper for the validator: true when the value is present but not a number inside [lo, hi]. ----
+create or replace function public.custom_page_num_bad(p_val jsonb, p_lo numeric, p_hi numeric)
+returns boolean
+language sql
+immutable
+set search_path to 'public'
+as $function$
+  select p_val is not null
+     and jsonb_typeof(p_val) <> 'null'
+     and (jsonb_typeof(p_val) <> 'number' or (p_val #>> '{}')::numeric not between p_lo and p_hi);
+$function$;
+
 drop function if exists public.custom_page_config_problem(jsonb, uuid);
 create or replace function public.custom_page_config_problem(p_config jsonb, p_owner uuid, p_strict boolean default true)
 returns text
@@ -223,7 +235,7 @@ begin
     end if;
   end loop;
 
-  foreach v_text in array array['identity,icon_path', 'seo,share_image_path', 'document,path'] loop
+  foreach v_text in array array['identity,icon_path', 'seo,share_image_path', 'document,path', 'brand,background,path', 'foreground,path'] loop
     if p_config #>> string_to_array(v_text, ',') is not null
        and (p_config #>> string_to_array(v_text, ',') not like v_prefix || '%'
             or p_config #>> string_to_array(v_text, ',') like '%..%') then
@@ -250,6 +262,76 @@ begin
     end if;
     if char_length(coalesce(v_el ->> 'caption', '')) > 160 then return 'Gallery captions must be 160 characters or fewer.'; end if;
   end loop;
+
+  -- Page background picture: a file in the owner's folder plus two short slugs (fit, look).
+  if p_config -> 'brand' -> 'background' is not null and jsonb_typeof(p_config -> 'brand' -> 'background') <> 'object' then
+    return 'Invalid background.';
+  end if;
+  foreach v_text in array array['fit', 'look'] loop
+    if p_config #>> array['brand', 'background', v_text] is not null
+       and p_config #>> array['brand', 'background', v_text] !~ '^[a-z][a-z0-9-]{0,23}$' then
+      return 'Invalid background setting.';
+    end if;
+  end loop;
+
+  -- Foreground picture: shape is a short slug (or "none"); placement, rotation, crop and shadow are bounded numbers.
+  if p_config -> 'foreground' is not null then
+    if jsonb_typeof(p_config -> 'foreground') <> 'object' then return 'Invalid foreground picture.'; end if;
+    if p_config #>> '{foreground,shape}' is not null and p_config #>> '{foreground,shape}' !~ '^[a-z][a-z0-9-]{0,23}$' then
+      return 'Invalid foreground shape.';
+    end if;
+    if public.custom_page_num_bad(p_config #> '{foreground,size}', 5, 100)
+       or public.custom_page_num_bad(p_config #> '{foreground,x}', 0, 100)
+       or public.custom_page_num_bad(p_config #> '{foreground,y}', 0, 100)
+       or public.custom_page_num_bad(p_config #> '{foreground,rotation}', -360, 360) then
+      return 'The foreground picture''s size, position or rotation is out of range.';
+    end if;
+    if (p_config #> '{foreground,crop}' is not null and jsonb_typeof(p_config #> '{foreground,crop}') <> 'object')
+       or public.custom_page_num_bad(p_config #> '{foreground,crop,zoom}', 1, 5)
+       or public.custom_page_num_bad(p_config #> '{foreground,crop,x}', 0, 100)
+       or public.custom_page_num_bad(p_config #> '{foreground,crop,y}', 0, 100) then
+      return 'The foreground picture''s crop is out of range.';
+    end if;
+    if (p_config #> '{foreground,shadow}' is not null and jsonb_typeof(p_config #> '{foreground,shadow}') <> 'object')
+       or public.custom_page_num_bad(p_config #> '{foreground,shadow,intensity}', 0, 100)
+       or public.custom_page_num_bad(p_config #> '{foreground,shadow,angle}', 0, 360)
+       or (p_config #> '{foreground,shadow,enabled}' is not null and jsonb_typeof(p_config #> '{foreground,shadow,enabled}') <> 'boolean') then
+      return 'The foreground picture''s shadow is out of range.';
+    end if;
+  end if;
+
+  -- Page menu: up to 6 items, each a short label that points at a section slug.
+  if p_config -> 'nav' is not null then
+    if jsonb_typeof(p_config -> 'nav') <> 'object' then return 'Invalid menu.'; end if;
+    foreach v_text in array array['scroll', 'position', 'look'] loop
+      if p_config #>> array['nav', v_text] is not null and p_config #>> array['nav', v_text] !~ '^[a-z][a-z0-9-]{0,23}$' then
+        return 'Invalid menu setting.';
+      end if;
+    end loop;
+    if p_config #> '{nav,enabled}' is not null and jsonb_typeof(p_config #> '{nav,enabled}') <> 'boolean' then return 'Invalid menu setting.'; end if;
+    if jsonb_typeof(coalesce(p_config #> '{nav,items}', '[]'::jsonb)) <> 'array' then return 'Invalid menu items.'; end if;
+    if jsonb_array_length(coalesce(p_config #> '{nav,items}', '[]'::jsonb)) > 6 then return 'Use up to 6 menu items.'; end if;
+    v_ids := '{}';
+    v_n := 0;
+    for v_el in select * from jsonb_array_elements(coalesce(p_config #> '{nav,items}', '[]'::jsonb)) loop
+      v_n := v_n + 1;
+      v_id := v_el ->> 'id';
+      if v_id is null or v_id !~ '^[a-z0-9-]{1,24}$' then return 'A menu item is missing its id.'; end if;
+      if v_id = any (v_ids) then return 'Two menu items share an id.'; end if;
+      v_ids := v_ids || v_id;
+      if char_length(btrim(coalesce(v_el ->> 'label', ''))) > 24 then
+        return format('Menu item %s: the label must be 24 characters or fewer.', v_n);
+      end if;
+      if p_strict and char_length(btrim(coalesce(v_el ->> 'label', ''))) = 0 then
+        return format('Menu item %s needs a label.', v_n);
+      end if;
+      if coalesce(v_el ->> 'target', '') !~ '^[a-z][a-z0-9-]{0,23}$' then
+        return format('Menu item %s needs a section to go to.', v_n);
+      end if;
+    end loop;
+    v_ids := '{}';
+    v_n := 0;
+  end if;
 
   if jsonb_typeof(coalesce(p_config -> 'ctas', '[]'::jsonb)) <> 'array' then return 'Invalid buttons.'; end if;
   if jsonb_array_length(coalesce(p_config -> 'ctas', '[]'::jsonb)) > 6 then return 'Use up to 6 buttons.'; end if;
