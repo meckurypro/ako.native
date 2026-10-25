@@ -2,9 +2,9 @@
 // Small form building blocks for the Custom Page editor (native twin of the web EditorParts): labelled fields,
 // section headings, selectable option rows, and the image / file pickers that upload into the custom-pages bucket.
 import * as DocumentPicker from "expo-document-picker";
-import { ArrowDown, ArrowUp, Check, FileText, ImagePlus, Trash2, Upload } from "lucide-react-native";
+import { ArrowDown, ArrowUp, Check, ChevronDown, FileText, ImagePlus, Trash2, Upload } from "lucide-react-native";
 import { useRef, useState, type ReactNode } from "react";
-import { Pressable, TextInput, View, type TextInputProps } from "react-native";
+import { Pressable, ScrollView, TextInput, View, type TextInputProps } from "react-native";
 
 import { Icon, Image } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
@@ -61,6 +61,69 @@ export function Input({ rows, style, ...rest }: TextInputProps & { rows?: number
 }
 
 /** A tappable option with a radio dot — used for style, template, share look and position. */
+export interface ChoiceOption {
+  id: string;
+  label: string;
+  blurb?: string;
+}
+
+/**
+ * A dropdown for choosing one option out of many (styles, templates). The closed control shows the current choice with
+ * its one-line description; tapping it opens a scrollable list of every option with its description underneath.
+ */
+export function ChoiceSelect({ label, value, options, onChange }: { label: string; value: string; options: ChoiceOption[]; onChange: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const current = options.find((o) => o.id === value) ?? options[0];
+  return (
+    <View>
+      <Pressable
+        onPress={() => setOpen((v) => !v)}
+        accessibilityRole="combobox"
+        accessibilityLabel={label}
+        accessibilityState={{ expanded: open }}
+        className="flex-row items-center gap-3 rounded-2xl border border-border bg-surface p-4"
+      >
+        <View className="min-w-0 flex-1">
+          <Text className="text-sm font-semibold text-ink">{current?.label}</Text>
+          {current?.blurb ? <Text className="mt-0.5 text-xs leading-4 text-ink-muted">{current.blurb}</Text> : null}
+        </View>
+        <View style={{ transform: [{ rotate: open ? "180deg" : "0deg" }] }}>
+          <Icon as={ChevronDown} size={18} className="text-ink-muted" />
+        </View>
+      </Pressable>
+      {open ? (
+        <View className="mt-2 overflow-hidden rounded-2xl border border-border bg-surface" accessibilityRole="menu">
+          <ScrollView style={{ maxHeight: 360 }} nestedScrollEnabled showsVerticalScrollIndicator>
+            {options.map((o, i) => {
+              const active = o.id === value;
+              return (
+                <Pressable
+                  key={o.id}
+                  onPress={() => {
+                    onChange(o.id);
+                    setOpen(false);
+                  }}
+                  accessibilityRole="menuitem"
+                  accessibilityState={{ selected: active }}
+                  className={`flex-row items-start gap-3 px-4 py-3 ${i > 0 ? "border-t border-border" : ""} ${active ? "bg-accent-soft" : ""}`}
+                >
+                  <View className={`mt-0.5 h-5 w-5 items-center justify-center rounded-full ${active ? "bg-accent" : "border border-border"}`}>
+                    {active ? <Icon as={Check} size={13} className="text-canvas" /> : null}
+                  </View>
+                  <View className="min-w-0 flex-1">
+                    <Text className="text-sm font-semibold text-ink">{o.label}</Text>
+                    {o.blurb ? <Text className="mt-0.5 text-xs leading-4 text-ink-muted">{o.blurb}</Text> : null}
+                  </View>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 export function Choice({ active, title, blurb, onPress }: { active: boolean; title: string; blurb: string; onPress: () => void }) {
   return (
     <Pressable

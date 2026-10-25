@@ -352,6 +352,17 @@ export const BACKGROUND_BY_TEMPLATE: Record<TemplateId, BackgroundTreatment> = {
   portfolio: { fit: "cover", look: "dim", zoom: 1.02 },
   bento: { fit: "cover", look: "soft", zoom: 1.08 },
   poster: { fit: "cover", look: "vivid", zoom: 1.02 },
+  console: { fit: "cover", look: "dim", zoom: 1.04 },
+  showreel: { fit: "cover", look: "dim", zoom: 1.02 },
+  frame: { fit: "cover", look: "dim", zoom: 1.04 },
+  duo: { fit: "cover", look: "soft", zoom: 1.08 },
+  portrait: { fit: "cover", look: "soft", zoom: 1.08 },
+  arch: { fit: "cover", look: "soft", zoom: 1.08 },
+  banner: { fit: "cover", look: "soft", zoom: 1.08 },
+  diagonal: { fit: "cover", look: "soft", zoom: 1.08 },
+  wave: { fit: "cover", look: "soft", zoom: 1.08 },
+  diamond: { fit: "cover", look: "soft", zoom: 1.08 },
+  float: { fit: "cover", look: "soft", zoom: 1.1 },
 };
 
 /** CSS filter for each look, and how heavy a readability veil it needs (0..1). */

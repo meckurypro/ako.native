@@ -10,7 +10,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BrandColorFields } from "@/components/customPage/ColorPicker";
 import { CustomPageRenderer } from "@/components/customPage/CustomPageRenderer";
-import { Choice, Field, FilePicker, ImageList, Input, Section, SingleImage } from "@/components/customPage/EditorParts";
+import { Choice, Field, FilePicker, ImageList, Input, Section, ChoiceSelect, SingleImage } from "@/components/customPage/EditorParts";
 import { BackgroundEditor, ForegroundEditor, MenuEditor } from "@/components/customPage/MediaEditors";
 import { DesignPresets } from "@/components/customPage/DesignPresets";
 import { Button } from "@/components/ui/Button";
@@ -466,18 +466,10 @@ export function CustomPageEditor() {
           <Section title="Design" intro="Pick a style, a layout and how sections appear.">
             <DesignPresets config={config} onChange={update} />
             <Field label="Style">
-              <View className="gap-2.5">
-                {STYLES.map((s) => (
-                  <Choice key={s.id} active={design.style === s.id} title={s.label} blurb={s.blurb} onPress={() => set("design", { style: s.id })} />
-                ))}
-              </View>
+              <ChoiceSelect label="Style" value={design.style} options={STYLES} onChange={(id) => set("design", { style: id })} />
             </Field>
             <Field label="Template">
-              <View className="gap-2.5">
-                {TEMPLATES.map((t) => (
-                  <Choice key={t.id} active={design.template === t.id} title={t.label} blurb={t.blurb} onPress={() => set("design", { template: t.id })} />
-                ))}
-              </View>
+              <ChoiceSelect label="Template" value={design.template} options={TEMPLATES} onChange={(id) => set("design", { template: id })} />
             </Field>
             <Field label="Animation" hint="Applied to sections as they scroll into view. Turned off automatically for people who prefer reduced motion.">
               <View className="flex-row flex-wrap gap-2">

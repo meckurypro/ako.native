@@ -5,13 +5,13 @@
 // Mirrors the web renderer (src/components/customPage/CustomPageRenderer.tsx) — keep the two in step.
 //
 // Three decisions are kept apart on purpose:
-//   • style     — the visual language (minimalist / glass / elegant / midnight / aurora / bold / soft / neo / clay / chrome / mono / organic): surfaces, type, corners, micro-interactions.
-//   • template  — the arrangement of sections (showcase / stacked / brochure / spotlight / linkcard / split / portfolio / bento / poster).
+//   • style     — the visual language (minimalist / glass / elegant / midnight / aurora / bold / soft / neo / clay / chrome / mono / organic / forge / noir / nebula / duotone / sand / confetti / skyline / azure / aqua / candy / ultraviolet): surfaces, type, corners, micro-interactions.
+//   • template  — the arrangement of sections (showcase / stacked / brochure / spotlight / linkcard / split / portfolio / bento / poster / console / showreel / frame / duo / portrait / arch / banner / diagonal / wave / diamond / float).
 //   • animation — how sections arrive (a preset, applied uniformly; never per element).
 // Add a style by extending styleTokens(); add a template by adding an entry to LAYOUTS. Neither touches the database —
 // design values are just short slugs in the config.
 import { router, type Href } from "expo-router";
-import { ArrowRight, Download, ExternalLink, FileText, Mail, MapPin, MessageCircle, Phone } from "lucide-react-native";
+import { ArrowLeft, ArrowRight, Download, ExternalLink, FileText, Mail, MapPin, MessageCircle, Phone } from "lucide-react-native";
 import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode, type RefObject } from "react";
 import Svg, { ClipPath, Defs, Image as SvgImage, Path } from "react-native-svg";
 import { AccessibilityInfo, ActivityIndicator, Image as RNImage, Platform, Pressable, ScrollView, Share, StyleSheet, useWindowDimensions, View, type ViewStyle } from "react-native";
@@ -129,6 +129,10 @@ interface Tokens {
   logoRound?: number;
   headingScale?: number;
   headingTracking?: number;
+  /** Headings in capitals (Forge, Noir Copper, Nebula). */
+  headingUpper?: boolean;
+  /** Heading colour when it differs from the body text (Noir Copper). */
+  headingColor?: string;
   /** Press scale for buttons (Clay squishes harder). */
   pressScale?: number;
   /** Per-corner card radii for blob shapes (Organic). */
@@ -136,6 +140,213 @@ interface Tokens {
 }
 
 function styleTokens(style: StyleId, p: Palette): Tokens {
+  if (style === "forge") {
+    return {
+      glass: false,
+      pageBg: "#121214",
+      backdrop: { base: "#121214", glows: [{ cx: 0.9, cy: 0, r: 0.8, color: p.accent, opacity: 0.3 }, { cx: 0, cy: 1, r: 0.7, color: p.accent, opacity: 0.14 }] },
+      text: "#F4F1EC",
+      muted: "rgba(244,241,236,0.66)",
+      headingFont: "font-body",
+      bodyFont: "font-body",
+      headingUpper: true,
+      headingTracking: 1,
+      card: { backgroundColor: "rgba(255,255,255,0.05)", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" },
+      radius: 8,
+      primary: { backgroundColor: p.accent, color: p.onAccent, borderColor: "transparent", uppercase: true, letterSpacing: 1 },
+      secondary: { backgroundColor: "rgba(255,255,255,0.08)", color: "#F4F1EC", borderColor: "transparent", uppercase: true, letterSpacing: 1 },
+      rule: "rgba(255,255,255,0.14)",
+      btnRadius: 3,
+    };
+  }
+  if (style === "noir") {
+    return {
+      glass: false,
+      pageBg: "#08080A",
+      backdrop: { base: "#08080A", glows: [{ cx: 0.72, cy: 0.18, r: 0.6, color: p.accent, opacity: 0.14 }, { cx: 0.5, cy: 1, r: 0.9, color: "#3C466E", opacity: 0.28 }] },
+      text: "#EDE6DD",
+      muted: "rgba(237,230,221,0.64)",
+      headingFont: "font-body",
+      bodyFont: "font-body",
+      headingUpper: true,
+      headingColor: p.accent,
+      headingTracking: 1,
+      card: { backgroundColor: "rgba(255,255,255,0.04)", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" },
+      radius: 4,
+      primary: { backgroundColor: p.accent, color: p.onAccent, borderColor: "transparent", uppercase: true, letterSpacing: 1.2 },
+      secondary: { backgroundColor: "rgba(255,255,255,0.07)", color: "#EDE6DD", borderColor: "transparent", uppercase: true, letterSpacing: 1.2 },
+      rule: "rgba(255,255,255,0.12)",
+      btnRadius: 0,
+    };
+  }
+  if (style === "nebula") {
+    return {
+      glass: false,
+      pageBg: "#1B0D3F",
+      backdrop: { base: "#1B0D3F", glows: [{ cx: 0.5, cy: 0, r: 0.9, color: p.accent, opacity: 0.75 }, { cx: 0.5, cy: 1, r: 0.9, color: p.primary, opacity: 0.8 }] },
+      text: "#F7F4FF",
+      muted: "rgba(247,244,255,0.72)",
+      headingFont: "font-body",
+      bodyFont: "font-body",
+      headingUpper: true,
+      headingTracking: 0.5,
+      card: { backgroundColor: "rgba(255,255,255,0.07)", borderWidth: 1, borderColor: "rgba(255,255,255,0.16)" },
+      radius: 28,
+      primary: { backgroundColor: p.accent, color: p.onAccent, borderColor: "transparent", shadow: { shadowColor: p.accent, shadowOpacity: 0.5, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 6 } },
+      secondary: { backgroundColor: "transparent", color: "#FFFFFF", borderColor: "rgba(255,255,255,0.85)", borderWidth: 1.5 },
+      rule: "rgba(255,255,255,0.18)",
+      btnRadius: 999,
+      float: true,
+    };
+  }
+  if (style === "duotone") {
+    return {
+      glass: false,
+      pageBg: "#E9E9EB",
+      backdrop: { base: "#E9E9EB", glows: [{ cx: 0.2, cy: 0, r: 0.8, color: "#FFFFFF", opacity: 0.9 }] },
+      text: "#0E0E10",
+      muted: "rgba(14,14,16,0.62)",
+      headingFont: "font-body",
+      bodyFont: "font-body",
+      headingTracking: -1.4,
+      card: { backgroundColor: "rgba(255,255,255,0.7)", borderWidth: 1, borderColor: "rgba(0,0,0,0.08)" },
+      radius: 14,
+      primary: { backgroundColor: "#0E0E10", color: "#FFFFFF", borderColor: "#0E0E10" },
+      secondary: { backgroundColor: "transparent", color: "#0E0E10", borderColor: "rgba(0,0,0,0.2)" },
+      rule: "rgba(0,0,0,0.14)",
+      btnRadius: 999,
+    };
+  }
+  if (style === "sand") {
+    return {
+      glass: false,
+      pageBg: "#E7E2D9",
+      backdrop: { base: "#E7E2D9", glows: [{ cx: 1, cy: 0, r: 0.8, color: "#FFFFFF", opacity: 0.55 }] },
+      text: "#4B4338",
+      muted: "rgba(75,67,56,0.7)",
+      headingFont: "font-body",
+      bodyFont: "font-body",
+      headingTracking: -0.6,
+      card: { backgroundColor: "rgba(255,255,255,0.45)", borderWidth: 1, borderColor: "rgba(75,67,56,0.14)" },
+      radius: 6,
+      primary: { backgroundColor: p.primary, color: p.onPrimary, borderColor: p.primary },
+      secondary: { backgroundColor: "transparent", color: "#4B4338", borderColor: "rgba(75,67,56,0.55)" },
+      rule: "rgba(75,67,56,0.22)",
+      btnRadius: 2,
+    };
+  }
+  if (style === "confetti") {
+    return {
+      glass: false,
+      pageBg: "#F3EFE8",
+      backdrop: { base: "#F3EFE8", glows: [{ cx: 0.5, cy: 0.02, r: 0.3, color: "#BFE3D6", opacity: 0.8 }, { cx: 0.95, cy: 0.04, r: 0.3, color: "#F6CFC8", opacity: 0.8 }, { cx: 0.05, cy: 0.5, r: 0.35, color: p.accent, opacity: 0.18 }] },
+      text: "#2B2A28",
+      muted: "rgba(43,42,40,0.66)",
+      headingFont: "font-display",
+      bodyFont: "font-body",
+      card: { backgroundColor: "rgba(255,255,255,0.72)", borderWidth: 1, borderColor: "rgba(43,42,40,0.08)" },
+      radius: 22,
+      primary: { backgroundColor: p.primary, color: p.onPrimary, borderColor: p.primary },
+      secondary: { backgroundColor: "transparent", color: "#2B2A28", borderColor: "rgba(43,42,40,0.35)" },
+      rule: "rgba(43,42,40,0.16)",
+      btnRadius: 999,
+    };
+  }
+  if (style === "skyline") {
+    return {
+      glass: false,
+      pageBg: "#E6F3FF",
+      backdrop: { base: "#E6F3FF", glows: [{ cx: 0.9, cy: 0, r: 0.6, color: "#4FB0FF", opacity: 0.3 }, { cx: 0.1, cy: 1, r: 0.8, color: "#7DBBF5", opacity: 0.4 }] },
+      text: "#0B1B3F",
+      muted: "rgba(11,27,63,0.66)",
+      headingFont: "font-body",
+      bodyFont: "font-body",
+      headingTracking: -0.6,
+      card: { backgroundColor: "rgba(255,255,255,0.75)", borderWidth: 1, borderColor: "rgba(11,27,63,0.08)" },
+      radius: 20,
+      primary: { backgroundColor: p.primary, color: p.onPrimary, borderColor: p.primary },
+      secondary: { backgroundColor: "rgba(255,255,255,0.7)", color: "#0B1B3F", borderColor: "rgba(11,27,63,0.2)" },
+      rule: "rgba(11,27,63,0.14)",
+      btnRadius: 12,
+    };
+  }
+  if (style === "azure") {
+    return {
+      glass: false,
+      pageBg: "#F6F9FC",
+      backdrop: { base: "#F6F9FC", glows: [{ cx: 1, cy: 0, r: 0.75, color: p.primary, opacity: 0.4 }] },
+      text: "#0C1B2E",
+      muted: "rgba(12,27,46,0.64)",
+      headingFont: "font-body",
+      bodyFont: "font-body",
+      headingTracking: -0.6,
+      card: { backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "rgba(12,27,46,0.08)" },
+      cardShadow: { shadowColor: "#0C1B2E", shadowOpacity: 0.12, shadowRadius: 16, shadowOffset: { width: 0, height: 10 }, elevation: 3 },
+      radius: 16,
+      primary: { backgroundColor: p.primary, color: p.onPrimary, borderColor: p.primary },
+      secondary: { backgroundColor: "#FFFFFF", color: "#0C1B2E", borderColor: "rgba(12,27,46,0.16)" },
+      rule: "rgba(12,27,46,0.12)",
+      btnRadius: 10,
+    };
+  }
+  if (style === "aqua") {
+    return {
+      glass: false,
+      pageBg: "#B5F0E8",
+      backdrop: { base: "#B5F0E8", glows: [{ cx: 0.1, cy: 0, r: 0.9, color: "#E4FFF9", opacity: 0.9 }, { cx: 0.95, cy: 1, r: 0.8, color: "#34BEBE", opacity: 0.55 }] },
+      text: "#0C2238",
+      muted: "rgba(12,34,56,0.68)",
+      headingFont: "font-body",
+      bodyFont: "font-body",
+      headingTracking: -0.6,
+      card: { backgroundColor: "rgba(255,255,255,0.55)", borderWidth: 1, borderColor: "rgba(255,255,255,0.7)" },
+      radius: 18,
+      primary: { backgroundColor: "#0C2238", color: "#FFFFFF", borderColor: "#0C2238" },
+      secondary: { backgroundColor: "transparent", color: "#0C2238", borderColor: "#0C2238" },
+      rule: "rgba(12,34,56,0.2)",
+      btnRadius: 8,
+    };
+  }
+  if (style === "candy") {
+    return {
+      glass: false,
+      pageBg: "#FDF1F5",
+      backdrop: { base: "#FDF1F5", glows: [{ cx: 1, cy: 0, r: 0.8, color: "#A096FF", opacity: 0.35 }, { cx: 0, cy: 1, r: 0.8, color: "#FFA0C8", opacity: 0.4 }] },
+      text: "#1B1938",
+      muted: "rgba(27,25,56,0.64)",
+      headingFont: "font-body",
+      bodyFont: "font-body",
+      headingTracking: -0.6,
+      card: { backgroundColor: "rgba(255,255,255,0.72)", borderWidth: 1, borderColor: "rgba(255,255,255,0.9)" },
+      cardShadow: { shadowColor: "#4B4CE0", shadowOpacity: 0.15, shadowRadius: 18, shadowOffset: { width: 0, height: 12 }, elevation: 3 },
+      radius: 26,
+      primary: { backgroundColor: p.primary, color: p.onPrimary, borderColor: "transparent", gradient: [mix(p.primary, "#FFFFFF", 0.18), p.primary], shadow: { shadowColor: p.primary, shadowOpacity: 0.5, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 6 } },
+      secondary: { backgroundColor: "transparent", color: "#1B1938", borderColor: "rgba(27,25,56,0.35)" },
+      rule: "rgba(27,25,56,0.14)",
+      btnRadius: 14,
+      float: true,
+    };
+  }
+  if (style === "ultraviolet") {
+    return {
+      glass: false,
+      pageBg: "#2A0C66",
+      backdrop: { base: "#2A0C66", glows: [{ cx: 0.85, cy: 0.1, r: 0.7, color: "#FF46C8", opacity: 0.38 }, { cx: 0, cy: 1, r: 0.7, color: "#3C78FF", opacity: 0.32 }] },
+      text: "#FFFFFF",
+      muted: "rgba(255,255,255,0.74)",
+      headingFont: "font-body",
+      bodyFont: "font-body",
+      headingTracking: -1,
+      card: { backgroundColor: "rgba(255,255,255,0.08)", borderWidth: 1, borderColor: "rgba(255,255,255,0.18)" },
+      radius: 24,
+      primary: { backgroundColor: p.accent, color: "#FFFFFF", borderColor: "transparent", gradient: [p.accent, "#8C3BFF"], shadow: { shadowColor: p.accent, shadowOpacity: 0.55, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 7 } },
+      secondary: { backgroundColor: "transparent", color: "#FFFFFF", borderColor: "rgba(255,255,255,0.7)" },
+      rule: "rgba(255,255,255,0.2)",
+      btnRadius: 12,
+      shine: true,
+      float: true,
+    };
+  }
   if (style === "glass") {
     const light = p.onPrimary === "#FFFFFF";
     const tint = light ? "255,255,255" : "0,0,0";
@@ -522,7 +733,8 @@ function Heading({ ctx, children, small, style }: { ctx: Ctx; children: ReactNod
       className={`${ctx.t.headingFont} font-bold`}
       style={[
         {
-          color: ctx.t.text,
+          color: ctx.t.headingColor ?? ctx.t.text,
+          textTransform: ctx.t.headingUpper ? "uppercase" : undefined,
           fontSize: (small ? 20 : 30) * (small ? 1 : ctx.t.headingScale ?? 1),
           lineHeight: (small ? 26 : 36) * (small ? 1 : ctx.t.headingScale ?? 1),
           letterSpacing: ctx.t.headingTracking ?? -0.3,
@@ -1431,6 +1643,494 @@ function Poster({ ctx, slug }: { ctx: Ctx; slug?: string }) {
   );
 }
 
+// ── Templates extracted from reference landing pages ────────────────────────────────────────────────────────
+// Native twin of the web templates of the same names. Shapes the web draws with clip-paths are approximated with
+// rounded, rotated and skewed boxes. Without a hero image each shape is filled with the page colours.
+type LayoutProps = { ctx: Ctx; slug?: string };
+
+const splitName = (name?: string): [string, string] => {
+  const words = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  if (words.length < 2) return [words.join(" "), ""];
+  const k = Math.ceil(words.length / 2);
+  return [words.slice(0, k).join(" "), words.slice(k).join(" ")];
+};
+
+type TitleMode = "plain" | "accent-first" | "accent-second" | "outline-first" | "light-first";
+
+function Title({ ctx, mode = "plain", size }: { ctx: Ctx; mode?: TitleMode; size: number }) {
+  const name = ctx.config.identity?.name ?? "";
+  const [a, b] = splitName(name);
+  const base = ctx.t.headingColor ?? ctx.t.text;
+  const line = (txt: string, color: string, bold = true) => (
+    <Text
+      key={txt}
+      accessibilityRole="header"
+      className={`${ctx.t.headingFont} ${bold ? "font-bold" : ""}`}
+      style={{ color, fontSize: size, lineHeight: size * 1.04, letterSpacing: ctx.t.headingTracking ?? -size * 0.03, textTransform: ctx.t.headingUpper ? "uppercase" : undefined }}
+    >
+      {txt}
+    </Text>
+  );
+  if (mode === "plain" || !b) return line(name, base);
+  const first = mode === "accent-first" ? ctx.p.accent : mode === "outline-first" ? withAlpha(ctx.t.text, 0.42) : ctx.t.text;
+  const second = mode === "accent-second" ? ctx.p.accent : ctx.t.text;
+  return (
+    <View>
+      {line(a, first, mode !== "light-first")}
+      {line(b, second)}
+    </View>
+  );
+}
+
+/** First hero image in a box of the caller's shape — or, with no image, the page colours and the name's first letter. */
+function Pic({ ctx, style, index = 0 }: { ctx: Ctx; style: ViewStyle; index?: number }) {
+  const hero = ctx.config.brand?.hero ?? [];
+  const uri = hero.length ? publicFileUrl(hero[index % hero.length].path) : null;
+  const initial = (ctx.config.identity?.name ?? "").trim().slice(0, 1).toUpperCase() || "•";
+  return (
+    <View style={[{ overflow: "hidden" }, style]}>
+      {uri ? (
+        <Image source={{ uri }} style={{ width: "100%", height: "100%" }} contentFit="cover" accessibilityLabel="" />
+      ) : (
+        <>
+          <GradientFill from={ctx.p.accent} to={ctx.p.primary} />
+          <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+            <Text className={`${ctx.t.headingFont} font-bold`} style={{ color: ctx.p.onPrimary, fontSize: 72, opacity: 0.9 }}>
+              {initial}
+            </Text>
+          </View>
+        </>
+      )}
+    </View>
+  );
+}
+
+function TextCol({ ctx, mode, size, wide, children }: { ctx: Ctx; mode?: TitleMode; size: number; wide: boolean; children?: ReactNode }) {
+  const id = ctx.config.identity ?? {};
+  return (
+    <Reveal animation={ctx.animation} index={1} style={{ flex: wide ? 1 : undefined, width: wide ? undefined : "100%", gap: 18, alignItems: "flex-start" }}>
+      <Logo ctx={ctx} size={56} />
+      <Title ctx={ctx} mode={mode} size={size} />
+      {children}
+      {id.tagline ? (
+        <Text className={ctx.t.bodyFont} style={{ color: ctx.t.muted, fontSize: 18, lineHeight: 26, maxWidth: 440 }}>
+          {id.tagline}
+        </Text>
+      ) : null}
+      <Intro ctx={ctx} left />
+      <CtaGroup ctx={ctx} left />
+    </Reveal>
+  );
+}
+
+function SideRow({ ctx, text, media, wide, mediaFirst }: { ctx: Ctx; text: ReactNode; media: ReactNode; wide: boolean; mediaFirst?: boolean }) {
+  const m = (
+    <Reveal animation={ctx.animation} index={0} style={{ flex: wide ? 1 : undefined, width: wide ? undefined : "100%", alignItems: "center" }}>
+      {media}
+    </Reveal>
+  );
+  return (
+    <View style={{ paddingHorizontal: 20, paddingTop: 40 + ctx.safeTop, width: "100%", maxWidth: 1100, alignSelf: "center", flexDirection: wide ? "row" : "column", gap: wide ? 48 : 28, alignItems: wide ? "center" : "stretch" }}>
+      {wide || !mediaFirst ? (
+        <>
+          {text}
+          {m}
+        </>
+      ) : (
+        <>
+          {m}
+          {text}
+        </>
+      )}
+    </View>
+  );
+}
+
+/** What every new template ends with: the document, gallery, contact and the fixed footer. */
+function Rest({ ctx, slug }: LayoutProps) {
+  return (
+    <>
+      <View style={{ gap: 44, paddingTop: 48 }}>
+        {ctx.config.document?.path ? (
+          <Section ctx={ctx} i={2}>
+            <DocumentCard ctx={ctx} />
+          </Section>
+        ) : null}
+        {(ctx.config.gallery?.length ?? 0) > 0 ? (
+          <Section ctx={ctx} i={3} wide>
+            <Gallery ctx={ctx} variant="bento" />
+          </Section>
+        ) : null}
+        <Section ctx={ctx} i={4}>
+          <Contact ctx={ctx} />
+        </Section>
+      </View>
+      <Footer ctx={ctx} slug={slug} />
+    </>
+  );
+}
+
+const titleSize = (width: number, max = 56) => Math.min(max, Math.max(38, width * 0.11));
+
+function Console({ ctx, slug }: LayoutProps) {
+  const { width } = useWindowDimensions();
+  const wide = width >= 720;
+  return (
+    <>
+      <SideRow ctx={ctx} wide={wide} mediaFirst text={<TextCol ctx={ctx} wide={wide} mode="accent-second" size={titleSize(width, 60)} />} media={<Pic ctx={ctx} style={{ width: "100%", aspectRatio: 5 / 6, borderRadius: 6 }} />} />
+      <Rest ctx={ctx} slug={slug} />
+    </>
+  );
+}
+
+function Showreel({ ctx, slug }: LayoutProps) {
+  const { width } = useWindowDimensions();
+  const wide = width >= 720;
+  const id = ctx.config.identity ?? {};
+  const hero = ctx.config.brand?.hero ?? [];
+  const n = hero.length;
+  const [i, setI] = useState(0);
+  const nextUri = n ? publicFileUrl(hero[(i + 1) % n].path) : null;
+  const first = (ctx.config.ctas ?? []).find((c) => c.label.trim());
+  const ratio = wide ? 16 / 9 : 4 / 5;
+  const words = (
+    <View style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, justifyContent: "center", alignItems: "flex-start", gap: 14, paddingHorizontal: 24, paddingTop: ctx.safeTop, paddingBottom: 90, backgroundColor: "rgba(0,0,0,0.42)" }}>
+      <Logo ctx={ctx} size={48} />
+      <Text className={`${ctx.t.headingFont} font-bold`} style={{ color: ctx.t.headingColor ?? "#FFFFFF", fontSize: titleSize(width, 56), lineHeight: titleSize(width, 56) * 1.04, textTransform: ctx.t.headingUpper ? "uppercase" : undefined }}>
+        {id.name}
+      </Text>
+      {id.intro ? (
+        <Text className={ctx.t.bodyFont} numberOfLines={4} style={{ color: "rgba(255,255,255,0.85)", fontSize: 15, lineHeight: 22, maxWidth: 420 }}>
+          {id.intro}
+        </Text>
+      ) : null}
+      {first ? <CtaButton cta={first} primary ctx={ctx} /> : null}
+    </View>
+  );
+  return (
+    <>
+      {n ? (
+        <HeroSlides images={hero} aspectRatio={ratio} overlay={words} index={i} onIndexChange={setI} dots={false} />
+      ) : (
+        <View style={{ width: "100%", aspectRatio: ratio, overflow: "hidden" }}>
+          <GradientFill from={ctx.p.primary} to={ctx.p.accent} />
+          {words}
+        </View>
+      )}
+      <View style={{ marginTop: -72, marginHorizontal: 20, maxWidth: 380, backgroundColor: "#FFFFFF", padding: 20, shadowColor: "#000", shadowOpacity: 0.25, shadowRadius: 20, shadowOffset: { width: 0, height: 12 }, elevation: 10 }}>
+        <View style={{ flexDirection: "row", gap: 14, alignItems: "flex-start" }}>
+          <View style={{ width: 64, height: 80, marginTop: -44, overflow: "hidden", backgroundColor: ctx.p.accent }}>
+            {nextUri ? <Image source={{ uri: nextUri }} style={{ width: "100%", height: "100%" }} contentFit="cover" accessibilityLabel="" /> : null}
+          </View>
+          <Text className="font-body font-bold" style={{ flex: 1, color: "#14120F", fontSize: 17, lineHeight: 22 }}>
+            {id.tagline || id.name}
+          </Text>
+        </View>
+        {id.intro ? (
+          <Text className="font-body" numberOfLines={3} style={{ marginTop: 12, color: "#555", fontSize: 13, lineHeight: 19 }}>
+            {id.intro}
+          </Text>
+        ) : null}
+        {n > 1 ? (
+          <View style={{ marginTop: 14, flexDirection: "row", gap: 24 }}>
+            <Pressable onPress={() => setI((i + n - 1) % n)} accessibilityRole="button" accessibilityLabel="Previous image" hitSlop={8}>
+              <Text className="font-body font-bold" style={{ color: "#14120F", fontSize: 14 }}>
+                Previous
+              </Text>
+            </Pressable>
+            <Pressable onPress={() => setI((i + 1) % n)} accessibilityRole="button" accessibilityLabel="Next image" hitSlop={8}>
+              <Text className="font-body font-bold" style={{ color: "#14120F", fontSize: 14 }}>
+                Next
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
+      </View>
+      <Rest ctx={ctx} slug={slug} />
+    </>
+  );
+}
+
+function Frame({ ctx, slug }: LayoutProps) {
+  const { width } = useWindowDimensions();
+  const wide = width >= 720;
+  const id = ctx.config.identity ?? {};
+  const hero = ctx.config.brand?.hero ?? [];
+  const n = hero.length;
+  const [i, setI] = useState(0);
+  const ctas = (ctx.config.ctas ?? []).filter((c) => c.label.trim());
+  const arrow = { width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: ctx.t.rule, alignItems: "center", justifyContent: "center" } as const;
+  return (
+    <>
+      <View style={{ paddingHorizontal: 16, paddingTop: 24 + ctx.safeTop }}>
+        <View style={{ width: "100%", maxWidth: 1100, alignSelf: "center", borderRadius: 32, borderWidth: 1, borderColor: ctx.t.rule, backgroundColor: withAlpha(ctx.t.text, 0.03), overflow: "hidden", padding: 24, gap: 20, flexDirection: wide ? "row" : "column", alignItems: wide ? "flex-end" : "stretch" }}>
+          <Reveal animation={ctx.animation} index={1} style={{ flex: wide ? 1.2 : undefined, gap: 14, alignItems: "flex-start" }}>
+            {id.tagline ? (
+              <Text className={ctx.t.bodyFont} style={{ color: ctx.t.muted, fontSize: 13, letterSpacing: 2.2, textTransform: "uppercase" }}>
+                {id.tagline}
+              </Text>
+            ) : null}
+            <Title ctx={ctx} size={titleSize(width, 52)} />
+            <Intro ctx={ctx} left />
+            {ctas[0] ? <CtaButton cta={ctas[0]} primary ctx={ctx} /> : null}
+          </Reveal>
+          <Reveal animation={ctx.animation} index={0} style={{ flex: wide ? 1 : undefined, width: wide ? undefined : "100%" }}>
+            {n ? <HeroSlides images={hero} aspectRatio={3 / 4} index={i} onIndexChange={setI} dots={false} style={{ borderRadius: 24 }} /> : <Pic ctx={ctx} style={{ width: "100%", aspectRatio: 3 / 4, borderRadius: 24 }} />}
+          </Reveal>
+          <Reveal animation={ctx.animation} index={2} style={{ flex: wide ? 0.7 : undefined, gap: 14, alignItems: "flex-start" }}>
+            {ctas.slice(1, 3).map((c) => (
+              <CtaButton key={c.id} cta={c} primary={false} ctx={ctx} />
+            ))}
+            {n > 1 ? (
+              <View style={{ flexDirection: "row", gap: 12 }}>
+                <Pressable onPress={() => setI((i + n - 1) % n)} accessibilityRole="button" accessibilityLabel="Previous image" style={arrow}>
+                  <ArrowLeft size={18} color={ctx.t.text} />
+                </Pressable>
+                <Pressable onPress={() => setI((i + 1) % n)} accessibilityRole="button" accessibilityLabel="Next image" style={arrow}>
+                  <ArrowRight size={18} color={ctx.t.text} />
+                </Pressable>
+              </View>
+            ) : null}
+          </Reveal>
+        </View>
+      </View>
+      <Rest ctx={ctx} slug={slug} />
+    </>
+  );
+}
+
+function Duo({ ctx, slug }: LayoutProps) {
+  const { width } = useWindowDimensions();
+  const wide = width >= 720;
+  const device = Math.min(250, width * 0.55);
+  return (
+    <>
+      <View style={{ flexDirection: wide ? "row" : "column" }}>
+        <View style={{ flex: wide ? 1.1 : undefined, paddingHorizontal: 24, paddingTop: 40 + ctx.safeTop, paddingBottom: 40, justifyContent: "center" }}>
+          <TextCol ctx={ctx} wide={false} size={titleSize(width, 52)} />
+        </View>
+        <View style={{ flex: wide ? 1 : undefined, backgroundColor: "#0A0A0B", alignItems: "center", justifyContent: "center", paddingVertical: 48 }}>
+          <View style={{ width: device, aspectRatio: 9 / 17, transform: [{ rotate: "8deg" }], borderRadius: 34, borderWidth: 6, borderColor: "#1C1C1E", overflow: "hidden" }}>
+            <Pic ctx={ctx} style={{ flex: 1 }} />
+          </View>
+        </View>
+      </View>
+      <Rest ctx={ctx} slug={slug} />
+    </>
+  );
+}
+
+function Portrait({ ctx, slug }: LayoutProps) {
+  const { width } = useWindowDimensions();
+  const wide = width >= 720;
+  return (
+    <>
+      <SideRow
+        ctx={ctx}
+        wide={wide}
+        text={
+          <TextCol ctx={ctx} wide={wide} mode="outline-first" size={titleSize(width, 56)}>
+            <View style={{ width: 120, height: 3, backgroundColor: ctx.p.accent }} />
+          </TextCol>
+        }
+        media={
+          <View style={{ width: "100%", borderRadius: 28, padding: 28, backgroundColor: withAlpha(ctx.t.text, 0.06) }}>
+            <View style={{ width: "100%", maxWidth: 320, alignSelf: "center" }}>
+              <View style={{ position: "absolute", right: -10, top: "52%", width: 36, height: 56, backgroundColor: ctx.p.accent }} />
+              <Pic ctx={ctx} style={{ width: "100%", aspectRatio: 1, borderRadius: 999 }} />
+            </View>
+          </View>
+        }
+      />
+      <Rest ctx={ctx} slug={slug} />
+    </>
+  );
+}
+
+function Arch({ ctx, slug }: LayoutProps) {
+  const { width } = useWindowDimensions();
+  const wide = width >= 720;
+  const initial = (ctx.config.identity?.name ?? "").trim().slice(0, 1).toLowerCase();
+  return (
+    <>
+      <SideRow
+        ctx={ctx}
+        wide={wide}
+        text={
+          <TextCol ctx={ctx} wide={wide} size={titleSize(width, 58)}>
+            {initial ? (
+              <View style={{ width: 48, height: 48, borderRadius: 24, borderWidth: 1.5, borderColor: ctx.t.text, alignItems: "center", justifyContent: "center" }}>
+                <Text className={`${ctx.t.headingFont} font-bold`} style={{ color: ctx.t.text, fontSize: 20 }}>
+                  {initial}.
+                </Text>
+              </View>
+            ) : null}
+          </TextCol>
+        }
+        media={
+          <View style={{ width: "100%", borderRadius: 28, padding: 30, backgroundColor: withAlpha(ctx.p.accent, 0.1), overflow: "hidden" }}>
+            <View style={{ position: "absolute", left: 18, top: 18, width: 28, height: 28, borderRadius: 14, backgroundColor: "#BFE3D6" }} />
+            <View style={{ position: "absolute", right: 22, top: 30, width: 34, height: 34, backgroundColor: "#F2B9B2", transform: [{ rotate: "12deg" }] }} />
+            <View style={{ position: "absolute", left: 14, bottom: 34, width: 48, height: 20, borderRadius: 10, backgroundColor: ctx.p.accent }} />
+            <View style={{ position: "absolute", right: 24, bottom: 44, width: 22, height: 22, backgroundColor: "#A3AB98", transform: [{ rotate: "45deg" }] }} />
+            <View style={{ position: "absolute", right: 14, top: "46%", width: 32, height: 32, borderRadius: 16, borderWidth: 5, borderColor: ctx.p.accent }} />
+            <Pic ctx={ctx} style={{ width: "100%", maxWidth: 280, aspectRatio: 3 / 4, alignSelf: "center", borderTopLeftRadius: 999, borderTopRightRadius: 999, borderBottomLeftRadius: 22, borderBottomRightRadius: 22 }} />
+          </View>
+        }
+      />
+      <Rest ctx={ctx} slug={slug} />
+    </>
+  );
+}
+
+function Banner({ ctx, slug }: LayoutProps) {
+  const { width } = useWindowDimensions();
+  const wide = width >= 720;
+  return (
+    <>
+      <SideRow
+        ctx={ctx}
+        wide={wide}
+        text={<TextCol ctx={ctx} wide={wide} mode="light-first" size={titleSize(width, 58)} />}
+        media={
+          <View style={{ width: "100%", maxWidth: 400, aspectRatio: 1, borderRadius: 999, padding: 24, backgroundColor: "rgba(255,255,255,0.85)", shadowColor: "#000", shadowOpacity: 0.18, shadowRadius: 24, shadowOffset: { width: 0, height: 16 }, elevation: 6 }}>
+            <Pic ctx={ctx} style={{ flex: 1, borderRadius: 999 }} />
+            <FloatView style={{ position: "absolute", left: -4, top: "18%" }}>
+              <View style={{ width: 46, height: 46, borderRadius: 14, backgroundColor: ctx.p.accent, alignItems: "center", justifyContent: "center" }}>
+                <Text style={{ color: ctx.p.onAccent, fontSize: 20 }}>✦</Text>
+              </View>
+            </FloatView>
+            <FloatView style={{ position: "absolute", right: 0, bottom: "14%" }}>
+              <View style={{ width: 78, height: 34, borderRadius: 12, backgroundColor: "#FFFFFF", justifyContent: "center", paddingHorizontal: 10, shadowColor: "#000", shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4 }}>
+                <View style={{ height: 9, borderRadius: 5, backgroundColor: ctx.p.primary }} />
+              </View>
+            </FloatView>
+          </View>
+        }
+      />
+      <Rest ctx={ctx} slug={slug} />
+    </>
+  );
+}
+
+function Diagonal({ ctx, slug }: LayoutProps) {
+  const { width } = useWindowDimensions();
+  const wide = width >= 720;
+  const mediaW = wide ? (Math.min(width, 1100) - 40 - 48) / 2 : width - 40;
+  const h = mediaW * 0.8;
+  return (
+    <>
+      <SideRow
+        ctx={ctx}
+        wide={wide}
+        text={<TextCol ctx={ctx} wide={wide} mode="accent-first" size={titleSize(width, 56)} />}
+        media={
+          <View style={{ width: mediaW, height: h, overflow: "hidden" }}>
+            <View style={{ position: "absolute", left: mediaW * 0.05, width: mediaW * 0.1, top: -10, bottom: -10, backgroundColor: withAlpha(ctx.p.primary, 0.55), transform: [{ skewX: "-12deg" }] }} />
+            <View style={{ position: "absolute", left: mediaW * 0.13, width: mediaW * 0.04, top: -10, bottom: -10, backgroundColor: ctx.p.accent, transform: [{ skewX: "-12deg" }] }} />
+            <View style={{ position: "absolute", left: mediaW * 0.22, right: -mediaW * 0.12, top: -10, bottom: -10, overflow: "hidden", transform: [{ skewX: "-12deg" }] }}>
+              <Pic ctx={ctx} style={{ position: "absolute", left: -mediaW * 0.14, right: -mediaW * 0.14, top: 10, bottom: 10, transform: [{ skewX: "12deg" }] }} />
+            </View>
+          </View>
+        }
+      />
+      <Rest ctx={ctx} slug={slug} />
+    </>
+  );
+}
+
+function Wave({ ctx, slug }: LayoutProps) {
+  const { width } = useWindowDimensions();
+  const wide = width >= 720;
+  const s = Math.min(380, wide ? (Math.min(width, 1100) - 88) / 2 : width - 56);
+  return (
+    <>
+      <SideRow
+        ctx={ctx}
+        wide={wide}
+        text={
+          <TextCol ctx={ctx} wide={wide} mode="accent-second" size={titleSize(width, 56)}>
+            <View style={{ width: 84, height: 4, borderRadius: 2, backgroundColor: ctx.p.accent }} />
+          </TextCol>
+        }
+        media={
+          <View style={{ width: s, height: s * 1.2 }}>
+            <View style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, backgroundColor: withAlpha(ctx.p.accent, 0.4), borderTopLeftRadius: s * 0.6, borderTopRightRadius: s * 0.4, borderBottomRightRadius: s * 0.5, borderBottomLeftRadius: s * 0.5, transform: [{ rotate: "-6deg" }] }} />
+            <View style={{ position: "absolute", left: s * 0.04, right: s * 0.04, top: s * 0.05, bottom: s * 0.05, backgroundColor: withAlpha(ctx.p.primary, 0.55), borderTopLeftRadius: s * 0.4, borderTopRightRadius: s * 0.55, borderBottomRightRadius: s * 0.45, borderBottomLeftRadius: s * 0.55, transform: [{ rotate: "3deg" }] }} />
+            <Pic ctx={ctx} style={{ position: "absolute", left: s * 0.1, right: s * 0.1, top: s * 0.12, bottom: s * 0.12, borderTopLeftRadius: s * 0.46, borderTopRightRadius: s * 0.5, borderBottomRightRadius: s * 0.42, borderBottomLeftRadius: s * 0.5 }} />
+          </View>
+        }
+      />
+      <Rest ctx={ctx} slug={slug} />
+    </>
+  );
+}
+
+function Diamond({ ctx, slug }: LayoutProps) {
+  const { width } = useWindowDimensions();
+  const wide = width >= 720;
+  const s = Math.min(380, wide ? (Math.min(width, 1100) - 88) / 2 : width - 56);
+  const d = s * 0.52;
+  return (
+    <>
+      <SideRow
+        ctx={ctx}
+        wide={wide}
+        text={<TextCol ctx={ctx} wide={wide} size={titleSize(width, 56)} />}
+        media={
+          <View style={{ width: s, height: s, alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+            <View style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: s * 0.26, backgroundColor: ctx.p.primary }} />
+            <View style={{ width: d, height: d, transform: [{ rotate: "45deg" }] }}>
+              <View style={{ position: "absolute", left: -10, top: -10, right: 10, bottom: 10, borderWidth: 6, borderColor: ctx.p.primary }} />
+              <View style={{ flex: 1, overflow: "hidden" }}>
+                <Pic ctx={ctx} style={{ position: "absolute", left: -d * 0.3, right: -d * 0.3, top: -d * 0.3, bottom: -d * 0.3, transform: [{ rotate: "-45deg" }] }} />
+              </View>
+            </View>
+          </View>
+        }
+      />
+      <Rest ctx={ctx} slug={slug} />
+    </>
+  );
+}
+
+function Orb({ size, c1, c2, style }: { size: number; c1: string; c2: string; style: ViewStyle }) {
+  return (
+    <FloatView style={{ position: "absolute", ...style }}>
+      <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: c2, overflow: "hidden", shadowColor: c2, shadowOpacity: 0.5, shadowRadius: 12, shadowOffset: { width: 0, height: 10 }, elevation: 5 }}>
+        <View style={{ position: "absolute", left: -size * 0.1, top: -size * 0.1, width: size * 0.9, height: size * 0.9, borderRadius: size, backgroundColor: c1, opacity: 0.55 }} />
+        <View style={{ position: "absolute", left: size * 0.2, top: size * 0.14, width: size * 0.3, height: size * 0.3, borderRadius: size, backgroundColor: "rgba(255,255,255,0.8)" }} />
+      </View>
+    </FloatView>
+  );
+}
+
+function Float({ ctx, slug }: LayoutProps) {
+  const { width } = useWindowDimensions();
+  const wide = width >= 720;
+  const s = Math.min(420, wide ? (Math.min(width, 1100) - 88) / 2 : width - 40);
+  const hasHero = (ctx.config.brand?.hero?.length ?? 0) > 0;
+  return (
+    <>
+      <SideRow
+        ctx={ctx}
+        wide={wide}
+        text={<TextCol ctx={ctx} wide={wide} mode="accent-first" size={titleSize(width, 56)} />}
+        media={
+          <View style={{ width: s, height: s }}>
+            {hasHero ? <Pic ctx={ctx} style={{ position: "absolute", left: s * 0.1, right: s * 0.1, top: s * 0.1, bottom: s * 0.1, borderRadius: 36, transform: [{ rotate: "3deg" }] }} /> : null}
+            <Orb size={hasHero ? s * 0.2 : s * 0.34} c1={ctx.p.accent} c2={ctx.p.primary} style={hasHero ? { left: -2, top: s * 0.06 } : { left: s * 0.08, top: s * 0.14 }} />
+            <Orb size={hasHero ? s * 0.13 : s * 0.24} c1="#9BE8DA" c2="#2BB5A3" style={hasHero ? { right: s * 0.02, top: 0 } : { right: s * 0.08, top: s * 0.06 }} />
+            <Orb size={hasHero ? s * 0.24 : s * 0.3} c1="#FFC2DD" c2="#E0679E" style={hasHero ? { right: 0, bottom: s * 0.04 } : { right: s * 0.14, bottom: s * 0.08 }} />
+            <Orb size={hasHero ? s * 0.1 : s * 0.16} c1="#C9C6FF" c2="#6B67E8" style={hasHero ? { left: s * 0.1, bottom: 0 } : { left: s * 0.22, bottom: s * 0.04 }} />
+          </View>
+        }
+      />
+      <Rest ctx={ctx} slug={slug} />
+    </>
+  );
+}
+
 // ── Share button ────────────────────────────────────────────────────────────────────────────────────────────
 // Optional, creator-controlled (config.share). Mirrors the web ShareButton: the creator picks a position and a look; the
 // template decides the exact spot so the button never lands on the title or logo.
@@ -1461,6 +2161,17 @@ const SHARE_PLACEMENT: Record<TemplateId, { top: number; media?: boolean; center
   bento: { top: 10, center: "top" },
   // Poster opens with the scrolling banner (24 margin + ~56 tall), so the button sits just beneath it.
   poster: { top: 24 + 56 + 14, center: "top" },
+  console: { top: 10, center: "top" },
+  showreel: { top: 10, media: true, center: "top" },
+  frame: { top: 14, center: "top" },
+  duo: { top: 10, center: "top" },
+  portrait: { top: 10, center: "top" },
+  arch: { top: 10, center: "top" },
+  banner: { top: 10, center: "top" },
+  diagonal: { top: 10, center: "top" },
+  wave: { top: 10, center: "top" },
+  diamond: { top: 10, center: "top" },
+  float: { top: 10, center: "top" },
 };
 
 /** Which edge the button lives on for this page. Layout code uses it to mount the button in the right place. */
@@ -1739,6 +2450,17 @@ const LAYOUTS: Record<TemplateId, (props: { ctx: Ctx; slug?: string }) => ReactN
   portfolio: Portfolio,
   bento: Bento,
   poster: Poster,
+  console: Console,
+  showreel: Showreel,
+  frame: Frame,
+  duo: Duo,
+  portrait: Portrait,
+  arch: Arch,
+  banner: Banner,
+  diagonal: Diagonal,
+  wave: Wave,
+  diamond: Diamond,
+  float: Float,
 };
 
 export function CustomPageRenderer({ config, preview = false, actions = {}, slug, safeTop = 0, safeBottom = 0 }: Props) {

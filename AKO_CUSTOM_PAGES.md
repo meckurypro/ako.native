@@ -36,8 +36,8 @@ Files are never stored inside the JSON, only paths. Every path must start with `
 
 ## Design is three separate choices
 
-- **Styles:** minimalist, glass, elegant, midnight, aurora, bold, soft, neo, clay, chrome, mono, organic.
-- **Templates:** showcase, stacked, brochure, spotlight, linkcard, split, portfolio, bento, poster.
+- **Styles:** minimalist, glass, elegant, midnight, aurora, bold, soft, neo, clay, chrome, mono, organic, forge, noir (Noir Copper), nebula, duotone, sand, confetti, skyline, azure, aqua (Aqua Fluid), candy (Candy 3D), ultraviolet. The last eleven were extracted from reference landing pages; the editor picks Style and Template from dropdowns.
+- **Templates:** showcase, stacked, brochure, spotlight, linkcard, split, portfolio, bento, poster, console, showreel, frame, duo, portrait, arch, banner, diagonal, wave, diamond, float. Style and template ids are plain short slugs the backend already accepts, so adding one needs no migration.
 - **Animations:** none, fade, slide-up, zoom, stagger, blur, pop, slide-left, tilt, bounce.
 
 The database accepts any short slug (`^[a-z][a-z0-9-]{0,23}$`) for these, so adding one never needs a migration. To add a style or template, extend the registries in `src/lib/customPage.ts` and the renderer, then mirror the change in `Ako.native`.
