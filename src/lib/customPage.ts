@@ -26,7 +26,7 @@ export const LIMITS = {
   hero: 8,
   gallery: 24,
   caption: 160,
-  fileBytes: 30 * 1024 * 1024,
+  fileBytes: 100 * 1024 * 1024,
   imageBytes: 8 * 1024 * 1024,
 } as const;
 
