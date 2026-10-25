@@ -922,3 +922,168 @@ create policy "Owners update custom page files" on storage.objects
 drop policy if exists "Owners delete custom page files" on storage.objects;
 create policy "Owners delete custom page files" on storage.objects
   for delete using (bucket_id = 'custom-pages' and (storage.foldername(name))[1] = (select auth.uid())::text);
+
+-- ---- Design presets ------------------------------------------------------------------------------------------
+-- A creator's saved looks for the editor's Design tab: style, template, animation and the share button. They belong to
+-- the person, not to a page, so one preset can be applied to any of their pages (web and native read the same rows).
+-- Colours, content and uploaded images are deliberately not part of a preset. Writes go through the functions below.
+create table if not exists public.custom_page_presets (
+  id          uuid primary key default gen_random_uuid(),
+  owner_id    uuid not null references public.profiles(id) on delete cascade,
+  name        text not null,
+  design      jsonb not null,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now(),
+  constraint custom_page_presets_name_len check (char_length(btrim(name)) between 1 and 40),
+  constraint custom_page_presets_design_object check (jsonb_typeof(design) = 'object')
+);
+create unique index if not exists custom_page_presets_owner_name_key on public.custom_page_presets (owner_id, lower(btrim(name)));
+
+alter table public.custom_page_presets enable row level security;
+
+drop policy if exists "Owners read their presets" on public.custom_page_presets;
+create policy "Owners read their presets" on public.custom_page_presets
+  for select using (owner_id = (select auth.uid()));
+
+-- Pure validator for a preset's design object (same short-slug rule as custom_page_config_problem). NULL = valid.
+create or replace function public.custom_page_preset_problem(p_design jsonb)
+returns text
+language plpgsql
+immutable
+set search_path to 'public'
+as $function$
+declare
+  v_key text;
+begin
+  if p_design is null or jsonb_typeof(p_design) <> 'object' then
+    return 'Invalid preset.';
+  end if;
+
+  for v_key in select jsonb_object_keys(p_design) loop
+    if v_key not in ('style', 'template', 'animation', 'share') then
+      return 'Invalid preset.';
+    end if;
+  end loop;
+
+  foreach v_key in array array['style', 'template', 'animation'] loop
+    if p_design -> v_key is not null
+       and (jsonb_typeof(p_design -> v_key) <> 'string' or p_design ->> v_key !~ '^[a-z][a-z0-9-]{0,23}$') then
+      return 'Invalid design setting.';
+    end if;
+  end loop;
+
+  if p_design -> 'share' is not null then
+    if jsonb_typeof(p_design -> 'share') <> 'object' then
+      return 'Invalid share button setting.';
+    end if;
+    for v_key in select jsonb_object_keys(p_design -> 'share') loop
+      if v_key not in ('enabled', 'look', 'position') then
+        return 'Invalid share button setting.';
+      end if;
+    end loop;
+    if p_design #> '{share,enabled}' is not null and jsonb_typeof(p_design #> '{share,enabled}') <> 'boolean' then
+      return 'Invalid share button setting.';
+    end if;
+    if p_design #> '{share,look}' is not null
+       and (jsonb_typeof(p_design #> '{share,look}') <> 'string' or p_design #>> '{share,look}' not in ('auto', 'minimal', 'round', 'pill')) then
+      return 'Invalid share button setting.';
+    end if;
+    if p_design #> '{share,position}' is not null
+       and (jsonb_typeof(p_design #> '{share,position}') <> 'string'
+            or p_design #>> '{share,position}' not in ('top-left', 'top-right', 'bottom-left', 'bottom-right', 'center')) then
+      return 'Invalid share button setting.';
+    end if;
+  end if;
+
+  return null;
+end;
+$function$;
+
+create or replace function public.list_my_custom_page_presets()
+returns table(id uuid, name text, design jsonb, updated_at timestamptz)
+language sql
+stable
+security definer
+set search_path to 'public'
+as $function$
+  select p.id, p.name, p.design, p.updated_at
+  from public.custom_page_presets p
+  where p.owner_id = auth.uid()
+  order by lower(p.name);
+$function$;
+
+-- Saves a preset. With p_preset_id it overwrites (and may rename) that preset; without it, it creates one.
+create or replace function public.save_custom_page_preset(p_name text, p_design jsonb, p_preset_id uuid default null)
+returns public.custom_page_presets
+language plpgsql
+security definer
+set search_path to 'public'
+as $function$
+declare
+  v_uid uuid := auth.uid();
+  v_name text := btrim(coalesce(p_name, ''));
+  v_problem text;
+  v_row public.custom_page_presets;
+begin
+  if v_uid is null then
+    raise exception 'Not signed in';
+  end if;
+  if not public.fn_can_access_feature('custom_pages', v_uid) then
+    raise exception 'Custom pages are not available on your account yet.';
+  end if;
+  if char_length(v_name) not between 1 and 40 then
+    raise exception 'Give your preset a name (up to 40 characters).';
+  end if;
+  v_problem := public.custom_page_preset_problem(p_design);
+  if v_problem is not null then
+    raise exception '%', v_problem;
+  end if;
+
+  if p_preset_id is null then
+    if (select count(*) from public.custom_page_presets where owner_id = v_uid) >= 20 then
+      raise exception 'You can keep up to 20 presets. Delete one to save another.';
+    end if;
+    insert into public.custom_page_presets (owner_id, name, design)
+    values (v_uid, v_name, p_design)
+    returning * into v_row;
+  else
+    update public.custom_page_presets
+    set name = v_name, design = p_design, updated_at = now()
+    where id = p_preset_id and owner_id = v_uid
+    returning * into v_row;
+    if v_row.id is null then
+      raise exception 'Preset not found';
+    end if;
+  end if;
+
+  return v_row;
+exception
+  when unique_violation then
+    raise exception 'You already have a preset called "%".', v_name;
+end;
+$function$;
+
+create or replace function public.delete_custom_page_preset(p_preset_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path to 'public'
+as $function$
+begin
+  if auth.uid() is null then
+    raise exception 'Not signed in';
+  end if;
+  delete from public.custom_page_presets where id = p_preset_id and owner_id = auth.uid();
+  if not found then
+    raise exception 'Preset not found';
+  end if;
+end;
+$function$;
+
+revoke all on function public.custom_page_preset_problem(jsonb) from public, anon, authenticated;
+revoke all on function public.list_my_custom_page_presets() from public, anon;
+revoke all on function public.save_custom_page_preset(text, jsonb, uuid) from public, anon;
+revoke all on function public.delete_custom_page_preset(uuid) from public, anon;
+grant execute on function public.list_my_custom_page_presets() to authenticated;
+grant execute on function public.save_custom_page_preset(text, jsonb, uuid) to authenticated;
+grant execute on function public.delete_custom_page_preset(uuid) to authenticated;

@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BrandColorFields } from "@/components/customPage/ColorPicker";
 import { CustomPageRenderer } from "@/components/customPage/CustomPageRenderer";
 import { Choice, Field, FilePicker, ImageList, Input, Section, SingleImage } from "@/components/customPage/EditorParts";
+import { DesignPresets } from "@/components/customPage/DesignPresets";
 import { Button } from "@/components/ui/Button";
 import { KeyboardAvoider } from "@/components/ui/KeyboardAvoider";
 import { Portal } from "@/components/ui/Portal";
@@ -421,6 +422,7 @@ export function CustomPageEditor() {
 
         {stage === "design" ? (
           <Section title="Design" intro="Pick a style, a layout and how sections appear.">
+            <DesignPresets config={config} onChange={update} />
             <Field label="Style">
               <View className="gap-2.5">
                 {STYLES.map((s) => (

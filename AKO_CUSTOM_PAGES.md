@@ -40,10 +40,20 @@ Files are never stored inside the JSON, only paths. Every path must start with `
 
 The database accepts any short slug (`^[a-z][a-z0-9-]{0,23}$`) for these, so adding one never needs a migration. To add a style or template, extend the registries in `src/lib/customPage.ts` and the renderer, then mirror the change in `Ako.native`.
 
+## Design presets
+
+On the Design tab a creator can save their current look as a named preset and bring it back from a dropdown after experimenting. A preset holds only the tab's choices: `style`, `template`, `animation` and the `share` button settings. Colours, content and uploaded images (including the link preview image) are never part of one.
+
+- Presets belong to the person, not to a page, so every page of theirs can use them, on web and native.
+- Up to 20 presets, names up to 40 characters. Saving with an existing name replaces that preset (that is how one is updated).
+- Applying a preset replaces the page's design choices straight away and the draft autosaves as usual.
+- The row stores the design as JSON. Reading goes through `resolvePresetDesign()` so a preset that names a style or template that no longer exists falls back to the default instead of breaking.
+- Table `custom_page_presets` (RLS on, owners read their own rows). Writes: `save_custom_page_preset`, `delete_custom_page_preset`. Read: `list_my_custom_page_presets`. The validator `custom_page_preset_problem()` is internal.
+
 ## Backend
 
 All writes go through SECURITY DEFINER functions that validate with `custom_page_config_problem()`:
-`create_custom_page`, `save_custom_page_draft`, `publish_custom_page`, `unpublish_custom_page`, `set_custom_page_slug`, `set_custom_page_visibility`, `check_custom_page_slug_available`, `delete_custom_page`, `list_my_custom_pages`, `get_custom_page_stats`.
+`create_custom_page`, `save_custom_page_draft`, `publish_custom_page`, `unpublish_custom_page`, `set_custom_page_slug`, `set_custom_page_visibility`, `check_custom_page_slug_available`, `delete_custom_page`, `list_my_custom_pages`, `get_custom_page_stats`, `list_my_custom_page_presets`, `save_custom_page_preset`, `delete_custom_page_preset`.
 
 Callable by signed-out visitors: `get_public_custom_page`, `submit_custom_page_inquiry` (honeypot and rate limits), `record_custom_page_event` (`view`, `cta_click`, `download`, `create_click`).
 

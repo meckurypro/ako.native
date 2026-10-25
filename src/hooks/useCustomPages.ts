@@ -10,6 +10,8 @@ import {
   type CustomPageInquiry,
   type CustomPageRow,
   type CustomPageStats,
+  type DesignPreset,
+  type PresetDesign,
   type CustomPageSummary,
   type PublicCustomPage,
 } from "../lib/customPage";
@@ -23,6 +25,7 @@ const keys = {
   public: (slug?: string) => ["custom-pages", "public", slug] as const,
   stats: (id?: string, days?: number) => ["custom-pages", "stats", id, days] as const,
   inquiries: (id?: string) => ["custom-pages", "inquiries", id] as const,
+  presets: (uid?: string) => ["custom-pages", "presets", uid] as const,
 };
 
 export function useMyCustomPages() {
@@ -253,4 +256,50 @@ export function recordCustomPageEvent(pageId: string, type: "view" | "cta_click"
 // ── Uploads ─────────────────────────────────────────────────────────────────────────────────────────────────
 export async function uploadCustomPageFile(path: string, file: LocalFile): Promise<void> {
   await uploadLocalFile(CUSTOM_PAGES_BUCKET, path, file);
+}
+
+// ── Design presets ──────────────────────────────────────────────────────────────────────────────────────────
+/** The person's saved Design-tab looks. Shared by all their pages. */
+export function useMyDesignPresets() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: keys.presets(user?.id),
+    enabled: !!user,
+    staleTime: 60_000,
+    queryFn: async (): Promise<DesignPreset[]> => {
+      const { data, error } = await supabase.rpc("list_my_custom_page_presets");
+      if (error) throw error;
+      return (data ?? []) as DesignPreset[];
+    },
+  });
+}
+
+/** Creates a preset, or — with `id` — overwrites (and may rename) that one. */
+export function useSaveDesignPreset() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async (v: { name: string; design: PresetDesign; id?: string }): Promise<DesignPreset> => {
+      const { data, error } = await supabase.rpc("save_custom_page_preset", {
+        p_name: v.name,
+        p_design: v.design,
+        p_preset_id: v.id ?? null,
+      });
+      if (error) throw error;
+      return data as DesignPreset;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.presets(user?.id) }),
+  });
+}
+
+export function useDeleteDesignPreset() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async (id: string): Promise<void> => {
+      const { error } = await supabase.rpc("delete_custom_page_preset", { p_preset_id: id });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.presets(user?.id) }),
+  });
 }

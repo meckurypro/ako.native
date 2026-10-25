@@ -212,6 +212,67 @@ export function resolveDesign(config: CustomPageConfig): { style: StyleId; templ
   return { style, template, animation };
 }
 
+// ── Design presets ──────────────────────────────────────────────────────────────────────────────────────────
+// A preset is everything on the editor's Design tab that is a *choice* — style, template, animation and the share
+// button. Colours, content and uploaded images are not part of it. Presets belong to the person (not a page), so one
+// can be applied to any of their pages, on web or native. Stored by supabase/ako_custom_pages.sql (custom_page_presets).
+export const PRESET_LIMIT = 20;
+export const PRESET_NAME_MAX = 40;
+
+export interface PresetDesign {
+  style: StyleId;
+  template: TemplateId;
+  animation: AnimationId;
+  share: { enabled: boolean; look: ShareLook; position: SharePosition };
+}
+
+export interface DesignPreset {
+  id: string;
+  name: string;
+  /** As stored. Always read it through resolvePresetDesign(): a preset saved before a style was renamed still opens. */
+  design: Partial<PresetDesign> | null;
+  updated_at: string;
+}
+
+/** The design choices a config currently has, with the same fallbacks the renderer uses. */
+export function designOfConfig(config: CustomPageConfig): PresetDesign {
+  return { ...resolveDesign(config), share: resolveShare(config) };
+}
+
+/** A stored preset as a complete design (anything missing or no longer offered falls back to the defaults). */
+export function resolvePresetDesign(raw: DesignPreset["design"]): PresetDesign {
+  const d = raw ?? {};
+  return designOfConfig({ design: { style: d.style, template: d.template, animation: d.animation }, share: d.share });
+}
+
+/** Puts a preset's choices onto a config. Everything else (colours, content, images, link-preview image) is untouched. */
+export function applyPresetToConfig(config: CustomPageConfig, raw: DesignPreset["design"]): CustomPageConfig {
+  const p = resolvePresetDesign(raw);
+  return {
+    ...config,
+    design: { ...config.design, style: p.style, template: p.template, animation: p.animation },
+    share: { ...config.share, ...p.share },
+  };
+}
+
+/** Whether a config's design is exactly this preset's. A switched-off share button ignores its look and position. */
+export function presetMatchesConfig(config: CustomPageConfig, raw: DesignPreset["design"]): boolean {
+  const a = designOfConfig(config);
+  const b = resolvePresetDesign(raw);
+  if (a.style !== b.style || a.template !== b.template || a.animation !== b.animation) return false;
+  if (a.share.enabled !== b.share.enabled) return false;
+  return !a.share.enabled || (a.share.look === b.share.look && a.share.position === b.share.position);
+}
+
+/** "Midnight · Poster · Fade in · Share button" — the one-line reminder of what a preset holds. */
+export function describePreset(raw: DesignPreset["design"]): string {
+  const p = resolvePresetDesign(raw);
+  const label = <T extends { id: string; label: string }>(list: T[], id: string) => list.find((x) => x.id === id)?.label ?? id;
+  return [label(STYLES, p.style), label(TEMPLATES, p.template), label(ANIMATIONS, p.animation), p.share.enabled ? "Share button" : null]
+    .filter(Boolean)
+    .join(" · ");
+}
+
 // ── Colours ─────────────────────────────────────────────────────────────────────────────────────────────────
 const HEX = /^#[0-9a-fA-F]{6}$/;
 export const isHex = (v: string | undefined): v is string => !!v && HEX.test(v);
