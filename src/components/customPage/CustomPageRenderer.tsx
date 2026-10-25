@@ -561,7 +561,7 @@ function ButtonFace({ btn, radius, ctx, icon, label, block, pressed, shine }: { 
 function CtaButton({ cta, primary, ctx, block }: { cta: CustomPageCta; primary: boolean; ctx: Ctx; block?: boolean }) {
   const btn = primary ? ctx.t.primary : ctx.t.secondary;
   const c = btn.color;
-  const { busy, start: startDownload } = useFileDownload();
+  const { busy, label: downloadLabel, start: startDownload } = useFileDownload();
   const isDownload = cta.action === "download";
   const baseIcon =
     cta.action === "download" ? <Download size={17} color={c} /> : cta.action === "email" ? <Mail size={17} color={c} /> : cta.action === "call" ? <Phone size={17} color={c} /> : cta.action === "message" || cta.action === "inquiry" ? <MessageCircle size={17} color={c} /> : cta.action === "url" ? <ExternalLink size={16} color={c} /> : undefined;
@@ -574,7 +574,8 @@ function CtaButton({ cta, primary, ctx, block }: { cta: CustomPageCta; primary: 
         if (!isDownload) return runCta(cta, ctx);
         if (ctx.preview || busy) return;
         ctx.actions.onCta?.(cta);
-        void startDownload(ctaHref(cta, ctx.config));
+        const ext = cta.file_path?.includes(".") ? cta.file_path.split(".").pop() : null;
+        void startDownload(ctaHref(cta, ctx.config), cta.file_name || (ext ? `download.${ext}` : "download"));
       }}
       onPressIn={() => {
         if (!ctx.preview && (ctx.t.hard || ctx.t.shine || ctx.t.pressScale)) haptics.light();
@@ -587,7 +588,7 @@ function CtaButton({ cta, primary, ctx, block }: { cta: CustomPageCta; primary: 
         width: block ? "100%" : undefined,
       })}
     >
-      {({ pressed }) => <ButtonFace btn={btn} radius={buttonRadius(ctx.t)} ctx={ctx} icon={icon} label={isDownload && busy ? "Preparing…" : cta.label} block={block} pressed={pressed} shine={primary && ctx.t.shine} />}
+      {({ pressed }) => <ButtonFace btn={btn} radius={buttonRadius(ctx.t)} ctx={ctx} icon={icon} label={isDownload && busy ? downloadLabel(cta.label) : cta.label} block={block} pressed={pressed} shine={primary && ctx.t.shine} />}
     </Pressable>
   );
 }
@@ -647,7 +648,7 @@ function Intro({ ctx, left }: { ctx: Ctx; left?: boolean }) {
 }
 
 function DocumentCard({ ctx }: { ctx: Ctx }) {
-  const { busy, start: startDownload } = useFileDownload();
+  const { busy, label: downloadLabel, start: startDownload } = useFileDownload();
   const doc = ctx.config.document;
   if (!doc?.path) return null;
   const view = publicFileUrl(doc.path);
@@ -684,7 +685,7 @@ function DocumentCard({ ctx }: { ctx: Ctx }) {
           onPress={() => {
             if (ctx.preview || !dl || busy) return;
             ctx.actions.onDocumentDownload?.();
-            void startDownload(dl);
+            void startDownload(dl, doc.file_name || `${doc.title || "document"}.pdf`);
           }}
         >
           <ButtonFace
@@ -692,7 +693,7 @@ function DocumentCard({ ctx }: { ctx: Ctx }) {
             radius={radius}
             ctx={ctx}
             icon={busy ? <ActivityIndicator size="small" color={ctx.t.secondary.color} /> : <Download size={17} color={ctx.t.secondary.color} />}
-            label={busy ? "Preparing…" : "Download"}
+            label={downloadLabel("Download")}
           />
         </Pressable>
       </View>
