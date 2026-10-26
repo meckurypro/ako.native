@@ -106,7 +106,12 @@ export default function FundWalletScreen() {
 
       let session;
       try {
-        session = await WebBrowser.openAuthSessionAsync(result.authorization_url, RETURN_DEEP_LINK);
+        // createTask: false (Android) keeps the Custom Tab in the app's own task. By default it opens in a
+        // separate task, so the ako:// return brings the app up inside the browser and the tab never closes —
+        // the stranding described above. Same fix as Google sign-in (lib/googleAuth.ts); iOS ignores it.
+        session = await WebBrowser.openAuthSessionAsync(result.authorization_url, RETURN_DEEP_LINK, {
+          createTask: false,
+        });
       } finally {
         clearInterval(poll);
         setOpening(false);

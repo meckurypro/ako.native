@@ -60,7 +60,10 @@ export function useVerifyDeposit() {
       if (data?.error) throw new Error(data.error);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // FundWallet polls this every few seconds while checkout is open — a still-pending answer changes
+      // nothing, so only refresh wallet data once the outcome is final.
+      if (data?.status === "pending") return;
       queryClient.invalidateQueries({ queryKey: ["wallet"] });
       queryClient.invalidateQueries({ queryKey: ["wallet-transactions"] });
       queryClient.invalidateQueries({ queryKey: ["deposits"] });

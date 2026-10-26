@@ -54,7 +54,8 @@ export default function DepositCallbackScreen() {
   let body;
   if (!reference) {
     body = <Text className="text-center text-ink-muted">Missing payment reference.</Text>;
-  } else if (verifyDeposit.isPending) {
+  } else if (verifyDeposit.isPending || verifyDeposit.isIdle) {
+    // isIdle covers the first render, before the effect above has started the verification.
     body = (
       <>
         <Icon as={Loader2} size={40} className="mb-4 text-accent" />
