@@ -405,3 +405,11 @@ idempotent *intent*; screens render `server state + pending overlay` (`useReacti
 `lib/optimisticCache.ts`. Tests: `node scripts/test-optimistic.mjs`. **Never add a mutation to
 `OFFLINE_MUTATION_ROOTS` unless replaying it twice is harmless.** Unverified on a device (queue → kill → relaunch offline →
 reconnect is the first thing to try).
+
+## Line height: don't pair `text-xs|sm|…` with `leading-4|5|6`
+`text-sm` is compiled as `line-height: var(--tw-leading, <default multiplier>)`, and react-native-css treats a unitless
+line-height as a multiplier of the font size. A `leading-5` beside it hands that variable a bare pixel number, so the result
+is `17.5 × font-size` — paragraphs in the custom-page editor rendered with ~200px between lines. `text-xs` already equals
+`leading-4` and `text-sm` already equals `leading-5` (Tailwind's defaults), so just use the text size alone, or
+`leading-snug|tight|relaxed` (multipliers) when a different spacing is wanted. Fixed in the custom-page screens; the older
+`text-sm leading-[20px]` pairs in messages/posts were left as they were (they render correctly today).

@@ -324,7 +324,7 @@ export function BrandColorFields({ colors: brand, onChange }: { colors: Record<S
             </Pressable>
           ) : null}
         </View>
-        <Text accessibilityLiveRegion="polite" className={`mt-2 text-xs leading-4 ${note?.error ? "text-danger" : "text-ink-muted"}`}>
+        <Text accessibilityLiveRegion="polite" className={`mt-2 text-xs ${note?.error ? "text-danger" : "text-ink-muted"}`}>
           {note?.text ?? "Upload a logo or photo and we'll fill Primary, Secondary and Accent from it. The image stays on your device."}
         </Text>
       </View>

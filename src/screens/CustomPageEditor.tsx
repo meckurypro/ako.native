@@ -455,7 +455,7 @@ export function CustomPageEditor() {
             <View className="flex-row items-start gap-3 rounded-2xl border border-border bg-surface p-4">
               <View className="min-w-0 flex-1">
                 <Text className="text-sm font-medium text-ink">Let visitors send a message</Text>
-                <Text className="mt-0.5 text-xs leading-4 text-ink-muted">Adds a form. Messages arrive in your page's inbox and you get a notification.</Text>
+                <Text className="mt-0.5 text-xs text-ink-muted">Adds a form. Messages arrive in your page's inbox and you get a notification.</Text>
               </View>
               <Toggle checked={config.engagement?.inquiry !== false} onChange={(v) => set("engagement", { inquiry: v })} accessibilityLabel="Let visitors send a message" />
             </View>

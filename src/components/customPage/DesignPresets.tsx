@@ -109,7 +109,7 @@ export function DesignPresets({ config, onChange }: { config: CustomPageConfig; 
               </Pressable>
             </View>
           ) : list.length === 0 ? (
-            <Text className="px-4 py-4 text-sm leading-5 text-ink-muted">No presets yet. Set up your style, template and animation below, then save it here.</Text>
+            <Text className="px-4 py-4 text-sm text-ink-muted">No presets yet. Set up your style, template and animation below, then save it here.</Text>
           ) : (
             list.map((p, i) => {
               const active = current?.id === p.id;
@@ -165,7 +165,7 @@ export function DesignPresets({ config, onChange }: { config: CustomPageConfig; 
                 {save.isPending ? <ActivityIndicator size="small" color="#fff" /> : <Text className="text-sm font-medium text-canvas">{sameName ? "Replace" : "Save"}</Text>}
               </Pressable>
             </View>
-            <Text className="mt-1.5 text-xs leading-4 text-ink-muted">
+            <Text className="mt-1.5 text-xs text-ink-muted">
               {full
                 ? `You can keep up to ${PRESET_LIMIT} presets. Delete one to save another.`
                 : sameName

@@ -153,7 +153,7 @@ export function CustomPageManage() {
             </Pressable>
             <View className="min-w-0 flex-1">
               <Text className="text-sm font-medium text-ink">QR code</Text>
-              <Text className="mb-2 mt-0.5 text-xs leading-4 text-ink-muted">For flyers, banners and screens. It always points to your page's current link.</Text>
+              <Text className="mb-2 mt-0.5 text-xs text-ink-muted">For flyers, banners and screens. It always points to your page's current link.</Text>
               <Pressable onPress={() => setQrOpen(true)} accessibilityRole="button" hitSlop={8} className="flex-row items-center gap-1.5 self-start">
                 <Icon as={Maximize2} size={14} className="text-accent" />
                 <Text className="text-sm font-medium text-accent">Show full screen</Text>
@@ -429,7 +429,7 @@ function SlugDialog({ pageId, current, onClose }: { pageId: string; current: str
             style={{ fontFamily: "Inter_400Regular" }}
           />
         </View>
-        <Text className="text-xs leading-4 text-overlay-ink-muted">People using your old link are redirected to the new one, so printed QR codes and shared links keep working.</Text>
+        <Text className="text-xs text-overlay-ink-muted">People using your old link are redirected to the new one, so printed QR codes and shared links keep working.</Text>
         <View className="min-h-[18px]">
           {formatProblem ? <Text className="text-xs text-overlay-danger">{formatProblem}</Text> : available === false ? <Text className="text-xs text-overlay-danger">That link is already taken.</Text> : null}
         </View>

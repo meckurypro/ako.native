@@ -50,7 +50,7 @@ export function InquiryDialog({ pageId, pageName, onClose }: { pageId: string; p
       {sent ? (
         <View className="items-center py-2">
           <Icon as={CheckCircle2} size={40} className="mb-3 text-overlay-accent" />
-          <Text className="mb-6 text-center text-sm leading-5 text-overlay-ink-muted">
+          <Text className="mb-6 text-center text-sm text-overlay-ink-muted">
             Thank you. Your message has been delivered and they'll get back to you using the contact you gave.
           </Text>
           <Button onPress={onClose}>Done</Button>

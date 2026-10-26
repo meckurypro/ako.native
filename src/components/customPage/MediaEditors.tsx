@@ -96,7 +96,7 @@ function ToggleRow({ label, hint, checked, onChange }: { label: string; hint?: s
     <View className="mb-4 flex-row items-center gap-3 rounded-2xl border border-border bg-surface p-4">
       <View className="min-w-0 flex-1">
         <Text className="text-sm font-medium text-ink">{label}</Text>
-        {hint ? <Text className="mt-0.5 text-xs leading-4 text-ink-muted">{hint}</Text> : null}
+        {hint ? <Text className="mt-0.5 text-xs text-ink-muted">{hint}</Text> : null}
       </View>
       <Toggle checked={checked} onChange={onChange} accessibilityLabel={label} />
     </View>
@@ -148,7 +148,7 @@ export function BackgroundEditor({ config, ownerId, pageId, onChange }: { config
                 <Chip key={f.id} on={(bg?.fit ?? "auto") === f.id} label={f.label} onPress={() => patch({ fit: f.id as BackgroundFit })} />
               ))}
             </View>
-            <Text className="mt-2 text-xs leading-4 text-ink-muted">{BACKGROUND_FITS.find((f) => f.id === (bg?.fit ?? "auto"))?.blurb}</Text>
+            <Text className="mt-2 text-xs text-ink-muted">{BACKGROUND_FITS.find((f) => f.id === (bg?.fit ?? "auto"))?.blurb}</Text>
           </Field>
           <Field label="Look" hint="How the picture is treated so your text stays easy to read.">
             <View className="flex-row flex-wrap gap-2">
@@ -156,7 +156,7 @@ export function BackgroundEditor({ config, ownerId, pageId, onChange }: { config
                 <Chip key={l.id} on={(bg?.look ?? "auto") === l.id} label={l.label} onPress={() => patch({ look: l.id as BackgroundLook })} />
               ))}
             </View>
-            <Text className="mt-2 text-xs leading-4 text-ink-muted">{BACKGROUND_LOOKS.find((l) => l.id === (bg?.look ?? "auto"))?.blurb}</Text>
+            <Text className="mt-2 text-xs text-ink-muted">{BACKGROUND_LOOKS.find((l) => l.id === (bg?.look ?? "auto"))?.blurb}</Text>
           </Field>
         </>
       ) : null}

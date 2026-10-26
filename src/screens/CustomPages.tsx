@@ -116,7 +116,7 @@ export function CustomPages() {
         scrollEventThrottle={16}
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: bottomInset }}
       >
-        <Text className="mb-5 text-sm leading-5 text-ink-muted">
+        <Text className="mb-5 text-sm text-ink-muted">
           A custom page is a small website that lives at its own link on Akọ, like <Text className="text-ink">myako.site/your-name</Text>. Use it for a product, a business, a
           brand, a shop, a brochure or a portfolio.
         </Text>

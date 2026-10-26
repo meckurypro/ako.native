@@ -28,7 +28,7 @@ export function Field({ label, hint, count, max, children }: { label: string; hi
         ) : null}
       </View>
       {children}
-      {hint ? <Text className="mt-1.5 text-xs leading-4 text-ink-muted">{hint}</Text> : null}
+      {hint ? <Text className="mt-1.5 text-xs text-ink-muted">{hint}</Text> : null}
     </View>
   );
 }
@@ -37,7 +37,7 @@ export function Section({ title, intro, children }: { title: string; intro?: str
   return (
     <View className="mb-8">
       <Text className="font-display text-lg font-semibold text-ink">{title}</Text>
-      {intro ? <Text className="mb-4 mt-1 text-sm leading-5 text-ink-muted">{intro}</Text> : <View className="mb-3" />}
+      {intro ? <Text className="mb-4 mt-1 text-sm text-ink-muted">{intro}</Text> : <View className="mb-3" />}
       {children}
     </View>
   );
@@ -85,7 +85,7 @@ export function ChoiceSelect({ label, value, options, onChange }: { label: strin
       >
         <View className="min-w-0 flex-1">
           <Text className="text-sm font-semibold text-ink">{current?.label}</Text>
-          {current?.blurb ? <Text className="mt-0.5 text-xs leading-4 text-ink-muted">{current.blurb}</Text> : null}
+          {current?.blurb ? <Text className="mt-0.5 text-xs text-ink-muted">{current.blurb}</Text> : null}
         </View>
         <View style={{ transform: [{ rotate: open ? "180deg" : "0deg" }] }}>
           <Icon as={ChevronDown} size={18} className="text-ink-muted" />
@@ -112,7 +112,7 @@ export function ChoiceSelect({ label, value, options, onChange }: { label: strin
                   </View>
                   <View className="min-w-0 flex-1">
                     <Text className="text-sm font-semibold text-ink">{o.label}</Text>
-                    {o.blurb ? <Text className="mt-0.5 text-xs leading-4 text-ink-muted">{o.blurb}</Text> : null}
+                    {o.blurb ? <Text className="mt-0.5 text-xs text-ink-muted">{o.blurb}</Text> : null}
                   </View>
                 </Pressable>
               );
@@ -137,7 +137,7 @@ export function Choice({ active, title, blurb, onPress }: { active: boolean; tit
       </View>
       <View className="min-w-0 flex-1">
         <Text className="text-sm font-semibold text-ink">{title}</Text>
-        <Text className="mt-0.5 text-xs leading-4 text-ink-muted">{blurb}</Text>
+        <Text className="mt-0.5 text-xs text-ink-muted">{blurb}</Text>
       </View>
     </Pressable>
   );
