@@ -115,6 +115,9 @@ export interface MusicCatalogueWithContributors extends MusicCatalogueEntry {
   contributors: MusicCatalogueContributorWithProfile[];
   clip_url: string;
   cover_url: string | null;
+  // The Audio Project's public /:slug alias (null until its owner sets one). Pair with project_id and
+  // getProjectPath() to build the link.
+  project_slug: string | null;
 }
 
 // What MusicCreditResponseModal needs to show someone a pending

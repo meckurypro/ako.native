@@ -34,6 +34,13 @@ function publicUrlFor(path: string | null): string | null {
   return supabase.storage.from(CATALOGUE_BUCKET).getPublicUrl(path).data.publicUrl;
 }
 
+// Cover art is an optional upload at publish time. When the publisher didn't add one, fall back to the Audio
+// Project's own thumbnail (already a full public URL) so a song never shows the bare gradient while its project has
+// artwork. Null only when neither exists.
+function resolveCoverUrl(coverPath: string | null, projectThumbnailUrl?: string | null): string | null {
+  return publicUrlFor(coverPath) ?? projectThumbnailUrl ?? null;
+}
+
 // ------------------------------------------------------------
 // Licence agreement
 // ------------------------------------------------------------
@@ -185,7 +192,7 @@ export function useMyPublishedMusic() {
       if (!user) return [];
       const { data, error } = await supabase
         .from("music_catalogue")
-        .select("*, contributors:music_catalogue_contributors(*, contributor:profiles(id, username, display_name, avatar_url))")
+        .select("*, contributors:music_catalogue_contributors(*, contributor:profiles(id, username, display_name, avatar_url)), project:projects(slug, thumbnail_url)")
         .eq("creator_id", user.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -205,7 +212,7 @@ export function useMusicCatalogueSearch(query: string) {
       const trimmed = query.trim();
       let request = supabase
         .from("music_catalogue")
-        .select("*, contributors:music_catalogue_contributors(role, contributor:profiles(display_name))")
+        .select("*, contributors:music_catalogue_contributors(role, contributor:profiles(display_name)), project:projects(thumbnail_url)")
         .eq("publication_status", "published")
         .order("published_at", { ascending: false })
         .limit(25);
@@ -221,7 +228,7 @@ export function useMusicCatalogueSearch(query: string) {
         id: row.id,
         title: row.title,
         primary_artist_name: row.primary_artist_name,
-        cover_url: publicUrlFor(row.cover_image_path),
+        cover_url: resolveCoverUrl(row.cover_image_path, row.project?.thumbnail_url),
         clip_url: publicUrlFor(row.clip_file_path)!,
         clip_duration_seconds: row.clip_duration_seconds,
         featured_artist_names: (row.contributors ?? [])
@@ -244,7 +251,7 @@ export function useMusicCatalogueEntry(catalogueId: string | null | undefined) {
       if (!catalogueId) return null;
       const { data, error } = await supabase
         .from("music_catalogue")
-        .select("*, contributors:music_catalogue_contributors(*, contributor:profiles(id, username, display_name, avatar_url))")
+        .select("*, contributors:music_catalogue_contributors(*, contributor:profiles(id, username, display_name, avatar_url)), project:projects(slug, thumbnail_url)")
         .eq("id", catalogueId)
         .maybeSingle();
       if (error) throw error;
@@ -259,7 +266,8 @@ function hydrateCatalogueEntry(row: any): MusicCatalogueWithContributors {
     ...row,
     contributors: (row.contributors ?? []) as MusicCatalogueContributorWithProfile[],
     clip_url: publicUrlFor(row.clip_file_path)!,
-    cover_url: publicUrlFor(row.cover_image_path),
+    cover_url: resolveCoverUrl(row.cover_image_path, row.project?.thumbnail_url),
+    project_slug: row.project?.slug ?? null,
   };
 }
 
@@ -281,6 +289,7 @@ export function useMyPendingMusicCredits() {
         .from("music_catalogue_contributors")
         .select(
           `role, catalogue:music_catalogue!inner(id, title, primary_artist_name, cover_image_path,
+             project:projects(thumbnail_url),
              creator:profiles!music_catalogue_creator_id_fkey(id, username, display_name, avatar_url))`
         )
         .eq("contributor_id", user.id)
@@ -291,7 +300,7 @@ export function useMyPendingMusicCredits() {
         role: row.role,
         title: row.catalogue.title,
         primary_artist_name: row.catalogue.primary_artist_name,
-        cover_url: publicUrlFor(row.catalogue.cover_image_path),
+        cover_url: resolveCoverUrl(row.catalogue.cover_image_path, row.catalogue.project?.thumbnail_url),
         creator: row.catalogue.creator,
       }));
     },
