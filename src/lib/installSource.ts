@@ -6,7 +6,7 @@
 // Needs the react-native-device-info native module. A binary built before it was added doesn't have it,
 // so every call is guarded: when the answer can't be determined we return null and the caller shows
 // nothing (never risk nagging a Play Store user).
-import { Platform } from "react-native";
+import { NativeModules, Platform } from "react-native";
 
 const PLAY_INSTALLERS = new Set(["com.android.vending", "com.google.android.feedback"]);
 
@@ -19,6 +19,11 @@ export interface InstallInfo {
 
 export async function getInstallInfo(): Promise<InstallInfo | null> {
   if (Platform.OS !== "android") return null;
+  // Check the native side BEFORE requiring the package. react-native-device-info throws while it *loads* when its
+  // native module is missing, and Metro reports an error thrown during a module load as fatal before the
+  // try/catch below can intercept it — so on a binary built without the module, merely opening Settings (which
+  // renders AppUpdateCard) closed the app. With the module absent we simply report "unknown".
+  if (!NativeModules.RNDeviceInfo) return null;
   try {
     // Lazy require: keeps iOS / old binaries from touching a module that may not be linked.
     // eslint-disable-next-line @typescript-eslint/no-require-imports

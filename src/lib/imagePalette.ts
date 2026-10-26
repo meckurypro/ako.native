@@ -14,7 +14,6 @@
 //        Accent    — the highlight, so the next vivid colour that is clearly different from both.
 //      Anything missing (a greyscale photo, a one-colour logo) is derived from what was found, never left blank.
 import * as ImageManipulator from "expo-image-manipulator";
-import { decode } from "fast-png";
 
 import { rgbToHex } from "./colorMath";
 import type { LocalFile } from "./localFile";
@@ -131,6 +130,10 @@ async function loadPixels(file: Pick<LocalFile, "uri" | "type" | "size">): Promi
   if (!b64) throw new Error("decode-failed");
   let png;
   try {
+    // Loaded here, not at the top of the file: fast-png does setup work when it loads, and importing it eagerly
+    // put that work (and any failure in it) on the path of opening the custom-page editor. See lib/polyfills.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { decode } = require("fast-png") as typeof import("fast-png");
     png = decode(base64ToBytes(b64));
   } catch {
     throw new Error("decode-failed");
