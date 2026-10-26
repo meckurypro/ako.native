@@ -4,10 +4,11 @@
 import Slider from "@react-native-community/slider";
 import { ArrowDown, ArrowUp, Plus, RotateCcw, Trash2 } from "lucide-react-native";
 import { useRef, useState } from "react";
-import { PanResponder, Pressable, View, type GestureResponderEvent } from "react-native";
+import { PanResponder, Pressable, View, type GestureResponderEvent, type ViewStyle } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
-import { Icon } from "@/components/ui/styled";
+import { SelectField } from "@/components/ui/SelectField";
+import { Icon, Image } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { Toggle } from "@/components/ui/Toggle";
 import {
@@ -17,6 +18,7 @@ import {
   FOREGROUND_DEFAULTS,
   FOREGROUND_LIMITS,
   LIMITS,
+  LOOK_CSS,
   NAV_TARGETS,
   SCROLL_ANIMATIONS,
   availableNavTargets,
@@ -42,6 +44,13 @@ import { ForegroundArt } from "./CustomPageRenderer";
 import { Choice, Field, Input, SingleImage } from "./EditorParts";
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+
+/** Splits a list into rows of `n` — the shape picker is a 4-column grid whose last row must not stretch. */
+function chunk<T>(items: T[], n: number): T[][] {
+  const rows: T[][] = [];
+  for (let i = 0; i < items.length; i += n) rows.push(items.slice(i, i + n));
+  return rows;
+}
 
 function Chip({ on, label, onPress }: { on: boolean; label: string; onPress: () => void }) {
   return (
@@ -94,6 +103,12 @@ function ToggleRow({ label, hint, checked, onChange }: { label: string; hint?: s
   );
 }
 
+/** The look's colour filter as an RN style (blur is done by the image itself, as in the page renderer). */
+function previewFilter(look: keyof typeof LOOK_CSS): ViewStyle {
+  const filter = LOOK_CSS[look].filter.replace(/blur\([^)]*\)\s*/, "").trim();
+  return filter && filter !== "none" ? ({ filter } as ViewStyle) : {};
+}
+
 // ── Background ──────────────────────────────────────────────────────────────────────────────────────────────
 export function BackgroundEditor({ config, ownerId, pageId, onChange }: { config: CustomPageConfig; ownerId: string; pageId: string; onChange: (bg: CustomPageBackground | undefined) => void }) {
   const bg = config.brand?.background;
@@ -114,19 +129,34 @@ export function BackgroundEditor({ config, ownerId, pageId, onChange }: { config
       />
       {url && resolved ? (
         <>
-          <Field label="Fit" hint={`${BACKGROUND_FITS.find((f) => f.id === (bg?.fit ?? "auto"))?.blurb ?? ""}${(bg?.fit ?? "auto") === "auto" ? ` (${auto.fit === "cover" ? "Fill" : auto.fit} for your ${template} layout.)` : ""}`}>
+          {/* A small preview of the picture with the chosen fit and look, like the web editor's. */}
+          <View accessibilityRole="image" accessibilityLabel="Background preview" className="mb-5 h-28 overflow-hidden rounded-2xl border border-border bg-surface">
+            <View style={[{ width: "100%", height: "100%" }, previewFilter(resolved.look)]}>
+              <Image
+                source={{ uri: url }}
+                contentFit={resolved.fit === "stretch" ? "fill" : resolved.fit === "tile" ? "none" : "cover"}
+                blurRadius={resolved.look === "soft" ? 6 : 0}
+                durable={false}
+                fallback="none"
+                style={{ width: "100%", height: "100%" }}
+              />
+            </View>
+          </View>
+          <Field label="Fit" hint={`Automatic uses “${auto.fit === "cover" ? "Fill" : auto.fit}” for your ${template} layout.`}>
             <View className="flex-row flex-wrap gap-2">
               {BACKGROUND_FITS.map((f) => (
                 <Chip key={f.id} on={(bg?.fit ?? "auto") === f.id} label={f.label} onPress={() => patch({ fit: f.id as BackgroundFit })} />
               ))}
             </View>
+            <Text className="mt-2 text-xs leading-4 text-ink-muted">{BACKGROUND_FITS.find((f) => f.id === (bg?.fit ?? "auto"))?.blurb}</Text>
           </Field>
-          <Field label="Look" hint={BACKGROUND_LOOKS.find((l) => l.id === (bg?.look ?? "auto"))?.blurb}>
+          <Field label="Look" hint="How the picture is treated so your text stays easy to read.">
             <View className="flex-row flex-wrap gap-2">
               {BACKGROUND_LOOKS.map((l) => (
                 <Chip key={l.id} on={(bg?.look ?? "auto") === l.id} label={l.label} onPress={() => patch({ look: l.id as BackgroundLook })} />
               ))}
             </View>
+            <Text className="mt-2 text-xs leading-4 text-ink-muted">{BACKGROUND_LOOKS.find((l) => l.id === (bg?.look ?? "auto"))?.blurb}</Text>
           </Field>
         </>
       ) : null}
@@ -148,7 +178,7 @@ function ShapeTile({ label, path, aspect, active, onPress }: { label: string; pa
       accessibilityLabel={label}
       accessibilityState={{ selected: active }}
       className={`items-center justify-center gap-1 rounded-xl border p-2 ${active ? "border-accent bg-accent-soft" : "border-border bg-surface"}`}
-      style={{ width: "23%" }}
+      style={{ flex: 1 }}
     >
       <View style={{ width: box, height: box, alignItems: "center", justifyContent: "center" }}>
         {path ? (
@@ -272,7 +302,7 @@ export function ForegroundEditor({ config, ownerId, pageId, onChange, onDragging
         // Dragging the picture right reveals more of its left, so the focal point moves the other way.
         const k = 100 / Math.max(1, r.crop.zoom);
         const nx = clamp(panFrom.current.cx - (g.dx / padW) * k, 0, 100);
-        const ny = clamp(panFrom.current.cy - (g.dy / (padW * 1.25)) * k, 0, 100);
+        const ny = clamp(panFrom.current.cy - (g.dy / padW) * k, 0, 100);
         change({ ...f, crop: { ...f?.crop, x: Math.round(nx), y: Math.round(ny) } });
       },
       onPanResponderRelease: () => live.current.onDragging?.(false),
@@ -294,10 +324,20 @@ export function ForegroundEditor({ config, ownerId, pageId, onChange, onDragging
       {url && resolved ? (
         <>
           <Field label="Shape" hint="The picture is clipped to this shape. Choose “None” to show it as it is.">
-            <View className="flex-row flex-wrap" style={{ gap: 8 }}>
-              <ShapeTile label="None" active={!resolved.shape} onPress={() => patch({ shape: "none" })} />
-              {SHAPES.map((s) => (
-                <ShapeTile key={s.id} label={s.label} path={s.path} aspect={s.aspect} active={resolved.shape?.id === s.id} onPress={() => patch({ shape: s.id })} />
+            <View style={{ gap: 8 }}>
+              {chunk(
+                [
+                  <ShapeTile key="none" label="None" active={!resolved.shape} onPress={() => patch({ shape: "none" })} />,
+                  ...SHAPES.map((s) => <ShapeTile key={s.id} label={s.label} path={s.path} aspect={s.aspect} active={resolved.shape?.id === s.id} onPress={() => patch({ shape: s.id })} />),
+                ],
+                4,
+              ).map((row, r) => (
+                <View key={r} className="flex-row" style={{ gap: 8 }}>
+                  {row}
+                  {Array.from({ length: 4 - row.length }, (_, k) => (
+                    <View key={`pad${k}`} style={{ flex: 1 }} />
+                  ))}
+                </View>
               ))}
             </View>
           </Field>
@@ -308,7 +348,7 @@ export function ForegroundEditor({ config, ownerId, pageId, onChange, onDragging
                 {...stagePan.panHandlers}
                 onLayout={(e) => setStageW(e.nativeEvent.layout.width)}
                 className="overflow-hidden rounded-2xl border border-border bg-ink/5"
-                style={{ width: "62%", aspectRatio: 4 / 5 }}
+                style={{ width: "100%", maxWidth: 240, aspectRatio: 4 / 5 }}
               >
                 {stageW > 0 ? (
                   <View pointerEvents="none" style={{ position: "absolute", left: 0, top: 0, right: 0, bottom: 0 }}>
@@ -329,9 +369,9 @@ export function ForegroundEditor({ config, ownerId, pageId, onChange, onDragging
           {resolved.shape ? (
             <Field label="Crop" hint="Drag inside the shape to choose which part of the picture shows. Zoom in to crop closer.">
               <View className="flex-row items-start gap-4">
-                <View {...padPan.panHandlers} className="overflow-hidden rounded-xl border border-border bg-ink/5" style={{ width: padW, height: padW * 1.25 }}>
+                <View {...padPan.panHandlers} className="overflow-hidden rounded-xl border border-border bg-ink/5" style={{ width: padW, height: padW }}>
                   <View pointerEvents="none" style={{ position: "absolute", left: 0, top: 0, right: 0, bottom: 0 }}>
-                    <ForegroundArt fg={{ ...resolved, x: 50, y: 50, size: 84, rotation: 0, shadow: { ...resolved.shadow, enabled: false } }} uri={url} stageW={padW} />
+                    <ForegroundArt fg={{ ...resolved, x: 50, y: 50, size: 84, rotation: 0, shadow: { ...resolved.shadow, enabled: false } }} uri={url} stageW={padW} stageH={padW} />
                   </View>
                 </View>
                 <View className="min-w-0 flex-1">
@@ -412,10 +452,13 @@ export function MenuEditor({ config, onChange }: { config: CustomPageConfig; onC
                         <Icon as={Trash2} size={16} className="text-danger" />
                       </Pressable>
                     </View>
-                    <View className="mt-2 flex-row flex-wrap gap-1.5">
-                      {NAV_TARGETS.map((t) => (
-                        <Chip key={t.id} on={item.target === t.id} label={t.label} onPress={() => patchItem(i, { target: t.id })} />
-                      ))}
+                    <View className="mt-2">
+                      <SelectField
+                        label={`Menu item ${i + 1} goes to`}
+                        value={item.target}
+                        options={NAV_TARGETS.map((t) => ({ value: t.id, label: `Goes to: ${t.label}${available.includes(t.id) ? "" : " (nothing there yet)"}` }))}
+                        onChange={(v) => patchItem(i, { target: v as NavTarget })}
+                      />
                     </View>
                     {missing ? <Text className="mt-1.5 text-xs text-danger">{`Your page has no ${NAV_TARGETS.find((t) => t.id === item.target)?.label.toLowerCase()} yet, so this item stays hidden.`}</Text> : null}
                   </View>

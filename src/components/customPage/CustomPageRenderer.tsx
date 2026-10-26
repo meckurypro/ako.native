@@ -2299,7 +2299,7 @@ function BackgroundLayer({ ctx }: { ctx: Ctx }) {
  * layout. Shape clipping is an SVG clip path scaled to the box; the shadow wraps the rotating layer, so it keeps
  * falling in the chosen direction however the picture is turned.
  */
-export function ForegroundArt({ fg, uri, stageW }: { fg: ResolvedForeground; uri: string; stageW: number }) {
+export function ForegroundArt({ fg, uri, stageW, stageH: stageHProp }: { fg: ResolvedForeground; uri: string; stageW: number; stageH?: number }) {
   const clipId = `fg${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   const [nat, setNat] = useState<{ w: number; h: number } | null>(null);
   useEffect(() => {
@@ -2314,7 +2314,7 @@ export function ForegroundArt({ fg, uri, stageW }: { fg: ResolvedForeground; uri
     };
   }, [uri]);
 
-  const stageH = stageW * 1.25;
+  const stageH = stageHProp ?? stageW * 1.25; // the page's stage is 4:5; the editor's crop pad is square, like web
   const boxW = (stageW * fg.size) / 100;
   const boxH = fg.shape ? boxW / fg.shape.aspect : nat ? (boxW * nat.h) / nat.w : boxW;
   const left = (stageW * fg.x) / 100 - boxW / 2;
