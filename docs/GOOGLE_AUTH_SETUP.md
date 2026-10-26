@@ -13,3 +13,8 @@ SQL) is in the web repo's `docs/GOOGLE_AUTH_SETUP.md`. Native-specific parts:
    OTA update will not deliver it. Run `npm install --legacy-peer-deps`, then `npm run build:apk` (SETUP.md §5).
    Until a build with it is installed, the Google button will fail.
 3. Not offered in "add another account" mode (`add=1`), same reason as web.
+4. **Android: return to the app, not the browser** — `signInWithGoogle` passes `{ createTask: false }` to
+   `openAuthSessionAsync`. Without it the Custom Tab opens in its own task and, after Google redirects to
+   `ako://auth/oauth`, the app renders inside that browser task and the tab never closes. With it the tab shares
+   the app's task, so the redirect closes it. JS-only change (OTA-safe); iOS ignores the option. If the tab ever
+   lingers on a device, check that the app's `MainActivity` is still `launchMode="singleTask"` (Expo's default).

@@ -9,6 +9,12 @@
 // then turn that link into a session with completeAuthLink() — the same helper
 // the email links use.
 //
+// Android: the Custom Tab must live in the app's OWN task (createTask: false below). By default expo-web-browser
+// opens it in a separate task, and the ako:// redirect then brings the app up *inside the browser's task* — the
+// tab never closes and the whole app keeps rendering in it. In the app's task, the redirect lands on the
+// singleTask activity, which pops the tab off the stack and returns to the app cleanly. iOS ignores the option
+// (ASWebAuthenticationSession closes itself).
+//
 // The redirect is a dedicated path (/auth/oauth, not /auth/callback). On Android
 // the same deep link can ALSO be delivered to the router; /auth/callback would
 // then race this flow and send everyone to onboarding. /auth/oauth just shows a
@@ -76,7 +82,7 @@ export async function signInWithGoogle(
   });
   if (error || !data.url) throw new Error(error?.message ?? "No Google URL");
 
-  const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+  const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo, { createTask: false });
   if (result.type !== "success") return { status: "cancelled" };
 
   const { session } = await completeAuthLink(result.url);
