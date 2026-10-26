@@ -71,7 +71,7 @@ export function ReactionOptionsPopover({ target, quickEmojis, onReplace, onOpenF
                 accessibilityLabel={i === 0 ? `Remove your reaction ${emoji}` : `React with ${emoji}`}
                 className={`h-9 w-9 items-center justify-center rounded-full ${i === 0 ? "border-2 border-accent" : ""}`}
               >
-                <Text className="text-xl leading-[26px]">{emoji}</Text>
+                <Text className="text-[17.5px] leading-[26px]">{emoji}</Text>
               </Pressable>
             ))}
             <Pressable

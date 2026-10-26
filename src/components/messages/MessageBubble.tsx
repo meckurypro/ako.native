@@ -95,7 +95,7 @@ function ReactionChip({ emoji, count, mine, onAdd, onManage }: { emoji: string; 
       className={`h-8 w-8 items-center justify-center rounded-full bg-surface ${mine ? "border-2 border-accent" : ""}`}
       style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.15, shadowRadius: 3, elevation: 2 }}
     >
-      <Text className="text-base leading-[20px]">{emoji}</Text>
+      <Text className="text-[14px] leading-[20px]">{emoji}</Text>
       {count > 1 ? (
         <View className="absolute -bottom-1 -right-1 h-4 min-w-[16px] items-center justify-center rounded-full bg-ink-muted px-1">
           <Text className="text-[10px] font-semibold leading-[14px] text-canvas">{count}</Text>
@@ -322,7 +322,7 @@ function MessageBubbleImpl({
                 </View>
               ) : (
                 <View>
-                  <Text className={`text-sm leading-[20px] ${textColor}`}>
+                  <Text className={`text-[12.25px] leading-[20px] ${textColor}`}>
                     {searchQuery ? highlightMatches(m.content, searchQuery, isMine) : m.content}
                     {/* Reserves room at the end of the last line for the timestamp pinned bottom-right. Nested <Text> ignores opacity on Android, so the spacer is hidden via a transparent color instead. */}
                     <Text className="text-[11px]" style={{ color: "transparent" }} accessibilityElementsHidden importantForAccessibility="no">{`\u00A0\u00A0\u00A0\u00A0${timeStr}${isMine ? "\u00A0\u00A0\u00A0\u00A0\u00A0" : ""}`}</Text>

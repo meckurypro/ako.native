@@ -412,4 +412,4 @@ line-height as a multiplier of the font size. A `leading-5` beside it hands that
 is `17.5 × font-size` — paragraphs in the custom-page editor rendered with ~200px between lines. `text-xs` already equals
 `leading-4` and `text-sm` already equals `leading-5` (Tailwind's defaults), so just use the text size alone, or
 `leading-snug|tight|relaxed` (multipliers) when a different spacing is wanted. Fixed in the custom-page screens; the older
-`text-sm leading-[20px]` pairs in messages/posts were left as they were (they render correctly today).
+`text-sm leading-[20px]`-style pairs in messages/posts were switched to the arbitrary size (`text-[12.25px] leading-[20px]`, rem is 14 here), which has no line-height variable to collide with and keeps the exact sizes.

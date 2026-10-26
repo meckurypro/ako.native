@@ -70,7 +70,7 @@ export function TaggedProjectEmbed({
         style={{ paddingLeft: thumbW + 24 }}
       >
         {/* Bold, centred, two lines max. */}
-        <Text numberOfLines={2} className="flex-1 text-center text-base font-bold leading-[21px] text-ink">
+        <Text numberOfLines={2} className="flex-1 text-center text-[14px] font-bold leading-[21px] text-ink">
           {project.title}
         </Text>
       </View>

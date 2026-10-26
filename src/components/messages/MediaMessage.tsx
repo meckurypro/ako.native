@@ -237,7 +237,7 @@ export function MediaMessage({ media, isMine, timeStr, ticks, senderName, sentLa
     return (
       <View>
         <DocumentCard item={first} isMine={isMine} />
-        {media.caption ? <Text className={`mt-1.5 text-sm leading-[20px] ${textColor}`}>{media.caption}</Text> : null}
+        {media.caption ? <Text className={`mt-1.5 text-[12.25px] leading-[20px] ${textColor}`}>{media.caption}</Text> : null}
         <View className="mt-1">{timeFooter}</View>
       </View>
     );
@@ -256,7 +256,7 @@ export function MediaMessage({ media, isMine, timeStr, ticks, senderName, sentLa
       </View>
       {media.caption ? (
         <View className="px-1.5 pb-0.5 pt-1.5" style={{ width: gridWidth }}>
-          <Text className={`text-sm leading-[20px] ${textColor}`}>{media.caption}</Text>
+          <Text className={`text-[12.25px] leading-[20px] ${textColor}`}>{media.caption}</Text>
           <View className="mt-0.5">{timeFooter}</View>
         </View>
       ) : null}

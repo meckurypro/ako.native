@@ -497,7 +497,7 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
                 onTextLayout={(e) => {
                   if (!metaWrapped && e.nativeEvent.lines.length > 1) setMetaWrapped(true);
                 }}
-                className={`text-xs leading-[18px] text-ink-muted ${metaWrapped ? "flex-1" : ""}`}
+                className={`text-[10.5px] leading-[18px] text-ink-muted ${metaWrapped ? "flex-1" : ""}`}
               >
                 {timeAgo(post.created_at)}
                 {post.edited_at ? " · edited" : ""}
