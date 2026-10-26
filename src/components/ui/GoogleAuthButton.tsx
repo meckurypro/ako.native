@@ -1,6 +1,7 @@
 // src/components/ui/GoogleAuthButton.tsx
 // The primary action on Login and SignUp (Google first, email is the quieter
 // alternative below it). Mirrors the web GoogleAuthButton.
+import { resetCacheForAccountChange } from "@/lib/queryReset";
 import { useQueryClient } from "@tanstack/react-query";
 import { router, type Href } from "expo-router";
 import { useState } from "react";
@@ -59,7 +60,7 @@ export function GoogleAuthButton({ returnTo, label = "Continue with Google", add
       if (result.status === "success") {
         // An added account starts in its own palette, never the previous account's page colours (as useAddAccount does).
         if (addAccount && !result.alreadyCurrent) setPageMode(false);
-        queryClient.clear();
+        resetCacheForAccountChange(queryClient);
         router.replace(result.destination as Href);
         toast(result.alreadyCurrent ? "That's already your current account." : "Welcome to Akọ.", {
           variant: result.alreadyCurrent ? "default" : "success",

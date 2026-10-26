@@ -4,13 +4,14 @@ import { AppState } from "react-native";
 import type { Session, User } from "@supabase/supabase-js";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
-import { updateSavedAccountTokens } from "../lib/accountSessions";
+import { updateSavedAccountProfile, updateSavedAccountTokens } from "../lib/accountSessions";
 import { authStorageKey, isUnreachableError, parseStoredSession } from "../lib/authOffline";
 import { raceWithTimeout } from "../lib/offlineBoot";
 import { encryptedAuthStorage } from "../lib/secureStorage";
 
 interface MyProfile {
   username: string;
+  display_name: string;
   avatar_url: string | null;
 }
 
@@ -181,7 +182,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("username, avatar_url")
+        .select("username, display_name, avatar_url")
         .eq("id", userId!)
         .single();
       if (error) throw error;
@@ -190,6 +191,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     enabled: !!userId,
     staleTime: Infinity,
   });
+
+  // Keep this account's entry in the device's saved-accounts list (the switcher) in step with its live profile.
+  useEffect(() => {
+    if (!userId || !profile) return;
+    updateSavedAccountProfile(userId, {
+      username: profile.username,
+      display_name: profile.display_name,
+      avatar_url: profile.avatar_url,
+    });
+  }, [userId, profile?.username, profile?.display_name, profile?.avatar_url]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <AuthContext.Provider

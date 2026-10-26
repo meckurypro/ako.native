@@ -13,6 +13,7 @@
 // useFeatureFlags.ts) for the "incubation_review_gate_enabled" toggle
 // rather than a second config system, and profiles.account_status
 // for the per-account approval state.
+import { resetCacheForAccountChange } from "@/lib/queryReset";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { unregisterPushToken } from "../lib/push";
@@ -147,6 +148,6 @@ export function useSignOut() {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
     },
-    onSuccess: () => queryClient.clear(),
+    onSuccess: () => resetCacheForAccountChange(queryClient),
   });
 }

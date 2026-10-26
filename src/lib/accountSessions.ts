@@ -37,8 +37,19 @@ function readProtected(key: string, stored: string): string | null {
   return stored;
 }
 
+const listeners = new Set<() => void>();
+
+/** Subscribe to any change of the saved-accounts list (returns the unsubscribe). Lets the switcher re-read live. */
+export function subscribeSavedAccounts(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
 function writeAccounts(accounts: SavedAccount[]): void {
   localStorage.setItem(STORAGE_KEY, encryptSync(JSON.stringify(accounts)));
+  listeners.forEach((l) => l());
 }
 
 export function listSavedAccounts(): SavedAccount[] {
@@ -69,6 +80,28 @@ export function removeSavedAccount(userId: string): void {
 
 export function getSavedAccount(userId: string): SavedAccount | undefined {
   return listSavedAccounts().find((a) => a.user_id === userId);
+}
+
+// Keeps a saved account's name / username / avatar snapshot current. The snapshot is taken when the account is
+// added; without this, renaming an account later left the switcher listing (and the profile it opens) on the OLD
+// values — which then 404'd as "account not found" because that username no longer exists.
+export function updateSavedAccountProfile(
+  userId: string,
+  fields: { username?: string; display_name?: string; avatar_url?: string | null }
+): void {
+  const accounts = listSavedAccounts();
+  const idx = accounts.findIndex((a) => a.user_id === userId);
+  if (idx === -1) return;
+  const cur = accounts[idx];
+  const next = {
+    ...cur,
+    username: fields.username ?? cur.username,
+    display_name: fields.display_name ?? cur.display_name,
+    avatar_url: fields.avatar_url === undefined ? cur.avatar_url : fields.avatar_url,
+  };
+  if (next.username === cur.username && next.display_name === cur.display_name && next.avatar_url === cur.avatar_url) return;
+  accounts[idx] = next;
+  writeAccounts(accounts);
 }
 
 // Keeps a saved account's cached tokens in sync with whatever Supabase

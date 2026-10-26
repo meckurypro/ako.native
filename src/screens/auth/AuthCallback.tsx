@@ -4,6 +4,7 @@
 //   recovery → /reset-password (to choose a new password)
 //   otherwise → /onboarding/welcome (the account just got confirmed)
 // If nothing usable arrives within 8s, or the link is bad/used, shows "Link expired".
+import { resetCacheForAccountChange } from "@/lib/queryReset";
 import * as Linking from "expo-linking";
 import { router } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
@@ -73,7 +74,7 @@ export function AuthCallback() {
           await supabase.rpc("link_accounts", { p_other_user_id: pending.user_id });
         }
 
-        queryClient.clear();
+        resetCacheForAccountChange(queryClient);
         router.replace("/onboarding/welcome");
       } catch {
         setStatus("error");

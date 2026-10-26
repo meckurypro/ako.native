@@ -54,7 +54,7 @@ function SwitcherBody() {
             setSwitchError(null);
             haptics.selection();
             switchAccount.mutate(account, {
-              onSuccess: () => runAfterDismiss(close, () => router.replace(`/profile/${account.username}` as Href)),
+              onSuccess: () => runAfterDismiss(close, () => router.replace("/me" as Href)),
               onError: (err) => {
                 setSwitchError(friendlyError(err, "Couldn't switch accounts."));
                 refreshSavedAccounts();

@@ -2,12 +2,14 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
+import { resetCacheForAccountChange } from "../lib/queryReset";
 import { useAuth } from "./useAuth";
 import { useTheme } from "../theme/ThemeProvider";
 import {
   listSavedAccounts,
   removeSavedAccount as removeSavedAccountFromStorage,
   saveAccount,
+  subscribeSavedAccounts,
   updateSavedAccountTokens,
   type SavedAccount,
 } from "../lib/accountSessions";
@@ -30,6 +32,9 @@ export function useSavedAccounts() {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
+
+  // Re-read whenever the saved list changes (e.g. a rename synced from useAuth), not only on account switch.
+  useEffect(() => subscribeSavedAccounts(() => setAccounts(listSavedAccounts())), []);
 
   return { accounts, refresh };
 }
@@ -139,7 +144,7 @@ export function useSwitchAccount() {
       // The new account starts in its own palette — never the previous
       // account's page colours.
       setPageMode(false);
-      queryClient.clear();
+      resetCacheForAccountChange(queryClient);
     },
   });
 }
@@ -233,7 +238,7 @@ export function useAddAccount() {
       // The new account starts in its own palette — never the previous
       // account's page colours.
       setPageMode(false);
-      queryClient.clear();
+      resetCacheForAccountChange(queryClient);
     },
   });
 }
