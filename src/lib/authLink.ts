@@ -76,7 +76,19 @@ export async function completeAuthLink(url: string) {
   throw new AuthLinkError("Nothing to complete");
 }
 
+/**
+ * A deep link into this app, e.g. appLink("auth/oauth") → "ako://auth/oauth".
+ *
+ * Never pass a leading slash to Linking.createURL: in a release build it yields "ako:///auth/oauth" (empty host),
+ * which is NOT the same URL as the "ako://auth/oauth" you allow-list in Supabase. Supabase silently ignores a
+ * redirect_to that is not on its allow-list and falls back to the Site URL — so the auth browser lands on the
+ * website (and signs in there) instead of returning to the app. Strip the slash here so that can't happen.
+ */
+export function appLink(path: string): string {
+  return Linking.createURL(path.replace(/^\/+/, ""));
+}
+
 /** Where Supabase should send email links so they open this app (add to Auth → URL Configuration → Redirect URLs). */
 export function authRedirectUrl(): string {
-  return Linking.createURL("/auth/callback");
+  return appLink("auth/callback");
 }

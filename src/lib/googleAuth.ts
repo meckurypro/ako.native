@@ -9,10 +9,12 @@
 // then turn that link into a session with completeAuthLink() — the same helper
 // the email links use.
 //
-// Android: the Custom Tab must live in the app's OWN task (createTask: false below). By default expo-web-browser
-// opens it in a separate task, and the ako:// redirect then brings the app up *inside the browser's task* — the
-// tab never closes and the whole app keeps rendering in it. In the app's task, the redirect lands on the
-// singleTask activity, which pops the tab off the stack and returns to the app cleanly. iOS ignores the option
+// The redirect must be exactly "ako://auth/oauth" (see appLink() in authLink.ts). Any other spelling is not on
+// Supabase's allow-list, so Supabase falls back to the Site URL and the browser ends up on the WEBSITE, signed in
+// there, instead of returning here.
+//
+// Android: createTask: false keeps the Custom Tab in the app's own task (expo-web-browser's documented option), so
+// the ako:// redirect lands on the app's singleTask activity and pops the tab off the stack. iOS ignores it
 // (ASWebAuthenticationSession closes itself).
 //
 // The redirect is a dedicated path (/auth/oauth, not /auth/callback). On Android
@@ -22,11 +24,10 @@
 //
 // Setup: add `ako://auth/oauth` to Supabase → Authentication → URL
 // Configuration → Redirect URLs (see docs/GOOGLE_AUTH_SETUP.md).
-import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 
 import { saveAccount } from "./accountSessions";
-import { completeAuthLink } from "./authLink";
+import { appLink, completeAuthLink } from "./authLink";
 import { rememberReturnTo, takeReturnTo } from "./authRedirect";
 import { supabase } from "./supabase";
 
@@ -34,7 +35,8 @@ import { supabase } from "./supabase";
 WebBrowser.maybeCompleteAuthSession();
 
 export function googleRedirectUrl(): string {
-  return Linking.createURL("/auth/oauth");
+  // "ako://auth/oauth" — must match the Supabase Redirect URL exactly; see appLink() for why there is no leading slash.
+  return appLink("auth/oauth");
 }
 
 export type GoogleSignInResult =
