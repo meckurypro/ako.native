@@ -1,17 +1,15 @@
 // src/screens/Discover.tsx
-// Discover for full accounts: a TikTok-style search (see DiscoverShell) over three short browse
-// sections — topic chips, People to follow, and Pages to follow.
-// Deliberately light, like RestrictedDiscover: a handful of suggestions per section (search is the
-// way to find more), and Topics is ONE scrolling row of interest chips — tapping one filters the
-// feed by it. (It used to be an accordion of every category, which buried the page.)
+// Discover for full accounts: a TikTok-style search (see DiscoverShell) over the structured browse page.
+// Full accounts get a lead on top — topic chips (ONE scrolling row; tapping one filters the feed by it)
+// and People to follow — and then the same swipeable row per kind of content, and Pages, that restricted
+// accounts get (see DiscoverBrowse).
 import { router } from "expo-router";
 import { useMemo } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { Pressable, ScrollView } from "react-native";
 
-import { SectionHeader } from "@/components/discover/SectionHeader";
+import { DiscoverBrowse } from "@/components/discover/DiscoverBrowse";
+import { DiscoverAvatarTile, AVATAR_TILE_WIDTH, DiscoverRail } from "@/components/discover/DiscoverRail";
 import { DiscoverShell } from "@/components/discover/DiscoverShell";
-import { PageRow } from "@/components/post/PageRow";
-import { PersonRow } from "@/components/post/PersonRow";
 import { Text } from "@/components/ui/Text";
 import { useActiveIdentity } from "@/hooks/usePages";
 import { useCategories } from "@/hooks/useCategories";
@@ -21,9 +19,9 @@ import { useSuggestedPages, useSuggestedPeople } from "@/hooks/useSearch";
 import { haptics } from "@/lib/haptics";
 import { RestrictedDiscover } from "./RestrictedDiscover";
 
-// How many suggestions each section shows, and how many topic chips.
-const SUGGESTION_LIMIT = 6;
+// How many topic chips and people the lead section shows (search is the way to find more).
 const TOPIC_LIMIT = 16;
+const PEOPLE_LIMIT = 10;
 
 function FullDiscover() {
   const { data: categories, refetch: refetchCategories } = useCategories();
@@ -33,19 +31,21 @@ function FullDiscover() {
   const activePageId = identity?.mode === "page" ? identity.page.id : undefined;
   const personalSuggestions = useSuggestedPeople();
   const pageSuggestions = usePageSuggestedPeople(activePageId);
-  const { data: suggestedPeople, isLoading: suggestedLoading, refetch: refetchPeople } = activePageId ? pageSuggestions : personalSuggestions;
-  const { data: suggestedPages, isLoading: suggestedPagesLoading, refetch: refetchPages } = useSuggestedPages();
+  const { data: suggestedPeople, refetch: refetchPeople } = activePageId ? pageSuggestions : personalSuggestions;
+  const { refetch: refetchPages } = useSuggestedPages();
+  const people = (suggestedPeople ?? []).slice(0, PEOPLE_LIMIT);
 
-  const browse = (
+  const lead = (
     <>
       {topics.length > 0 ? (
         // Bleeds to the screen edges (negative margin cancels the page padding) so chips scroll off cleanly.
-        <ScrollView showsVerticalScrollIndicator={false}
+        <ScrollView
+          showsVerticalScrollIndicator={false}
           horizontal
           showsHorizontalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           style={{ marginHorizontal: -16 }}
-          className="mb-8"
+          className="mb-7"
           contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
         >
           {topics.map((interest) => (
@@ -64,38 +64,13 @@ function FullDiscover() {
         </ScrollView>
       ) : null}
 
-      <View className="mb-9">
-        <SectionHeader
-          title="People to follow"
-          subtitle={activePageId ? "Based on this page's network and activity." : "Based on your network and activity."}
-        />
-        {suggestedLoading ? (
-          <Text className="py-4 text-sm text-ink-muted">Loading…</Text>
-        ) : suggestedPeople && suggestedPeople.length > 0 ? (
-          suggestedPeople.slice(0, SUGGESTION_LIMIT).map((p) => (
-            <View key={p.id} className="border-b border-border">
-              <PersonRow profile={p} />
-            </View>
-          ))
-        ) : (
-          <Text className="py-4 text-sm text-ink-muted">No suggestions right now.</Text>
-        )}
-      </View>
-
-      <View>
-        <SectionHeader title="Pages to follow" subtitle="Organisations, brands and products worth a look." />
-        {suggestedPagesLoading ? (
-          <Text className="py-4 text-sm text-ink-muted">Loading…</Text>
-        ) : suggestedPages && suggestedPages.length > 0 ? (
-          suggestedPages.slice(0, SUGGESTION_LIMIT).map((p) => (
-            <View key={p.id} className="border-b border-border">
-              <PageRow page={p} />
-            </View>
-          ))
-        ) : (
-          <Text className="py-4 text-sm text-ink-muted">No pages to suggest right now.</Text>
-        )}
-      </View>
+      {people.length > 0 ? (
+        <DiscoverRail title="People to follow" snap={AVATAR_TILE_WIDTH + 12}>
+          {people.map((p) => (
+            <DiscoverAvatarTile key={p.id} to={`/profile/${p.username}`} name={p.display_name} avatarUrl={p.avatar_url} caption={`@${p.username}`} />
+          ))}
+        </DiscoverRail>
+      ) : null}
     </>
   );
 
@@ -104,7 +79,7 @@ function FullDiscover() {
       scope="all"
       placeholder="Search Akọ"
       accessibilityLabel="Search people, pages, posts and projects"
-      browse={browse}
+      browse={<DiscoverBrowse lead={lead} />}
       // Only the suggestion query in use is refetched; the other one is disabled and refetch() would still hit the network.
       refreshers={[refetchCategories, refetchPeople, refetchPages]}
     />

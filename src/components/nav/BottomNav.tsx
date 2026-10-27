@@ -122,7 +122,8 @@ export function BottomNav() {
       case "feed":
         return pathname === "/feed";
       case "topics":
-        return pathname === "/topics";
+        // The Discover tab stays lit on its own "More" screens (/topics/events, /topics/pages, …).
+        return pathname === "/topics" || pathname.startsWith("/topics/");
       case "library":
         return pathname === "/library";
       case "connect":
@@ -139,7 +140,8 @@ export function BottomNav() {
   // The chat button is a shortcut for browsing, not a fixture: it shows only on the five tab screens (Feed, Discover,
   // Library, Connect, your own Profile). Anywhere you are doing something — a project, a request, a wallet screen, a
   // thread — it stays out of the way.
-  const showChatFab = (["feed", "topics", "library", "connect", "profile"] as const).some(isActive);
+  // (Discover's own "More" screens light the Discover tab but aren't a tab screen — no chat button there.)
+  const showChatFab = (["feed", "topics", "library", "connect", "profile"] as const).some(isActive) && !pathname.startsWith("/topics/");
 
   return (
     <>

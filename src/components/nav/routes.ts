@@ -11,6 +11,7 @@ import { isReservedProjectSlug, isValidProjectSlugFormat, normalizeProjectSlug }
 const SHOWS_BOTTOM_NAV: RegExp[] = [
   /^\/feed$/,
   /^\/topics$/,
+  /^\/topics\/[^/]+$/, // "More" from a Discover row
   /^\/search$/,
   /^\/hashtag\/[^/]+$/,
   /^\/post\/[^/]+$/, // PostDetail only — not /post/:id/edit
