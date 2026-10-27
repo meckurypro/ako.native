@@ -370,13 +370,15 @@ export function CreateProject() {
     return null;
   }
 
-  function goToCreated() {
+  function goToCreated(courseId?: string) {
     // The project exists now: the saved draft has done its job, and the redirect below is the person finishing,
     // not leaving unsaved work behind.
     if (draftKey) void clearProjectDraft(draftKey);
     leaveGuard.allowLeaving();
     toast(`${title.trim()} created successfully.`, { variant: "success" });
-    if (postingAsPage) router.replace(`/page/${postingAsPage.username}?tab=projects` as Href);
+    // A new course goes straight into the builder, where the setup wizard opens for the empty draft.
+    if (courseId) router.replace(`/courses/${courseId}` as Href);
+    else if (postingAsPage) router.replace(`/page/${postingAsPage.username}?tab=projects` as Href);
     else if (me?.username) router.replace(`/profile/${me.username}?tab=projects` as Href);
     else router.back();
   }
@@ -520,7 +522,7 @@ export function CreateProject() {
       if (projectType === "book" && bookFields.content_source === "upload" && bookFields.allow_read_in_app && created?.id) {
         void extractBookPdf(created.id).catch(() => {});
       }
-      goToCreated();
+      goToCreated(projectType === "course" ? created?.id : undefined);
     } catch (err) {
       setError(friendlyError(err, "Couldn't create project."));
     }

@@ -7,14 +7,16 @@ import {
   ChevronDown,
   ChevronUp,
   Circle,
-  Eye,
+  ClipboardList,
   FileText,
+  ListChecks,
   Lock,
   PenLine,
   Pencil,
-  PlayCircle,
   Plus,
+  Settings2,
   Trash2,
+  Video,
 } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, TextInput, View } from "react-native";
@@ -37,7 +39,11 @@ import { useToast } from "@/components/ui/Toast";
 import { OfflineUnavailable } from "@/components/project/OfflineUnavailable";
 import { useIsOnline } from "@/hooks/useIsOnline";
 import { useSeedOfflineProject } from "@/hooks/useSeedOfflineProject";
+import { CourseAbout } from "@/components/course/CourseAbout";
 import { CoursePromo } from "@/components/course/CoursePromo";
+import { CourseSetupWizard } from "@/components/course/CourseSetupWizard";
+import { EMPTY_VIDEO } from "@/components/course/LessonVideoField";
+import { LessonEditor, type LessonSubmit } from "@/components/course/LessonEditor";
 import { useReturnAfterSave } from "@/hooks/useReturnAfterSave";
 import { useAuth } from "@/hooks/useAuth";
 import { useProjectOwnership } from "@/hooks/useProjectOwnership";
@@ -45,6 +51,7 @@ import { useRecordFreeProjectOpen } from "@/hooks/useProjectAccess";
 import {
   useAddLesson,
   useAddModule,
+  useCourseDetails,
   useCourseModules,
   useCourseProgress,
   useCourseResume,
@@ -62,107 +69,40 @@ import {
 import { useFeedDoorway } from "@/hooks/useFeedDoorway";
 import { isProjectFree, useHasPurchased, useProject } from "@/hooks/useProjects";
 import { haptics } from "@/lib/haptics";
-import { lessonTypeOf, lessonMinutes, formatDuration, parseQuiz } from "@/lib/courseTypes";
+import {
+  DEFAULT_PASS_MARK,
+  MIN_OBJECTIVES,
+  countCourseLessons,
+  coursePublishChecks,
+  formatDuration,
+  lessonMinutes,
+  lessonTypeOf,
+  nextSortOrder,
+  parseQuiz,
+  safeHttpUrl,
+} from "@/lib/courseTypes";
 import { buildReaderModel } from "@/lib/lessonFormat";
-import { EditorToolbar } from "@/components/ui/EditorToolbar";
-import { useUndoRedo } from "@/hooks/useUndoRedo";
 import { useTheme } from "@/theme/ThemeProvider";
 import { friendlyError } from "@/lib/friendlyError";
 
-interface LessonFormValue {
-  title: string;
-  content: string;
-  mediaUrl: string;
-  isFreePreview: boolean;
-}
+const TYPE_ICON = { video: Video, text: FileText, quiz: ListChecks, assignment: ClipboardList } as const;
 
-function LessonForm({
-  initial,
-  submitLabel,
-  pending,
-  onSubmit,
-  onCancel,
-}: {
-  initial: LessonFormValue;
-  submitLabel: string;
-  pending: boolean;
-  onSubmit: (value: LessonFormValue) => void;
-  onCancel: () => void;
-}) {
-  const { colors } = useTheme();
-  const history = useUndoRedo(initial);
-  const value = history.value;
-  const setValue = history.set;
-  const inputClass = "w-full rounded-lg border border-border bg-canvas px-3 py-2 text-sm text-ink";
-  const inputStyle = { fontFamily: "Inter_400Regular" } as const;
-  const canSubmit = !!value.title.trim() && !pending;
-
-  return (
-    <View className="mt-2 gap-1.5">
-      <TextInput
-        placeholder="Lesson title"
-        placeholderTextColor={colors.inkMuted}
-        value={value.title}
-        onChangeText={(title) => setValue({ ...value, title })}
-        className={inputClass}
-        style={inputStyle}
-        returnKeyType="next"
-        accessibilityLabel="Lesson title"
-      />
-      <TextInput
-        placeholder="Video link (YouTube, Vimeo, or a direct video URL) — optional"
-        placeholderTextColor={colors.inkMuted}
-        value={value.mediaUrl}
-        onChangeText={(mediaUrl) => setValue({ ...value, mediaUrl })}
-        keyboardType="url"
-        autoCapitalize="none"
-        autoCorrect={false}
-        className={inputClass}
-        style={inputStyle}
-        accessibilityLabel="Video link"
-      />
-      <TextInput
-        placeholder={"Lesson text (optional)\nTip: # heading, - list, 1. steps, > note, ``` code ```, **bold**, `code`"}
-        placeholderTextColor={colors.inkMuted}
-        value={value.content}
-        onChangeText={(content) => setValue({ ...value, content })}
-        multiline
-        textAlignVertical="top"
-        className={inputClass}
-        style={[inputStyle, { minHeight: 140 }]}
-        accessibilityLabel="Lesson notes"
-      />
-      <Pressable
-        onPress={() => setValue({ ...value, isFreePreview: !value.isFreePreview })}
-        accessibilityRole="switch"
-        accessibilityState={{ checked: value.isFreePreview }}
-        className={`flex-row items-center gap-1.5 self-start rounded-full border px-2.5 py-1 ${
-          value.isFreePreview ? "border-accent bg-accent" : "border-border bg-surface"
-        }`}
-      >
-        <Icon as={Eye} size={12} className={value.isFreePreview ? "text-canvas" : "text-ink-muted"} />
-        <Text className={`text-xs font-medium ${value.isFreePreview ? "text-canvas" : "text-ink-muted"}`}>Free preview</Text>
-      </Pressable>
-      <View className="mt-0.5">
-        <EditorToolbar
-          onUndo={history.undo}
-          onRedo={history.redo}
-          canUndo={history.canUndo}
-          canRedo={history.canRedo}
-          onSave={() => {
-            if (!canSubmit) return;
-            onSubmit(value);
-            history.markSaved();
-          }}
-          saving={pending}
-          dirty={history.isDirty || !initial.title}
-          canSave={!!value.title.trim()}
-          saveLabel={submitLabel}
-          onCancel={onCancel}
-        />
-      </View>
-    </View>
-  );
+/** Form value → what the hooks write. Fields that don't belong to the chosen type are cleared. */
+function lessonPayload(value: LessonSubmit) {
+  const type = value.lessonType;
+  const isVideo = type === "video";
+  return {
+    title: value.title.trim(),
+    content: value.content.trim() || undefined,
+    isFreePreview: value.isFreePreview,
+    lessonType: type,
+    mediaUrl: isVideo && !value.video.videoPath ? safeHttpUrl(value.video.mediaUrl) ?? undefined : undefined,
+    videoPath: isVideo ? value.video.videoPath : null,
+    videoWidth: isVideo ? value.video.videoWidth : null,
+    videoHeight: isVideo ? value.video.videoHeight : null,
+    videoDuration: isVideo ? value.video.videoDuration : null,
+    data: type === "quiz" ? value.quiz : null,
+  };
 }
 
 type PendingDelete = { kind: "module" | "lesson"; id: string; label: string } | null;
@@ -216,7 +156,12 @@ export function Course() {
   const deleteLesson = useDeleteLesson(projectId ?? "");
   const moveLesson = useMoveLesson(projectId ?? "");
   const publishCourse = usePublishCourse(projectId ?? "");
+  const detailsQuery = useCourseDetails(projectId);
+  const details = detailsQuery.data;
   const returnAfterSave = useReturnAfterSave();
+  // "setup" = the first-run wizard (basics, goals, sections); "details" = the same first two steps, reopened later.
+  const [wizard, setWizard] = useState<null | "setup" | "details">(null);
+  const wizardOffered = useRef(false);
 
   const [newModuleTitle, setNewModuleTitle] = useState("");
   const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
@@ -228,6 +173,15 @@ export function Course() {
   const [pendingDelete, setPendingDelete] = useState<PendingDelete>(null);
 
   const model = useMemo(() => buildReaderModel(modules ?? [], completedIds), [modules, completedIds]);
+  const editableSections = (modules ?? []).filter((m) => !m.is_foreword_managed).map((m) => ({ id: m.id, title: m.title }));
+
+  // A brand-new, empty draft opens the setup wizard once.
+  useEffect(() => {
+    if (wizardOffered.current || !isCreator || !project || project.published_at) return;
+    if (modules === undefined || detailsQuery.isLoading) return;
+    wizardOffered.current = true;
+    if (!modules.some((m) => !m.is_foreword_managed) && !details) setWizard("setup");
+  }, [isCreator, project, modules, detailsQuery.isLoading, details]);
   const { flat: flatLessons, total: totalLessons, done: completedCount, pct: progressPct, allDone: allComplete } = model;
   const courseDoorway = useFeedDoorway("course_complete");
   // "outline" = hero + module list; "lesson" = focused reader for the selected lesson.
@@ -303,7 +257,7 @@ export function Course() {
     const title = newModuleTitle.trim();
     if (!title) return;
     try {
-      await addModule.mutateAsync({ title, sortOrder: modules?.length ?? 0 });
+      await addModule.mutateAsync({ title, sortOrder: nextSortOrder(modules ?? []) });
       setNewModuleTitle("");
       haptics.light();
     } catch (e) {
@@ -402,6 +356,20 @@ export function Course() {
   }
 
   const modulesList = modules ?? [];
+
+  const { objectivesOk, lessonsOk, descriptionOk, ready: publishReady } = coursePublishChecks({
+    objectives: details?.objectives,
+    lessons: countCourseLessons(modulesList),
+    description: project?.description,
+  });
+  const checklist: { done: boolean; label: string; optional?: boolean; action?: () => void }[] = [
+    { done: objectivesOk, label: `Learning objectives (${MIN_OBJECTIVES}+)`, action: isCreator ? () => setWizard("details") : undefined },
+    { done: lessonsOk, label: "At least one lesson" },
+    { done: descriptionOk, label: "Course description", action: isCreator ? () => router.push(`/projects/${projectId}/edit` as Href) : undefined },
+    { done: !!(details?.promo_video_path || details?.promo_url), label: "Promo video", optional: true, action: isCreator ? () => setWizard("details") : undefined },
+    { done: flatLessons.some((l) => l.is_free_preview), label: "A free preview lesson", optional: true },
+    { done: !!project?.thumbnail_url, label: "Cover image", optional: true, action: isCreator ? () => router.push(`/projects/${projectId}/edit` as Href) : undefined },
+  ];
   // The locked Foreword module sits in front of the course but isn't one of its numbered modules.
   const moduleNumberOf = (moduleId: string): number | null => {
     let n = 0;
@@ -475,9 +443,9 @@ export function Course() {
             {!project.published_at && (
               <Pressable
                 onPress={handlePublishCourse}
-                disabled={publishCourse.isPending || modulesList.length === 0}
+                disabled={publishCourse.isPending || !publishReady}
                 accessibilityRole="button"
-                className={`rounded-full bg-accent px-3 py-1.5 ${publishCourse.isPending || modulesList.length === 0 ? "opacity-50" : ""}`}
+                className={`rounded-full bg-accent px-3 py-1.5 ${publishCourse.isPending || !publishReady ? "opacity-50" : ""}`}
               >
                 <Text className="text-xs font-medium text-canvas">{publishCourse.isPending ? "Publishing…" : "Publish"}</Text>
               </Pressable>
@@ -501,6 +469,39 @@ export function Course() {
           </Pressable>
         )}
 
+        {isOwner && !project.published_at && (
+          <View className="mb-4 rounded-xl border border-border bg-surface p-3">
+            <Text className="mb-2 text-sm font-semibold text-ink">Before you publish</Text>
+            <View className="gap-1.5">
+              {checklist.map((c) => (
+                <View key={c.label} className="flex-row items-center gap-2">
+                  <Icon as={c.done ? CheckCircle2 : Circle} size={16} className={c.done ? "text-accent" : "text-ink-muted"} />
+                  <Text className={`shrink text-sm ${c.done ? "text-ink-muted line-through" : "text-ink"}`}>
+                    {c.label}
+                    {c.optional && !c.done ? " · optional" : ""}
+                  </Text>
+                  {!c.done && c.action ? (
+                    <Pressable onPress={c.action} accessibilityRole="button" accessibilityLabel={`Add: ${c.label}`} hitSlop={8} className="ml-auto">
+                      <Text className="text-xs font-medium text-accent">Add</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {isCreator && (
+          <Pressable
+            onPress={() => setWizard("details")}
+            accessibilityRole="button"
+            className="mb-4 w-full flex-row items-center justify-center gap-1.5 rounded-xl border border-border py-2.5"
+          >
+            <Icon as={Settings2} size={15} className="text-ink" />
+            <Text className="text-sm font-medium text-ink">Course details</Text>
+          </Pressable>
+        )}
+
         {hasAccess && totalLessons > 0 && (
           <>
             <CourseHero
@@ -515,7 +516,9 @@ export function Course() {
           </>
         )}
 
-        {!hasAccess && <CoursePromo projectId={projectId} />}
+        {(!hasAccess || isOwner) && <CoursePromo projectId={projectId} />}
+
+        <CourseAbout details={details} lessons={totalLessons} minutes={modulesList.flatMap((m) => m.lessons).reduce((n, l) => n + lessonMinutes(l), 0)} />
 
         {!hasAccess && (
           <View className="mb-5 mt-2 items-center gap-2 rounded-xl border border-border bg-surface p-4">
@@ -653,9 +656,26 @@ export function Course() {
                       const isSelected = selectedLessonId === l.id;
                       if (editingLessonId === l.id) {
                         return (
-                          <LessonForm
+                          <LessonEditor
                             key={l.id}
-                            initial={{ title: l.title, content: l.content ?? "", mediaUrl: l.media_url ?? "", isFreePreview: l.is_free_preview }}
+                            projectId={projectId ?? ""}
+                            isNew={false}
+                            initial={{
+                              lessonType: lessonTypeOf(l),
+                              title: l.title,
+                              content: l.content ?? "",
+                              quiz: parseQuiz(l.data),
+                              isFreePreview: l.is_free_preview,
+                              moduleId: m.id,
+                            }}
+                            initialVideo={{
+                              videoPath: l.video_path,
+                              videoWidth: l.video_width,
+                              videoHeight: l.video_height,
+                              videoDuration: l.video_duration,
+                              mediaUrl: l.media_url ?? "",
+                            }}
+                            sections={editableSections}
                             submitLabel="Save lesson"
                             pending={updateLesson.isPending}
                             onCancel={() => setEditingLessonId(null)}
@@ -663,18 +683,11 @@ export function Course() {
                               try {
                                 await updateLesson.mutateAsync({
                                   lessonId: l.id,
-                                  title: value.title.trim(),
-                                  content: value.content.trim() || undefined,
-                                  mediaUrl: value.mediaUrl.trim() || undefined,
-                                  isFreePreview: value.isFreePreview,
-                                  // The app edits title, text and link only; type, quiz and uploaded video stay as built on the web.
-                                  lessonType: lessonTypeOf(l),
-                                  data: l.data,
-                                  videoPath: l.video_path,
-                                  videoWidth: l.video_width,
-                                  videoHeight: l.video_height,
-                                  videoDuration: l.video_duration,
+                                  ...lessonPayload(value),
                                   previousVideoPath: l.video_path,
+                                  ...(value.moduleId !== m.id
+                                    ? { moduleId: value.moduleId, sortOrder: nextSortOrder(modulesList.find((x) => x.id === value.moduleId)?.lessons ?? []) }
+                                    : {}),
                                 });
                                 setEditingLessonId(null);
                               } catch (e) {
@@ -702,7 +715,7 @@ export function Course() {
                             )}
                           </Pressable>
                           <Pressable onPress={() => selectLesson(l)} disabled={locked} accessibilityRole="button" accessibilityState={{ disabled: locked, selected: isSelected }} className="min-w-0 flex-1 flex-row items-center gap-1.5">
-                            <Icon as={lessonTypeOf(l) === "video" ? PlayCircle : FileText} size={13} className="text-ink-muted" />
+                            <Icon as={TYPE_ICON[lessonTypeOf(l)]} size={13} className="text-ink-muted" />
                             <Text numberOfLines={1} className={`shrink text-sm ${locked ? "text-ink-muted" : "text-ink"}`}>
                               {m.is_foreword_managed ? "" : `${moduleNumberOf(m.id)}.${lessonIdx + 1}  `}{l.title}
                             </Text>
@@ -740,21 +753,30 @@ export function Course() {
 
                 {isOwner && !collapsed && !m.is_foreword_managed &&
                   (lessonDraftFor === m.id ? (
-                    <LessonForm
-                      initial={{ title: "", content: "", mediaUrl: "", isFreePreview: m.lessons.length === 0 }}
+                    <LessonEditor
+                      projectId={projectId ?? ""}
+                      isNew
+                      initial={{
+                        lessonType: "video",
+                        title: "",
+                        content: "",
+                        quiz: { questions: [], pass_mark: DEFAULT_PASS_MARK },
+                        isFreePreview: false,
+                        moduleId: m.id,
+                      }}
+                      initialVideo={EMPTY_VIDEO}
+                      sections={editableSections}
+                      suggestFreePreview={!flatLessons.some((l) => l.is_free_preview)}
                       submitLabel="Add lesson"
                       pending={addLesson.isPending}
                       onCancel={() => setLessonDraftFor(null)}
                       onSubmit={async (value) => {
+                        const target = modulesList.find((x) => x.id === value.moduleId) ?? m;
                         try {
                           await addLesson.mutateAsync({
-                            moduleId: m.id,
-                            title: value.title.trim(),
-                            content: value.content.trim() || undefined,
-                            mediaUrl: value.mediaUrl.trim() || undefined,
-                            isFreePreview: value.isFreePreview,
-                            lessonType: value.mediaUrl.trim() ? "video" : "text",
-                            sortOrder: m.lessons.length,
+                            ...lessonPayload(value),
+                            moduleId: target.id,
+                            sortOrder: nextSortOrder(target.lessons),
                           });
                           setLessonDraftFor(null);
                         } catch (e) {
@@ -829,6 +851,15 @@ export function Course() {
         );
       })()}
 
+      {wizard && projectId ? (
+        <CourseSetupWizard
+          projectId={projectId}
+          details={details}
+          nextSectionOrder={nextSortOrder(modulesList)}
+          includeSections={wizard === "setup"}
+          onClose={() => setWizard(null)}
+        />
+      ) : null}
       {showForewords && projectId ? <ForewordsSheet projectId={projectId} projectType="course" onClose={() => setShowForewords(false)} /> : null}
       {projectId ? <ForewordPreviewBar projectId={projectId} isOwner={isOwner} /> : null}
     </KeyboardAvoider>

@@ -15,19 +15,12 @@ import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useDuckWhile } from "@/hooks/useDuckWhile";
 import { APP_URL } from "@/lib/config";
+import { resolveEmbed } from "@/lib/courseTypes";
 import { signedCourseVideoUrl } from "@/lib/courseVideo";
 import { openExternal } from "@/lib/openExternal";
 
-type EmbedKind = { type: "youtube" | "vimeo"; embedUrl: string } | { type: "video" } | { type: "link" };
-
-export function resolveEmbed(url: string): EmbedKind {
-  const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{6,})/);
-  if (yt) return { type: "youtube", embedUrl: `https://www.youtube.com/embed/${yt[1]}?playsinline=1` };
-  const vimeo = url.match(/vimeo\.com\/(\d+)/);
-  if (vimeo) return { type: "vimeo", embedUrl: `https://player.vimeo.com/video/${vimeo[1]}` };
-  if (/\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(url)) return { type: "video" };
-  return { type: "link" };
-}
+// Which kind of media a pasted link is lives in lib/courseTypes.ts, shared with the web app and unit-tested: hosts are
+// matched from the start of the URL and anything that isn't a plain http(s) link resolves to "none".
 
 function DirectVideo({
   url,
@@ -132,6 +125,9 @@ export function LessonMedia({
 }) {
   const embed = resolveEmbed(url);
 
+  // A stored link that isn't a plain http(s) URL (script, intent:, tel: …) is never played or opened.
+  if (embed.type === "none") return null;
+
   if (embed.type === "youtube" || embed.type === "vimeo") {
     return (
       <View className="mb-2 aspect-video w-full overflow-hidden rounded-xl bg-canvas">
@@ -139,7 +135,7 @@ export function LessonMedia({
           // key: switching lessons must tear the page down, not navigate it in place.
           key={embed.embedUrl}
           // YouTube rejects embeds that carry no referrer (error 153), so send the app origin.
-          source={{ uri: embed.embedUrl, headers: APP_URL ? { Referer: `${APP_URL}/` } : undefined }}
+          source={{ uri: embed.type === "youtube" ? `${embed.embedUrl}?playsinline=1` : embed.embedUrl, headers: APP_URL ? { Referer: `${APP_URL}/` } : undefined }}
           style={{ flex: 1, backgroundColor: "transparent" }}
           allowsFullscreenVideo
           allowsInlineMediaPlayback
@@ -154,10 +150,11 @@ export function LessonMedia({
     );
   }
 
-  if (embed.type === "video") return <DirectVideo url={url} onWatched={onWatched} startAt={startAt} onTime={onTime} />;
+  if (embed.type === "video") return <DirectVideo url={embed.url} onWatched={onWatched} startAt={startAt} onTime={onTime} />;
 
+  if (embed.type !== "link") return null;
   return (
-    <Pressable onPress={() => void openExternal(url)} accessibilityRole="link" className="mb-2 flex-row items-center gap-1.5 self-start">
+    <Pressable onPress={() => void openExternal(embed.url)} accessibilityRole="link" className="mb-2 flex-row items-center gap-1.5 self-start">
       <Icon as={PlayCircle} size={15} className="text-accent" />
       <Text className="text-sm font-medium text-accent">Open lesson video</Text>
     </Pressable>

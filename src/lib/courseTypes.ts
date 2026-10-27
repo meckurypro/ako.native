@@ -137,3 +137,85 @@ export const COURSE_LEVELS: { value: "beginner" | "intermediate" | "advanced" | 
 ];
 export const MIN_OBJECTIVES = 3;
 export const MAX_OBJECTIVES = 8;
+
+// ── Ordering ──────────────────────────────────────────────────────────────────────────────────────────────────
+// Positions used to be "the list length", which collides with an existing row after any delete (0,1,2 → delete 1 →
+// the next one gets 2 as well). Always continue from the highest position instead, and when reordering write the
+// *index* of every row whose stored position differs from it, so duplicate or gappy positions heal themselves.
+
+export function nextSortOrder(items: { sort_order: number }[]): number {
+  return items.reduce((max, it) => (it.sort_order > max ? it.sort_order : max), -1) + 1;
+}
+
+export function moveItem<T>(list: readonly T[], from: number, to: number): T[] {
+  const out = list.slice();
+  if (from < 0 || from >= out.length || to < 0 || to >= out.length || from === to) return out;
+  const [item] = out.splice(from, 1);
+  out.splice(to, 0, item);
+  return out;
+}
+
+/** The rows that need writing so that the order given is stored as 0..n-1. */
+export function orderWrites(ordered: { id: string; sort_order: number }[]): { id: string; sort_order: number }[] {
+  const writes: { id: string; sort_order: number }[] = [];
+  ordered.forEach((it, i) => {
+    if (it.sort_order !== i) writes.push({ id: it.id, sort_order: i });
+  });
+  return writes;
+}
+
+// ── Links ─────────────────────────────────────────────────────────────────────────────────────────────────────
+// A lesson or promo video can be a pasted link, and it is later rendered as a clickable link. Only web links are
+// allowed: anything else (javascript:, data:, intent:, tel: …) is either script or hands control to another app.
+
+const HTTP_URL = /^https?:\/\/[^\s/?#]+[^\s]*$/i;
+
+/** The trimmed link when it is a plain http(s) URL, otherwise null. */
+export function safeHttpUrl(raw: string | null | undefined): string | null {
+  const v = (raw ?? "").trim();
+  return v && HTTP_URL.test(v) ? v : null;
+}
+
+// ── Video links ───────────────────────────────────────────────────────────────────────────────────────────────
+// How a pasted lesson/promo link is shown. Hosts are matched from the start of the URL, so a link that merely
+// *contains* "youtu.be/…" in its query string is not mistaken for YouTube. Anything that isn't a plain http(s)
+// link resolves to "none" and is never rendered or opened.
+
+export type EmbedKind =
+  | { type: "youtube" | "vimeo"; embedUrl: string }
+  | { type: "video"; url: string }
+  | { type: "link"; url: string }
+  | { type: "none" };
+
+export function resolveEmbed(raw: string | null | undefined): EmbedKind {
+  const url = safeHttpUrl(raw);
+  if (!url) return { type: "none" };
+  const yt = url.match(/^https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?(?:[^#]*&)?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([a-zA-Z0-9_-]{6,})/i);
+  if (yt) return { type: "youtube", embedUrl: `https://www.youtube.com/embed/${yt[1]}` };
+  const vimeo = url.match(/^https?:\/\/(?:www\.|player\.)?vimeo\.com\/(?:video\/)?(\d+)/i);
+  if (vimeo) return { type: "vimeo", embedUrl: `https://player.vimeo.com/video/${vimeo[1]}` };
+  if (/\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(url)) return { type: "video", url };
+  return { type: "link", url };
+}
+
+/** What to tell the creator about a pasted video link, or null when it's fine (or empty). */
+export function videoLinkProblem(raw: string | null | undefined): string | null {
+  const v = (raw ?? "").trim();
+  if (!v) return null;
+  return safeHttpUrl(v) ? null : "Use a full link that starts with http:// or https://.";
+}
+
+// ── Publish checklist ─────────────────────────────────────────────────────────────────────────────────────────
+// The same three checks on web and native. The lesson count leaves out the Foreword section: its lessons are written
+// by invited readers and managed automatically, so they don't make a course ready to publish.
+
+export function countCourseLessons(modules: { is_foreword_managed?: boolean | null; lessons: unknown[] }[]): number {
+  return modules.reduce((n, m) => (m.is_foreword_managed ? n : n + m.lessons.length), 0);
+}
+
+export function coursePublishChecks(input: { objectives: string[] | null | undefined; lessons: number; description: string | null | undefined }) {
+  const objectivesOk = (input.objectives ?? []).filter((o) => o.trim()).length >= MIN_OBJECTIVES;
+  const lessonsOk = input.lessons > 0;
+  const descriptionOk = !!input.description?.trim();
+  return { objectivesOk, lessonsOk, descriptionOk, ready: objectivesOk && lessonsOk && descriptionOk };
+}

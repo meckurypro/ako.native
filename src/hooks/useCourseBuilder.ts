@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { removeCourseVideos } from "../lib/courseVideo";
+import { moveItem, orderWrites, safeHttpUrl } from "../lib/courseTypes";
 import type { LessonType } from "../lib/courseTypes";
 
 export interface CourseLesson {
@@ -143,6 +144,23 @@ export function useAddModule(projectId: string) {
   });
 }
 
+// Adds several sections in ONE insert, so a failure can't leave half of them behind (a retry would then duplicate
+// the ones that did land). Used by the setup wizard.
+export function useAddModules(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    meta: { blocking: true },
+    mutationFn: async ({ titles, startOrder }: { titles: string[]; startOrder: number }) => {
+      if (titles.length === 0) return;
+      const { error } = await supabase
+        .from("course_modules")
+        .insert(titles.map((title, i) => ({ project_id: projectId, title, sort_order: startOrder + i })));
+      if (error) throw error;
+    },
+    onSuccess: () => invalidateCourse(queryClient, projectId),
+  });
+}
+
 export function useUpdateModuleTitle(projectId: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -172,16 +190,16 @@ export function useMoveModule(projectId: string) {
       direction: "up" | "down";
     }) => {
       const idx = modules.findIndex((m) => m.id === moduleId);
-      const swapIdx = direction === "up" ? idx - 1 : idx + 1;
-      if (idx < 0 || swapIdx < 0 || swapIdx >= modules.length) return;
-      const a = modules[idx];
-      const b = modules[swapIdx];
-      const [{ error: e1 }, { error: e2 }] = await Promise.all([
-        supabase.from("course_modules").update({ sort_order: b.sort_order }).eq("id", a.id),
-        supabase.from("course_modules").update({ sort_order: a.sort_order }).eq("id", b.id),
-      ]);
-      if (e1) throw e1;
-      if (e2) throw e2;
+      const to = direction === "up" ? idx - 1 : idx + 1;
+      if (idx < 0 || to < 0 || to >= modules.length) return;
+      // Write the new index of every row whose stored position differs, not a swap of the two positions: a swap
+      // does nothing when both rows hold the same value, which is what a delete used to leave behind.
+      const writes = orderWrites(moveItem(modules, idx, to));
+      const results = await Promise.all(
+        writes.map((w) => supabase.from("course_modules").update({ sort_order: w.sort_order }).eq("id", w.id))
+      );
+      const failed = results.find((r) => r.error);
+      if (failed?.error) throw failed.error;
     },
     onSuccess: () => invalidateCourse(queryClient, projectId),
   });
@@ -193,9 +211,8 @@ export function useDeleteModule(projectId: string) {
     meta: { blocking: true },
     mutationFn: async (moduleId: string) => {
       const { data: vids } = await supabase.from("course_lessons").select("video_path").eq("module_id", moduleId);
-      // Lessons under this module have no ON DELETE CASCADE in the
-      // migration, so remove them first or the FK will reject this.
-      await supabase.from("course_lessons").delete().eq("module_id", moduleId);
+      // The lessons go with the section (course_lessons.module_id is ON DELETE CASCADE). They used to be deleted
+      // first with the error ignored, which could leave a section standing with its lessons already gone.
       const { error } = await supabase.from("course_modules").delete().eq("id", moduleId);
       if (error) throw error;
       void removeCourseVideos((vids ?? []).map((v) => v.video_path as string | null));
@@ -320,16 +337,14 @@ export function useMoveLesson(projectId: string) {
       direction: "up" | "down";
     }) => {
       const idx = lessons.findIndex((l) => l.id === lessonId);
-      const swapIdx = direction === "up" ? idx - 1 : idx + 1;
-      if (idx < 0 || swapIdx < 0 || swapIdx >= lessons.length) return;
-      const a = lessons[idx];
-      const b = lessons[swapIdx];
-      const [{ error: e1 }, { error: e2 }] = await Promise.all([
-        supabase.from("course_lessons").update({ sort_order: b.sort_order }).eq("id", a.id),
-        supabase.from("course_lessons").update({ sort_order: a.sort_order }).eq("id", b.id),
-      ]);
-      if (e1) throw e1;
-      if (e2) throw e2;
+      const to = direction === "up" ? idx - 1 : idx + 1;
+      if (idx < 0 || to < 0 || to >= lessons.length) return;
+      const writes = orderWrites(moveItem(lessons, idx, to));
+      const results = await Promise.all(
+        writes.map((w) => supabase.from("course_lessons").update({ sort_order: w.sort_order }).eq("id", w.id))
+      );
+      const failed = results.find((r) => r.error);
+      if (failed?.error) throw failed.error;
     },
     onSuccess: () => invalidateCourse(queryClient, projectId),
   });
@@ -349,17 +364,18 @@ export function useSaveOutline(projectId: string) {
     meta: { blocking: true },
     mutationFn: async ({ draft, current }: { draft: OutlineDraft[]; current: CourseModule[] }) => {
       const writes: PromiseLike<{ error: unknown }>[] = [];
-      const currentIdx = new Map(current.map((m, i) => [m.id, i]));
-      const lessonNow = new Map<string, { moduleId: string; idx: number }>();
-      current.forEach((m) => m.lessons.forEach((l, i) => lessonNow.set(l.id, { moduleId: m.id, idx: i })));
+      // Compare against the positions actually stored, not against list indices: when stored positions are gappy
+      // or duplicated an index comparison skips rows that still need renumbering.
+      const lessonNow = new Map<string, { moduleId: string; sortOrder: number }>();
+      current.forEach((m) => m.lessons.forEach((l) => lessonNow.set(l.id, { moduleId: m.id, sortOrder: l.sort_order })));
       draft.forEach((m, mi) => {
         const was = current.find((c) => c.id === m.id);
-        if (was && currentIdx.get(m.id) !== mi) {
+        if (was && was.sort_order !== mi) {
           writes.push(supabase.from("course_modules").update({ sort_order: mi }).eq("id", m.id));
         }
         m.lessons.forEach((l, li) => {
           const prev = lessonNow.get(l.id);
-          if (!prev || prev.moduleId !== m.id || prev.idx !== li) {
+          if (!prev || prev.moduleId !== m.id || prev.sortOrder !== li) {
             writes.push(supabase.from("course_lessons").update({ module_id: m.id, sort_order: li }).eq("id", l.id));
           }
         });
@@ -429,7 +445,7 @@ export function useSaveCourseDetails(projectId: string) {
           requirements: clean(input.requirements),
           audience: clean(input.audience),
           promo_video_path: input.promo_video_path,
-          promo_url: input.promo_video_path ? null : input.promo_url?.trim() || null,
+          promo_url: input.promo_video_path ? null : safeHttpUrl(input.promo_url),
           promo_width: input.promo_video_path ? input.promo_width : null,
           promo_height: input.promo_video_path ? input.promo_height : null,
           promo_duration: input.promo_video_path ? input.promo_duration : null,
@@ -515,7 +531,8 @@ export function useSetLessonComplete(projectId: string, userId: string | undefin
           .from("course_lesson_progress")
           .upsert(
             { project_id: projectId, lesson_id: lessonId, user_id: userId },
-            { onConflict: "lesson_id,user_id" }
+            // Already completed (re-watched video, double tap, second device)? Leave the row as it is.
+            { onConflict: "lesson_id,user_id", ignoreDuplicates: true }
           );
         if (error) throw error;
       } else {
