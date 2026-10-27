@@ -63,7 +63,7 @@ export const FEATURE_FLAG_DEFS: FeatureFlagDef[] = [
     key: "projects_enabled",
     label: "Projects",
     description:
-      "Creating new projects of any type (files, events, courses, gigs, pitches, rooms, etc.) via the Create sheet. Existing projects, purchases, and edits to them are unaffected.",
+      "Creating new projects of any type (files, events, courses, talents, pitches, rooms, etc.) via the Create sheet. Existing projects, purchases, and edits to them are unaffected.",
     category: "projects",
   },
   {
@@ -115,7 +115,7 @@ export const FEATURE_FLAG_DEFS: FeatureFlagDef[] = [
   {
     key: "purchases_enabled",
     label: "Paid project purchases",
-    description: "Buying or booking paid projects and gigs. Already-owned purchases stay accessible.",
+    description: "Buying or booking paid projects and talents. Already-owned purchases stay accessible.",
     category: "wallet",
   },
   {

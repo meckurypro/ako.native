@@ -1,5 +1,5 @@
 // src/components/activity/EmptyNotice.tsx
-// Centered icon + message used by the Activity / Library / Gigs empty states.
+// Centered icon + message used by the Activity / Library / Talents empty states.
 import type { LucideIcon } from "lucide-react-native";
 import { View } from "react-native";
 
@@ -10,7 +10,7 @@ interface EmptyNoticeProps {
   icon: LucideIcon;
   message: string;
   title?: string;
-  /** Larger, roomier variant used by Drafts / Scheduled / Gigs. */
+  /** Larger, roomier variant used by Drafts / Scheduled / Talents. */
   large?: boolean;
 }
 

@@ -52,7 +52,7 @@ export function useLogFreeProjectAccess() {
 }
 
 // Library only lists these types (see useLibrary's LIBRARY_TYPES) — events,
-// meetings, rooms and gigs live in Activity / their own pages instead.
+// meetings, rooms and talents live in Activity / their own pages instead.
 const OPEN_LIBRARY_TYPES = new Set(["book", "course", "media", "file", "url"]);
 
 // Module-level so a project opened again (or from two pages, e.g. Book →

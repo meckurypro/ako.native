@@ -2,11 +2,11 @@
 //
 // Profile tabs are icon-only (no text labels). Every tab id the profile can
 // produce — the fixed ones (posts / media / projects), the type-based ones
-// (book / course / event / room / file) and the dynamic Gig categories a
+// (book / course / event / room / file) and the dynamic Talent categories a
 // creator defines themselves ("Artist", "Photography", ...) — resolves to
 // one icon here, so ProfilePage never decides icons inline.
 //
-// Gig categories are free text, so they're matched by keyword; anything
+// Talent categories are free text, so they're matched by keyword; anything
 // unrecognised falls back to a briefcase (it's work a person offers).
 // When the custom Akọ icon set lands (see 08.8_AKO_ICONS_CREATION.md),
 // swapping icons means editing this one file.

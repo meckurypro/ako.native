@@ -53,7 +53,7 @@ export function useCollaborators(target: CollaborationTarget, targetId: string |
 /** Sends a collaboration request — inserting the row is the request; the DB trigger notifies the invitee.
  *  roleId is project-only (post_collaborators has no role_id column) — what this person is being
  *  credited as contributing (e.g. Cinematographer). Optional; an accepted invite with a role tags it,
- *  which can trigger automatic Gig setup for the invitee (see AKO_DYNAMIC_PROFILE_PORTFOLIOS spec §11). */
+ *  which can trigger automatic Talent setup for the invitee (see AKO_DYNAMIC_PROFILE_PORTFOLIOS spec §11). */
 export function useSendCollaborationRequest(target: CollaborationTarget) {
   const { user } = useAuth();
   const queryClient = useQueryClient();

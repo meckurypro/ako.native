@@ -94,8 +94,8 @@ function SongActions({ entry }: { entry: MusicCatalogueWithContributors }) {
   function visitProfile() {
     if (!artist) return;
     recordUsage.mutate({ catalogueId: entry.id, eventType: "profile_visit" });
-    // The artist's Akọ profile is the one public, always-present creator page. A Gig is a private management hub
-    // (/gigs), not a public page.
+    // The artist's Akọ profile is the one public, always-present creator page. A Talent is a private management hub
+    // (/talents), not a public page.
     runAfterDismiss(close, () => router.push(`/profile/${artist.contributor.username}` as Href));
   }
 

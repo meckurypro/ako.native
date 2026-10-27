@@ -25,7 +25,7 @@ const SHOWS_BOTTOM_NAV: RegExp[] = [
   /^\/wallet$/,
   /^\/wallet\/affiliate-links$/, // Forked projects (web shows the nav here too)
   /^\/activity\/affiliates$/, // …and its Activity entry point, same screen
-  /^\/gigs$/,
+  /^\/talents$/,
   /^\/library$/,
   /^\/me\/custom-pages$/, // Custom pages list (the create flow, editor and manage screens are full-screen)
   /^\/me$/, // the Profile tab's redirect screen — keeps the nav up while it resolves instead of a bare blank screen

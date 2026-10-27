@@ -46,7 +46,7 @@ export const PROJECT_TYPE_LABELS: Record<ProjectType, string> = {
   course: "Course",
   room: "Cohort",
   meeting: "Meeting",
-  gig: "Gig",
+  gig: "Talent",
   pitch: "Pitch",
   book: "Book",
 };
@@ -75,7 +75,7 @@ export const PROJECT_TYPE_HINTS: Record<ProjectType, string> = {
   media: "Audio, video, or both. Link out (Spotify, YouTube) or upload to stream here.",
   file: "A file you upload and host here — visitors download it with one click.",
   url: "A link you're selling access to — a WhatsApp group, a page, anything.",
-  gig: "A skill or service you offer. Show proof of work, get messaged or booked.",
+  gig: "A talent or service you offer. Show proof of work, get messaged or booked.",
   pitch:
     "Share an idea and let people support it — not an investment, just backing. No price tag; supporters back it for any amount and keep whatever's raised regardless of the goal.",
   book: "A book or article. Link out, upload a PDF for download, or let people read it right here.",
@@ -310,8 +310,8 @@ export interface Project {
   // to posts.author_id — owner_id is still always the creating user;
   // this marks which page (if any) the project is attributed to.
   posted_as_page_id: string | null;
-  // A song (project_type "media") lives under one of its owner's artist gigs — that gig's project id. Always set for
-  // media, null for everything else (database rule: see supabase/ako_songs_under_gigs.sql).
+  // A song (project_type "media") lives under one of its owner's artist talents — that talent's project id. Always set for
+  // media, null for everything else (database rule: see supabase/ako_songs_under_talents.sql).
   parent_gig_id?: string | null;
   title: string;
   description: string | null;
@@ -531,14 +531,14 @@ interface MediaDetailsInput {
 // A 'gig' is a portfolio/service listing rather than a pre-made
 // asset — sample_project_ids points at the owner's own other
 // projects (any type) as proof-of-work, shown as a samples strip on
-// the gig's detail page. price_usd = 0 means "Message to inquire"
+// the talent's detail page. price_usd = 0 means "Message to inquire"
 // only; > 0 additionally offers a payable deposit/booking fee via
 // the existing purchase flow (see PROJECT_TYPE_HINTS.gig).
 // role_id is required going forward (see AKO_DYNAMIC_PROFILE_PORTFOLIOS
-// spec) — it's what lets this Gig surface as a dynamic profile category
-// (e.g. a Cinematographer gig → the profile's "Film" tab). Optional only
-// in the type because a handful of pre-migration gigs have it null.
-interface GigDetailsInput {
+// spec) — it's what lets this Talent surface as a dynamic profile category
+// (e.g. a Cinematographer talent → the profile's "Film" tab). Optional only
+// in the type because a handful of pre-migration talents have it null.
+interface TalentDetailsInput {
   role_id?: string;
   tagline?: string;
   delivery_estimate?: string;
@@ -597,13 +597,13 @@ interface CreateProjectInput {
   // enforces the caller is actually an active member of this page —
   // this is never trusted client-side alone.
   posted_as_page_id?: string;
-  // Required for a song: the artist gig it lives under (a gig of the signed-in user's).
+  // Required for a song: the artist talent it lives under (a talent of the signed-in user's).
   parent_gig_id?: string;
   topic_ids?: string[];
   event_details?: EventDetailsInput;
   meeting_details?: MeetingDetailsInput;
   media_details?: MediaDetailsInput;
-  gig_details?: GigDetailsInput;
+  gig_details?: TalentDetailsInput;
   room_details?: RoomDetailsInput;
   book_details?: BookDetailsInput;
   // File projects: the files, in order (see useProjectFiles). file_path is mirrored to the first one.
@@ -672,10 +672,10 @@ export function useCreateProject() {
         if (detailsError) throw detailsError;
       }
       if (input.project_type === "gig" && gig_details) {
-        const { sample_project_ids, ...gigRow } = gig_details;
+        const { sample_project_ids, ...talentRow } = gig_details;
         const { error: detailsError } = await supabase
           .from("project_gig_details")
-          .insert({ project_id: data.id, ...gigRow });
+          .insert({ project_id: data.id, ...talentRow });
         if (detailsError) throw detailsError;
 
         if (sample_project_ids && sample_project_ids.length > 0) {
@@ -795,7 +795,7 @@ interface UpdateProjectInput {
   promo_price_usd?: number | null;
   status?: ProjectStatus;
   is_private?: boolean;
-  // A song moving to another of the owner's artist gigs. undefined = leave it where it is.
+  // A song moving to another of the owner's artist talents. undefined = leave it where it is.
   parent_gig_id?: string;
   // undefined = leave topics untouched (e.g. a status-only change).
   // An array — including [] — replaces the full topic set.
@@ -1073,13 +1073,13 @@ export function usePurchaseProject() {
   });
 }
 
-// Gigs go through their own edge function rather than purchase-project
-// directly — a gig "purchase" is a booking-fee deposit that also needs
+// Talents go through their own edge function rather than purchase-project
+// directly — a talent "purchase" is a booking-fee deposit that also needs
 // to drop the buyer straight into a conversation with the host, which
 // none of the other project types need. book-gig calls purchase-project
 // internally for the actual money movement, then creates/reuses the
 // direct conversation and seeds an opening message. See book-gig/index.ts.
-export function useBookGig() {
+export function useBookTalent() {
   const queryClient = useQueryClient();
   const { play } = useSound();
 

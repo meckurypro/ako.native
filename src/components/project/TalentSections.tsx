@@ -1,5 +1,5 @@
-// src/components/project/GigSections.tsx
-// Gig-only sections on the project page: the creator's FAQ and customer reviews.
+// src/components/project/TalentSections.tsx
+// Talent-only sections on the project page: the creator's FAQ and customer reviews.
 import { ChevronDown, Star } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, TextInput, View } from "react-native";
@@ -8,7 +8,7 @@ import Animated, { useAnimatedStyle, withTiming } from "react-native-reanimated"
 import { Avatar } from "@/components/ui/Avatar";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
-import { useAddGigReview, useCanReviewGig, useGigRatingSummary, useGigReviews } from "@/hooks/useGigReviews";
+import { useAddTalentReview, useCanReviewTalent, useTalentRatingSummary, useTalentReviews } from "@/hooks/useTalentReviews";
 import { useTheme } from "@/theme/ThemeProvider";
 
 function FaqRow({ item }: { item: { question: string; answer: string } }) {
@@ -27,7 +27,7 @@ function FaqRow({ item }: { item: { question: string; answer: string } }) {
   );
 }
 
-export function GigFaqSection({ faq }: { faq: { question: string; answer: string }[] }) {
+export function TalentFaqSection({ faq }: { faq: { question: string; answer: string }[] }) {
   return (
     <View className="mb-4">
       <Text className="mb-2 font-display text-lg font-semibold tracking-tight text-ink">FAQ</Text>
@@ -51,12 +51,12 @@ function StarRow({ rating, size = 14 }: { rating: number; size?: number }) {
   );
 }
 
-export function GigReviewsSection({ projectId }: { projectId: string }) {
+export function TalentReviewsSection({ projectId }: { projectId: string }) {
   const { colors } = useTheme();
-  const { data: reviews } = useGigReviews(projectId);
-  const { average, count } = useGigRatingSummary(projectId);
-  const canReview = useCanReviewGig(projectId);
-  const addReview = useAddGigReview(projectId);
+  const { data: reviews } = useTalentReviews(projectId);
+  const { average, count } = useTalentRatingSummary(projectId);
+  const canReview = useCanReviewTalent(projectId);
+  const addReview = useAddTalentReview(projectId);
   const [showForm, setShowForm] = useState(false);
   const [rating, setRating] = useState(5);
   const [reviewText, setReviewText] = useState("");

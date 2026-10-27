@@ -17,7 +17,7 @@ export const MAX_OFFERS = 10;
 
 // Mirrors offer_eligible_project_types() in ako_offers.sql. Events and
 // rooms are excluded on purpose (their purchase issues tickets / room
-// membership), gigs are booked rather than unlocked, pitches have no price.
+// membership), talents are booked rather than unlocked, pitches have no price.
 export const OFFER_ELIGIBLE_TYPES: ProjectType[] = ["book", "course", "media", "file", "url", "meeting"];
 
 export interface OfferItem {

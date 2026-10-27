@@ -1,4 +1,4 @@
-// src/components/project-types/GigFields.tsx
+// src/components/project-types/TalentFields.tsx
 import { Check, Image as ImageIcon, Plus, X } from "lucide-react-native";
 import { Pressable, TextInput, View } from "react-native";
 
@@ -6,22 +6,22 @@ import { FormField } from "@/components/ui/FormField";
 import { SelectField } from "@/components/ui/SelectField";
 import { Icon, Image } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
-import { useGigRolesByCategory, useEligibleGigSampleProjects } from "@/hooks/usePortfolio";
-import type { GigFaqItem } from "@/hooks/useProjectTypeDetails";
+import { useTalentRolesByCategory, useEligibleTalentSampleProjects } from "@/hooks/usePortfolio";
+import type { TalentFaqItem } from "@/hooks/useProjectTypeDetails";
 import { PROJECT_TYPE_LABELS } from "@/hooks/useProjects";
 import { useTheme } from "@/theme/ThemeProvider";
 
-export interface GigFieldsValue {
+export interface TalentFieldsValue {
   role_id: string;
   tagline: string;
   delivery_estimate: string;
   sample_project_ids: string[];
   revisions_included: string; // "" = unspecified, kept as text for the input
   deliverables: string[];
-  faq: GigFaqItem[];
+  faq: TalentFaqItem[];
 }
 
-export const EMPTY_GIG_FIELDS: GigFieldsValue = {
+export const EMPTY_TALENT_FIELDS: TalentFieldsValue = {
   role_id: "",
   tagline: "",
   delivery_estimate: "",
@@ -31,12 +31,12 @@ export const EMPTY_GIG_FIELDS: GigFieldsValue = {
   faq: [],
 };
 
-export const MAX_GIG_SAMPLES = 6;
+export const MAX_TALENT_SAMPLES = 6;
 
-export function GigFields({ value, onChange, excludeProjectId }: { value: GigFieldsValue; onChange: (value: GigFieldsValue) => void; excludeProjectId?: string }) {
+export function TalentFields({ value, onChange, excludeProjectId }: { value: TalentFieldsValue; onChange: (value: TalentFieldsValue) => void; excludeProjectId?: string }) {
   const { colors } = useTheme();
-  const { grouped: roleGroups } = useGigRolesByCategory();
-  const { data: candidates } = useEligibleGigSampleProjects(excludeProjectId);
+  const { grouped: roleGroups } = useTalentRolesByCategory();
+  const { data: candidates } = useEligibleTalentSampleProjects(excludeProjectId);
 
   // The role picker shows every role flat; the category is folded into the label so it stays readable.
   const roleOptions = [
@@ -48,7 +48,7 @@ export function GigFields({ value, onChange, excludeProjectId }: { value: GigFie
     if (value.sample_project_ids.includes(id)) {
       onChange({ ...value, sample_project_ids: value.sample_project_ids.filter((s) => s !== id) });
     } else {
-      if (value.sample_project_ids.length >= MAX_GIG_SAMPLES) return;
+      if (value.sample_project_ids.length >= MAX_TALENT_SAMPLES) return;
       onChange({ ...value, sample_project_ids: [...value.sample_project_ids, id] });
     }
   }
@@ -58,7 +58,7 @@ export function GigFields({ value, onChange, excludeProjectId }: { value: GigFie
     next[index] = text;
     onChange({ ...value, deliverables: next });
   };
-  const updateFaq = (index: number, field: keyof GigFaqItem, text: string) =>
+  const updateFaq = (index: number, field: keyof TalentFaqItem, text: string) =>
     onChange({ ...value, faq: value.faq.map((item, i) => (i === index ? { ...item, [field]: text } : item)) });
 
   const box = "rounded-lg border border-border bg-canvas px-3 py-2 text-sm text-ink";
@@ -69,7 +69,7 @@ export function GigFields({ value, onChange, excludeProjectId }: { value: GigFie
       <View className="mb-4">
         <SelectField label="Professional role" value={value.role_id} options={roleOptions} onChange={(role_id) => onChange({ ...value, role_id })} />
         <Text className="mt-1.5 text-xs text-ink-muted">
-          What this gig represents professionally — it's how your work shows up as a tab on your profile (e.g. a Cinematographer gig surfaces under "Film").
+          What this talent represents professionally — it's how your work shows up as a tab on your profile (e.g. a Cinematographer talent surfaces under "Film").
         </Text>
       </View>
 
@@ -155,7 +155,7 @@ export function GigFields({ value, onChange, excludeProjectId }: { value: GigFie
 
       <View>
         <Text className="mb-1.5 text-sm font-medium text-ink-muted">
-          Work samples <Text className="font-normal">(optional, up to {MAX_GIG_SAMPLES})</Text>
+          Work samples <Text className="font-normal">(optional, up to {MAX_TALENT_SAMPLES})</Text>
         </Text>
         {!candidates || candidates.length === 0 ? (
           <Text className="rounded-xl border border-border bg-surface px-4 py-3 text-xs text-ink-muted">
@@ -165,7 +165,7 @@ export function GigFields({ value, onChange, excludeProjectId }: { value: GigFie
           <View className="gap-2">
             {candidates.map((p) => {
               const selected = value.sample_project_ids.includes(p.id);
-              const atCap = !selected && value.sample_project_ids.length >= MAX_GIG_SAMPLES;
+              const atCap = !selected && value.sample_project_ids.length >= MAX_TALENT_SAMPLES;
               return (
                 <Pressable
                   key={p.id}
@@ -194,7 +194,7 @@ export function GigFields({ value, onChange, excludeProjectId }: { value: GigFie
             })}
           </View>
         )}
-        <Text className="mt-1.5 text-xs text-ink-muted">Pick from your own projects to show as proof of work on this gig.</Text>
+        <Text className="mt-1.5 text-xs text-ink-muted">Pick from your own projects to show as proof of work on this talent.</Text>
       </View>
     </View>
   );

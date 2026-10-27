@@ -32,7 +32,7 @@ export const DISCOVER_SECTIONS: DiscoverSection[] = [
   { type: "room", title: "Cohorts" },
   { type: "meeting", title: "Live meetings" },
   { type: "media", title: "Audio & video" },
-  { type: "gig", title: "Gigs" },
+  { type: "gig", title: "Talents" },
   { type: "pitch", title: "Pitches" },
   { type: "file", title: "Files" },
   { type: "url", title: "Links" },
@@ -209,7 +209,7 @@ export function discoverTileMeta({ project, when }: DiscoverItem): string | null
     const today = new Date().toISOString().slice(0, 10);
     return when <= today ? "Ongoing" : `Starts ${formatWhen(when)}`;
   }
-  // Pitches have no price tag (backers choose any amount), and a free gig isn't a selling point.
+  // Pitches have no price tag (backers choose any amount), and a free talent isn't a selling point.
   if (type === "pitch") return null;
   if (isProjectFree(project)) return type === "gig" ? null : "Free";
   return formatUsd(getEffectivePrice(project));

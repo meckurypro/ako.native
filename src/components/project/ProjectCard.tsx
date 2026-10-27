@@ -75,7 +75,7 @@ import {
   hasActivePromo,
   isProjectFree,
   PROJECT_TYPE_LABELS,
-  useBookGig,
+  useBookTalent,
   useDeleteProject,
   useGetProjectFile,
   useHasPurchased,
@@ -185,7 +185,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
   // (see OfferNudgeSheet). Looked up on tap, not on render, so a feed of paid cards doesn't fire a request each.
   const offerNudge = useOfferNudge(project.id);
   const buyBusy = purchaseProject.isPending || offerNudge.checking;
-  const bookGig = useBookGig();
+  const bookTalent = useBookTalent();
   const downloadProjectFile = useDownloadProjectFile();
   const downloadAllFiles = useDownloadAllProjectFiles();
   const [downloadAllOpen, setDownloadAllOpen] = useState(false);
@@ -353,10 +353,10 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
     else void handleBuy();
   }
 
-  async function handleBookGig() {
+  async function handleBookTalent() {
     if (!requireUser()) return;
     try {
-      const { conversationId } = await bookGig.mutateAsync(project.id);
+      const { conversationId } = await bookTalent.mutateAsync(project.id);
       router.push(`/messages/${conversationId}` as Href);
     } catch (err) {
       notifyError(err, "Booking failed.");
@@ -584,7 +584,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
   const bookUpload = isBook && bookDetails?.content_source === "upload";
   const bookReadsInApp = bookUpload && !!bookDetails?.allow_read_in_app;
   const bookCanDownload = bookUpload && !!bookDetails?.allow_download;
-  const gigBookable = project.project_type === "gig" && !isOwner && !isFree && !hasPurchased;
+  const talentBookable = project.project_type === "gig" && !isOwner && !isFree && !hasPurchased;
   const openBookReader = () => {
     if (!requireUser()) return;
     router.push(`/projects/${project.id}/read` as Href);
@@ -617,8 +617,8 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
     if (!isOwner) detailCta = { label: "Support", icon: Heart, onPress: openSupport };
   } else if (project.project_type === "gig") {
     if (!isOwner) {
-      detailCta = gigBookable
-        ? { label: bookGig.isPending ? "Booking…" : `Book for ${priceLabel}`, onPress: () => void handleBookGig(), disabled: bookGig.isPending }
+      detailCta = talentBookable
+        ? { label: bookTalent.isPending ? "Booking…" : `Book for ${priceLabel}`, onPress: () => void handleBookTalent(), disabled: bookTalent.isPending }
         : { label: startConversation.isPending ? "Opening…" : "Message", icon: MessageCircle, onPress: () => void handleMessage(), disabled: startConversation.isPending };
     }
   } else if (isRoom) {
@@ -705,7 +705,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
     { key: "save", label: isSaved ? "Saved" : "Save", icon: menuIcon(Bookmark), onSelect: () => { if (requireUser()) toggleSaved.mutate(isSaved); } },
     { key: "share", label: "Share", icon: menuIcon(Redo2), onSelect: handleShare },
     ...(isMedia ? [{ key: "gift", label: "Gift", icon: menuIcon(GiftIcon), onSelect: openGift } satisfies DropdownMenuItem] : []),
-    ...(gigBookable ? [{ key: "message", label: "Message", icon: menuIcon(MessageCircle), onSelect: () => void handleMessage() } satisfies DropdownMenuItem] : []),
+    ...(talentBookable ? [{ key: "message", label: "Message", icon: menuIcon(MessageCircle), onSelect: () => void handleMessage() } satisfies DropdownMenuItem] : []),
     ...(project.project_type === "url" && hasAccess && project.external_url
       ? [{ key: "copy-link", label: "Copy link", icon: menuIcon(Copy), onSelect: () => void copyText(project.external_url!, () => flash(setLinkCopied)) } satisfies DropdownMenuItem]
       : []),
@@ -1050,7 +1050,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
               {isCourseUnpublished && isOwner ? <Text className="text-sm text-ink-muted">Not published yet</Text> : null}
               {isBookDraftUnpublished && isOwner ? <Text className="text-sm text-ink-muted">Not published yet</Text> : null}
 
-              {/* Gig: Message is always available (lead-gen first), plus an optional paid "Book" once a fee is set. */}
+              {/* Talent: Message is always available (lead-gen first), plus an optional paid "Book" once a fee is set. */}
               {project.project_type === "gig" && !isOwner ? (
                 <LinkAction icon={MessageCircle} label={startConversation.isPending ? "Opening…" : "Message"} disabled={startConversation.isPending} onPress={() => void handleMessage()} />
               ) : null}
@@ -1070,15 +1070,15 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
 
               {!isRoom && !isPitch && !hasAccess && !isCourseUnpublished && !isBookDraftUnpublished ? (
                 <Pressable
-                  onPress={project.project_type === "gig" ? handleBookGig : handleBuy}
-                  disabled={project.project_type === "gig" ? bookGig.isPending : buyBusy}
+                  onPress={project.project_type === "gig" ? handleBookTalent : handleBuy}
+                  disabled={project.project_type === "gig" ? bookTalent.isPending : buyBusy}
                   accessibilityRole="button"
-                  className={`ml-auto rounded-full bg-accent px-4 py-1.5 active:scale-[0.97] ${(project.project_type === "gig" ? bookGig.isPending : purchaseProject.isPending) ? "opacity-50" : ""}`}
+                  className={`ml-auto rounded-full bg-accent px-4 py-1.5 active:scale-[0.97] ${(project.project_type === "gig" ? bookTalent.isPending : purchaseProject.isPending) ? "opacity-50" : ""}`}
                   style={{ elevation: 3 }}
                 >
                   <Text className="text-sm font-semibold text-canvas">
                     {project.project_type === "gig"
-                      ? bookGig.isPending ? "Booking…" : `Book for $${effectivePrice.toFixed(2)}`
+                      ? bookTalent.isPending ? "Booking…" : `Book for $${effectivePrice.toFixed(2)}`
                       : purchaseProject.isPending
                         ? "Purchasing…"
                         : project.project_type === "event"

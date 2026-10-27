@@ -237,7 +237,7 @@ When a signed-out person opens a project link in the app:
 3. `ProjectDetail` shows:
    - top bar: logo, **Log in**, **Sign up** (one place only)
    - the project artwork, title, price
-   - a **Details** button; description, event/gig/FAQ/reviews/topics stay hidden until tapped
+   - a **Details** button; description, event/talent/FAQ/reviews/topics stay hidden until tapped
    - the main action button (Read, Listen, Download, Get ticket, Buy…) always at the bottom of the card
    - no creator card, no "More from…", no "Similar contents", no bottom login panel
 4. Any action (main button, Save, Gift, Support, Message) calls `router.replace('/login?redirect=<this page>')`.

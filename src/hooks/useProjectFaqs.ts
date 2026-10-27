@@ -4,7 +4,7 @@
 // is visible to, write for the owner only (matches project_faqs' RLS
 // exactly — see the migration). Templates are seeded per project_type
 // for the types that actually benefit from an FAQ (event, file, course,
-// meeting, gig, book, pitch) — useScaffoldProjectFaqs below calls the
+// meeting, talent, book, pitch) — useScaffoldProjectFaqs below calls the
 // scaffold_project_faqs DB function to copy them in.
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";

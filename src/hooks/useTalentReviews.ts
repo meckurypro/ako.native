@@ -1,11 +1,11 @@
-// src/hooks/useGigReviews.ts
+// src/hooks/useTalentReviews.ts
 import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "./useAuth";
 import { useHasPurchased } from "./useProjects";
 
-export interface GigReview {
+export interface TalentReview {
   id: string;
   project_id: string;
   reviewer_id: string;
@@ -22,10 +22,10 @@ export interface GigReview {
 // Requires gig_reviews from ako_projects_v7_gig_extras.sql — reads
 // fail soft to an empty list rather than crashing the page if that
 // migration hasn't run yet, same pattern as Course's progress table.
-export function useGigReviews(projectId: string | undefined) {
+export function useTalentReviews(projectId: string | undefined) {
   return useQuery({
-    queryKey: ["gig-reviews", projectId],
-    queryFn: async (): Promise<GigReview[]> => {
+    queryKey: ["talent-reviews", projectId],
+    queryFn: async (): Promise<TalentReview[]> => {
       const { data, error } = await supabase
         .from("gig_reviews")
         .select("*, reviewer:profiles!gig_reviews_reviewer_id_fkey(username, display_name, avatar_url)")
@@ -35,14 +35,14 @@ export function useGigReviews(projectId: string | undefined) {
         console.warn("gig_reviews unavailable — has the migration run yet?", error);
         return [];
       }
-      return (data ?? []) as unknown as GigReview[];
+      return (data ?? []) as unknown as TalentReview[];
     },
     enabled: !!projectId,
   });
 }
 
-export function useGigRatingSummary(projectId: string | undefined) {
-  const { data: reviews } = useGigReviews(projectId);
+export function useTalentRatingSummary(projectId: string | undefined) {
+  const { data: reviews } = useTalentReviews(projectId);
   return useMemo(() => {
     if (!reviews || reviews.length === 0) return { average: null as number | null, count: 0 };
     const average = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
@@ -50,19 +50,19 @@ export function useGigRatingSummary(projectId: string | undefined) {
   }, [reviews]);
 }
 
-// A buyer can review a gig once they've actually booked it (a
+// A buyer can review a talent once they've actually booked it (a
 // `purchases` row exists — the same check the insert's RLS policy
 // makes server-side, this is just for hiding the form when it would
 // obviously be rejected) and haven't already left one.
-export function useCanReviewGig(projectId: string | undefined) {
+export function useCanReviewTalent(projectId: string | undefined) {
   const { user } = useAuth();
   const hasPurchasedQuery = useHasPurchased(projectId ?? "");
-  const { data: reviews } = useGigReviews(projectId);
+  const { data: reviews } = useTalentReviews(projectId);
   const alreadyReviewed = !!reviews?.some((r) => r.reviewer_id === user?.id);
   return !!user && !!hasPurchasedQuery.data && !alreadyReviewed;
 }
 
-export function useAddGigReview(projectId: string) {
+export function useAddTalentReview(projectId: string) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
@@ -76,6 +76,6 @@ export function useAddGigReview(projectId: string) {
       });
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["gig-reviews", projectId] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["talent-reviews", projectId] }),
   });
 }

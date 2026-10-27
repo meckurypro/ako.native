@@ -272,10 +272,10 @@ function hydrateCatalogueEntry(row: any): MusicCatalogueWithContributors {
 }
 
 // ------------------------------------------------------------
-// Credit acceptance (Gig role expansion & collaboration, sections
+// Credit acceptance (Talent role expansion & collaboration, sections
 // 9, 11): publish-music tags a non-publisher contributor's row
-// 'pending' — they must accept before any Gig relationship forms.
-// See respond_to_music_credit() in the reconcile_gig_automation_
+// 'pending' — they must accept before any Talent relationship forms.
+// See respond_to_music_credit() in the reconcile_talent_automation_
 // with_upstream_schema migration.
 // ------------------------------------------------------------
 export function useMyPendingMusicCredits() {

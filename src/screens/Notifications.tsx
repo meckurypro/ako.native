@@ -118,7 +118,7 @@ const TYPE_CONFIG: Record<string, { icon: LucideIcon; verb: string }> = {
   project_purchased: { icon: Wallet2, verb: "bought your project" },
   affiliate_commission_earned: { icon: Coins, verb: "You earned an affiliate commission" },
   withdrawal_status: { icon: Banknote, verb: "" },
-  gig_created_from_collaboration: { icon: Briefcase, verb: "A Gig was started from your collaboration" },
+  gig_created_from_collaboration: { icon: Briefcase, verb: "A Talent was started from your collaboration" },
   music_credit_request: { icon: Music2, verb: "credited you on their song" },
   // Forewords: a creator asks someone to preview their book/course and write a few opening words. The invite needs an
   // answer (ForewordInviteModal); the other three are plain notices that open the project.

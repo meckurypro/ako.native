@@ -34,7 +34,7 @@ would store data it couldn't then use. See "Not done" below.
 | Course | modules + lesson text | the normal course screen |
 | File | the file | system "Open with…" |
 | Hosted media (audio / video / image) | the hosted file(s) | in-app player via `/projects/:id/offline` |
-| Link books, link-only media, links, events, meetings, rooms, gigs, pitches | not offered | – |
+| Link books, link-only media, links, events, meetings, rooms, talents, pitches | not offered | – |
 
 Uploaded books follow the two host switches the same way the server already does: `allow_read_in_app` governs the
 extracted chapters, `allow_download` governs the PDF. A book with both switches off can't be saved. A scanned PDF that

@@ -3,7 +3,7 @@
 // A person's half-filled "New project" form, kept on this phone so leaving the screen doesn't cost them their work.
 //
 // Why local, and not a `status = 'draft'` row in `projects` (which is how Courses and authored Books already
-// start): the type-specific parts of a project — an event's date/location, a meeting's time, media sources, a gig's
+// start): the type-specific parts of a project — an event's date/location, a meeting's time, media sources, a talent's
 // role, a file or link, a book's source — are validated by database constraints on insert and are NOT editable
 // from EditProject afterwards (it only patches title/description/price/status/topics). A half-filled form saved
 // as a server draft would be rejected by those constraints for most types, and when it wasn't, could never be
@@ -18,7 +18,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { EMPTY_BOOK_FIELDS, type BookFieldsValue } from "@/components/project-types/BookFields";
 import { EMPTY_EVENT_FIELDS, type EventFieldsValue } from "@/components/project-types/EventFields";
 import { fileFieldsHaveProgress, normalizeFileFields, type FileFieldsValue } from "@/components/project-types/FileFields";
-import { EMPTY_GIG_FIELDS, type GigFieldsValue } from "@/components/project-types/GigFields";
+import { EMPTY_TALENT_FIELDS, type TalentFieldsValue } from "@/components/project-types/TalentFields";
 import { EMPTY_MEDIA_FIELDS, type MediaFieldsValue } from "@/components/project-types/MediaFields";
 import { EMPTY_MEETING_FIELDS, type MeetingFieldsValue } from "@/components/project-types/MeetingFields";
 import { EMPTY_PITCH_FIELDS, type PitchFieldsValue } from "@/components/project-types/PitchFields";
@@ -45,7 +45,7 @@ export interface ProjectDraftData {
   mediaFields: MediaFieldsValue;
   eventFields: EventFieldsValue;
   meetingFields: MeetingFieldsValue;
-  gigFields: GigFieldsValue;
+  talentFields: TalentFieldsValue;
   pitchFields: PitchFieldsValue;
   roomFields: RoomFieldsValue;
   bookFields: BookFieldsValue;
@@ -120,7 +120,7 @@ export function projectDraftHasProgress(d: ProjectDraftData): boolean {
     differs(d.mediaFields, EMPTY_MEDIA_FIELDS) ||
     differs(d.eventFields, EMPTY_EVENT_FIELDS) ||
     differs(d.meetingFields, EMPTY_MEETING_FIELDS) ||
-    differs(d.gigFields, EMPTY_GIG_FIELDS) ||
+    differs(d.talentFields, EMPTY_TALENT_FIELDS) ||
     differs(d.pitchFields, EMPTY_PITCH_FIELDS) ||
     differs(d.roomFields, EMPTY_ROOM_FIELDS) ||
     differs(d.bookFields, EMPTY_BOOK_FIELDS)

@@ -26,10 +26,10 @@ import {
   fileFieldsToInputs,
   type FileFieldsValue,
 } from "@/components/project-types/FileFields";
-import { EMPTY_GIG_FIELDS, GigFields, type GigFieldsValue } from "@/components/project-types/GigFields";
+import { EMPTY_TALENT_FIELDS, TalentFields, type TalentFieldsValue } from "@/components/project-types/TalentFields";
 import { EMPTY_MEDIA_FIELDS, MediaFields, mediaFieldsAreValid, type MediaFieldsValue } from "@/components/project-types/MediaFields";
-import { NEW_ARTIST_GIG, SongGigField } from "@/components/project-types/SongGigField";
-import { useEnsureArtistGig } from "@/hooks/usePortfolio";
+import { NEW_ARTIST_TALENT, SongTalentField } from "@/components/project-types/SongTalentField";
+import { useEnsureArtistTalent } from "@/hooks/usePortfolio";
 import { EMPTY_MEETING_FIELDS, MeetingFields, type MeetingFieldsValue } from "@/components/project-types/MeetingFields";
 import { EMPTY_PITCH_FIELDS, PitchFields, type PitchFieldsValue } from "@/components/project-types/PitchFields";
 import { EMPTY_ROOM_FIELDS, RoomFields, type RoomFieldsValue } from "@/components/project-types/RoomFields";
@@ -153,14 +153,14 @@ export function CreateProject() {
   const [fileFields, setFileFields] = useState<FileFieldsValue>(EMPTY_FILE_FIELDS);
   const [fileUploading, setFileUploading] = useState(false);
   const [mediaUploading, setMediaUploading] = useState(false);
-  // A song lives under an artist gig: a gig id, or NEW_ARTIST_GIG to scaffold one on save. "" until the picker settles.
-  const [songGig, setSongGig] = useState("");
-  const ensureArtistGig = useEnsureArtistGig();
+  // A song lives under an artist talent: a talent id, or NEW_ARTIST_TALENT to scaffold one on save. "" until the picker settles.
+  const [songTalent, setSongTalent] = useState("");
+  const ensureArtistTalent = useEnsureArtistTalent();
   const [urlFields, setUrlFields] = useState<UrlFieldsValue>(EMPTY_URL_FIELDS);
   const [mediaFields, setMediaFields] = useState<MediaFieldsValue>(EMPTY_MEDIA_FIELDS);
   const [eventFields, setEventFields] = useState<EventFieldsValue>(EMPTY_EVENT_FIELDS);
   const [meetingFields, setMeetingFields] = useState<MeetingFieldsValue>(EMPTY_MEETING_FIELDS);
-  const [gigFields, setGigFields] = useState<GigFieldsValue>(EMPTY_GIG_FIELDS);
+  const [talentFields, setTalentFields] = useState<TalentFieldsValue>(EMPTY_TALENT_FIELDS);
   const [pitchFields, setPitchFields] = useState<PitchFieldsValue>(EMPTY_PITCH_FIELDS);
   const [roomFields, setRoomFields] = useState<RoomFieldsValue>(EMPTY_ROOM_FIELDS);
   const [bookFields, setBookFields] = useState<BookFieldsValue>(EMPTY_BOOK_FIELDS);
@@ -204,7 +204,7 @@ export function CreateProject() {
       mediaFields,
       eventFields,
       meetingFields,
-      gigFields,
+      talentFields,
       pitchFields,
       roomFields,
       bookFields,
@@ -228,7 +228,7 @@ export function CreateProject() {
     setMediaFields(d.mediaFields);
     setEventFields(d.eventFields);
     setMeetingFields(d.meetingFields);
-    setGigFields(d.gigFields);
+    setTalentFields(d.talentFields);
     setPitchFields(d.pitchFields);
     setRoomFields(d.roomFields);
     setBookFields(d.bookFields);
@@ -251,7 +251,7 @@ export function CreateProject() {
     setMediaFields(EMPTY_MEDIA_FIELDS);
     setEventFields(EMPTY_EVENT_FIELDS);
     setMeetingFields(EMPTY_MEETING_FIELDS);
-    setGigFields(EMPTY_GIG_FIELDS);
+    setTalentFields(EMPTY_TALENT_FIELDS);
     setPitchFields(EMPTY_PITCH_FIELDS);
     setRoomFields(EMPTY_ROOM_FIELDS);
     setBookFields(EMPTY_BOOK_FIELDS);
@@ -351,8 +351,8 @@ export function CreateProject() {
     }
     if (projectType === "event" && !eventFields.location_value.trim()) return eventFields.location_type === "physical" ? "Add the event address." : "Add the join link.";
     if (projectType === "meeting" && !meetingFields.scheduled_at) return "Set when this meeting happens.";
-    if (projectType === "gig" && !gigFields.role_id) return "Select the professional role this gig represents.";
-    if (projectType === "gig" && !gigFields.tagline.trim()) return "Add a short tagline for this gig.";
+    if (projectType === "gig" && !talentFields.role_id) return "Select the professional role this talent represents.";
+    if (projectType === "gig" && !talentFields.tagline.trim()) return "Add a short tagline for this talent.";
     if (projectType === "pitch") {
       const goal = parseFloat(pitchFields.goal_amount_usd);
       if (!pitchFields.goal_amount_usd.trim() || Number.isNaN(goal) || goal <= 0) return "Set a fundraising goal above $0.";
@@ -427,20 +427,20 @@ export function CreateProject() {
     }
 
     const channelSource = (c: { file_path: string | null }) => (c.file_path ? "upload" : "link");
-    const cleanFaq = gigFields.faq.map((f) => ({ question: f.question.trim(), answer: f.answer.trim() })).filter((f) => f.question && f.answer);
-    const cleanDeliverables = gigFields.deliverables.map((d) => d.trim()).filter(Boolean);
+    const cleanFaq = talentFields.faq.map((f) => ({ question: f.question.trim(), answer: f.answer.trim() })).filter((f) => f.question && f.answer);
+    const cleanDeliverables = talentFields.deliverables.map((d) => d.trim()).filter(Boolean);
 
     try {
-      // A song needs a gig. "New gig" scaffolds the Music Artist gig first, so the song never exists without one.
-      let parentGigId: string | undefined;
+      // A song needs a talent. "New talent" scaffolds the Music Artist talent first, so the song never exists without one.
+      let parentTalentId: string | undefined;
       if (projectType === "media") {
-        if (!songGig) return setError("Pick a gig.");
-        parentGigId = songGig === NEW_ARTIST_GIG ? await ensureArtistGig.mutateAsync() : songGig;
+        if (!songTalent) return setError("Pick a talent.");
+        parentTalentId = songTalent === NEW_ARTIST_TALENT ? await ensureArtistTalent.mutateAsync() : songTalent;
       }
 
       const created = await createProject.mutateAsync({
         title: title.trim(),
-        parent_gig_id: parentGigId,
+        parent_gig_id: parentTalentId,
         description: description.trim() || undefined,
         project_type: projectType,
         posted_as_page_id: postingAsPage?.id,
@@ -486,11 +486,11 @@ export function CreateProject() {
         gig_details:
           projectType === "gig"
             ? {
-                role_id: gigFields.role_id,
-                tagline: gigFields.tagline.trim(),
-                delivery_estimate: gigFields.delivery_estimate.trim() || undefined,
-                sample_project_ids: gigFields.sample_project_ids,
-                revisions_included: gigFields.revisions_included.trim() ? parseInt(gigFields.revisions_included.trim(), 10) : undefined,
+                role_id: talentFields.role_id,
+                tagline: talentFields.tagline.trim(),
+                delivery_estimate: talentFields.delivery_estimate.trim() || undefined,
+                sample_project_ids: talentFields.sample_project_ids,
+                revisions_included: talentFields.revisions_included.trim() ? parseInt(talentFields.revisions_included.trim(), 10) : undefined,
                 deliverables: cleanDeliverables.length > 0 ? cleanDeliverables : undefined,
                 faq: cleanFaq.length > 0 ? cleanFaq : undefined,
               }
@@ -584,7 +584,7 @@ export function CreateProject() {
               {PROJECT_TYPE_HINTS[projectType]}
               {postingAsPage
                 ? " Event and Room are page-only — that's why some types you might expect aren't listed here."
-                : " Gig, Meeting, Media, and File are personal-only — switch to a page to create an Event or Room."}
+                : " Talent, Meeting, Media, and File are personal-only — switch to a page to create an Event or Room."}
             </Text>
             {eligibility && !eligibility.eligible ? (
               <View className="mb-4 rounded-xl border border-danger-a30 bg-danger-a10 px-4 py-3">
@@ -639,7 +639,7 @@ export function CreateProject() {
 
           {/* 4 — Whatever this type needs. */}
           <FormSection icon={PROJECT_TYPE_ICONS[projectType]} title={`${PROJECT_TYPE_LABELS[projectType]} details`}>
-            {projectType === "media" ? <SongGigField value={songGig} onChange={setSongGig} /> : null}
+            {projectType === "media" ? <SongTalentField value={songTalent} onChange={setSongTalent} /> : null}
             {projectType === "media" ? <MediaFields value={mediaFields} onChange={setMediaFields} onError={setError} onUploadingChange={setMediaUploading} /> : null}
             {projectType === "file" ? <FileFields value={fileFields} onChange={setFileFields} onError={setError} maxFiles={maxFiles} onUploadingChange={setFileUploading} /> : null}
             {projectType === "url" ? <UrlFields value={urlFields} onChange={setUrlFields} /> : null}
@@ -647,7 +647,7 @@ export function CreateProject() {
             {projectType === "meeting" ? <MeetingFields value={meetingFields} onChange={setMeetingFields} /> : null}
             {projectType === "room" ? <RoomFields value={roomFields} onChange={setRoomFields} /> : null}
             {projectType === "course" ? <CourseFields /> : null}
-            {projectType === "gig" ? <GigFields value={gigFields} onChange={setGigFields} /> : null}
+            {projectType === "gig" ? <TalentFields value={talentFields} onChange={setTalentFields} /> : null}
             {projectType === "pitch" ? <PitchFields value={pitchFields} onChange={setPitchFields} /> : null}
             {projectType === "book" ? <BookFields value={bookFields} onChange={setBookFields} onError={setError} /> : null}
           </FormSection>

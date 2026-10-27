@@ -1,6 +1,7 @@
 // src/app/(app)/gigs.tsx
-import { MyGigs } from "@/screens/MyGigs";
+// Legacy path — "Gigs" is now "Talents". Old links and deep links land here and move on.
+import { Redirect, type Href } from "expo-router";
 
-export default function MyGigsRoute() {
-  return <MyGigs />;
+export default function LegacyGigsRoute() {
+  return <Redirect href={"/talents" as Href} />;
 }

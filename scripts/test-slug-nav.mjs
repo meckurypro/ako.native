@@ -32,7 +32,7 @@ assert.equal(nav("/messages/abc"), false);
 assert.equal(nav("/my-file/extra"), false); // only the single-segment address is the project page
 
 // Guard against future drift: every real single-segment screen that did NOT show the nav before must still not.
-const SHOWN_BEFORE = new Set(["feed", "topics", "search", "notifications", "requests", "bookmarks", "wallet", "gigs", "library", "me", "connect", "inbox", "messages", "page-inbox", "activity"]);
+const SHOWN_BEFORE = new Set(["feed", "topics", "search", "notifications", "requests", "bookmarks", "wallet", "talents", "library", "me", "connect", "inbox", "messages", "page-inbox", "activity"]);
 for (const entry of readdirSync("src/app/(app)")) {
   const name = entry.replace(/\.tsx$/, "");
   if (name.startsWith("[") || name.startsWith("_") || SHOWN_BEFORE.has(name)) continue;

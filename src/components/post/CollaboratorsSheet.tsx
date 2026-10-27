@@ -20,7 +20,7 @@ import {
   type CollaborationTarget,
 } from "@/hooks/useCollaboration";
 import type { MentionCandidate } from "@/hooks/useMentions";
-import { useGigRolesByCategory } from "@/hooks/usePortfolio";
+import { useTalentRolesByCategory } from "@/hooks/usePortfolio";
 import { PeoplePicker } from "./PeoplePicker";
 import { friendlyError } from "@/lib/friendlyError";
 
@@ -30,7 +30,7 @@ const STATUS_LABEL: Record<string, string> = {
   declined: "Declined",
 };
 
-type RoleGroups = ReturnType<typeof useGigRolesByCategory>["grouped"];
+type RoleGroups = ReturnType<typeof useTalentRolesByCategory>["grouped"];
 
 /** Native replacement for the web's <select> of roles, grouped by category. */
 function RolePickerSheet({
@@ -71,7 +71,7 @@ export function CollaboratorsSheet({ target, targetId, onClose }: { target: Coll
   const { data: collaborators, isLoading } = useCollaborators(target, targetId);
   const sendRequest = useSendCollaborationRequest(target);
   const removeCollaborator = useRemoveCollaborator(target);
-  const { grouped: roleGroups, roles: allRoles } = useGigRolesByCategory() as ReturnType<typeof useGigRolesByCategory> & {
+  const { grouped: roleGroups, roles: allRoles } = useTalentRolesByCategory() as ReturnType<typeof useTalentRolesByCategory> & {
     roles?: { id: string; label: string }[];
   };
   const [showPicker, setShowPicker] = useState(false);

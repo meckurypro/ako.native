@@ -4,8 +4,8 @@
 // text, topics, the type's own fields, price/promo, affiliate program, custom
 // URL, privacy and access — can change.
 import { FileFolderHero } from "@/components/project/FileFolderArt";
-import { NEW_ARTIST_GIG, SongGigField } from "@/components/project-types/SongGigField";
-import { useEnsureArtistGig } from "@/hooks/usePortfolio";
+import { NEW_ARTIST_TALENT, SongTalentField } from "@/components/project-types/SongTalentField";
+import { useEnsureArtistTalent } from "@/hooks/usePortfolio";
 import { BOOK_COVER_ERROR, BOOK_COVER_RATIO, isBookCoverRatio } from "@/lib/bookCover";
 import { Banknote, CircleDot, Eye, EyeOff, Image as ImageIcon, Link2, Lock, Percent, Ticket, Type, Users } from "lucide-react-native";
 import { router, useLocalSearchParams } from "expo-router";
@@ -34,7 +34,7 @@ import { useIsRestricted } from "@/hooks/useAccountAccess";
 import { useMyProfile } from "@/hooks/useProfile";
 import { useProjectFiles, useSaveProjectFiles } from "@/hooks/useProjectFiles";
 import { maxProjectFiles } from "@/lib/fileProject";
-import { EMPTY_GIG_FIELDS, GigFields, type GigFieldsValue } from "@/components/project-types/GigFields";
+import { EMPTY_TALENT_FIELDS, TalentFields, type TalentFieldsValue } from "@/components/project-types/TalentFields";
 import { EMPTY_MEDIA_FIELDS, MediaFields, mediaFieldsAreValid, type MediaFieldsValue } from "@/components/project-types/MediaFields";
 import { EMPTY_MEETING_FIELDS, MeetingFields, type MeetingFieldsValue } from "@/components/project-types/MeetingFields";
 import { EMPTY_PITCH_FIELDS, PitchFields, type PitchFieldsValue } from "@/components/project-types/PitchFields";
@@ -51,7 +51,7 @@ import { useProjectOwnership } from "@/hooks/useProjectOwnership";
 import { useReturnAfterSave } from "@/hooks/useReturnAfterSave";
 import { useToast } from "@/components/ui/Toast";
 import { useRoomDetails } from "@/hooks/useRoom";
-import { useBookDetails, useEventDetails, useGigDetails, useGigSamples, useMediaDetails, useMeetingDetails, usePitchDetails } from "@/hooks/useProjectTypeDetails";
+import { useBookDetails, useEventDetails, useTalentDetails, useTalentSamples, useMediaDetails, useMeetingDetails, usePitchDetails } from "@/hooks/useProjectTypeDetails";
 import { PROJECT_TYPE_LABELS, useProject, useProjectTopics, useUpdateProject, type ProjectStatus } from "@/hooks/useProjects";
 import { useUploadProjectThumbnail } from "@/hooks/useUploadProjectThumbnail";
 import { isoToLocalInput } from "@/lib/dateInput";
@@ -90,8 +90,8 @@ export function EditProject() {
   const { data: existingEventDetails } = useEventDetails(project?.project_type === "event" ? projectId : undefined);
   const { data: existingMeetingDetails } = useMeetingDetails(project?.project_type === "meeting" ? projectId : undefined);
   const { data: existingMediaDetails } = useMediaDetails(project?.project_type === "media" ? projectId : undefined);
-  const { data: existingGigDetails } = useGigDetails(project?.project_type === "gig" ? projectId : undefined);
-  const { data: existingGigSamples } = useGigSamples(project?.project_type === "gig" ? projectId : undefined);
+  const { data: existingTalentDetails } = useTalentDetails(project?.project_type === "gig" ? projectId : undefined);
+  const { data: existingTalentSamples } = useTalentSamples(project?.project_type === "gig" ? projectId : undefined);
   const { data: existingPitchDetails } = usePitchDetails(project?.project_type === "pitch" ? projectId : undefined);
   const { data: existingRoomDetails } = useRoomDetails(project?.project_type === "room" ? projectId : undefined);
   const { data: existingBookDetails } = useBookDetails(project?.project_type === "book" ? projectId : undefined);
@@ -118,14 +118,14 @@ export function EditProject() {
   const [fileFields, setFileFields] = useState<FileFieldsValue>(EMPTY_FILE_FIELDS);
   const [fileUploading, setFileUploading] = useState(false);
   const [mediaUploading, setMediaUploading] = useState(false);
-  // The gig a song lives under (a gig id, or NEW_ARTIST_GIG to scaffold one on save).
-  const [songGig, setSongGig] = useState("");
-  const ensureArtistGig = useEnsureArtistGig();
+  // The talent a song lives under (a talent id, or NEW_ARTIST_TALENT to scaffold one on save).
+  const [songTalent, setSongTalent] = useState("");
+  const ensureArtistTalent = useEnsureArtistTalent();
   const [urlFields, setUrlFields] = useState<UrlFieldsValue>(EMPTY_URL_FIELDS);
   const [mediaFields, setMediaFields] = useState<MediaFieldsValue>(EMPTY_MEDIA_FIELDS);
   const [eventFields, setEventFields] = useState<EventFieldsValue>(EMPTY_EVENT_FIELDS);
   const [meetingFields, setMeetingFields] = useState<MeetingFieldsValue>(EMPTY_MEETING_FIELDS);
-  const [gigFields, setGigFields] = useState<GigFieldsValue>(EMPTY_GIG_FIELDS);
+  const [talentFields, setTalentFields] = useState<TalentFieldsValue>(EMPTY_TALENT_FIELDS);
   const [pitchFields, setPitchFields] = useState<PitchFieldsValue>(EMPTY_PITCH_FIELDS);
   const [roomFields, setRoomFields] = useState<RoomFieldsValue>(EMPTY_ROOM_FIELDS);
   const [bookFields, setBookFields] = useState<BookFieldsValue>(EMPTY_BOOK_FIELDS);
@@ -171,7 +171,7 @@ export function EditProject() {
       setSupportingImageUrls(project.supporting_image_urls ?? []);
       if (project.thumbnail_width && project.thumbnail_height) setThumbnailRatio({ width: project.thumbnail_width, height: project.thumbnail_height });
       if (project.project_type === "url") setUrlFields({ url: project.external_url ?? "" });
-      if (project.project_type === "media") setSongGig(project.parent_gig_id ?? "");
+      if (project.project_type === "media") setSongTalent(project.parent_gig_id ?? "");
       if (project.promo_price_usd !== null) {
         setShowPromo(true);
         setPromoPriceUsd(String(project.promo_price_usd));
@@ -202,16 +202,16 @@ export function EditProject() {
         image: { enabled: existingMediaDetails.has_image, url: "", file_path: existingMediaDetails.image_file_path, file_name: null },
       });
       setTypeDetailsHydrated(true);
-    } else if (t === "gig" && existingGigDetails !== undefined && existingGigSamples) {
-      setGigFields({
-        role_id: existingGigDetails?.role_id ?? "",
-        tagline: existingGigDetails?.tagline ?? "",
-        delivery_estimate: existingGigDetails?.delivery_estimate ?? "",
-        // A gig's own songs come back in this list too, but they're not samples — the form only edits samples.
-        sample_project_ids: existingGigSamples.filter((p) => p.parent_gig_id !== projectId).map((p) => p.id),
-        revisions_included: existingGigDetails?.revisions_included?.toString() ?? "",
-        deliverables: existingGigDetails?.deliverables ?? [],
-        faq: existingGigDetails?.faq ?? [],
+    } else if (t === "gig" && existingTalentDetails !== undefined && existingTalentSamples) {
+      setTalentFields({
+        role_id: existingTalentDetails?.role_id ?? "",
+        tagline: existingTalentDetails?.tagline ?? "",
+        delivery_estimate: existingTalentDetails?.delivery_estimate ?? "",
+        // A talent's own songs come back in this list too, but they're not samples — the form only edits samples.
+        sample_project_ids: existingTalentSamples.filter((p) => p.parent_gig_id !== projectId).map((p) => p.id),
+        revisions_included: existingTalentDetails?.revisions_included?.toString() ?? "",
+        deliverables: existingTalentDetails?.deliverables ?? [],
+        faq: existingTalentDetails?.faq ?? [],
       });
       setTypeDetailsHydrated(true);
     } else if (t === "pitch" && existingPitchDetails) {
@@ -240,7 +240,7 @@ export function EditProject() {
     } else if (!["event", "meeting", "media", "gig", "pitch", "room", "book", "file"].includes(t)) {
       setTypeDetailsHydrated(true);
     }
-  }, [project, existingEventDetails, existingMeetingDetails, existingMediaDetails, existingGigDetails, existingGigSamples, existingPitchDetails, existingRoomDetails, existingBookDetails, existingFiles, typeDetailsHydrated]);
+  }, [project, existingEventDetails, existingMeetingDetails, existingMediaDetails, existingTalentDetails, existingTalentSamples, existingPitchDetails, existingRoomDetails, existingBookDetails, existingFiles, typeDetailsHydrated]);
 
   async function handleThumbnailSelect() {
     const file = await pickSingleImage(project?.project_type === "book" ? { aspect: [2, 3] } : {});
@@ -269,8 +269,8 @@ export function EditProject() {
     }
     if (t === "event" && !eventFields.location_value.trim()) return eventFields.location_type === "physical" ? "Add the event address." : "Add the join link.";
     if (t === "meeting" && !meetingFields.scheduled_at) return "Set when this meeting happens.";
-    if (t === "gig" && !gigFields.role_id) return "Select the professional role this gig represents.";
-    if (t === "gig" && !gigFields.tagline.trim()) return "Add a short tagline for this gig.";
+    if (t === "gig" && !talentFields.role_id) return "Select the professional role this talent represents.";
+    if (t === "gig" && !talentFields.tagline.trim()) return "Add a short tagline for this talent.";
     if (t === "pitch") {
       const goal = parseFloat(pitchFields.goal_amount_usd);
       if (!pitchFields.goal_amount_usd.trim() || Number.isNaN(goal) || goal <= 0) return "Set a fundraising goal above $0.";
@@ -307,11 +307,11 @@ export function EditProject() {
     }
 
     try {
-      // A song always has a gig. "New gig" scaffolds the Music Artist gig first.
-      let parentGigId: string | undefined;
+      // A song always has a talent. "New talent" scaffolds the Music Artist talent first.
+      let parentTalentId: string | undefined;
       if (t === "media") {
-        if (!songGig) return setError("Pick a gig.");
-        parentGigId = songGig === NEW_ARTIST_GIG ? await ensureArtistGig.mutateAsync() : songGig;
+        if (!songTalent) return setError("Pick a talent.");
+        parentTalentId = songTalent === NEW_ARTIST_TALENT ? await ensureArtistTalent.mutateAsync() : songTalent;
       }
 
       // Files first: it's the part the database can refuse (limit, ownership), so if it does, nothing else changes.
@@ -323,7 +323,7 @@ export function EditProject() {
         title: title.trim(),
         description: description.trim() || null,
         project_type: t,
-        parent_gig_id: parentGigId,
+        parent_gig_id: parentTalentId,
         external_url: t === "url" ? urlFields.url.trim() || null : project.external_url,
         // File projects: the files are saved by set_project_files above, which also keeps file_path in step.
         file_path: t === "file" ? undefined : project.file_path,
@@ -382,14 +382,14 @@ export function EditProject() {
         fail(e);
       }
       if (t === "gig") {
-        const revisions = gigFields.revisions_included.trim();
-        const deliverables = gigFields.deliverables.map((d) => d.trim()).filter(Boolean);
-        const faq = gigFields.faq.map((f) => ({ question: f.question.trim(), answer: f.answer.trim() })).filter((f) => f.question && f.answer);
+        const revisions = talentFields.revisions_included.trim();
+        const deliverables = talentFields.deliverables.map((d) => d.trim()).filter(Boolean);
+        const faq = talentFields.faq.map((f) => ({ question: f.question.trim(), answer: f.answer.trim() })).filter((f) => f.question && f.answer);
         const { error: e } = await supabase.from("project_gig_details").upsert({
           project_id: projectId,
-          role_id: gigFields.role_id,
-          tagline: gigFields.tagline.trim(),
-          delivery_estimate: gigFields.delivery_estimate.trim() || null,
+          role_id: talentFields.role_id,
+          tagline: talentFields.tagline.trim(),
+          delivery_estimate: talentFields.delivery_estimate.trim() || null,
           revisions_included: revisions ? parseInt(revisions, 10) : null,
           deliverables: deliverables.length > 0 ? deliverables : null,
           faq: faq.length > 0 ? faq : null,
@@ -399,8 +399,8 @@ export function EditProject() {
 
         const { error: delErr } = await supabase.from("project_gig_samples").delete().eq("gig_project_id", projectId);
         fail(delErr);
-        if (gigFields.sample_project_ids.length > 0) {
-          const rows = gigFields.sample_project_ids.map((sample_project_id, i) => ({ gig_project_id: projectId, sample_project_id, sort_order: i }));
+        if (talentFields.sample_project_ids.length > 0) {
+          const rows = talentFields.sample_project_ids.map((sample_project_id, i) => ({ gig_project_id: projectId, sample_project_id, sort_order: i }));
           const { error: insErr } = await supabase.from("project_gig_samples").insert(rows);
           fail(insErr);
         }
@@ -532,7 +532,7 @@ export function EditProject() {
           </FormSection>
 
           <FormSection icon={PROJECT_TYPE_ICONS[t]} title={`${PROJECT_TYPE_LABELS[t]} details`}>
-            {t === "media" ? <SongGigField value={songGig} onChange={setSongGig} /> : null}
+            {t === "media" ? <SongTalentField value={songTalent} onChange={setSongTalent} /> : null}
             {t === "media" ? <MediaFields value={mediaFields} onChange={setMediaFields} onError={setError} onUploadingChange={setMediaUploading} /> : null}
             {t === "file" ? <FileFields value={fileFields} onChange={setFileFields} onError={setError} maxFiles={maxFiles} onUploadingChange={setFileUploading} /> : null}
             {t === "url" ? <UrlFields value={urlFields} onChange={setUrlFields} /> : null}
@@ -547,16 +547,16 @@ export function EditProject() {
             {t === "course" ? <Text className="mb-4 text-xs text-ink-muted">Manage modules and lessons from the course builder.</Text> : null}
             {t === "gig" ? (
               <>
-                {existingGigDetails?.is_complete === false ? (
+                {existingTalentDetails?.is_complete === false ? (
                   <View className="mb-4 rounded-xl border border-accent-a30 bg-accent-soft p-3">
-                    <Text className="text-sm font-medium text-ink">Finish setting up this Gig</Text>
+                    <Text className="text-sm font-medium text-ink">Finish setting up this Talent</Text>
                     <Text className="mt-0.5 text-xs text-ink-muted">
-                      {existingGigDetails.source === "auto_collaboration" ? "This was started automatically from a collaboration you were credited on." : "This Gig isn't complete yet."}{" "}
+                      {existingTalentDetails.source === "auto_collaboration" ? "This was started automatically from a collaboration you were credited on." : "This Talent isn't complete yet."}{" "}
                       Review the details below and save to publish it to your profile.
                     </Text>
                   </View>
                 ) : null}
-                <GigFields value={gigFields} onChange={setGigFields} excludeProjectId={project.id} />
+                <TalentFields value={talentFields} onChange={setTalentFields} excludeProjectId={project.id} />
               </>
             ) : null}
             {t === "pitch" ? <PitchFields value={pitchFields} onChange={setPitchFields} /> : null}

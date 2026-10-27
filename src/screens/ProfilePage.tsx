@@ -48,7 +48,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FAB_GAP, FAB_SIZE, useBottomNavInset } from "@/components/nav/BottomNav";
 import { useChromeScroll } from "@/components/nav/ChromeProvider";
 import { PostCard } from "@/components/post/PostCard";
-import { ProjectMiniCard, ProjectMiniGrid } from "@/components/post/ProjectMiniCard";
+import { ProjectMiniGrid } from "@/components/post/ProjectMiniCard";
 import { ProjectCardList } from "@/components/project/ProjectCardList";
 import { AccountSwitcher } from "@/components/account/AccountSwitcher";
 import { ProfileAdSlot } from "@/components/profile/ProfileAdSlot";
@@ -81,7 +81,7 @@ import {
   useCategorizedProjectIds,
   useCollaboratorMediaProjects,
   usePortfolioCategories,
-  usePortfolioCategoryGigs,
+  usePortfolioCategoryTalents,
   usePortfolioCategoryProjects,
   useTypeCategoryProjects,
   useTypePortfolioCategories,
@@ -131,7 +131,6 @@ type Row =
   | { kind: "minigrid"; id: string; projects: Project[] }
   | { kind: "skeleton"; id: string; projectType?: ProjectType }
   | { kind: "postskeleton"; id: string }
-  | { kind: "gigs"; id: string; gigs: Project[] }
   | { kind: "message"; id: string; text: string; icon?: LucideIcon };
 
 // Icon-led empty / blocked / error state, same shape as the private-account notice.
@@ -256,9 +255,9 @@ export function ProfilePage() {
   const visibleProjects = projects?.filter((p) => p.status !== "archived");
 
   const mediaProjects = useMemo(() => {
-    // The owner's own songs aren't listed here any more: every song lives under one of their artist gigs
-    // (parent_gig_id) and shows there — on the gig and in its category tab. Only songs you're credited on, on someone
-    // else's gig, still land in this tab.
+    // The owner's own songs aren't listed here any more: every song lives under one of their artist talents
+    // (parent_gig_id) and shows there — on the talent and in its category tab. Only songs you're credited on, on someone
+    // else's talent, still land in this tab.
     const owned = (visibleProjects ?? []).filter((p) => p.project_type === "media" && !p.parent_gig_id && !p.is_private && !categorizedProjectIds?.has(p.id));
     const byId = new Map(owned.map((p) => [p.id, p]));
     for (const p of collaboratorMedia ?? []) if (!categorizedProjectIds?.has(p.id)) byId.set(p.id, p);
@@ -268,7 +267,7 @@ export function ProfilePage() {
   const typeCategoriesPresent = new Set((typeCategories ?? []).map((c) => c.project_type));
   const fallbackProjects = visibleProjects?.filter((p) => {
     if (p.project_type === "gig") return false;
-    // A song lives under its gig — never a loose card in the Projects tab.
+    // A song lives under its talent — never a loose card in the Projects tab.
     if (p.parent_gig_id) return false;
     if (p.project_type === "media" && p.status === "active" && !p.is_private) return false;
     if (categorizedProjectIds?.has(p.id)) return false;
@@ -293,7 +292,7 @@ export function ProfilePage() {
   const activeCategory = activeDef && !["posts", "media", "projects"].includes(activeDef.id) && !activeDef.id.startsWith("type-") ? activeDef.label : undefined;
   const activeType = activeDef?.id.startsWith("type-") ? (activeDef.id.slice("type-".length) as ProjectType) : undefined;
   const { data: categoryProjects, isLoading: categoryLoading, refetch: refetchCategoryProjects } = usePortfolioCategoryProjects(accountId, activeCategory);
-  const { data: categoryGigs, refetch: refetchCategoryGigs } = usePortfolioCategoryGigs(accountId, activeCategory);
+  const { data: categoryTalents, isLoading: categoryTalentsLoading, refetch: refetchCategoryTalents } = usePortfolioCategoryTalents(accountId, activeCategory);
   const { data: typeProjects, isLoading: typeLoading, refetch: refetchTypeProjects } = useTypeCategoryProjects(accountId, activeType);
 
   useRecordProfileVisit(profile?.id);
@@ -311,7 +310,7 @@ export function ProfilePage() {
           refetchCategorizedIds,
           refetchTypeCategories,
           refetchCollaboratorMedia,
-          ...(activeCategory ? [refetchCategoryProjects, refetchCategoryGigs] : []),
+          ...(activeCategory ? [refetchCategoryProjects, refetchCategoryTalents] : []),
           ...(activeType ? [refetchTypeProjects] : []),
         ]
   );
@@ -349,15 +348,14 @@ export function ProfilePage() {
       else if (activeType === "book") out.push({ kind: "minigrid", id, projects: typeProjects });
       else out.push({ kind: "grid", id, projects: typeProjects });
     } else {
-      if (categoryLoading) return [...out, { kind: "skeleton", id: "skeleton-cat" }];
-      if (!categoryProjects || categoryProjects.length === 0) out.push({ kind: "message", id: "empty-cat", text: "Nothing here yet." });
-      else {
-        if (categoryGigs && categoryGigs.length > 0) out.push({ kind: "gigs", id: "gigs", gigs: categoryGigs });
-        out.push({ kind: "grid", id, projects: categoryProjects });
-      }
+      if (categoryLoading || categoryTalentsLoading) return [...out, { kind: "skeleton", id: "skeleton-cat" }];
+      // The tab shows the talent thumbnails only; tapping one opens the talent's page, which lists the work under it.
+      if (categoryTalents && categoryTalents.length > 0) out.push({ kind: "minigrid", id: "talents", projects: categoryTalents });
+      else if (!categoryProjects || categoryProjects.length === 0) out.push({ kind: "message", id: "empty-cat", text: "Nothing here yet." });
+      else out.push({ kind: "grid", id, projects: categoryProjects });
     }
     return out;
-  }, [isBlocked, isPrivateLocked, tabDefs.length, tabsLoading, activeDef?.id, posts, postsLoading, postsError, projectsLoading, mediaProjects, fallbackProjects, typeProjects, typeLoading, categoryProjects, categoryGigs, categoryLoading, projectsOwnerView]);
+  }, [isBlocked, isPrivateLocked, tabDefs.length, tabsLoading, activeDef?.id, posts, postsLoading, postsError, projectsLoading, mediaProjects, fallbackProjects, typeProjects, typeLoading, categoryProjects, categoryTalents, categoryLoading, categoryTalentsLoading, projectsOwnerView]);
 
   // ── actions ──
   function startUnfollow() {
@@ -464,7 +462,7 @@ export function ProfilePage() {
         ...(restricted
           ? []
           : ([
-              { key: "gigs", label: "Your Gigs", icon: <Icon as={Briefcase} size={22} className="text-overlay-ink" />, onSelect: () => router.push("/gigs") },
+              { key: "talents", label: "Your Talents", icon: <Icon as={Briefcase} size={22} className="text-overlay-ink" />, onSelect: () => router.push("/talents") },
               { key: "page", label: "Page", icon: <Icon as={Building2} size={22} className="text-overlay-ink" />, onSelect: () => setPagesOpen(true) },
               { key: "custom-pages", label: "Custom page", icon: <Icon as={LayoutTemplate} size={22} className="text-overlay-ink" />, onSelect: () => router.push("/me/custom-pages") },
             ] satisfies DropdownMenuItem[])),
@@ -795,16 +793,6 @@ export function ProfilePage() {
         return (
           <View className="px-4 pt-4">
             <ProjectGridSkeleton projectType={item.projectType} />
-          </View>
-        );
-      case "gigs":
-        return (
-          <View className="px-4 pt-4">
-            <Animated.ScrollView showsVerticalScrollIndicator={false} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 4 }}>
-              {item.gigs.map((gig) => (
-                <ProjectMiniCard key={gig.id} project={gig} />
-              ))}
-            </Animated.ScrollView>
           </View>
         );
       case "message":

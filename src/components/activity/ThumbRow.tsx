@@ -1,5 +1,5 @@
 // src/components/activity/ThumbRow.tsx
-// Thumbnail + title + subtitle row shared by History, Library, Events, Gigs and Affiliate links.
+// Thumbnail + title + subtitle row shared by History, Library, Events, Talents and Affiliate links.
 import { FileFolderIcon } from "@/components/project/FileFolderArt";
 import type { LucideIcon } from "lucide-react-native";
 import type { ReactNode } from "react";

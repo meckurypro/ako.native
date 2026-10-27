@@ -272,7 +272,7 @@ export function MusicCreditResponseModal({ catalogueId, onClose }: { catalogueId
           haptics.success();
           onClose();
           if (accept && result.gig_created && result.gig_id) {
-            toast("Credit accepted — a Gig was started for you.", { variant: "success" });
+            toast("Credit accepted — a Talent was started for you.", { variant: "success" });
             router.push(`/projects/${result.gig_id}` as Href);
           } else toast(accept ? "Credit accepted." : "Credit declined.", { variant: "success" });
         },
@@ -304,7 +304,7 @@ export function MusicCreditResponseModal({ catalogueId, onClose }: { catalogueId
             </View>
           </Preview>
           <Text className="mt-3 text-xs text-ink-muted">
-            Accepting may start a {CONTRIBUTOR_ROLE_LABELS[credit.role]} Gig for you if you don't already have one, with this song added as a portfolio sample.
+            Accepting may start a {CONTRIBUTOR_ROLE_LABELS[credit.role]} Talent for you if you don't already have one, with this song added as a portfolio sample.
           </Text>
           {error ? <Text className="mt-3 text-sm text-danger">{error}</Text> : null}
           <Buttons light pending={respond.isPending} onDecline={() => handleRespond(false)} onAccept={() => handleRespond(true)} />

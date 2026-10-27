@@ -39,7 +39,7 @@ export const PRIVACY_POLICY: LegalDocument = {
         [
           "Account details: your display name, username, email address and password (or your Google account details if you sign in with Google). Passwords are handled by our authentication provider and are never visible to us in readable form.",
           "Profile details: your photo, bio, website links, roles, and the topics and interests you pick during onboarding.",
-          "Content you create: posts, comments, stances and reactions, projects (files, books, courses, events, rooms, meetings, gigs, music and links), uploads, Pages you create or help run, and anything you submit when you report, review or apply.",
+          "Content you create: posts, comments, stances and reactions, projects (files, books, courses, events, rooms, meetings, talents, music and links), uploads, Pages you create or help run, and anything you submit when you report, review or apply.",
           "Messages and calls: the messages, voice notes, photos, files and links you send in chats, and the metadata around them such as who you wrote to and when. Live meetings and rooms use real-time audio and video; recordings only exist when a host records a session.",
           "Wallet and payments: deposits you make, gifts you send or receive, purchases, earnings, affiliate commissions, promotion charges and refunds, and withdrawal requests. When you add a payout account we collect your bank name, account number and the account name returned by our payment provider. We do not see or store your card details; those go directly to our payment provider.",
           "Activity on Akọ: who you follow, what you view, like, save, share, reshare, gift or buy, the profiles you visit, your search and viewing history, and your reading and course progress. This is what makes your feed, library and recommendations work.",
@@ -183,7 +183,7 @@ export const TERMS_OF_SERVICE: LegalDocument = {
       id: "about",
       title: "About Akọ",
       blocks: [
-        "Akọ is a social and creator platform where people share ideas, follow each other, message, and offer or buy projects such as files, books, courses, events, rooms, meetings, gigs, music and links. We provide the platform. People who post content or sell projects are responsible for what they offer, and unless a feature says otherwise, Akọ is not a party to the agreement between a creator and the people who buy from or work with them.",
+        "Akọ is a social and creator platform where people share ideas, follow each other, message, and offer or buy projects such as files, books, courses, events, rooms, meetings, talents, music and links. We provide the platform. People who post content or sell projects are responsible for what they offer, and unless a feature says otherwise, Akọ is not a party to the agreement between a creator and the people who buy from or work with them.",
       ],
     },
     {
@@ -231,7 +231,7 @@ export const TERMS_OF_SERVICE: LegalDocument = {
           "Creators set the price, description and terms of their own projects and must describe them honestly. Prices are shown in the amounts and currencies the app displays, and conversion rates between US dollars and Naira are updated regularly.",
           "When you buy a project, you get access to it in your library for as long as it is available on Akọ, for your own personal use. You may not resell or redistribute it unless the creator allows it.",
           "Events, meetings and rooms run at the times the host sets. If a host cancels a paid event or session, refunds follow the cancellation choice the host makes and which Akọ shows at that time. Digital items you have already accessed are generally not refundable, except where the law requires or Akọ decides otherwise in a dispute.",
-          "Gigs are agreements between the creator and the person hiring them. We provide the tools but do not guarantee the quality, timing or outcome of any gig.",
+          "When you book a Talent, the agreement is between the creator and the person hiring them. We provide the tools but do not guarantee the quality, timing or outcome of any Talent's work.",
           "Guest passes give access only to what the sender chose to share and may be limited or withdrawn.",
         ],
       ],
@@ -305,7 +305,7 @@ export const TERMS_OF_SERVICE: LegalDocument = {
       id: "disclaimers",
       title: "Disclaimers",
       blocks: [
-        "Akọ is provided \"as is\" and \"as available\". We work to keep it reliable and secure, but we do not promise that it will always be available, error-free or free of harmful content. Content on Akọ is posted by its users. Opinions, courses, advice and gigs are theirs and not ours, and nothing on Akọ is professional, financial, legal or medical advice.",
+        "Akọ is provided \"as is\" and \"as available\". We work to keep it reliable and secure, but we do not promise that it will always be available, error-free or free of harmful content. Content on Akọ is posted by its users. Opinions, courses, advice and Talent listings are theirs and not ours, and nothing on Akọ is professional, financial, legal or medical advice.",
       ],
     },
     {

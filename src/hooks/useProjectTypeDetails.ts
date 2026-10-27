@@ -109,15 +109,15 @@ export function useMediaDetails(projectId: string | undefined) {
   });
 }
 
-export interface GigFaqItem {
+export interface TalentFaqItem {
   question: string;
   answer: string;
 }
 
-export interface GigDetails {
+export interface TalentDetails {
   project_id: string;
-  // Canonical professional role this gig represents (gig_roles.id) —
-  // see AKO_DYNAMIC_PROFILE_PORTFOLIOS spec. Null only for gigs
+  // Canonical professional role this talent represents (gig_roles.id) —
+  // see AKO_DYNAMIC_PROFILE_PORTFOLIOS spec. Null only for talents
   // created before that migration.
   role_id: string | null;
   tagline: string | null;
@@ -126,11 +126,11 @@ export interface GigDetails {
   // empty/null wherever read, same pattern as Course's is_free_preview.
   revisions_included: number | null;
   deliverables: string[] | null;
-  faq: GigFaqItem[] | null;
-  // false for a gig that find_or_create_role_gig auto-created from a
+  faq: TalentFaqItem[] | null;
+  // false for a talent that find_or_create_role_gig auto-created from a
   // Project role or accepted collaboration credit (spec §10-11) —
   // true (the default) for anything created through the normal
-  // Create Gig form. Doesn't gate editing, only public-portfolio
+  // Create Talent form. Doesn't gate editing, only public-portfolio
   // visibility (see get_profile_portfolio_categories) — the owner
   // completing and re-saving the form sets this back to true.
   is_complete: boolean;
@@ -138,10 +138,10 @@ export interface GigDetails {
 }
 
 // Publicly readable, same as event/meeting/media above.
-export function useGigDetails(projectId: string | undefined) {
+export function useTalentDetails(projectId: string | undefined) {
   return useQuery({
-    queryKey: ["project-gig-details", projectId],
-    queryFn: async (): Promise<GigDetails | null> => {
+    queryKey: ["project-talent-details", projectId],
+    queryFn: async (): Promise<TalentDetails | null> => {
       const { data, error } = await supabase
         .from("project_gig_details")
         .select("*")
@@ -160,18 +160,18 @@ export function useGigDetails(projectId: string | undefined) {
   });
 }
 
-// A gig's proof-of-work samples, in display order. Two-step fetch
+// A talent's proof-of-work samples, in display order. Two-step fetch
 // (sample ids, then the projects themselves) rather than a
 // PostgREST embed — keeps this independent of the exact FK
 // constraint name in the DB.
-export function useGigSamples(gigProjectId: string | undefined) {
+export function useTalentSamples(talentProjectId: string | undefined) {
   return useQuery({
-    queryKey: ["project-gig-samples", gigProjectId],
+    queryKey: ["project-talent-samples", talentProjectId],
     queryFn: async (): Promise<Project[]> => {
       const { data: links, error: linksError } = await supabase
         .from("gig_works")
         .select("sample_project_id, sort_order")
-        .eq("gig_project_id", gigProjectId)
+        .eq("gig_project_id", talentProjectId)
         .order("sort_order");
       if (linksError) throw linksError;
       if (!links || links.length === 0) return [];
@@ -188,29 +188,29 @@ export function useGigSamples(gigProjectId: string | undefined) {
       const byId = new Map((projects ?? []).map((p) => [p.id, p as Project]));
       return links.map((l) => byId.get(l.sample_project_id)).filter((p): p is Project => !!p);
     },
-    enabled: !!gigProjectId,
+    enabled: !!talentProjectId,
   });
 }
 
-// The reverse of useGigSamples: which of the account's own Gig
+// The reverse of useTalentSamples: which of the account's own Talent
 // page(s) feature THIS project as a work sample, if any. Nothing
 // previously linked from a sample project (e.g. a published song)
-// back to the Gig page it's proof-of-work for — a visitor who
+// back to the Talent page it's proof-of-work for — a visitor who
 // reached the sample directly (a feed post, a share) had no way to
-// discover the gig itself ("Message to inquire", pricing, other
+// discover the talent itself ("Message to inquire", pricing, other
 // samples) short of stumbling onto it separately. Two-step fetch,
-// same reasoning as useGigSamples — only ever surfaces gigs that are
+// same reasoning as useTalentSamples — only ever surfaces talents that are
 // themselves active/public, never a draft or private one.
-export interface FeaturingGig {
+export interface FeaturingTalent {
   id: string;
   title: string;
   role_label: string | null;
 }
 
-export function useGigsFeaturingProject(sampleProjectId: string | undefined) {
+export function useTalentsFeaturingProject(sampleProjectId: string | undefined) {
   return useQuery({
-    queryKey: ["gigs-featuring-project", sampleProjectId],
-    queryFn: async (): Promise<FeaturingGig[]> => {
+    queryKey: ["talents-featuring-project", sampleProjectId],
+    queryFn: async (): Promise<FeaturingTalent[]> => {
       if (!sampleProjectId) return [];
       const { data: links, error: linksError } = await supabase
         .from("gig_works")
@@ -218,13 +218,13 @@ export function useGigsFeaturingProject(sampleProjectId: string | undefined) {
         .eq("sample_project_id", sampleProjectId);
       if (linksError) throw linksError;
 
-      const gigIds = [...new Set((links ?? []).map((l) => l.gig_project_id))];
-      if (gigIds.length === 0) return [];
+      const talentIds = [...new Set((links ?? []).map((l) => l.gig_project_id))];
+      if (talentIds.length === 0) return [];
 
       const { data, error } = await supabase
         .from("project_gig_details")
         .select("project_id, gig_roles(label), projects!inner(id, title, status, is_private)")
-        .in("project_id", gigIds)
+        .in("project_id", talentIds)
         .eq("projects.status", "active")
         .eq("projects.is_private", false);
       if (error) throw error;
@@ -251,7 +251,7 @@ export interface PitchDetails {
   linked_room_id: string;
 }
 
-// Publicly readable, same as event/meeting/media/gig above — this is
+// Publicly readable, same as event/meeting/media/talent above — this is
 // browsing info shown before anyone supports.
 export function usePitchDetails(projectId: string | undefined) {
   return useQuery({

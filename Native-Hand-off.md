@@ -10,7 +10,7 @@
 
 - The native app (`github.com/meckurypro/ako.native`, branch `main`, head **`fdf1a02`**) now has **~61 of 67 routes as real screens**. Only **6 routes are still placeholders**.
 - **Nothing has ever run on a device or emulator.** Every gesture, keyboard, animation, theming, push, camera, SQLCipher and live-backend behaviour is **unverified**. Treat each status report as incomplete until it lists the unverified items.
-- This session shipped: Course, Book (authored), Ticket, Event check-in, Room, Activity hub (+7 sub-pages), Library, Gigs, Affiliate links, Settings, Notifications, **push notifications**, **encrypted storage (AES session + SQLCipher cache)**, and permissionless add-to-calendar.
+- This session shipped: Course, Book (authored), Ticket, Event check-in, Room, Activity hub (+7 sub-pages), Library, Talents, Affiliate links, Settings, Notifications, **push notifications**, **encrypted storage (AES session + SQLCipher cache)**, and permissionless add-to-calendar.
 - **The most valuable next work is blocked on the owner** (payment-model decision, EAS setup, anon key). Section 6 lists exactly what to ask, in order.
 
 ---
@@ -91,7 +91,7 @@
 | `70ff0ce` | Room part 1: `RoomChat`, `ClassroomTab`, `MeetingsTab`, `AssignmentsTab`, `HostSettingsPanel`, call placeholder, `useMicGesture` |
 | `ea34f74` | *(owner's commit)* Chat: WhatsApp-style media, voice recording, composer |
 | `7797682` | Room part 2: screen shell, gates, tabs, route |
-| `1babe18` | **Step 12**: Activity hub + Saved/Liked/Drafts/Scheduled/History/Events, Library, Gigs, MyAffiliateLinks, Settings, redirects |
+| `1babe18` | **Step 12**: Activity hub + Saved/Liked/Drafts/Scheduled/History/Events, Library, Talents, MyAffiliateLinks, Settings, redirects |
 | `8ec0bea` | `RoomChat` passes `localUrl` → instant optimistic voice bubble |
 | `fdf1a02` | **Step 11**: notifications + push, encrypted storage, offline cache, calendar, iOS mic fix |
 
@@ -109,7 +109,7 @@
 ### 3.3 Step 12 — done (all of it)
 
 - **Activity hub** `screens/Activity.tsx` (+ draft/scheduled count badges) and sub-pages: **Saved** & **Liked** (shared `PostsProjectsHub`: swipeable Posts|Projects tabs with indicator), **Drafts**, **Scheduled** (Resume → Compose with `draftId`/`scheduledId`), **History**, **Events & meetings**.
-- **Library** (`LibraryActivity`), **Gigs** (`MyGigs`), **Affiliate links** (`MyAffiliateLinks`, mounted at both `/activity/affiliates` and `/wallet/affiliate-links`).
+- **Library** (`LibraryActivity`), **Talents** (`MyTalents`), **Affiliate links** (`MyAffiliateLinks`, mounted at both `/activity/affiliates` and `/wallet/affiliate-links`).
 - **Settings** (one hub, six→seven sections, one open at a time): Profile (photo, display name, live username availability, bio w/ mentions, website, job/hobby tags), Account & security (password), Privacy (private account, hide lists, blocked/muted), **Notifications**, Appearance, Sound, Advanced (deactivate). Supports `?section=`.
 - **Redirects** (match web): `/bookmarks`→`/activity/saved`; `/saved-projects`→`/library?tab=saved`; `/activity/library`→`/library`; `/settings/advanced|appearance`→`/settings?section=…`. `/settings/profile` = Settings.
 
@@ -352,7 +352,7 @@ Everything below has **never run**:
 ```
 src/screens/            Course, Book(+components/project/book/*), TicketView, EventCheckIn, Room,
                         Activity, SavedHub, LikedHub, DraftPosts, ScheduledPosts, HistoryActivity,
-                        LibraryActivity, EventsActivity, MyGigs, MyAffiliateLinks, Settings, Notifications
+                        LibraryActivity, EventsActivity, MyTalents, MyAffiliateLinks, Settings, Notifications
 src/components/room/    RoomChat, ClassroomTab, MeetingsTab, AssignmentsTab, HostSettingsPanel,
                         RoomMedia, RoomCallView (PLACEHOLDER), VoiceComposerOverlay
 src/components/project/ LessonMedia, FeedDoorway, ProjectList, book/*

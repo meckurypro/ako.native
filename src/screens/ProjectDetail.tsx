@@ -1,6 +1,6 @@
 // src/screens/ProjectDetail.tsx
 // One project: the card (with everything its type can do), type-specific
-// browsing info (event date/location/countdown, meeting time, gig details &
+// browsing info (event date/location/countdown, meeting time, talent details &
 // samples & reviews), FAQ, topics, the creator byline, and "more like this".
 import {
   ArrowLeft,
@@ -28,11 +28,12 @@ import { EventHighlightsSection } from "@/components/project/EventHighlightsSect
 import { ForewordInviteModal } from "@/components/project/ForewordInviteModal";
 import { ForewordsSheet } from "@/components/project/ForewordsSheet";
 import { BookReviewsSection } from "@/components/project/book/BookReviewsSection";
-import { GigFaqSection, GigReviewsSection } from "@/components/project/GigSections";
+import { TalentFaqSection, TalentReviewsSection } from "@/components/project/TalentSections";
 import { ProjectCard } from "@/components/project/ProjectCard";
 import { PublishMusicButton } from "@/components/music/PublishMusicButton";
 import { ProjectFaqSection } from "@/components/project/ProjectFaqSection";
 import { ProjectRail } from "@/components/project/ProjectRail";
+import { ProjectMiniGrid } from "@/components/post/ProjectMiniCard";
 import { KeyboardAvoider } from "@/components/ui/KeyboardAvoider";
 import { Avatar } from "@/components/ui/Avatar";
 import { Icon } from "@/components/ui/styled";
@@ -50,7 +51,7 @@ import { formatCountdown, useCountdown } from "@/hooks/useCountdown";
 import { useMarkProjectSeen } from "@/hooks/useMarkProjectSeen";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useSmartBack } from "@/hooks/useSmartBack";
-import { useEventDetails, useGigDetails, useGigSamples, useGigsFeaturingProject, useMeetingDetails } from "@/hooks/useProjectTypeDetails";
+import { useEventDetails, useTalentDetails, useTalentSamples, useTalentsFeaturingProject, useMeetingDetails } from "@/hooks/useProjectTypeDetails";
 import { useProjectDetail, useSimilarProjects } from "@/hooks/useProjects";
 import { safeReturnPath } from "@/lib/authRedirect";
 import { OfflineUnavailable } from "@/components/project/OfflineUnavailable";
@@ -86,9 +87,9 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
   const { data: similar, refetch: refetchSimilar } = useSimilarProjects(user ? project : undefined);
   const { data: eventDetails, refetch: refetchEvent } = useEventDetails(project?.project_type === "event" ? projectId : undefined);
   const { data: meetingDetails, refetch: refetchMeeting } = useMeetingDetails(project?.project_type === "meeting" ? projectId : undefined);
-  const { data: gigDetails, refetch: refetchGig } = useGigDetails(project?.project_type === "gig" ? projectId : undefined);
-  const { data: gigSamples, refetch: refetchGigSamples } = useGigSamples(project?.project_type === "gig" ? projectId : undefined);
-  const { data: featuringGigs, refetch: refetchFeaturingGigs } = useGigsFeaturingProject(project && project.project_type !== "gig" ? projectId : undefined);
+  const { data: talentDetails, refetch: refetchTalent } = useTalentDetails(project?.project_type === "gig" ? projectId : undefined);
+  const { data: talentSamples, refetch: refetchTalentSamples } = useTalentSamples(project?.project_type === "gig" ? projectId : undefined);
+  const { data: featuringTalents, refetch: refetchFeaturingTalents } = useTalentsFeaturingProject(project && project.project_type !== "gig" ? projectId : undefined);
   const ownership = useProjectOwnership();
   const isOwner = ownership.isOwner(project);
   const isCreator = !!user && !!project && project.owner.id === user.id;
@@ -107,7 +108,7 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
           ...(isGuest ? [] : [refetchSimilar]),
           ...(type === "event" ? [refetchEvent] : []),
           ...(type === "meeting" ? [refetchMeeting] : []),
-          ...(type === "gig" ? [refetchGig, refetchGigSamples] : [refetchFeaturingGigs]),
+          ...(type === "gig" ? [refetchTalent, refetchTalentSamples] : [refetchFeaturingTalents]),
           ...(type !== "pitch" ? [refetchAffiliate] : []),
         ],
     insets.top + 16
@@ -202,34 +203,34 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
         </View>
       ) : null}
 
-      {/* Gig browsing info — tagline/delivery up top, proof-of-work samples below. Message/Book live on the card. */}
-      {project.project_type === "gig" && gigDetails?.tagline ? <Text className={`mb-2 text-sm font-medium text-ink`}>{gigDetails.tagline}</Text> : null}
-      {project.project_type === "gig" && gigDetails?.delivery_estimate ? (
+      {/* Talent browsing info — tagline/delivery up top, proof-of-work samples below. Message/Book live on the card. */}
+      {project.project_type === "gig" && talentDetails?.tagline ? <Text className={`mb-2 text-sm font-medium text-ink`}>{talentDetails.tagline}</Text> : null}
+      {project.project_type === "gig" && talentDetails?.delivery_estimate ? (
         <View className="mb-1.5 flex-row flex-wrap items-center gap-1.5">
           <Icon as={Clock} size={14} className="text-ink-muted" />
-          <Text className="text-sm text-ink-muted">{gigDetails.delivery_estimate}</Text>
-          {gigDetails.revisions_included !== null && gigDetails.revisions_included !== undefined ? (
+          <Text className="text-sm text-ink-muted">{talentDetails.delivery_estimate}</Text>
+          {talentDetails.revisions_included !== null && talentDetails.revisions_included !== undefined ? (
             <View className="flex-row items-center gap-1">
               <Text className="text-sm text-ink-muted">·</Text>
               <Icon as={RefreshCw} size={12} className="text-ink-muted" />
               <Text className="text-sm text-ink-muted">
-                {gigDetails.revisions_included} revision{gigDetails.revisions_included === 1 ? "" : "s"}
+                {talentDetails.revisions_included} revision{talentDetails.revisions_included === 1 ? "" : "s"}
               </Text>
             </View>
           ) : null}
         </View>
       ) : null}
-      {project.project_type === "gig" && !gigDetails?.delivery_estimate && gigDetails?.revisions_included !== null && gigDetails?.revisions_included !== undefined ? (
+      {project.project_type === "gig" && !talentDetails?.delivery_estimate && talentDetails?.revisions_included !== null && talentDetails?.revisions_included !== undefined ? (
         <View className="mb-1.5 flex-row items-center gap-1.5">
           <Icon as={RefreshCw} size={12} className="text-ink-muted" />
           <Text className="text-sm text-ink-muted">
-            {gigDetails.revisions_included} revision{gigDetails.revisions_included === 1 ? "" : "s"}
+            {talentDetails.revisions_included} revision{talentDetails.revisions_included === 1 ? "" : "s"}
           </Text>
         </View>
       ) : null}
-      {project.project_type === "gig" && gigDetails?.deliverables && gigDetails.deliverables.length > 0 ? (
+      {project.project_type === "gig" && talentDetails?.deliverables && talentDetails.deliverables.length > 0 ? (
         <View className="mb-4 gap-1">
-          {gigDetails.deliverables.map((item, i) => (
+          {talentDetails.deliverables.map((item, i) => (
             <View key={i} className="flex-row items-start gap-1.5">
               <Text className="mt-0.5 text-sm text-accent">✓</Text>
               <Text className="flex-1 text-sm text-ink-muted">{item}</Text>
@@ -237,9 +238,14 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
           ))}
         </View>
       ) : null}
-      {project.project_type === "gig" && gigSamples && gigSamples.length > 0 ? <ProjectRail title="Work samples" projects={gigSamples} /> : null}
-      {project.project_type === "gig" && gigDetails?.faq && gigDetails.faq.length > 0 ? <GigFaqSection faq={gigDetails.faq} /> : null}
-      {project.project_type === "gig" ? <GigReviewsSection projectId={project.id} /> : null}
+      {project.project_type === "gig" && talentSamples && talentSamples.length > 0 ? (
+        <View className="mt-8">
+          <Text className="mb-3 font-display text-lg font-semibold tracking-tight text-ink">Work samples</Text>
+          <ProjectMiniGrid projects={talentSamples} />
+        </View>
+      ) : null}
+      {project.project_type === "gig" && talentDetails?.faq && talentDetails.faq.length > 0 ? <TalentFaqSection faq={talentDetails.faq} /> : null}
+      {project.project_type === "gig" ? <TalentReviewsSection projectId={project.id} /> : null}
       {/* Book reviews: signed-in users only (RLS enforces it too); reviewing happens in the reader. */}
       {project.project_type === "book" && !isGuest ? <BookReviewsSection projectId={project.id} /> : null}
 
@@ -309,19 +315,19 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
             <>
               <ProjectCard project={project} isDetailView shareUrl={shareUrl} concealDetails detailsSlot={detailBlocks} />
 
-              {/* Reverse link to the gig(s) this is proof-of-work for — otherwise a visitor landing here
-                  directly (a feed post, a share) has no way to discover the gig itself. */}
-              {!isGuest && featuringGigs && featuringGigs.length > 0 ? (
+              {/* Reverse link to the talent(s) this is proof-of-work for — otherwise a visitor landing here
+                  directly (a feed post, a share) has no way to discover the talent itself. */}
+              {!isGuest && featuringTalents && featuringTalents.length > 0 ? (
                 <View className="-mt-2 mb-4 flex-row flex-wrap gap-2">
-                  {featuringGigs.map((gig) => (
+                  {featuringTalents.map((talent) => (
                     <Pressable
-                      key={gig.id}
-                      onPress={() => router.push(`/projects/${gig.id}` as Href)}
+                      key={talent.id}
+                      onPress={() => router.push(`/projects/${talent.id}` as Href)}
                       accessibilityRole="link"
                       className="flex-row items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1.5 active:scale-[0.98]"
                     >
                       <Icon as={Briefcase} size={14} className="text-accent" />
-                      <Text className="text-sm font-medium text-accent">{gig.role_label ? `Featured in ${gig.role_label} gig` : "View the gig this is part of"}</Text>
+                      <Text className="text-sm font-medium text-accent">{talent.role_label ? `Featured in ${talent.role_label} talent` : "View the talent this is part of"}</Text>
                     </Pressable>
                   ))}
                 </View>
