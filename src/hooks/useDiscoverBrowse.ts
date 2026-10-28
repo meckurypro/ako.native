@@ -6,8 +6,9 @@
 // same data through the same hooks — projects are publicly readable (RLS:
 // is_active = true), and a private project is never listed here.
 //
-// Time-bound kinds (events, live meetings, cohorts) list only what is still ahead,
-// soonest first. Everything else is ranked by likes, then recency.
+// Time-bound kinds (events, live meetings, cohorts) list only what is still ahead.
+// Everything is ranked by relevance to the viewer's interests first, then popularity (likes).
+// A project needs a title, description and thumbnail to be listed, and Files are never listed here.
 import { useInfiniteQuery, useQueries } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { formatUsd } from "../lib/money";
@@ -34,7 +35,6 @@ export const DISCOVER_SECTIONS: DiscoverSection[] = [
   { type: "media", title: "Audio & video" },
   { type: "gig", title: "Talents" },
   { type: "pitch", title: "Pitches" },
-  { type: "file", title: "Files" },
   { type: "url", title: "Links" },
 ];
 
@@ -57,70 +57,17 @@ export interface DiscoverPage {
   rawCount: number;
 }
 
-type TimedType = "event" | "meeting" | "room";
-const TIMED: Record<TimedType, { table: string; col: string }> = {
-  event: { table: "project_event_details", col: "event_date" },
-  meeting: { table: "project_meeting_details", col: "scheduled_at" },
-  room: { table: "project_room_details", col: "start_date" },
-};
-
-function isTimed(type: ProjectType): type is TimedType {
-  return type === "event" || type === "meeting" || type === "room";
-}
-
 export async function fetchDiscoverPage(type: ProjectType, from: number, to: number): Promise<DiscoverPage> {
-  if (isTimed(type)) {
-    const { table, col } = TIMED[type];
-    const now = new Date().toISOString();
-    const today = now.slice(0, 10);
-    let q: any = supabase.from(table).select(`project_id, ${col}`);
-    if (type === "event") q = q.gte("event_date", now);
-    // A meeting that is live right now is still worth showing even though it has already started.
-    if (type === "meeting") q = q.in("status", ["scheduled", "live"]).or(`scheduled_at.gte.${now},status.eq.live`);
-    // A cohort is worth showing until it ends, not only until it starts.
-    if (type === "room") q = q.gte("end_date", today);
-    const { data: rows, error } = await q.order(col, { ascending: true }).range(from, to);
-    if (error) throw error;
-
-    const list = (rows ?? []) as Array<Record<string, any>>;
-    if (list.length === 0) return { items: [], rawCount: 0 };
-
-    const { data: projects, error: projectsError } = await supabase
-      .from("projects")
-      .select("*")
-      .in(
-        "id",
-        list.map((r) => r.project_id)
-      )
-      .eq("status", "active")
-      .eq("is_active", true)
-      .eq("is_private", false);
-    if (projectsError) throw projectsError;
-
-    const byId = new Map(((projects ?? []) as Project[]).map((p) => [p.id, p]));
-    const items = list.flatMap((r) => {
-      const project = byId.get(r.project_id);
-      return project ? [{ project, when: (r[col] as string | null) ?? null }] : [];
-    });
-    return { items, rawCount: list.length };
-  }
-
-  let q = supabase
-    .from("projects")
-    .select("*")
-    .eq("project_type", type)
-    .eq("status", "active")
-    .eq("is_active", true)
-    .eq("is_private", false);
-  // A course can't be bought until it is published, so it isn't discoverable before then either.
-  if (type === "course") q = q.not("published_at", "is", null);
-  const { data, error } = await q
-    .order("like_count", { ascending: false })
-    .order("created_at", { ascending: false })
-    .range(from, to);
+  // Ranking and eligibility live in the database (discover_projects): relevance to the viewer's interests first, then
+  // popularity; only projects with a title, description and thumbnail; only what is still ahead for time-bound kinds.
+  const { data, error } = await supabase.rpc("discover_projects", {
+    p_type: type,
+    p_offset: from,
+    p_limit: to - from + 1,
+  });
   if (error) throw error;
-  const projects = (data ?? []) as Project[];
-  return { items: projects.map((project) => ({ project, when: null })), rawCount: projects.length };
+  const rows = (data ?? []) as Array<{ project: Project; when_at: string | null }>;
+  return { items: rows.map((r) => ({ project: r.project, when: r.when_at })), rawCount: rows.length };
 }
 
 export interface DiscoverRailData {
