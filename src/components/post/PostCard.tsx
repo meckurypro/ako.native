@@ -120,7 +120,6 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
   const [showReshareSheet, setShowReshareSheet] = useState(false);
   const [showGiftPicker, setShowGiftPicker] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [metaWrapped, setMetaWrapped] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [showTagSheet, setShowTagSheet] = useState(false);
   const [showCollaboratorsSheet, setShowCollaboratorsSheet] = useState(false);
@@ -486,24 +485,26 @@ function PostCardImpl({ post, isOwnerView = false, showStats = false, active = t
               <RoleTags roles={post.author.roles} className="text-[13px] leading-[18px] text-ink-muted" numberOfLines={1} />
             ) : null}
 
+            {/* Meta line: "time · views · 🌐" — the audience globe always trails the last item, inline, the way
+                Facebook/LinkedIn print it. Spaces inside the text are non-breaking so the line can never wrap
+                ("just" / "now" on two rows) and, with numberOfLines=1, the text can't change width class mid-render —
+                so the globe never jumps to the row's far edge (the old flex-1 fallback did exactly that). */}
             <View className="flex-row items-center gap-1">
-              {/* The line must never break ("just" / "now" on two rows). A shrink-wrapped Text is given exactly its
-                  measured width, and on Android a hair of difference between that measure and the drawn glyphs makes
-                  it wrap at the space. So if it ever lays out on more than one line, let it fill the row instead
-                  (flex-1, one line) — then it can't wrap whatever the measure said. */}
               <Text
-                style={NO_FONT_PADDING}
-                numberOfLines={metaWrapped ? 1 : undefined}
-                onTextLayout={(e) => {
-                  if (!metaWrapped && e.nativeEvent.lines.length > 1) setMetaWrapped(true);
-                }}
-                className={`text-[10.5px] leading-[18px] text-ink-muted ${metaWrapped ? "flex-1" : ""}`}
+                style={[NO_FONT_PADDING, { flexShrink: 1 }]}
+                numberOfLines={1}
+                className="text-[10.5px] leading-[18px] text-ink-muted"
               >
-                {timeAgo(post.created_at)}
-                {post.edited_at ? " · edited" : ""}
-                {viewCount > 0 ? ` · ${formatCompactCount(viewCount)} ${viewCount === 1 ? "view" : "views"}` : ""}
+                {`${timeAgo(post.created_at)}${post.edited_at ? " · edited" : ""}${
+                  viewCount > 0 ? ` · ${formatCompactCount(viewCount)} ${viewCount === 1 ? "view" : "views"}` : ""
+                }`.replace(/ /g, "\u00A0")}
               </Text>
-              {post.visibility === "public" ? <Icon as={Globe} size={11} className="text-ink-muted" /> : null}
+              {post.visibility === "public" ? (
+                <>
+                  <Text style={NO_FONT_PADDING} className="text-[10.5px] leading-[18px] text-ink-muted">·</Text>
+                  <Icon as={Globe} size={11} className="text-ink-muted" />
+                </>
+              ) : null}
             </View>
           </View>
         </View>
