@@ -14,7 +14,7 @@ export function AccountUnderReview() {
     <View className="flex-1 items-center justify-center bg-canvas px-6">
       <View className="max-w-xs items-center">
         <View className="mb-6 h-16 w-16 items-center justify-center rounded-full bg-accent-soft">
-          <Icon as={Clock3} size={28} className="text-accent" />
+          <Icon as={Clock3} size={28} className="text-brand-orange" />
         </View>
         <Text className="mb-2 text-center font-display text-xl text-ink">Your Akọ account is under review</Text>
         <Text className="mb-1 text-center text-sm text-ink-muted">

@@ -49,7 +49,7 @@ export const SearchField = forwardRef<TextInput, SearchFieldProps>(function Sear
 
   return (
     <View className={container}>
-      <Icon as={Search} size={16} className={`shrink-0 ${bar ? "text-brand-orange" : "text-ink-muted"}`} />
+      <Icon as={Search} size={16} className={`shrink-0 ${bar || pill ? "text-brand-orange" : "text-ink-muted"}`} />
       <TextInput
         ref={ref}
         value={value}

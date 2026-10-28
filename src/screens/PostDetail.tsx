@@ -18,6 +18,7 @@ import { useBottomNavInset } from "@/components/nav/BottomNav";
 import { useChromeScroll } from "@/components/nav/ChromeProvider";
 import { PostCard } from "@/components/post/PostCard";
 import { StanceComposer } from "@/components/post/StanceComposer";
+import { BrandDot } from "@/components/ui/BrandDot";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { PostStatusBanner } from "@/components/post/PostStatusBanner";
@@ -78,9 +79,15 @@ export function PostDetail() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingTop: insets.top + 16, paddingHorizontal: 16, paddingBottom: bottomInset, opacity: refreshing ? 0 : 1 }}
       >
-        <Pressable onPress={smartBack} accessibilityRole="button" accessibilityLabel="Back" hitSlop={12} className="mb-3 self-start">
-          <Icon as={ArrowLeft} size={22} className="text-ink-muted" />
-        </Pressable>
+        <View className="mb-3 flex-row items-center gap-3">
+          <Pressable onPress={smartBack} accessibilityRole="button" accessibilityLabel="Back" hitSlop={12}>
+            <Icon as={ArrowLeft} size={22} className="text-ink-muted" />
+          </Pressable>
+          <View className="flex-row items-center gap-1.5">
+            <Text className="font-display text-base text-ink">Post</Text>
+            <BrandDot />
+          </View>
+        </View>
 
         {restricted ? (
           <RestrictedPostNotice />
