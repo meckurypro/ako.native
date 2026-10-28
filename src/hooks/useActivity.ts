@@ -10,11 +10,13 @@ import { fetchRemovedProjectIds } from "./useLibraryRemovals";
 // Activity tab can just render one list, split into upcoming/past by
 // `when`.
 export interface ActivityItem {
-  kind: "event" | "meeting" | "room_meeting";
+  kind: "event" | "meeting" | "room_meeting" | "room";
   projectId: string;
   projectTitle: string;
   thumbnailUrl: string | null;
   when: string | null; // ISO — null only possible for an event with no date set yet
+  meetingTitle?: string | null; // room meetings: the meeting's own title, shown under the room name
+  meetingStatus?: string; // room meetings: scheduled | live | ended
   roomMeetingId?: string; // only set for kind === "room_meeting"
 }
 
@@ -62,21 +64,45 @@ export function useActivity() {
         });
       }
 
-      const { data: roomMeetings } = await supabase
-        .from("room_meetings")
-        .select("id, scheduled_at, project:projects!room_meetings_project_id_fkey(id, title, thumbnail_url), room_members!inner(user_id)")
-        .eq("room_members.user_id", user!.id);
-      for (const row of (roomMeetings as any[]) ?? []) {
-        const p = row.project;
-        if (!p) continue;
-        items.push({
-          kind: "room_meeting",
-          projectId: p.id,
-          projectTitle: p.title,
-          thumbnailUrl: p.thumbnail_url,
-          when: row.scheduled_at,
-          roomMeetingId: row.id,
-        });
+      // Rooms you're in, own, or help host. Room meetings come from these, so hosts see their own
+      // schedule too and a member who left stops seeing a room's meetings.
+      const roomIds = new Set<string>();
+      const [memberRows, ownedRows, modRows] = await Promise.all([
+        supabase.from("room_members").select("project_id").eq("user_id", user!.id),
+        supabase.from("projects").select("id").eq("owner_id", user!.id).eq("project_type", "room"),
+        supabase.from("room_moderators").select("project_id").eq("user_id", user!.id),
+      ]);
+      for (const r of (memberRows.data as { project_id: string }[]) ?? []) roomIds.add(r.project_id);
+      for (const r of (ownedRows.data as { id: string }[]) ?? []) roomIds.add(r.id);
+      for (const r of (modRows.data as { project_id: string }[]) ?? []) roomIds.add(r.project_id);
+
+      if (roomIds.size > 0) {
+        const ids = [...roomIds];
+        const [{ data: rooms }, { data: roomMeetings }] = await Promise.all([
+          supabase.from("projects").select("id, title, thumbnail_url").in("id", ids).eq("is_active", true),
+          supabase
+            .from("room_meetings")
+            .select("id, title, scheduled_at, status, project:projects!room_meetings_project_id_fkey(id, title, thumbnail_url)")
+            .in("project_id", ids)
+            .neq("status", "cancelled"),
+        ]);
+        for (const p of (rooms as { id: string; title: string; thumbnail_url: string | null }[]) ?? []) {
+          items.push({ kind: "room", projectId: p.id, projectTitle: p.title, thumbnailUrl: p.thumbnail_url, when: null });
+        }
+        for (const row of (roomMeetings as any[]) ?? []) {
+          const p = row.project;
+          if (!p) continue;
+          items.push({
+            kind: "room_meeting",
+            projectId: p.id,
+            projectTitle: p.title,
+            thumbnailUrl: p.thumbnail_url,
+            when: row.scheduled_at,
+            roomMeetingId: row.id,
+            meetingTitle: row.title,
+            meetingStatus: row.status,
+          });
+        }
       }
 
       // Anything the person chose to remove from Connect stays hidden (access itself is unchanged).

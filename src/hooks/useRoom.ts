@@ -219,7 +219,11 @@ export interface RoomDetails {
   conversation_id: string | null;
   hosts_only_chat: boolean;
   chat_muted: boolean;
+  // What people who join later can read (ako_rooms_group.sql). Anchored messages are always visible.
+  history_mode: RoomHistoryMode;
 }
+
+export type RoomHistoryMode = "all" | "admins_and_anchored" | "anchored";
 
 export function useRoomDetails(projectId: string | undefined) {
   return useQuery({
@@ -250,7 +254,7 @@ export function useUpdateRoomDetails(projectId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     meta: { blocking: true },
-    mutationFn: async (input: Partial<Pick<RoomDetails, "start_date" | "end_date" | "hosts_only_chat" | "chat_muted">>) => {
+    mutationFn: async (input: Partial<Pick<RoomDetails, "start_date" | "end_date" | "hosts_only_chat" | "chat_muted" | "history_mode">>) => {
       const { error } = await supabase
         .from("project_room_details")
         .upsert({ project_id: projectId, ...input }, { onConflict: "project_id" });
@@ -648,5 +652,253 @@ export function useReviewSubmission(assignmentId: string) {
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["assignment-submissions", assignmentId] }),
+  });
+}
+
+// ---------------------------------------------------------------
+// Anchored messages (ako_rooms_group.sql) — host-only, permanent for new members
+// ---------------------------------------------------------------
+
+export function useSetMessageAnchor(conversationId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ messageId, anchored }: { messageId: string; anchored: boolean }) => {
+      const { error } = await supabase.rpc("set_message_anchor", { p_message_id: messageId, p_anchored: anchored });
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["messages", conversationId] }),
+  });
+}
+
+// ---------------------------------------------------------------
+// Joining, leaving and moderation (ako_rooms_membership.sql)
+// ---------------------------------------------------------------
+
+export type RoomJoinRequestStatus = "pending" | "approved" | "declined";
+
+export interface RoomJoinRequest {
+  project_id: string;
+  user_id: string;
+  status: RoomJoinRequestStatus;
+  message: string | null;
+  created_at: string;
+  profile: { username: string; display_name: string; avatar_url: string | null };
+}
+
+// The signed-in person's own request for this room, if any.
+export function useMyRoomJoinRequest(projectId: string | undefined) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["my-room-join-request", projectId, user?.id],
+    queryFn: async (): Promise<{ status: RoomJoinRequestStatus } | null> => {
+      const { data, error } = await supabase
+        .from("room_join_requests")
+        .select("status")
+        .eq("project_id", projectId)
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data as { status: RoomJoinRequestStatus } | null;
+    },
+    enabled: !!projectId && !!user,
+  });
+}
+
+// Host view: who is waiting to be let in.
+export function useRoomJoinRequests(projectId: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ["room-join-requests", projectId],
+    queryFn: async (): Promise<RoomJoinRequest[]> => {
+      const { data, error } = await supabase
+        .from("room_join_requests")
+        .select("*, profile:profiles!room_join_requests_user_id_fkey(username, display_name, avatar_url)")
+        .eq("project_id", projectId)
+        .eq("status", "pending")
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as unknown as RoomJoinRequest[];
+    },
+    enabled: !!projectId && enabled,
+  });
+}
+
+function invalidateRoomMembership(queryClient: ReturnType<typeof useQueryClient>, projectId: string) {
+  for (const key of [
+    "is-room-member",
+    "room-member-count",
+    "room-members-list",
+    "room-join-requests",
+    "my-room-join-request",
+    "room-blocklist",
+  ]) {
+    queryClient.invalidateQueries({ queryKey: [key, projectId] });
+  }
+}
+
+export function useRequestRoomJoin(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    meta: { blocking: true },
+    mutationFn: async (message?: string) => {
+      const { error } = await supabase.rpc("request_room_join", { p_project_id: projectId, p_message: message ?? null });
+      if (error) throw error;
+    },
+    onSuccess: () => invalidateRoomMembership(queryClient, projectId),
+  });
+}
+
+export function useCancelRoomJoinRequest(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    meta: { blocking: true },
+    mutationFn: async () => {
+      const { error } = await supabase.rpc("cancel_room_join_request", { p_project_id: projectId });
+      if (error) throw error;
+    },
+    onSuccess: () => invalidateRoomMembership(queryClient, projectId),
+  });
+}
+
+export function useReviewRoomJoinRequest(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    meta: { blocking: true },
+    mutationFn: async ({ userId, approve }: { userId: string; approve: boolean }) => {
+      const { error } = await supabase.rpc("review_room_join_request", {
+        p_project_id: projectId,
+        p_user_id: userId,
+        p_approve: approve,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => invalidateRoomMembership(queryClient, projectId),
+  });
+}
+
+export function useAddRoomMember(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    meta: { blocking: true },
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase.rpc("add_room_member", { p_project_id: projectId, p_user_id: userId });
+      if (error) throw error;
+    },
+    onSuccess: () => invalidateRoomMembership(queryClient, projectId),
+  });
+}
+
+export function useLeaveRoom(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    meta: { blocking: true },
+    mutationFn: async () => {
+      const { error } = await supabase.rpc("leave_room", { p_project_id: projectId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidateRoomMembership(queryClient, projectId);
+      queryClient.invalidateQueries({ queryKey: ["is-room-host", projectId] });
+    },
+  });
+}
+
+export function useRemoveRoomMember(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    meta: { blocking: true },
+    mutationFn: async ({ userId, blacklist }: { userId: string; blacklist?: boolean }) => {
+      const { error } = await supabase.rpc("remove_room_member", {
+        p_project_id: projectId,
+        p_user_id: userId,
+        p_blacklist: !!blacklist,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => invalidateRoomMembership(queryClient, projectId),
+  });
+}
+
+export interface RoomBlocklistEntry {
+  project_id: string;
+  user_id: string;
+  created_at: string;
+  profile: { username: string; display_name: string; avatar_url: string | null };
+}
+
+export function useRoomBlocklist(projectId: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ["room-blocklist", projectId],
+    queryFn: async (): Promise<RoomBlocklistEntry[]> => {
+      const { data, error } = await supabase
+        .from("room_blocklist")
+        .select("*, profile:profiles!room_blocklist_user_id_fkey(username, display_name, avatar_url)")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as RoomBlocklistEntry[];
+    },
+    enabled: !!projectId && enabled,
+  });
+}
+
+export function useBlacklistRoomUser(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    meta: { blocking: true },
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase.rpc("blacklist_room_user", { p_project_id: projectId, p_user_id: userId });
+      if (error) throw error;
+    },
+    onSuccess: () => invalidateRoomMembership(queryClient, projectId),
+  });
+}
+
+export function useUnblacklistRoomUser(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    meta: { blocking: true },
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase.rpc("unblacklist_room_user", { p_project_id: projectId, p_user_id: userId });
+      if (error) throw error;
+    },
+    onSuccess: () => invalidateRoomMembership(queryClient, projectId),
+  });
+}
+
+// Host adds someone by @username (private rooms, or anyone the host wants in).
+export async function findProfileByUsername(username: string): Promise<{ id: string; username: string; display_name: string } | null> {
+  const clean = username.trim().replace(/^@/, "");
+  if (!clean) return null;
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, username, display_name")
+    .ilike("username", clean)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+// What a non-member may see about a group, and one-tap joining for open communities (ako_groups_kinds).
+export function useGroupPublicInfo(projectId: string | undefined) {
+  return useQuery({
+    queryKey: ["group-public-info", projectId],
+    queryFn: async (): Promise<{ kind: string; join_mode: string; is_closed: boolean } | null> => {
+      const { data, error } = await supabase.rpc("get_group_public_info", { p_project_id: projectId });
+      if (error) throw error;
+      return ((data as { kind: string; join_mode: string; is_closed: boolean }[]) ?? [])[0] ?? null;
+    },
+    enabled: !!projectId,
+  });
+}
+
+export function useJoinOpenRoom(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    meta: { blocking: true },
+    mutationFn: async () => {
+      const { error } = await supabase.rpc("join_open_room", { p_project_id: projectId });
+      if (error) throw error;
+    },
+    onSuccess: () => invalidateRoomMembership(queryClient, projectId),
   });
 }

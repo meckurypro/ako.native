@@ -59,6 +59,8 @@ export function notificationAction(n: RoutableNotification): NotificationAction 
 /** The plain navigation target, or null when the notification doesn't lead anywhere. */
 export function notificationLink(n: RoutableNotification): string | null {
   if (n.type === "follow_request") return "/requests";
+  // A join request is answered in the room's settings panel, so open it there.
+  if (n.type === "room_join_request" && n.target_id) return `/rooms/${n.target_id}?settings=1`;
   if (n.target_type === "post" && n.target_id) return `/post/${n.target_id}`;
   if (n.target_type === "project" && n.target_id) {
     const route = n.project_type ? PROJECT_TYPE_ROUTE[n.project_type] : undefined;

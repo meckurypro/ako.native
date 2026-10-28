@@ -344,6 +344,8 @@ export interface MessageWithSender {
   delivered_at: string | null;
   read_at: string | null;
   reply_to_message_id: string | null;
+  // Room messages a host made permanent ("Anchored"); null everywhere else.
+  anchored_at?: string | null;
   // "Deleted for everyone" — the row stays in the thread for BOTH
   // participants but renders as a tombstone ("This message was
   // deleted") instead of its content. Set only by the sender (see
@@ -425,7 +427,7 @@ export function useMessages(conversationId: string) {
       const { data, error } = await supabase
         .from("messages")
         .select(
-          "id, conversation_id, sender_id, content, created_at, delivered_at, read_at, reply_to_message_id, is_deleted"
+          "id, conversation_id, sender_id, content, created_at, delivered_at, read_at, reply_to_message_id, is_deleted, anchored_at"
         )
         .eq("conversation_id", conversationId)
         .order("created_at", { ascending: false })

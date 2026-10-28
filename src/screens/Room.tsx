@@ -3,30 +3,33 @@
 // cohort settings. Gates: not a member → locked; before start date → countdown; after end date →
 // archive (media stays, chat/meetings/assignments close).
 import { router, useLocalSearchParams, type Href } from "expo-router";
-import { ArrowLeft, BookOpen, Calendar, ClipboardList, Eye, EyeOff, Lock, MessageCircle, Settings, Users, type LucideIcon } from "lucide-react-native";
+import { ArrowLeft, BookOpen, Calendar, ClipboardList, Eye, EyeOff, LogOut, MessageCircle, Settings, Users, type LucideIcon } from "lucide-react-native";
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { Alert, Pressable, ScrollView, View } from "react-native";
 import Animated, { useAnimatedKeyboard, useAnimatedStyle } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AssignmentsTab } from "@/components/room/AssignmentsTab";
 import { ClassroomTab } from "@/components/room/ClassroomTab";
 import { HostSettingsPanel } from "@/components/room/HostSettingsPanel";
+import { JoinGate } from "@/components/room/JoinGate";
 import { MeetingsTab } from "@/components/room/MeetingsTab";
 import { RoomChat } from "@/components/room/RoomChat";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
+import { useToast } from "@/components/ui/Toast";
 import { useProjectOwnership } from "@/hooks/useProjectOwnership";
 import { formatCountdown, useCountdown } from "@/hooks/useCountdown";
 import { useSmartBack } from "@/hooks/useSmartBack";
 import { useProject } from "@/hooks/useProjects";
-import { useIsRoomHost, useIsRoomMember, useRoomConversationId, useRoomDetails, useRoomIsClosed, useRoomMemberCount } from "@/hooks/useRoom";
+import { useIsRoomHost, useIsRoomMember, useLeaveRoom, useRoomConversationId, useRoomDetails, useRoomIsClosed, useRoomJoinRequests, useRoomMemberCount } from "@/hooks/useRoom";
 
 type Tab = "classroom" | "chat" | "meetings" | "assignments";
 
 export function Room() {
-  const { projectId } = useLocalSearchParams<{ projectId: string }>();
+  const { projectId, settings } = useLocalSearchParams<{ projectId: string; settings?: string }>();
+  const toast = useToast();
   const insets = useSafeAreaInsets();
   const smartBack = useSmartBack();
   const keyboard = useAnimatedKeyboard({ isStatusBarTranslucentAndroid: true });
@@ -47,7 +50,10 @@ export function Room() {
 
   const [tab, setTab] = useState<Tab>("classroom");
   const [chatVisited, setChatVisited] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
+  // A join-request notification opens the room with settings already showing.
+  const [showSettings, setShowSettings] = useState(settings === "1");
+  const { data: pendingRequests } = useRoomJoinRequests(projectId, isHost);
+  const leaveRoom = useLeaveRoom(projectId ?? "");
   const [viewArchivedChat, setViewArchivedChat] = useState(false);
   const getConversationId = useRoomConversationId(projectId ?? "");
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -82,14 +88,7 @@ export function Room() {
     return (
       <View className="flex-1 bg-canvas">
         <ScreenHeader title="" />
-        <View className="mt-16 items-center gap-3 px-6">
-          <Icon as={Lock} size={28} className="text-ink-muted" />
-          <Text className="font-medium text-ink">Members only</Text>
-          <Text className="text-center text-sm text-ink-muted">Buy access to “{project.title}” from its project page to join this cohort.</Text>
-          <Pressable onPress={() => router.push(`/projects/${projectId}` as Href)} accessibilityRole="link" hitSlop={8} className="mt-2">
-            <Text className="text-sm font-medium text-accent">Go to project page</Text>
-          </Pressable>
-        </View>
+        <JoinGate projectId={project.id} title={project.title} isPrivate={project.is_private} isFree={Number(project.promo_price_usd ?? project.price_usd) <= 0} />
       </View>
     );
   }
@@ -127,11 +126,46 @@ export function Room() {
           <Pressable onPress={smartBack} accessibilityRole="button" accessibilityLabel="Back" hitSlop={12}>
             <Icon as={ArrowLeft} size={22} className="text-ink-muted" />
           </Pressable>
-          {isHost && (
-            <Pressable onPress={() => setShowSettings((s) => !s)} accessibilityRole="button" accessibilityLabel="Cohort settings" accessibilityState={{ expanded: showSettings }} hitSlop={12}>
-              <Icon as={Settings} size={20} className="text-ink-muted" />
-            </Pressable>
-          )}
+          <View className="flex-row items-center gap-4">
+            {!isOwner && !isHost && isMember && (
+              <Pressable
+                onPress={() =>
+                  Alert.alert(`Leave “${project.title}”?`, "You'll lose access unless you join again.", [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                      text: "Leave",
+                      style: "destructive",
+                      onPress: () =>
+                        leaveRoom.mutate(undefined, {
+                          onSuccess: () => {
+                            toast("You left the room.", { variant: "success" });
+                            smartBack();
+                          },
+                          onError: (err) => toast(err instanceof Error ? err.message : "Couldn't leave the room.", { variant: "error" }),
+                        }),
+                    },
+                  ])
+                }
+                accessibilityRole="button"
+                accessibilityLabel="Leave room"
+                hitSlop={12}
+                className="flex-row items-center gap-1"
+              >
+                <Icon as={LogOut} size={16} className="text-ink-muted" />
+                <Text className="text-xs text-ink-muted">Leave</Text>
+              </Pressable>
+            )}
+            {isHost && (
+              <Pressable onPress={() => setShowSettings((s) => !s)} accessibilityRole="button" accessibilityLabel="Room settings" accessibilityState={{ expanded: showSettings }} hitSlop={12}>
+                <Icon as={Settings} size={20} className="text-ink-muted" />
+                {(pendingRequests ?? []).length > 0 && (
+                  <View className="absolute -right-1.5 -top-1.5 h-4 min-w-[16px] items-center justify-center rounded-full bg-cta px-1">
+                    <Text className="text-[10px] text-white">{pendingRequests!.length}</Text>
+                  </View>
+                )}
+              </Pressable>
+            )}
+          </View>
         </View>
 
         <View className="mb-3 flex-row items-center justify-between px-4">
@@ -157,8 +191,8 @@ export function Room() {
         )}
 
         {showSettings && isHost && (
-          <ScrollView showsHorizontalScrollIndicator={false} className="mx-4" style={{ maxHeight: 320, flexGrow: 0 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-            <HostSettingsPanel projectId={project.id} />
+          <ScrollView showsHorizontalScrollIndicator={false} className="mx-4" style={{ maxHeight: 420, flexGrow: 0 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <HostSettingsPanel projectId={project.id} isOwner={isOwner} />
           </ScrollView>
         )}
 
@@ -189,6 +223,7 @@ export function Room() {
               <RoomChat
                 projectId={project.id}
                 conversationId={conversationId}
+                isHost={isHost}
                 canPost={!isClosed && (isHost || !details?.hosts_only_chat) && !(details?.chat_muted && !isHost)}
                 cantPostReason={isClosed ? "This cohort has ended." : details?.chat_muted ? "Chat is muted." : details?.hosts_only_chat ? "Only hosts can post here." : undefined}
               />

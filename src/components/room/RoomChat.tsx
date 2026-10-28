@@ -1,7 +1,7 @@
 // src/components/room/RoomChat.tsx
 // A cohort's group chat: message list, text composer with emoji panel, hold-to-record voice notes.
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
-import { Keyboard as KeyboardIcon, Lock, Mic, Send, Smile } from "lucide-react-native";
+import { Anchor as AnchorIcon, Keyboard as KeyboardIcon, Lock, Mic, Send, Smile } from "lucide-react-native";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Pressable, TextInput, View } from "react-native";
 import { GestureDetector } from "react-native-gesture-handler";
@@ -21,7 +21,7 @@ import { useKeyboardInset } from "@/hooks/useKeyboardInset";
 import { useMessages, useSendMessage, useSendVoiceNote } from "@/hooks/useMessaging";
 import { useMicGesture } from "@/hooks/useMicGesture";
 import { useVoiceNotesEnabled } from "@/hooks/useFeatureFlags";
-import { useRoomMembersList } from "@/hooks/useRoom";
+import { useRoomMembersList, useSetMessageAnchor } from "@/hooks/useRoom";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { decodeVoiceNote } from "@/lib/voiceNotes";
 import { useTheme } from "@/theme/ThemeProvider";
@@ -31,9 +31,11 @@ interface RoomChatProps {
   conversationId: string;
   canPost: boolean;
   cantPostReason?: string;
+  // Hosts can anchor messages (make them permanent for people who join later).
+  isHost?: boolean;
 }
 
-export function RoomChat({ projectId, conversationId, canPost, cantPostReason }: RoomChatProps) {
+export function RoomChat({ projectId, conversationId, canPost, cantPostReason, isHost }: RoomChatProps) {
   const { user } = useAuth();
   const { colors } = useTheme();
   const toast = useToast();
@@ -46,6 +48,8 @@ export function RoomChat({ projectId, conversationId, canPost, cantPostReason }:
   const sendVoiceNote = useSendVoiceNote(conversationId);
   const [content, setContent] = useState("");
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const [anchoredOnly, setAnchoredOnly] = useState(false);
+  const setAnchor = useSetMessageAnchor(conversationId);
   const inputRef = useRef<TextInput>(null);
   const listRef = useRef<FlashListRef<NonNullable<typeof messages>[number]>>(null);
 
@@ -74,13 +78,35 @@ export function RoomChat({ projectId, conversationId, canPost, cantPostReason }:
     setContent("");
   }, [content, sendMessage, toast]);
 
-  const list = messages ?? [];
+  const anchoredCount = (messages ?? []).filter((m) => m.anchored_at && !m.is_deleted).length;
+  const list = (messages ?? []).filter((m) => !anchoredOnly || (m.anchored_at && !m.is_deleted));
+
+  function toggleAnchor(messageId: string, anchored: boolean) {
+    setAnchor.mutate(
+      { messageId, anchored },
+      {
+        onSuccess: () => toast(anchored ? "Anchored. New members will always see this." : "Unanchored.", { variant: "success" }),
+        onError: (err) => toast(err instanceof Error ? err.message : "Couldn't update the anchor.", { variant: "error" }),
+      }
+    );
+  }
 
   return (
     <View className="flex-1">
+      {(anchoredCount > 0 || anchoredOnly) && (
+        <Pressable
+          onPress={() => setAnchoredOnly((v) => !v)}
+          accessibilityRole="button"
+          accessibilityState={{ selected: anchoredOnly }}
+          className={`mb-1 flex-row items-center gap-1.5 self-start rounded-full px-2.5 py-1 ${anchoredOnly ? "bg-cta" : "bg-accent-soft-a60"}`}
+        >
+          <Icon as={AnchorIcon} size={12} className={anchoredOnly ? "text-white" : "text-accent"} />
+          <Text className={`text-xs font-medium ${anchoredOnly ? "text-white" : "text-accent"}`}>{anchoredOnly ? "Showing anchored" : `Anchored (${anchoredCount})`}</Text>
+        </Pressable>
+      )}
       <View className="flex-1">
         {list.length === 0 ? (
-          <Text className="mt-6 text-center text-sm text-ink-muted">No messages yet — say hello.</Text>
+          <Text className="mt-6 text-center text-sm text-ink-muted">{anchoredOnly ? "Nothing anchored yet." : "No messages yet — say hello."}</Text>
         ) : (
           <FlashList showsHorizontalScrollIndicator={false}
             ref={listRef}
@@ -104,6 +130,12 @@ export function RoomChat({ projectId, conversationId, canPost, cantPostReason }:
                   {!isMine && <Avatar src={sender?.avatar_url} name={sender?.display_name ?? "Member"} size="sm" />}
                   <View className={`max-w-[75%] ${isMine ? "items-end" : "items-start"}`}>
                     {!isMine && <Text className="mb-0.5 px-1 text-xs font-medium text-ink-muted">{sender?.display_name ?? "Member"}</Text>}
+                    {m.anchored_at && !m.is_deleted && (
+                      <View className="mb-0.5 flex-row items-center gap-1 px-1">
+                        <Icon as={AnchorIcon} size={10} className="text-accent" />
+                        <Text className="text-[10px] font-medium text-accent">Anchored</Text>
+                      </View>
+                    )}
                     {voiceNote ? (
                       <VoiceMessageBubble url={voiceNote.url} path={voiceNote.path} durationSec={voiceNote.durationSec} peaks={voiceNote.peaks} isMine={isMine} />
                     ) : (
@@ -116,6 +148,11 @@ export function RoomChat({ projectId, conversationId, canPost, cantPostReason }:
                           </Text>
                         )}
                       </View>
+                    )}
+                    {isHost && !m.is_deleted && (
+                      <Pressable onPress={() => toggleAnchor(m.id, !m.anchored_at)} disabled={setAnchor.isPending} accessibilityRole="button" hitSlop={8} className="mt-0.5 px-1">
+                        <Text className="text-[10px] text-ink-muted">{m.anchored_at ? "Unanchor" : "Anchor"}</Text>
+                      </Pressable>
                     )}
                   </View>
                 </View>

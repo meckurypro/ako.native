@@ -24,6 +24,7 @@ import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useToast } from "@/components/ui/Toast";
 import { useActivity, type ActivityItem } from "@/hooks/useActivity";
+import { formatCountdown, useCountdown } from "@/hooks/useCountdown";
 import { useIsOnline } from "@/hooks/useIsOnline";
 import { useRemoveFromLibrary } from "@/hooks/useLibraryRemovals";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
@@ -34,14 +35,16 @@ const ALL_TABS = ["events", "meetings", "rooms"] as const;
 type ConnectTab = (typeof ALL_TABS)[number];
 
 const TAB_LABEL: Record<ConnectTab, string> = { events: "Events", meetings: "Meetings", rooms: "Rooms" };
-const KIND_FOR_TAB: Record<ConnectTab, ActivityItem["kind"]> = { events: "event", meetings: "meeting", rooms: "room_meeting" };
+// Room meetings sit with the other meetings (room name + a countdown); the Rooms tab lists the rooms themselves.
+const KINDS_FOR_TAB: Record<ConnectTab, ActivityItem["kind"][]> = { events: ["event"], meetings: ["meeting", "room_meeting"], rooms: ["room"] };
 
 const ROUTE_FOR: Record<ActivityItem["kind"], (item: ActivityItem) => string> = {
   event: (item) => `/projects/${item.projectId}/ticket`,
   meeting: (item) => `/meetings/${item.projectId}`,
   room_meeting: (item) => `/rooms/${item.projectId}`,
+  room: (item) => `/rooms/${item.projectId}`,
 };
-const LABEL_FOR: Record<ActivityItem["kind"], string> = { event: "Event", meeting: "Meeting", room_meeting: "Room meeting" };
+const LABEL_FOR: Record<ActivityItem["kind"], string> = { event: "Event", meeting: "Meeting", room_meeting: "Room meeting", room: "Room" };
 
 function ActivityRow({ item }: { item: ActivityItem }) {
   const toast = useToast();
@@ -50,6 +53,11 @@ function ActivityRow({ item }: { item: ActivityItem }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const menuRef = useRef<View>(null);
+  // Live countdown for a meeting that hasn't started; "Live now" for a room meeting that is running.
+  const remaining = useCountdown(item.kind === "meeting" || item.kind === "room_meeting" ? item.when : null);
+  const countdown = remaining !== null && remaining > 0 ? `Starts in ${formatCountdown(remaining)}` : item.kind === "room_meeting" && item.meetingStatus === "live" ? "Live now" : null;
+  const when = item.kind === "room" ? "" : item.when ? ` · ${new Date(item.when).toLocaleString()}` : " · Date TBA";
+  const subtitle = [`${LABEL_FOR[item.kind]}${when}`, item.kind === "room_meeting" ? item.meetingTitle : null, countdown].filter(Boolean).join(" · ");
 
   async function removeNow() {
     if (!online) {
@@ -71,7 +79,7 @@ function ActivityRow({ item }: { item: ActivityItem }) {
       thumbnailUrl={item.thumbnailUrl}
       fallbackIcon={ImageIcon}
       title={item.projectTitle}
-      subtitle={`${LABEL_FOR[item.kind]}${item.when ? ` · ${new Date(item.when).toLocaleString()}` : " · Date TBA"}`}
+      subtitle={subtitle}
       trailing={
         <Pressable ref={menuRef} onPress={() => setMenuOpen(true)} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Options for ${item.projectTitle}`} className="p-1">
           <Icon as={MoreHorizontal} size={20} className="text-ink-muted" />
@@ -117,11 +125,22 @@ function ConnectPane({ tab, items, refetch }: ConnectPaneProps) {
   const { refreshControl, refreshing } = usePullToRefresh(refetch);
 
   const now = Date.now();
-  const kindItems = items.filter((i) => i.kind === KIND_FOR_TAB[tab]);
-  const upcoming = kindItems.filter((i) => !i.when || new Date(i.when).getTime() >= now);
-  const past = kindItems.filter((i) => i.when && new Date(i.when).getTime() < now);
+  const kindItems = items.filter((i) => KINDS_FOR_TAB[tab].includes(i.kind));
+  // A room meeting that is live right now still counts as upcoming, so it stays on top with "Live now".
+  const isLive = (i: ActivityItem) => i.kind === "room_meeting" && i.meetingStatus === "live";
+  const upcoming = kindItems.filter((i) => !i.when || new Date(i.when).getTime() >= now || isLive(i));
+  const past = kindItems.filter((i) => i.when && new Date(i.when).getTime() < now && !isLive(i));
 
   const scrollProps = { ref: onScroll.listRef, refreshControl, onScroll, scrollEventThrottle: 16, showsVerticalScrollIndicator: false, contentContainerStyle: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset, opacity: refreshing ? 0 : 1 } } as const;
+
+  // The Rooms tab lists the rooms themselves, with nothing to split into upcoming/past.
+  if (tab === "rooms") {
+    return (
+      <ScrollView {...scrollProps}>
+        <View className="gap-2">{kindItems.map((item) => <ActivityRow key={`${item.kind}-${item.projectId}`} item={item} />)}</View>
+      </ScrollView>
+    );
+  }
 
   return (
     <ScrollView {...scrollProps}>
@@ -142,7 +161,7 @@ export function Connect() {
   const items = useMemo(() => data ?? [], [data]);
 
   // Only tabs that have something in them are shown.
-  const tabs = useMemo(() => ALL_TABS.filter((t) => items.some((i) => i.kind === KIND_FOR_TAB[t])), [items]);
+  const tabs = useMemo(() => ALL_TABS.filter((t) => items.some((i) => KINDS_FOR_TAB[t].includes(i.kind))), [items]);
   const [tab, setTab] = useTabState<ConnectTab>(ALL_TABS, tabs[0] ?? "events");
   // If the selected tab disappears (e.g. its last item was removed), fall back to the first one left.
   const activeIndex = Math.max(tabs.indexOf(tab), 0);
