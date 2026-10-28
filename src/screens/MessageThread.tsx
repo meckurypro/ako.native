@@ -57,7 +57,7 @@ import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import { Wallpaper } from "@/components/ui/Wallpaper";
 import { useAuth } from "@/hooks/useAuth";
 import { useBackDismiss } from "@/hooks/useBackDismiss";
-import { useFeatureFlag } from "@/hooks/useFeatureFlags";
+import { useFeatureFlag, useVoiceNotesEnabled } from "@/hooks/useFeatureFlags";
 import { useKeyboardInset } from "@/hooks/useKeyboardInset";
 import {
   useBulkDeleteMessages,
@@ -168,6 +168,7 @@ export function MessageThread() {
   const teamPage = header?.team_page;
   const { data: myParticipantState } = useMyParticipantState(conversationId);
   const messagingEnabled = useFeatureFlag("messaging_enabled");
+  const voiceNotesEnabled = useVoiceNotesEnabled();
   const { data: unseenPosts } = useUnseenPosts(otherParticipant ? [otherParticipant.id] : []);
   const unseenPostId = otherParticipant ? unseenPosts?.[otherParticipant.id] : undefined;
 
@@ -912,13 +913,13 @@ export function MessageThread() {
               ) : null}
             </View>
 
-            {content.trim() ? (
+            {content.trim() || !voiceNotesEnabled ? (
               <Pressable
                 onPress={() => void handleSend()}
-                disabled={sendMessage.isPending}
+                disabled={sendMessage.isPending || !content.trim()}
                 accessibilityRole="button"
                 accessibilityLabel="Send"
-                className={`h-11 w-11 shrink-0 items-center justify-center rounded-full bg-cta active:opacity-80 ${sendMessage.isPending ? "opacity-50" : ""}`}
+                className={`h-11 w-11 shrink-0 items-center justify-center rounded-full bg-cta active:opacity-80 ${sendMessage.isPending || !content.trim() ? "opacity-50" : ""}`}
               >
                 <Icon as={Send} size={20} className="text-white" />
               </Pressable>

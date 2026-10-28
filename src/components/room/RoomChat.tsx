@@ -20,6 +20,7 @@ import { useBackDismiss } from "@/hooks/useBackDismiss";
 import { useKeyboardInset } from "@/hooks/useKeyboardInset";
 import { useMessages, useSendMessage, useSendVoiceNote } from "@/hooks/useMessaging";
 import { useMicGesture } from "@/hooks/useMicGesture";
+import { useVoiceNotesEnabled } from "@/hooks/useFeatureFlags";
 import { useRoomMembersList } from "@/hooks/useRoom";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { decodeVoiceNote } from "@/lib/voiceNotes";
@@ -51,6 +52,7 @@ export function RoomChat({ projectId, conversationId, canPost, cantPostReason }:
   const memberByUserId = useMemo(() => new Map((members ?? []).map((m) => [m.user_id, m.profile])), [members]);
   useBackDismiss(() => setEmojiOpen(false), emojiOpen);
 
+  const voiceNotesEnabled = useVoiceNotesEnabled();
   const voiceRecorder = useVoiceRecorder(async (file, durationSec, peaks, viewOnce, localUrl) => {
     try {
       await sendVoiceNote.mutateAsync({ file, durationSec, peaks, viewOnce, replyToMessageId: null, localUrl });
@@ -96,6 +98,7 @@ export function RoomChat({ projectId, conversationId, canPost, cantPostReason }:
               const isMine = m.sender_id === user?.id;
               const sender = memberByUserId.get(m.sender_id);
               const voiceNote = m.is_deleted ? null : decodeVoiceNote(m.content);
+              if (voiceNote && !voiceNotesEnabled) return null;
               return (
                 <View className={`mb-2.5 flex-row items-end gap-2 ${isMine ? "flex-row-reverse" : ""}`}>
                   {!isMine && <Avatar src={sender?.avatar_url} name={sender?.display_name ?? "Member"} size="sm" />}
@@ -157,8 +160,8 @@ export function RoomChat({ projectId, conversationId, canPost, cantPostReason }:
               className="min-w-0 flex-1 rounded-full border border-border bg-surface px-4 py-2.5 text-sm text-ink"
               style={{ fontFamily: "Inter_400Regular" }}
             />
-            {content.trim() ? (
-              <Pressable onPress={handleSend} disabled={sendMessage.isPending} accessibilityRole="button" accessibilityLabel="Send" className={`shrink-0 rounded-full bg-cta p-2.5 ${sendMessage.isPending ? "opacity-50" : ""}`}>
+            {content.trim() || !voiceNotesEnabled ? (
+              <Pressable onPress={handleSend} disabled={sendMessage.isPending || !content.trim()} accessibilityRole="button" accessibilityLabel="Send" className={`shrink-0 rounded-full bg-cta p-2.5 ${sendMessage.isPending || !content.trim() ? "opacity-50" : ""}`}>
                 <Icon as={Send} size={16} className="text-white" />
               </Pressable>
             ) : (

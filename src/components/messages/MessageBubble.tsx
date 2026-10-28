@@ -21,6 +21,7 @@ import { haptics } from "@/lib/haptics";
 import { decodeMedia } from "@/lib/chatMedia";
 import { formatMessageDayLabel, formatMessageTime } from "@/lib/messageTime";
 import { decodeVoiceNote } from "@/lib/voiceNotes";
+import { useVoiceNotesEnabled } from "@/hooks/useFeatureFlags";
 import { MediaMessage } from "./MediaMessage";
 import { MessagePreviewLine } from "./MessagePreviewLine";
 import { VoiceMessageBubble } from "./VoiceMessageBubble";
@@ -153,6 +154,7 @@ function MessageBubbleImpl({
   onRequestManageReaction,
 }: MessageBubbleProps) {
   const isMine = m.sender_id === currentUserId;
+  const voiceNotesEnabled = useVoiceNotesEnabled();
   const voiceNote = !m.is_deleted ? decodeVoiceNote(m.content) : null;
   const repliedTo = m.reply_to?.[0];
   const media = !m.is_deleted ? decodeMedia(m.content) : null;
@@ -208,6 +210,9 @@ function MessageBubbleImpl({
   const textColor = isMine ? "text-white" : "text-ink";
   const footerColor = isMine ? "text-white-a70" : "text-ink-muted";
   const entering = animateIn ? (isMine ? FadeInRight.duration(220) : FadeInLeft.duration(220)) : undefined;
+
+  // Voice notes switched off by an admin: the bubble silently isn’t there (after every hook, so hook order is stable).
+  if (voiceNote && !voiceNotesEnabled) return null;
 
   return (
     <Animated.View entering={entering} className="-mx-2 mb-2 flex-row items-center gap-2 px-2 py-0.5">

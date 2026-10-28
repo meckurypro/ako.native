@@ -8,6 +8,7 @@ import { View } from "react-native";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { messagePreview } from "@/lib/chatMedia";
+import { useVoiceNotesEnabled } from "@/hooks/useFeatureFlags";
 
 interface MessagePreviewLineProps {
   content: string;
@@ -19,9 +20,12 @@ interface MessagePreviewLineProps {
 }
 
 export function MessagePreviewLine({ content, variant = "quote", className = "", iconClassName = "text-ink-muted", numberOfLines = 1 }: MessagePreviewLineProps) {
+  const voiceNotesEnabled = useVoiceNotesEnabled();
   const p = messagePreview(content);
   const Glyph = p.icon === "mic" ? Mic : p.icon === "image" ? ImageIcon : p.icon === "file" ? FileText : null;
   const text = variant === "list" && p.icon === "mic" && p.meta ? p.meta : p.label;
+
+  if (p.icon === "mic" && !voiceNotesEnabled) return null;
 
   if (!Glyph) {
     return (

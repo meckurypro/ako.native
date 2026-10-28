@@ -17,6 +17,7 @@ import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useToast } from "@/components/ui/Toast";
 import { useMicGesture } from "@/hooks/useMicGesture";
+import { useVoiceNotesEnabled } from "@/hooks/useFeatureFlags";
 import { useCreateRoomPoll, usePostToRoom, usePostVoiceNoteToRoom, useRoomMembersList, useRoomPolls, useRoomPosts, useVoteOnPoll } from "@/hooks/useRoom";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { haptics } from "@/lib/haptics";
@@ -151,6 +152,7 @@ export function ClassroomTab({ projectId, isHost }: { projectId: string; isHost:
     }
   });
   const micGesture = useMicGesture(voiceRecorder);
+  const voiceNotesEnabled = useVoiceNotesEnabled();
   const recordingActive = voiceRecorder.phase !== "idle";
   const composerSafeStyle = useAnimatedStyle(() => ({ paddingBottom: keyboard.height.value > 0 ? 0 : insets.bottom }));
 
@@ -199,6 +201,7 @@ export function ClassroomTab({ projectId, isHost }: { projectId: string; isHost:
           {postList.map((p) => {
             const sender = memberByUserId.get(p.sender_id);
             const voiceNote = p.type === "voice_note" && p.content ? decodeVoiceNote(p.content) : null;
+            if ((voiceNote || p.type === "voice_note") && !voiceNotesEnabled) return null;
             return (
               <View key={p.id} className="rounded-xl border border-border bg-surface p-3">
                 <View className="mb-1.5 flex-row items-center gap-1.5">
@@ -234,8 +237,8 @@ export function ClassroomTab({ projectId, isHost }: { projectId: string; isHost:
               returnKeyType="send"
               onSubmitEditing={handlePost}
             />
-            {draft.trim() ? (
-              <Pressable onPress={handlePost} disabled={postToRoom.isPending} accessibilityRole="button" accessibilityLabel="Post" className={`shrink-0 rounded-full bg-cta p-2.5 ${postToRoom.isPending ? "opacity-50" : ""}`}>
+            {draft.trim() || !voiceNotesEnabled ? (
+              <Pressable onPress={handlePost} disabled={postToRoom.isPending || !draft.trim()} accessibilityRole="button" accessibilityLabel="Post" className={`shrink-0 rounded-full bg-cta p-2.5 ${postToRoom.isPending || !draft.trim() ? "opacity-50" : ""}`}>
                 <Icon as={Send} size={16} className="text-white" />
               </Pressable>
             ) : (

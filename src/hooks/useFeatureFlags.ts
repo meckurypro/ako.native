@@ -88,6 +88,13 @@ export const FEATURE_FLAG_DEFS: FeatureFlagDef[] = [
     category: "messaging",
   },
   {
+    key: "voice_notes_enabled",
+    label: "Voice notes",
+    description:
+      "Recording and playing voice notes in chats, rooms and classrooms. Turning this off removes every mic button, the recorder and all existing voice-note bubbles and previews from the app; nothing is deleted, and they all come back when it is turned on again.",
+    category: "messaging",
+  },
+  {
     key: "wallet_enabled",
     label: "Wallet",
     description: "The Wallet tab and its entry points across the app.",
@@ -192,6 +199,11 @@ export function useFeatureFlags() {
 export function useFeatureFlag(key: string): boolean {
   const { data } = useFeatureFlags();
   return data?.[key] ?? true;
+}
+
+/** Voice notes on/off. When off, no mic button, recorder, bubble or preview of a voice note renders anywhere. */
+export function useVoiceNotesEnabled(): boolean {
+  return useFeatureFlag("voice_notes_enabled");
 }
 
 export function useToggleFeatureFlag() {

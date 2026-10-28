@@ -15,9 +15,11 @@ import { RefreshSkeleton } from "@/components/ui/RefreshSkeleton";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useActiveIdentity } from "@/hooks/usePages";
 import { messagePreview } from "@/lib/chatMedia";
+import { useVoiceNotesEnabled } from "@/hooks/useFeatureFlags";
 
 function Row({ c }: { c: PageConversationSummary }) {
   const unread = c.unreadCount > 0;
+  const voiceNotesEnabled = useVoiceNotesEnabled();
   return (
     <Pressable
       onPress={() => router.push(`/page-inbox/${c.id}` as Href)}
@@ -34,7 +36,7 @@ function Row({ c }: { c: PageConversationSummary }) {
         </View>
         <Text numberOfLines={1} className={`text-sm ${unread ? "text-ink" : "text-ink-muted"}`}>
           {c.last_message
-            ? `${c.last_message.sender_type === "page" ? "You: " : ""}${(() => { const p = messagePreview(c.last_message.content); return p.icon === "mic" && p.meta ? `${p.label} (${p.meta})` : p.label; })()}`
+            ? `${c.last_message.sender_type === "page" ? "You: " : ""}${(() => { const p = messagePreview(c.last_message.content); if (p.icon === "mic" && !voiceNotesEnabled) return ""; return p.icon === "mic" && p.meta ? `${p.label} (${p.meta})` : p.label; })()}`
             : "Say hello"}
         </Text>
       </View>
