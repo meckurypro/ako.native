@@ -581,9 +581,9 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
   // secondary action live ONLY in that menu (the old tray repeated them in two places).
   type DetailCta = { label: string; icon?: LucideIcon; onPress: () => void; disabled?: boolean; /** 0–100: fills the button left to right. */ progress?: number | null };
   const priceLabel = `$${effectivePrice.toFixed(2)}`;
-  const bookUpload = isBook && bookDetails?.content_source === "upload";
-  const bookReadsInApp = bookUpload && !!bookDetails?.allow_read_in_app;
-  const bookCanDownload = bookUpload && !!bookDetails?.allow_download;
+  const bookHosted = isBook && (bookDetails?.content_source === "upload" || bookDetails?.content_source === "download");
+  const bookReadsInApp = bookHosted && !!bookDetails?.allow_read_in_app;
+  const bookCanDownload = bookHosted && !!bookDetails?.allow_download;
   const talentBookable = project.project_type === "gig" && !isOwner && !isFree && !hasPurchased;
   const openBookReader = () => {
     if (!requireUser()) return;
@@ -937,13 +937,13 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
               </View>
             ) : null}
 
-            {/* Book: three content sources, three different actions. */}
+            {/* Book: four content sources (authored, upload, download, link), each with its own actions. */}
             {!isDetailView && isBook && bookDetails && hasAccess ? (
               <View className="mt-3 gap-3">
                 {bookDetails.content_source === "link" ? (
                   <LinkAction icon={LinkIcon} label="Open link" onPress={() => openExternal(bookDetails.external_url)} />
                 ) : null}
-                {bookDetails.content_source === "upload" ? (
+                {bookDetails.content_source === "upload" || bookDetails.content_source === "download" ? (
                   <View className="flex-row items-center gap-4">
                     {bookDetails.allow_read_in_app ? (
                       <LinkAction

@@ -117,7 +117,7 @@ export function isOfflineEligible(i: EligibilityInput): boolean {
       if (i.book.content_source === "authored") return true;
       // An uploaded PDF is saved as its extracted chapters when the host allows reading in the app, or as the PDF when the
       // host allows downloads — so it's worth offering if either switch is on (the server picks which, or refuses).
-      if (i.book.content_source === "upload") return i.book.allow_read_in_app || i.book.allow_download;
+      if (i.book.content_source === "upload" || i.book.content_source === "download") return i.book.allow_read_in_app || i.book.allow_download;
       return false; // "link": it's someone else's website
     case "media": {
       const m = i.media;
@@ -281,6 +281,6 @@ export function mergeLibraryWithDownloads<T extends LibraryLikeItem>(remote: T[]
  */
 export function offlineReaderRoute(projectType: string, projectId: string, contentSource?: string | null): string {
   if (projectType === "course") return `/courses/${projectId}`;
-  if (projectType === "book" && contentSource === "upload") return `/projects/${projectId}/read`;
+  if (projectType === "book" && (contentSource === "upload" || contentSource === "download")) return `/projects/${projectId}/read`;
   return `/books/${projectId}`;
 }

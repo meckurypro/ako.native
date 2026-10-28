@@ -1,7 +1,7 @@
 // src/components/project-types/BookFields.tsx
 import * as DocumentPicker from "expo-document-picker";
 import { useEffect } from "react";
-import { FileUp } from "lucide-react-native";
+import { BookOpen, Download, FileUp, Link as LinkIcon } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 
 import { Checkbox } from "@/components/ui/Checkbox";
@@ -14,7 +14,23 @@ import { useUploadProjectFile } from "@/hooks/useUploadProjectFile";
 import { fromDocumentPickerAsset } from "@/lib/localFile";
 import { friendlyError } from "@/lib/friendlyError";
 
-export type BookContentSource = "link" | "upload" | "authored";
+// What gets stored (project_book_details.content_source):
+//   authored -> written in Akọ              (read on Akọ)
+//   upload   -> PDF extracted into chapters (read on Akọ)
+//   download -> hosted PDF, download only   (downloadable)
+//   link     -> pointer to it elsewhere     (external link)
+export type BookContentSource = "link" | "upload" | "authored" | "download";
+
+// What the creator picks first: how readers get the book. It decides every
+// option that follows, so "PDF to read here" and "PDF to download" can never
+// be mistaken for each other.
+export type BookDelivery = "read" | "download" | "link";
+
+export function bookDeliveryOf(source: BookContentSource): BookDelivery {
+  if (source === "download") return "download";
+  if (source === "link") return "link";
+  return "read";
+}
 
 export interface BookFieldsValue {
   book_type: "book" | "article";
@@ -42,10 +58,15 @@ export const EMPTY_BOOK_FIELDS: BookFieldsValue = {
   source_credit: "",
 };
 
-const SOURCE_OPTIONS: { value: BookContentSource; label: string; hint: string }[] = [
-  { value: "upload", label: "Upload PDF", hint: "Host the file here — allow download, in-app reading, or both." },
-  { value: "link", label: "Link", hint: "Redirect readers to it elsewhere — nothing hosted here." },
-  { value: "authored", label: "Write in Akọ", hint: "Build it chapter by chapter, right here, like a Course." },
+const DELIVERY_OPTIONS: { value: BookDelivery; label: string; hint: string; icon: typeof BookOpen }[] = [
+  { value: "read", label: "Read on Akọ", hint: "Readers read it here in the app.", icon: BookOpen },
+  { value: "download", label: "Downloadable", hint: "Readers download your PDF file. No in-app reading.", icon: Download },
+  { value: "link", label: "External link", hint: "Send readers to the book or article elsewhere.", icon: LinkIcon },
+];
+
+const READ_SOURCE_OPTIONS: { value: "authored" | "upload"; label: string; hint: string }[] = [
+  { value: "authored", label: "Write it in Akọ", hint: "Build it chapter by chapter, right here, like a Course." },
+  { value: "upload", label: "Upload a PDF", hint: "We pull the text out into chapters readers can read here." },
 ];
 
 function Segmented<T extends string>({ options, value, onChange }: { options: { value: T; label: string }[]; value: T; onChange: (v: T) => void }) {
@@ -66,6 +87,38 @@ function Segmented<T extends string>({ options, value, onChange }: { options: { 
   );
 }
 
+function RadioCard({
+  selected,
+  onPress,
+  label,
+  hint,
+  icon,
+}: {
+  selected: boolean;
+  onPress: () => void;
+  label: string;
+  hint: string;
+  icon?: typeof BookOpen;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
+      className={`flex-row items-start gap-3 rounded-xl border px-4 py-3 ${selected ? "border-accent bg-accent-soft" : "border-border bg-canvas"}`}
+    >
+      <View className={`mt-0.5 h-4 w-4 items-center justify-center rounded-full border ${selected ? "border-accent" : "border-ink-muted-a50"}`}>
+        {selected ? <View className="h-2 w-2 rounded-full bg-accent" /> : null}
+      </View>
+      {icon ? <Icon as={icon} size={16} className="mt-0.5 text-ink-muted" /> : null}
+      <View className="flex-1">
+        <Text className="text-sm font-medium text-ink">{label}</Text>
+        <Text className="text-xs text-ink-muted">{hint}</Text>
+      </View>
+    </Pressable>
+  );
+}
+
 export function BookFields({
   value,
   onChange,
@@ -80,26 +133,52 @@ export function BookFields({
 }) {
   const uploadFile = useUploadProjectFile();
   const pdfUploadEnabled = useFeatureFlag("book_pdf_upload_enabled");
+  const downloadEnabled = useFeatureFlag("book_download_enabled");
   const linkEnabled = useFeatureFlag("book_link_enabled");
 
-  // Admin feature flags can hide "Upload PDF" / "Link". A book that
-  // already uses a hidden source keeps showing it (existingSource) so
-  // editing it doesn't strand it; everything else just loses the option.
-  const visibleOptions = SOURCE_OPTIONS.filter((opt) => {
-    if (opt.value === existingSource) return true;
-    if (opt.value === "upload") return pdfUploadEnabled;
-    if (opt.value === "link") return linkEnabled;
-    return true;
-  });
+  // Admin feature flags can hide an option. A book that already uses a hidden
+  // source keeps showing it (existingSource) so editing it doesn't strand it;
+  // everything else just loses the option.
+  const sourceAllowed = (s: BookContentSource): boolean => {
+    if (s === existingSource) return true;
+    if (s === "upload") return pdfUploadEnabled;
+    if (s === "download") return downloadEnabled;
+    if (s === "link") return linkEnabled;
+    return true; // authored is never gated
+  };
 
-  // If the current selection isn't offered (e.g. the default "upload"
-  // while that flag is off), fall back to the first one that is.
+  const deliveryAllowed = (d: BookDelivery): boolean => {
+    if (d === "read") return true; // "Write it in Akọ" is always available
+    if (d === "download") return sourceAllowed("download");
+    return sourceAllowed("link");
+  };
+
+  const visibleDeliveries = DELIVERY_OPTIONS.filter((o) => deliveryAllowed(o.value));
+  const visibleReadSources = READ_SOURCE_OPTIONS.filter((o) => sourceAllowed(o.value));
+  const delivery = bookDeliveryOf(value.content_source);
+
+  // Switching branches doesn't clear the other branches' state (url, file).
+  // It does reset the access flags so a PDF meant for download can't carry
+  // "read in app" over, and vice versa.
+  function setSource(next: BookContentSource) {
+    if (next === value.content_source) return;
+    if (next === "download") onChange({ ...value, content_source: next, allow_download: true, allow_read_in_app: false });
+    else if (next === "upload") onChange({ ...value, content_source: next, allow_download: false, allow_read_in_app: true });
+    else onChange({ ...value, content_source: next });
+  }
+
+  function setDelivery(next: BookDelivery) {
+    if (next === delivery) return;
+    if (next === "read") setSource("authored");
+    else setSource(next);
+  }
+
+  // If the current selection isn't offered (e.g. the default "upload" while
+  // that flag is off), fall back to one that is.
   useEffect(() => {
-    if (!visibleOptions.some((o) => o.value === value.content_source)) {
-      onChange({ ...value, content_source: visibleOptions[0].value });
-    }
+    if (!sourceAllowed(value.content_source)) setSource("authored");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pdfUploadEnabled, linkEnabled, existingSource, value.content_source]);
+  }, [pdfUploadEnabled, downloadEnabled, linkEnabled, existingSource, value.content_source]);
 
   async function handleChoosePdf() {
     try {
@@ -113,6 +192,23 @@ export function BookFields({
       onError(friendlyError(err, "File upload failed."));
     }
   }
+
+  const pdfPicker = (label: string) => (
+    <View className="mb-4">
+      <Text className="mb-1.5 text-sm font-medium text-ink-muted">{label}</Text>
+      <Pressable
+        onPress={() => void handleChoosePdf()}
+        disabled={uploadFile.isPending}
+        accessibilityRole="button"
+        className={`w-full flex-row items-center gap-2 rounded-xl border border-border bg-surface px-4 py-3 ${uploadFile.isPending ? "opacity-50" : ""}`}
+      >
+        <Icon as={FileUp} size={16} className="text-ink-muted" />
+        <Text numberOfLines={1} className="flex-1 text-sm text-ink-muted">
+          {uploadFile.isPending ? "Uploading…" : value.file_name ? value.file_name : value.file_path ? "File uploaded — tap to replace" : "Choose PDF"}
+        </Text>
+      </Pressable>
+    </View>
+  );
 
   return (
     <View>
@@ -129,58 +225,54 @@ export function BookFields({
         />
       </View>
 
-      {/* Content source — switching doesn't clear the other modes' state. */}
+      {/* Step 1 — how readers get it. */}
       <View className="mb-4">
-        <Text className="mb-1.5 text-sm font-medium text-ink-muted">How are you adding it?</Text>
+        <Text className="mb-1.5 text-sm font-medium text-ink-muted">How will readers get it?</Text>
         <View className="gap-2">
-          {visibleOptions.map((opt) => (
-            <Pressable
-              key={opt.value}
-              onPress={() => onChange({ ...value, content_source: opt.value })}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: value.content_source === opt.value }}
-              className={`flex-row items-start gap-3 rounded-xl border px-4 py-3 ${value.content_source === opt.value ? "border-accent bg-accent-soft" : "border-border bg-canvas"}`}
-            >
-              <View className={`mt-0.5 h-4 w-4 items-center justify-center rounded-full border ${value.content_source === opt.value ? "border-accent" : "border-ink-muted-a50"}`}>
-                {value.content_source === opt.value ? <View className="h-2 w-2 rounded-full bg-accent" /> : null}
-              </View>
-              <View className="flex-1">
-                <Text className="text-sm font-medium text-ink">{opt.label}</Text>
-                <Text className="text-xs text-ink-muted">{opt.hint}</Text>
-              </View>
-            </Pressable>
+          {visibleDeliveries.map((opt) => (
+            <RadioCard key={opt.value} selected={delivery === opt.value} onPress={() => setDelivery(opt.value)} label={opt.label} hint={opt.hint} icon={opt.icon} />
           ))}
         </View>
       </View>
 
-      {value.content_source === "link" ? (
-        <FormField label="Link" value={value.url} onChangeText={(url) => onChange({ ...value, url })} placeholder="https://..." keyboardType="url" autoCapitalize="none" autoCorrect={false} />
-      ) : null}
-
-      {value.content_source === "upload" ? (
+      {/* Step 2 — depends on step 1. */}
+      {delivery === "read" && visibleReadSources.length > 1 ? (
         <View className="mb-4">
-          <Text className="mb-1.5 text-sm font-medium text-ink-muted">PDF</Text>
-          <Pressable
-            onPress={() => void handleChoosePdf()}
-            disabled={uploadFile.isPending}
-            accessibilityRole="button"
-            className={`w-full flex-row items-center gap-2 rounded-xl border border-border bg-surface px-4 py-3 ${uploadFile.isPending ? "opacity-50" : ""}`}
-          >
-            <Icon as={FileUp} size={16} className="text-ink-muted" />
-            <Text numberOfLines={1} className="flex-1 text-sm text-ink-muted">
-              {uploadFile.isPending ? "Uploading…" : value.file_name ? value.file_name : value.file_path ? "File uploaded — tap to replace" : "Choose PDF"}
-            </Text>
-          </Pressable>
-
-          <View className="mt-3 gap-2">
-            <Checkbox checked={value.allow_read_in_app} onChange={(allow_read_in_app) => onChange({ ...value, allow_read_in_app })} label="Let readers read it right here in Akọ" />
-            <Checkbox checked={value.allow_download} onChange={(allow_download) => onChange({ ...value, allow_download })} label="Let readers download the PDF" />
+          <Text className="mb-1.5 text-sm font-medium text-ink-muted">How do you want to add it?</Text>
+          <View className="gap-2">
+            {visibleReadSources.map((opt) => (
+              <RadioCard key={opt.value} selected={value.content_source === opt.value} onPress={() => setSource(opt.value)} label={opt.label} hint={opt.hint} />
+            ))}
           </View>
         </View>
       ) : null}
 
       {value.content_source === "authored" ? (
         <InfoNote>This creates a draft. Build your chapters next, add a cover, then publish when it's ready — no one can buy it until you do.</InfoNote>
+      ) : null}
+
+      {value.content_source === "upload" ? (
+        <>
+          {pdfPicker("PDF to read on Akọ")}
+          <Text className="-mt-2 mb-4 text-xs text-ink-muted">Readers read it here in Akọ. They won't get the PDF file itself — choose Downloadable for that.</Text>
+          {/* Older books could also allow download alongside reading. New ones don't offer it; this only shows when the saved book still has it on. */}
+          {value.allow_download ? (
+            <View className="mb-4">
+              <Checkbox checked={value.allow_download} onChange={(allow_download) => onChange({ ...value, allow_download })} label="Readers can also download the PDF (older setting — untick to turn it off)" />
+            </View>
+          ) : null}
+        </>
+      ) : null}
+
+      {value.content_source === "download" ? (
+        <>
+          {pdfPicker("PDF for download")}
+          <Text className="-mt-2 mb-4 text-xs text-ink-muted">Readers download this file as it is. It isn't readable inside Akọ.</Text>
+        </>
+      ) : null}
+
+      {value.content_source === "link" ? (
+        <FormField label="Link" value={value.url} onChangeText={(url) => onChange({ ...value, url })} placeholder="https://..." keyboardType="url" autoCapitalize="none" autoCorrect={false} />
       ) : null}
 
       {/* Attribution — independent of content_source. Publishing someone else's work with credit forces the price to $0. */}

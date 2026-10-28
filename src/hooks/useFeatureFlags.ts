@@ -68,16 +68,23 @@ export const FEATURE_FLAG_DEFS: FeatureFlagDef[] = [
   },
   {
     key: "book_pdf_upload_enabled",
-    label: "Book PDF upload",
+    label: "Book PDF upload (read on Akọ)",
     description:
-      "The \"Upload PDF\" option when creating a Book. Turning this off only stops new PDF books — existing PDF books and their readers are unaffected.",
+      "Under \"Read on Akọ\" when creating a Book: the \"Upload a PDF\" option, where the text is extracted into chapters readers read in the app. Turning this off only stops new ones — existing PDF books and their readers are unaffected.",
+    category: "projects",
+  },
+  {
+    key: "book_download_enabled",
+    label: "Book download",
+    description:
+      "The \"Downloadable\" option when creating a Book: readers download the uploaded PDF and can't read it in the app. Turning this off only stops new downloadable books — existing ones are unaffected.",
     category: "projects",
   },
   {
     key: "book_link_enabled",
     label: "Book link",
     description:
-      "The \"Link\" option when creating a Book. Turning this off only stops new link books — existing link books are unaffected.",
+      "The \"External link\" option when creating a Book. Turning this off only stops new link books — existing link books are unaffected.",
     category: "projects",
   },
   {

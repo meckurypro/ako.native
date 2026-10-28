@@ -360,7 +360,7 @@ export function useSupportPitch(projectId: string) {
 export interface BookDetails {
   project_id: string;
   book_type: "book" | "article";
-  content_source: "link" | "upload" | "authored";
+  content_source: "link" | "upload" | "authored" | "download";
   author_name: string | null;
   is_own_work: boolean;
   source_credit: string | null;

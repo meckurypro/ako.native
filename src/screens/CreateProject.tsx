@@ -363,6 +363,7 @@ export function CreateProject() {
     if (projectType === "book" && bookFields.content_source !== "authored") {
       if (bookFields.content_source === "link" && !bookFields.url.trim()) return "Add the link to the book or article.";
       if (bookFields.content_source === "upload" && !bookFields.file_path) return "Upload a PDF to continue.";
+      if (bookFields.content_source === "download" && !bookFields.file_path) return "Upload the PDF readers will download.";
       if (bookFields.content_source === "upload" && !bookFields.allow_download && !bookFields.allow_read_in_app) return "Allow download, in-app reading, or both.";
       if (!bookFields.is_own_work && !bookFields.source_credit.trim()) return "Credit the original author or source.";
       if (!bookFields.is_own_work && !bookFields.author_name.trim()) return "Add the author's name.";
@@ -511,9 +512,9 @@ export function CreateProject() {
                 is_own_work: bookFields.is_own_work,
                 source_credit: bookFields.is_own_work ? undefined : bookFields.source_credit.trim() || undefined,
                 external_url: bookFields.content_source === "link" ? bookFields.url.trim() : undefined,
-                file_path: bookFields.content_source === "upload" ? (bookFields.file_path ?? undefined) : undefined,
-                allow_download: bookFields.content_source === "upload" ? bookFields.allow_download : undefined,
-                allow_read_in_app: bookFields.content_source === "upload" ? bookFields.allow_read_in_app : undefined,
+                file_path: bookFields.content_source === "upload" || bookFields.content_source === "download" ? (bookFields.file_path ?? undefined) : undefined,
+                allow_download: bookFields.content_source === "download" ? true : bookFields.content_source === "upload" ? bookFields.allow_download : undefined,
+                allow_read_in_app: bookFields.content_source === "download" ? false : bookFields.content_source === "upload" ? bookFields.allow_read_in_app : undefined,
               }
             : undefined,
       });

@@ -566,7 +566,7 @@ interface RoomDetailsInput {
 // is_own_work/author fields for them.
 interface BookDetailsInput {
   book_type: "book" | "article";
-  content_source: "link" | "upload" | "authored";
+  content_source: "link" | "upload" | "authored" | "download";
   author_name?: string;
   is_own_work: boolean;
   source_credit?: string;
@@ -1112,7 +1112,7 @@ export function useBookTalent() {
  *  - "audio" → project_media_details.audio_file_path
  *  - "video" → project_media_details.video_file_path
  *  - "image" → project_media_details.image_file_path
- *  - "book"  → project_book_details.file_path (content_source='upload' Book projects)
+ *  - "book"  → project_book_details.file_path (content_source='upload' or 'download' Book projects)
  * Defaults to "file" for existing call sites. NOTE: the deployed
  * get-project-file function needs to be updated to branch on this —
  * see the note in project-types/MediaFields.tsx / README.
