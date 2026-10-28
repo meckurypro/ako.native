@@ -203,8 +203,8 @@ export function ForewordInviteModal({ projectId, onClose }: { projectId: string;
                         <Pressable onPress={() => setMode("confirm-withdraw")} accessibilityRole="button" className="flex-1 items-center rounded-full border border-border py-2.5">
                           <Text className="text-sm font-medium text-danger">Withdraw</Text>
                         </Pressable>
-                        <Pressable onPress={startCompose} accessibilityRole="button" className="flex-1 items-center rounded-full bg-accent py-2.5">
-                          <Text className="text-sm font-medium text-canvas">Edit</Text>
+                        <Pressable onPress={startCompose} accessibilityRole="button" className="flex-1 items-center rounded-full bg-cta py-2.5">
+                          <Text className="text-sm font-medium text-white">Edit</Text>
                         </Pressable>
                       </>
                     ) : (
@@ -212,8 +212,8 @@ export function ForewordInviteModal({ projectId, onClose }: { projectId: string;
                         <Pressable onPress={() => setMode("confirm-decline")} accessibilityRole="button" className="flex-1 items-center rounded-full border border-border py-2.5">
                           <Text className="text-sm font-medium text-ink">Decline</Text>
                         </Pressable>
-                        <Pressable onPress={startCompose} accessibilityRole="button" className="flex-1 items-center rounded-full bg-accent py-2.5">
-                          <Text className="text-sm font-medium text-canvas">Write it</Text>
+                        <Pressable onPress={startCompose} accessibilityRole="button" className="flex-1 items-center rounded-full bg-cta py-2.5">
+                          <Text className="text-sm font-medium text-white">Write it</Text>
                         </Pressable>
                       </>
                     )}
@@ -268,8 +268,8 @@ export function ForewordInviteModal({ projectId, onClose }: { projectId: string;
                     >
                       <Text className="text-sm font-medium text-ink">Back</Text>
                     </Pressable>
-                    <Pressable onPress={handleSubmit} disabled={busy} accessibilityRole="button" className={`flex-1 items-center rounded-full bg-accent py-2.5 ${busy ? "opacity-60" : ""}`}>
-                      <Text className="text-sm font-medium text-canvas">{submit.isPending ? "Sending…" : hasWritten ? "Send edit" : "Send foreword"}</Text>
+                    <Pressable onPress={handleSubmit} disabled={busy} accessibilityRole="button" className={`flex-1 items-center rounded-full bg-cta py-2.5 ${busy ? "opacity-60" : ""}`}>
+                      <Text className="text-sm font-medium text-white">{submit.isPending ? "Sending…" : hasWritten ? "Send edit" : "Send foreword"}</Text>
                     </Pressable>
                   </View>
                 </View>

@@ -115,9 +115,9 @@ export function ReshareSheet({ postId, source, onClose }: ReshareSheetProps) {
               onPress={handleQuoteSubmit}
               disabled={createReshare.isPending || !caption.trim()}
               accessibilityRole="button"
-              className={`rounded-full bg-accent px-5 py-2 ${createReshare.isPending || !caption.trim() ? "opacity-50" : ""}`}
+              className={`rounded-full bg-cta px-5 py-2 ${createReshare.isPending || !caption.trim() ? "opacity-50" : ""}`}
             >
-              <Text className="text-sm font-medium text-canvas">{createReshare.isPending ? "Posting…" : "Quote"}</Text>
+              <Text className="text-sm font-medium text-white">{createReshare.isPending ? "Posting…" : "Quote"}</Text>
             </Pressable>
           </View>
 

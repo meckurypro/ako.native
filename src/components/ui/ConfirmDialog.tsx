@@ -58,10 +58,10 @@ export function ConfirmDialog({
           onPress={onConfirm}
           accessibilityRole="button"
           className={`flex-1 items-center rounded-full py-3 active:opacity-80 ${
-            themed ? (danger ? "bg-danger" : "bg-accent") : danger ? "bg-overlay-danger" : "bg-overlay-accent"
+            themed ? (danger ? "bg-danger" : "bg-cta") : danger ? "bg-overlay-danger" : "bg-overlay-accent"
           }`}
         >
-          <Text className={`text-sm font-medium ${themed ? "text-surface" : "text-overlay-surface"}`}>{confirmLabel}</Text>
+          <Text className={`text-sm font-medium ${themed ? (danger ? "text-surface" : "text-white") : "text-overlay-surface"}`}>{confirmLabel}</Text>
         </Pressable>
       </View>
     </Modal>

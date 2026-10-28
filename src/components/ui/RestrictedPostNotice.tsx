@@ -29,8 +29,8 @@ export function RestrictedPostNotice() {
       <View className="w-full max-w-xs">
         <Button onPress={() => router.replace(RESTRICTED_HOME as Href)}>
           <View className="flex-row items-center gap-2">
-            <Icon as={Compass} size={18} className="text-canvas" />
-            <Text className="font-medium text-canvas">Go to Discover</Text>
+            <Icon as={Compass} size={18} className="text-white" />
+            <Text className="font-medium text-white">Go to Discover</Text>
           </View>
         </Button>
       </View>

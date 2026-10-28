@@ -52,8 +52,8 @@ export function NotificationsSection({ open, onToggle }: { open: boolean; onTogg
         </View>
 
         {!on && (
-          <Pressable onPress={() => (blocked ? void Linking.openSettings() : void handleEnable())} accessibilityRole="button" className="mt-3 items-center rounded-lg bg-accent py-2.5">
-            <Text className="text-sm font-medium text-canvas">{blocked ? "Open device settings" : "Turn on notifications"}</Text>
+          <Pressable onPress={() => (blocked ? void Linking.openSettings() : void handleEnable())} accessibilityRole="button" className="mt-3 items-center rounded-lg bg-cta py-2.5">
+            <Text className="text-sm font-medium text-white">{blocked ? "Open device settings" : "Turn on notifications"}</Text>
           </Pressable>
         )}
         {on && (

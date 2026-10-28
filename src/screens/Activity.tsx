@@ -66,8 +66,8 @@ export function Activity() {
                 <View className="flex-row items-center gap-2">
                   <Text className="text-sm font-medium text-ink">{label}</Text>
                   {count > 0 && (
-                    <View className="h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent px-1">
-                      <Text className="text-[10px] font-semibold text-canvas">{count}</Text>
+                    <View className="h-[18px] min-w-[18px] items-center justify-center rounded-full bg-cta px-1">
+                      <Text className="text-[10px] font-semibold text-white">{count}</Text>
                     </View>
                   )}
                 </View>

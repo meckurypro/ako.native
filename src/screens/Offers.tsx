@@ -199,8 +199,8 @@ function OfferEditorSheet({ offer, onClose }: { offer: Offer | null; onClose: ()
                     {`${PROJECT_TYPE_LABELS[r.type]} · ${formatUsd(r.price)}${r.available ? "" : " · no longer available"}`}
                   </Text>
                 </View>
-                <View className={`h-5 w-5 shrink-0 items-center justify-center rounded-md border ${on ? "border-accent bg-accent" : "border-border"}`}>
-                  {on ? <Icon as={Check} size={13} className="text-canvas" /> : null}
+                <View className={`h-5 w-5 shrink-0 items-center justify-center rounded-md border ${on ? "border-cta bg-cta" : "border-border"}`}>
+                  {on ? <Icon as={Check} size={13} className="text-white" /> : null}
                 </View>
               </Pressable>
             );
@@ -259,8 +259,8 @@ export function Offers() {
 
         <Button onPress={() => setEditing("new")} disabled={atLimit} className="mb-5">
           <View className="flex-row items-center justify-center gap-2">
-            <Icon as={Plus} size={16} className="text-canvas" />
-            <Text className="text-base font-medium text-canvas">New offer</Text>
+            <Icon as={Plus} size={16} className="text-white" />
+            <Text className="text-base font-medium text-white">New offer</Text>
           </View>
         </Button>
         {atLimit ? <Text className="-mt-3 mb-5 text-xs text-ink-muted">{`You’ve reached ${MAX_OFFERS} offers. Delete one to add another.`}</Text> : null}

@@ -463,8 +463,8 @@ export function BookReflowReader({ projectId, title, chapters, userId, thumbnail
               {`${chapters.length} ${chapters.length === 1 ? "section" : "sections"} · about ${totalMinutes} min read${savedOverall > 0 ? ` · ${Math.round(savedOverall * 100)}% read` : ""}`}
             </Text>
             {startChapter ? (
-              <Pressable onPress={() => openAt(chapters.indexOf(startChapter))} accessibilityRole="button" className="mt-1 rounded-full bg-accent px-7 py-2.5 active:opacity-80">
-                <Text className="text-sm font-semibold text-canvas">{savedIndex >= 0 ? "Continue reading" : "Start reading"}</Text>
+              <Pressable onPress={() => openAt(chapters.indexOf(startChapter))} accessibilityRole="button" className="mt-1 rounded-full bg-cta px-7 py-2.5 active:opacity-80">
+                <Text className="text-sm font-semibold text-white">{savedIndex >= 0 ? "Continue reading" : "Start reading"}</Text>
               </Pressable>
             ) : null}
           </View>

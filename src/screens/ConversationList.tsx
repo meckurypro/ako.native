@@ -183,8 +183,8 @@ export function ConversationList() {
         </View>
         <Text className="flex-1 text-sm font-medium text-ink">Archive</Text>
         {archiveBadgeCount > 0 ? (
-          <View className="h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-accent px-1.5">
-            <Text className="text-[11px] font-semibold text-canvas">{archiveBadgeCount > 99 ? "99+" : archiveBadgeCount}</Text>
+          <View className="h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-cta px-1.5">
+            <Text className="text-[11px] font-semibold text-white">{archiveBadgeCount > 99 ? "99+" : archiveBadgeCount}</Text>
           </View>
         ) : null}
         <Icon as={ChevronRight} size={16} className="shrink-0 text-ink-muted" />

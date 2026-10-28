@@ -50,9 +50,9 @@ export function BookLockedView({ title, thumbnailUrl, price, onBuy, buying }: Bo
         }}
         disabled={buying}
         accessibilityRole="button"
-        className={`rounded-full bg-accent px-6 py-2.5 ${buying ? "opacity-50" : ""}`}
+        className={`rounded-full bg-cta px-6 py-2.5 ${buying ? "opacity-50" : ""}`}
       >
-        <Text className="text-sm font-medium text-canvas">{buying ? "Processing…" : `Buy for $${price.toFixed(2)}`}</Text>
+        <Text className="text-sm font-medium text-white">{buying ? "Processing…" : `Buy for $${price.toFixed(2)}`}</Text>
       </Pressable>
     </View>
   );

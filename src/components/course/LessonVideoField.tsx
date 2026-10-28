@@ -146,10 +146,10 @@ export function LessonVideoField({
               onPress={() => setMode(m)}
               accessibilityRole="button"
               accessibilityState={{ selected: mode === m }}
-              className={`flex-row items-center gap-1 rounded-full px-3 py-1 ${mode === m ? "bg-accent" : ""}`}
+              className={`flex-row items-center gap-1 rounded-full px-3 py-1 ${mode === m ? "bg-cta" : ""}`}
             >
-              <Icon as={m === "upload" ? Upload : Link2} size={12} className={mode === m ? "text-canvas" : "text-ink-muted"} />
-              <Text className={`text-xs font-medium ${mode === m ? "text-canvas" : "text-ink-muted"}`}>{m === "upload" ? "Upload" : "Link"}</Text>
+              <Icon as={m === "upload" ? Upload : Link2} size={12} className={mode === m ? "text-white" : "text-ink-muted"} />
+              <Text className={`text-xs font-medium ${mode === m ? "text-white" : "text-ink-muted"}`}>{m === "upload" ? "Upload" : "Link"}</Text>
             </Pressable>
           ))}
         </View>

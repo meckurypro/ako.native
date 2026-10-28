@@ -198,9 +198,9 @@ export function CourseSetupWizard({
                     onPress={() => setLevel(l.value)}
                     accessibilityRole="button"
                     accessibilityState={{ selected: level === l.value }}
-                    className={`rounded-full border px-3.5 py-1.5 ${level === l.value ? "border-accent bg-accent" : "border-border bg-surface"}`}
+                    className={`rounded-full border px-3.5 py-1.5 ${level === l.value ? "border-cta bg-cta" : "border-border bg-surface"}`}
                   >
-                    <Text className={`text-sm font-medium ${level === l.value ? "text-canvas" : "text-ink-muted"}`}>{l.label}</Text>
+                    <Text className={`text-sm font-medium ${level === l.value ? "text-white" : "text-ink-muted"}`}>{l.label}</Text>
                   </Pressable>
                 ))}
               </View>
@@ -243,9 +243,9 @@ export function CourseSetupWizard({
             onPress={() => (last ? void finish() : setStep(step + 1))}
             disabled={!canNext || saving || promoBusy}
             accessibilityRole="button"
-            className={`h-12 w-full items-center justify-center rounded-2xl bg-accent ${!canNext || saving || promoBusy ? "opacity-40" : ""}`}
+            className={`h-12 w-full items-center justify-center rounded-2xl bg-cta ${!canNext || saving || promoBusy ? "opacity-40" : ""}`}
           >
-            <Text className="text-[15px] font-semibold text-canvas">{saving ? "Saving…" : last ? (includeSections ? "Start building" : "Save") : "Next"}</Text>
+            <Text className="text-[15px] font-semibold text-white">{saving ? "Saving…" : last ? (includeSections ? "Start building" : "Save") : "Next"}</Text>
           </Pressable>
           {step === 0 && (
             <Pressable onPress={() => setStep(1)} accessibilityRole="button" className="mt-2 items-center py-1">

@@ -274,8 +274,8 @@ export function PageTeam() {
               accessibilityState={{ checked: inviteAsAdmin }}
               className="flex-row items-center gap-2"
             >
-              <View className={`h-5 w-5 items-center justify-center rounded border ${inviteAsAdmin ? "border-accent bg-accent" : "border-border bg-canvas"}`}>
-                {inviteAsAdmin ? <Icon as={Check} size={13} strokeWidth={3} className="text-canvas" /> : null}
+              <View className={`h-5 w-5 items-center justify-center rounded border ${inviteAsAdmin ? "border-cta bg-cta" : "border-border bg-canvas"}`}>
+                {inviteAsAdmin ? <Icon as={Check} size={13} strokeWidth={3} className="text-white" /> : null}
               </View>
               <Text className="flex-1 text-sm text-ink">Make them an admin (full access to {page.name}, including managing the team)</Text>
             </Pressable>

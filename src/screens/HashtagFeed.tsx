@@ -1,5 +1,6 @@
 // src/screens/HashtagFeed.tsx
 import { ArrowLeft } from "lucide-react-native";
+import { BrandDot } from "@/components/ui/BrandDot";
 import { useLocalSearchParams } from "expo-router";
 import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -32,7 +33,10 @@ export function HashtagFeed() {
             <Pressable onPress={smartBack} accessibilityRole="button" accessibilityLabel="Back" hitSlop={12}>
               <Icon as={ArrowLeft} size={22} className="text-ink-muted" />
             </Pressable>
-            <Text className="font-display text-xl text-ink">#{tag}</Text>
+            <View className="flex-row items-center gap-1.5">
+              <Text className="font-display text-xl text-ink">#{tag}</Text>
+              <BrandDot />
+            </View>
           </View>
         }
         emptyState={!isLoading ? <Text className="py-10 text-center text-sm text-ink-muted">No posts with #{tag} yet.</Text> : null}

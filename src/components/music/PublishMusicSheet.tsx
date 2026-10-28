@@ -239,9 +239,9 @@ export function PublishMusicSheet({ onClose, onPublished, projectId }: PublishMu
                       onPress={() => setUsageMode(mode)}
                       accessibilityRole="button"
                       accessibilityState={{ selected: usageMode === mode }}
-                      className={`flex-1 items-center rounded-xl border py-2.5 ${usageMode === mode ? "border-accent bg-accent" : "border-border bg-canvas"}`}
+                      className={`flex-1 items-center rounded-xl border py-2.5 ${usageMode === mode ? "border-cta bg-cta" : "border-border bg-canvas"}`}
                     >
-                      <Text className={`text-sm font-medium ${usageMode === mode ? "text-canvas" : "text-ink-muted"}`}>{text}</Text>
+                      <Text className={`text-sm font-medium ${usageMode === mode ? "text-white" : "text-ink-muted"}`}>{text}</Text>
                     </Pressable>
                   ))}
                 </View>
@@ -277,9 +277,9 @@ export function PublishMusicSheet({ onClose, onPublished, projectId }: PublishMu
                 className="mb-4 flex-row items-start gap-2"
               >
                 <View
-                  className={`mt-0.5 h-4 w-4 items-center justify-center rounded border ${rightsAccepted ? "border-accent bg-accent" : "border-border bg-canvas"}`}
+                  className={`mt-0.5 h-4 w-4 items-center justify-center rounded border ${rightsAccepted ? "border-cta bg-cta" : "border-border bg-canvas"}`}
                 >
-                  {rightsAccepted ? <Text className="text-[10px] font-bold leading-none text-canvas">✓</Text> : null}
+                  {rightsAccepted ? <Text className="text-[10px] font-bold leading-none text-white">✓</Text> : null}
                 </View>
                 <Text className="flex-1 text-xs text-ink">
                   I confirm I own or control the rights necessary to publish this music on Akọ and authorize its use in Akọ posts under the
@@ -293,9 +293,9 @@ export function PublishMusicSheet({ onClose, onPublished, projectId }: PublishMu
                 onPress={() => void handlePublish()}
                 disabled={isPublishing}
                 accessibilityRole="button"
-                className={`items-center rounded-full bg-accent py-3 ${isPublishing ? "opacity-50" : ""}`}
+                className={`items-center rounded-full bg-cta py-3 ${isPublishing ? "opacity-50" : ""}`}
               >
-                <Text className="text-sm font-medium text-canvas">{isPublishing ? "Publishing…" : "Publish to Akọ"}</Text>
+                <Text className="text-sm font-medium text-white">{isPublishing ? "Publishing…" : "Publish to Akọ"}</Text>
               </Pressable>
             </>
           ) : null}

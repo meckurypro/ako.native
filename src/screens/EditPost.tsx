@@ -234,9 +234,9 @@ export function EditPost() {
           onPress={handleSubmit}
           disabled={!canSave || saving}
           accessibilityRole="button"
-          className={`rounded-full bg-accent px-5 py-2 ${!canSave || saving ? "opacity-50" : "active:bg-accent-hover"}`}
+          className={`rounded-full bg-cta px-5 py-2 ${!canSave || saving ? "opacity-50" : "active:opacity-85"}`}
         >
-          <Text className="text-sm font-medium text-canvas">{saving ? "Saving…" : "Save"}</Text>
+          <Text className="text-sm font-medium text-white">{saving ? "Saving…" : "Save"}</Text>
         </Pressable>
       </View>
     </KeyboardAvoider>

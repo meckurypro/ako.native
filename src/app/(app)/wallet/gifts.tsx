@@ -170,10 +170,10 @@ export default function GiftVaultScreen() {
               accessibilityRole="tab"
               accessibilityState={{ selected: range === r.id }}
               className={`rounded-full border px-4 py-2 ${
-                range === r.id ? "border-accent bg-accent" : "border-border bg-surface"
+                range === r.id ? "border-cta bg-cta" : "border-border bg-surface"
               }`}
             >
-              <Text className={`text-sm ${range === r.id ? "text-canvas" : "text-ink-muted"}`}>{r.label}</Text>
+              <Text className={`text-sm ${range === r.id ? "text-white" : "text-ink-muted"}`}>{r.label}</Text>
             </Pressable>
           ))}
         </View>

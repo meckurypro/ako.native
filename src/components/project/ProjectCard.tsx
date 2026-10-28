@@ -1060,11 +1060,11 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
                 <Pressable
                   onPress={openSupport}
                   accessibilityRole="button"
-                  className="ml-auto flex-row items-center gap-1.5 rounded-full bg-accent px-4 py-1.5 active:scale-[0.97]"
+                  className="ml-auto flex-row items-center gap-1.5 rounded-full bg-cta px-4 py-1.5 active:scale-[0.97]"
                   style={{ elevation: 3 }}
                 >
-                  <Icon as={Heart} size={15} className="text-canvas" />
-                  <Text className="text-sm font-semibold text-canvas">Support</Text>
+                  <Icon as={Heart} size={15} className="text-white" />
+                  <Text className="text-sm font-semibold text-white">Support</Text>
                 </Pressable>
               ) : null}
 
@@ -1073,10 +1073,10 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
                   onPress={project.project_type === "gig" ? handleBookTalent : handleBuy}
                   disabled={project.project_type === "gig" ? bookTalent.isPending : buyBusy}
                   accessibilityRole="button"
-                  className={`ml-auto rounded-full bg-accent px-4 py-1.5 active:scale-[0.97] ${(project.project_type === "gig" ? bookTalent.isPending : purchaseProject.isPending) ? "opacity-50" : ""}`}
+                  className={`ml-auto rounded-full bg-cta px-4 py-1.5 active:scale-[0.97] ${(project.project_type === "gig" ? bookTalent.isPending : purchaseProject.isPending) ? "opacity-50" : ""}`}
                   style={{ elevation: 3 }}
                 >
-                  <Text className="text-sm font-semibold text-canvas">
+                  <Text className="text-sm font-semibold text-white">
                     {project.project_type === "gig"
                       ? bookTalent.isPending ? "Booking…" : `Book for $${effectivePrice.toFixed(2)}`
                       : purchaseProject.isPending

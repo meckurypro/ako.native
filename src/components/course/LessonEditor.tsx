@@ -324,10 +324,10 @@ export function LessonEditor({
         onPress={() => setValue({ ...value, isFreePreview: !value.isFreePreview })}
         accessibilityRole="switch"
         accessibilityState={{ checked: value.isFreePreview }}
-        className={`flex-row items-center gap-1.5 self-start rounded-full border px-2.5 py-1 ${value.isFreePreview ? "border-accent bg-accent" : "border-border bg-surface"}`}
+        className={`flex-row items-center gap-1.5 self-start rounded-full border px-2.5 py-1 ${value.isFreePreview ? "border-cta bg-cta" : "border-border bg-surface"}`}
       >
-        <Icon as={Eye} size={12} className={value.isFreePreview ? "text-canvas" : "text-ink-muted"} />
-        <Text className={`text-xs font-medium ${value.isFreePreview ? "text-canvas" : "text-ink-muted"}`}>Free preview</Text>
+        <Icon as={Eye} size={12} className={value.isFreePreview ? "text-white" : "text-ink-muted"} />
+        <Text className={`text-xs font-medium ${value.isFreePreview ? "text-white" : "text-ink-muted"}`}>Free preview</Text>
       </Pressable>
 
       {missing && value.title.trim() !== "" ? <Text className="text-xs text-ink-muted">{missing}</Text> : null}

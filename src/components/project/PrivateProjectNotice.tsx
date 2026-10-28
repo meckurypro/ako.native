@@ -17,10 +17,10 @@ export function PrivateProjectNotice({ onMessage, messagePending }: { onMessage:
         onPress={onMessage}
         disabled={messagePending}
         accessibilityRole="button"
-        className={`mt-4 flex-row items-center gap-1.5 rounded-full bg-accent px-4 py-2 ${messagePending ? "opacity-50" : ""}`}
+        className={`mt-4 flex-row items-center gap-1.5 rounded-full bg-cta px-4 py-2 ${messagePending ? "opacity-50" : ""}`}
       >
-        <Icon as={MessageCircle} size={15} className="text-canvas" />
-        <Text className="text-sm font-medium text-canvas">{messagePending ? "Opening…" : "Message for access"}</Text>
+        <Icon as={MessageCircle} size={15} className="text-white" />
+        <Text className="text-sm font-medium text-white">{messagePending ? "Opening…" : "Message for access"}</Text>
       </Pressable>
     </View>
   );

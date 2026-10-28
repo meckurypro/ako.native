@@ -104,11 +104,11 @@ export function RoomChat({ projectId, conversationId, canPost, cantPostReason }:
                     {voiceNote ? (
                       <VoiceMessageBubble url={voiceNote.url} path={voiceNote.path} durationSec={voiceNote.durationSec} peaks={voiceNote.peaks} isMine={isMine} />
                     ) : (
-                      <View className={`rounded-2xl px-3.5 py-2 ${isMine ? "rounded-br-md bg-accent" : "rounded-bl-md bg-surface"}`}>
+                      <View className={`rounded-2xl px-3.5 py-2 ${isMine ? "rounded-br-md bg-cta" : "rounded-bl-md bg-surface"}`}>
                         {m.is_deleted ? (
-                          <Text className={`text-sm italic opacity-70 ${isMine ? "text-canvas" : "text-ink"}`}>Message deleted</Text>
+                          <Text className={`text-sm italic opacity-70 ${isMine ? "text-white" : "text-ink"}`}>Message deleted</Text>
                         ) : (
-                          <Text selectable className={`text-sm ${isMine ? "text-canvas" : "text-ink"}`}>
+                          <Text selectable className={`text-sm ${isMine ? "text-white" : "text-ink"}`}>
                             {m.content}
                           </Text>
                         )}

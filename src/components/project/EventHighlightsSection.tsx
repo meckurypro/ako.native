@@ -27,9 +27,9 @@ function AudioHighlight({ url }: { url: string }) {
         onPress={() => (status.playing ? player.pause() : player.play())}
         accessibilityRole="button"
         accessibilityLabel={status.playing ? "Pause" : "Play"}
-        className="h-9 w-9 items-center justify-center rounded-full bg-accent"
+        className="h-9 w-9 items-center justify-center rounded-full bg-cta"
       >
-        <Icon as={status.playing ? Pause : Play} size={14} fill="#F7F4EF" className="text-canvas" />
+        <Icon as={status.playing ? Pause : Play} size={14} fill="#F7F4EF" className="text-white" />
       </Pressable>
       <View className="h-1 flex-1 overflow-hidden rounded-full bg-border">
         <View className="h-full bg-accent" style={{ width: `${status.duration > 0 ? (status.currentTime / status.duration) * 100 : 0}%` }} />

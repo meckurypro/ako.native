@@ -108,8 +108,8 @@ function SongActions({ entry }: { entry: MusicCatalogueWithContributors }) {
   return (
     <View className="gap-2">
       {!restricted ? (
-        <Pressable onPress={attachToPost} accessibilityRole="button" className="items-center rounded-full bg-accent py-3">
-          <Text className="text-sm font-medium text-canvas">Use in my post</Text>
+        <Pressable onPress={attachToPost} accessibilityRole="button" className="items-center rounded-full bg-cta py-3">
+          <Text className="text-sm font-medium text-white">Use in my post</Text>
         </Pressable>
       ) : null}
       {artist ? (

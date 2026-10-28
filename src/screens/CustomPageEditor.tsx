@@ -248,9 +248,9 @@ export function CustomPageEditor() {
               disabled={publish.isPending || !!problem}
               accessibilityRole="button"
               accessibilityState={{ disabled: publish.isPending || !!problem, busy: publish.isPending }}
-              className={`rounded-full bg-accent px-4 py-2 ${publish.isPending || problem ? "opacity-50" : ""}`}
+              className={`rounded-full bg-cta px-4 py-2 ${publish.isPending || problem ? "opacity-50" : ""}`}
             >
-              <Text className="text-sm font-medium text-canvas">{publish.isPending ? "Publishing…" : row.is_published ? "Publish changes" : "Publish"}</Text>
+              <Text className="text-sm font-medium text-white">{publish.isPending ? "Publishing…" : row.is_published ? "Publish changes" : "Publish"}</Text>
             </Pressable>
           </View>
         }

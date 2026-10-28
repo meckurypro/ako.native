@@ -6,6 +6,7 @@
 //   /post/:postId/comment/:commentId
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react-native";
+import { BrandDot } from "@/components/ui/BrandDot";
 import { Redirect, useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useRef } from "react";
 import { Pressable, ScrollView, View } from "react-native";
@@ -144,7 +145,10 @@ export function CommentDetail() {
           <Pressable onPress={smartBack} accessibilityRole="button" accessibilityLabel="Back" hitSlop={12}>
             <Icon as={ArrowLeft} size={22} className="text-ink-muted" />
           </Pressable>
-          <Text className="font-display text-base text-ink">Comment</Text>
+          <View className="flex-row items-center gap-1.5">
+            <Text className="font-display text-base text-ink">Comment</Text>
+            <BrandDot />
+          </View>
         </View>
 
         {restricted ? (

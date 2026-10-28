@@ -52,17 +52,17 @@ export function CourseHero({ pct, done, total, minutesLeft, nextTitle, onContinu
       <Pressable
         onPress={onContinue}
         accessibilityRole="button"
-        className="mt-4 flex-row items-center justify-between gap-3 rounded-2xl bg-accent px-4 py-3.5 active:bg-accent-hover"
+        className="mt-4 flex-row items-center justify-between gap-3 rounded-2xl bg-cta px-4 py-3.5 active:opacity-85"
       >
         <View className="min-w-0 flex-1">
-          <Text className="text-[15px] font-semibold text-canvas">{cta}</Text>
+          <Text className="text-[15px] font-semibold text-white">{cta}</Text>
           {nextTitle && !finished ? (
-            <Text numberOfLines={1} className="mt-0.5 text-[12.5px] text-canvas" style={{ opacity: 0.85 }}>
+            <Text numberOfLines={1} className="mt-0.5 text-[12.5px] text-white" style={{ opacity: 0.85 }}>
               {nextTitle}
             </Text>
           ) : null}
         </View>
-        <Icon as={ArrowRight} size={20} className="text-canvas" />
+        <Icon as={ArrowRight} size={20} className="text-white" />
       </Pressable>
     </View>
   );

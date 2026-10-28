@@ -253,9 +253,9 @@ export function ProfileSection({ open, onToggle, photoRequest = 0, onAvatarChang
                   disabled={disabled}
                   accessibilityRole="checkbox"
                   accessibilityState={{ checked: selected, disabled }}
-                  className={`rounded-full border px-3 py-1.5 ${selected ? "border-accent bg-accent" : disabled ? "border-border bg-canvas opacity-50" : "border-border bg-canvas"}`}
+                  className={`rounded-full border px-3 py-1.5 ${selected ? "border-cta bg-cta" : disabled ? "border-border bg-canvas opacity-50" : "border-border bg-canvas"}`}
                 >
-                  <Text className={`text-sm ${selected ? "text-canvas" : disabled ? "text-ink-muted" : "text-ink"}`}>{role.label}</Text>
+                  <Text className={`text-sm ${selected ? "text-white" : disabled ? "text-ink-muted" : "text-ink"}`}>{role.label}</Text>
                 </Pressable>
               );
             })}

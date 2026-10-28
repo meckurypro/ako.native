@@ -69,8 +69,8 @@ function PollComposer({ onCreate, onCancel, pending }: { onCreate: (q: string, o
         <Checkbox checked={allowMultiple} onChange={setAllowMultiple} label="Allow multiple choices" />
       </View>
       <View className="flex-row items-center gap-3">
-        <Pressable onPress={() => canPost && onCreate(question.trim(), filled, allowMultiple)} disabled={!canPost} accessibilityRole="button" className={`rounded-full bg-accent px-4 py-2 ${canPost ? "" : "opacity-50"}`}>
-          <Text className="text-sm font-medium text-canvas">{pending ? "Posting…" : "Post poll"}</Text>
+        <Pressable onPress={() => canPost && onCreate(question.trim(), filled, allowMultiple)} disabled={!canPost} accessibilityRole="button" className={`rounded-full bg-cta px-4 py-2 ${canPost ? "" : "opacity-50"}`}>
+          <Text className="text-sm font-medium text-white">{pending ? "Posting…" : "Post poll"}</Text>
         </Pressable>
         <Pressable onPress={onCancel} accessibilityRole="button" hitSlop={8}>
           <Text className="text-sm text-ink-muted">Cancel</Text>

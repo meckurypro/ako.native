@@ -80,8 +80,8 @@ export function ScheduledPosts() {
                   <Icon as={Send} size={12} className="text-accent" />
                   <Text className="text-xs font-medium text-accent">Publishes {post.scheduled_for ? timeUntil(post.scheduled_for) : ""}</Text>
                   {post.id === highlightId ? (
-                    <View className="ml-1 rounded-full bg-accent px-2 py-0.5">
-                      <Text className="text-[10px] font-semibold uppercase tracking-wide text-canvas">Just scheduled</Text>
+                    <View className="ml-1 rounded-full bg-cta px-2 py-0.5">
+                      <Text className="text-[10px] font-semibold uppercase tracking-wide text-white">Just scheduled</Text>
                     </View>
                   ) : null}
                 </View>
@@ -106,10 +106,10 @@ export function ScheduledPosts() {
                 <Pressable
                   onPress={() => router.push({ pathname: "/compose", params: { scheduledId: post.id } } as Href)}
                   accessibilityRole="button"
-                  className="flex-1 flex-row items-center justify-center gap-1.5 rounded-full bg-accent py-2"
+                  className="flex-1 flex-row items-center justify-center gap-1.5 rounded-full bg-cta py-2"
                 >
-                  <Icon as={FileEdit} size={14} className="text-canvas" />
-                  <Text className="text-sm font-medium text-canvas">Resume</Text>
+                  <Icon as={FileEdit} size={14} className="text-white" />
+                  <Text className="text-sm font-medium text-white">Resume</Text>
                 </Pressable>
               </View>
             </View>

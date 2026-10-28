@@ -68,8 +68,8 @@ function SubmissionReview({ assignmentId }: { assignmentId: string }) {
                 accessibilityLabel="Feedback"
               />
               <View className="flex-row items-center gap-2">
-                <Pressable onPress={() => submit(s.id, "approved")} disabled={review.isPending} accessibilityRole="button" className={`rounded-full bg-accent px-3 py-1.5 ${review.isPending ? "opacity-50" : ""}`}>
-                  <Text className="text-xs font-medium text-canvas">Approve</Text>
+                <Pressable onPress={() => submit(s.id, "approved")} disabled={review.isPending} accessibilityRole="button" className={`rounded-full bg-cta px-3 py-1.5 ${review.isPending ? "opacity-50" : ""}`}>
+                  <Text className="text-xs font-medium text-white">Approve</Text>
                 </Pressable>
                 <Pressable onPress={() => submit(s.id, "needs_revision")} disabled={review.isPending} accessibilityRole="button" className={`rounded-full border border-border bg-surface px-3 py-1.5 ${review.isPending ? "opacity-50" : ""}`}>
                   <Text className="text-xs font-medium text-ink">Needs revision</Text>
@@ -141,9 +141,9 @@ function AssignmentCard({ assignment, isHost }: { assignment: { id: string; titl
                 onPress={handleSubmit}
                 disabled={submitAssignment.isPending || !content.trim()}
                 accessibilityRole="button"
-                className={`self-start rounded-full bg-accent px-3 py-1.5 ${submitAssignment.isPending || !content.trim() ? "opacity-50" : ""}`}
+                className={`self-start rounded-full bg-cta px-3 py-1.5 ${submitAssignment.isPending || !content.trim() ? "opacity-50" : ""}`}
               >
-                <Text className="text-xs font-medium text-canvas">{submitAssignment.isPending ? "Submitting…" : "Submit"}</Text>
+                <Text className="text-xs font-medium text-white">{submitAssignment.isPending ? "Submitting…" : "Submit"}</Text>
               </Pressable>
             </View>
           ) : (
@@ -205,9 +205,9 @@ export function AssignmentsTab({ projectId, isHost }: { projectId: string; isHos
             onPress={handleCreate}
             disabled={createAssignment.isPending || !title.trim()}
             accessibilityRole="button"
-            className={`items-center rounded-lg bg-accent py-2 ${createAssignment.isPending || !title.trim() ? "opacity-50" : ""}`}
+            className={`items-center rounded-lg bg-cta py-2 ${createAssignment.isPending || !title.trim() ? "opacity-50" : ""}`}
           >
-            <Text className="text-sm font-medium text-canvas">{createAssignment.isPending ? "Posting…" : "Post assignment"}</Text>
+            <Text className="text-sm font-medium text-white">{createAssignment.isPending ? "Posting…" : "Post assignment"}</Text>
           </Pressable>
         </View>
       )}

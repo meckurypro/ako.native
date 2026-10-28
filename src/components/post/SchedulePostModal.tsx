@@ -107,9 +107,9 @@ export function SchedulePostModal({ onClose, onConfirm }: SchedulePostModalProps
           disabled={!valid}
           accessibilityRole="button"
           accessibilityState={{ disabled: !valid }}
-          className={`flex-1 items-center rounded-full bg-accent py-2.5 ${valid ? "" : "opacity-50"}`}
+          className={`flex-1 items-center rounded-full bg-cta py-2.5 ${valid ? "" : "opacity-50"}`}
         >
-          <Text className="text-sm font-medium text-surface">Schedule</Text>
+          <Text className="text-sm font-medium text-white">Schedule</Text>
         </Pressable>
       </View>
     </Modal>

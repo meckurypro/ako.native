@@ -55,8 +55,8 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
       return (
         <View className="flex-1 items-center justify-center gap-4 bg-canvas px-6">
           <Text className="font-medium text-ink">Something went wrong.</Text>
-          <Pressable onPress={this.recover} accessibilityRole="button" className="rounded-full bg-accent px-5 py-2 active:bg-accent-hover">
-            <Text className="text-sm font-medium text-canvas">Back to feed</Text>
+          <Pressable onPress={this.recover} accessibilityRole="button" className="rounded-full bg-cta px-5 py-2 active:opacity-85">
+            <Text className="text-sm font-medium text-white">Back to feed</Text>
           </Pressable>
           <ScrollView showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} className="max-h-64 w-full" contentContainerStyle={{ paddingVertical: 8 }}>
             <Text selectable className="text-[11px] leading-snug text-ink-muted">

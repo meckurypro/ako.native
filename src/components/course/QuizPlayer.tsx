@@ -73,9 +73,9 @@ export function QuizPlayer({ data, completed, onPassed }: { data: unknown; compl
           </Text>
           <Text className="mt-0.5 text-sm text-ink-muted">{result.passed ? "Passed." : `You need ${quiz.pass_mark}% to pass.`}</Text>
           {!result.passed || completed ? (
-            <Pressable onPress={reset} accessibilityRole="button" className="mt-3 flex-row items-center gap-1.5 self-start rounded-xl bg-accent px-4 py-2">
-              <Icon as={RotateCcw} size={14} className="text-canvas" />
-              <Text className="text-sm font-semibold text-canvas">{result.passed ? "Retake" : "Try again"}</Text>
+            <Pressable onPress={reset} accessibilityRole="button" className="mt-3 flex-row items-center gap-1.5 self-start rounded-xl bg-cta px-4 py-2">
+              <Icon as={RotateCcw} size={14} className="text-white" />
+              <Text className="text-sm font-semibold text-white">{result.passed ? "Retake" : "Try again"}</Text>
             </Pressable>
           ) : null}
         </View>
@@ -87,9 +87,9 @@ export function QuizPlayer({ data, completed, onPassed }: { data: unknown; compl
           }}
           disabled={!allAnswered}
           accessibilityRole="button"
-          className={`h-12 items-center justify-center rounded-2xl bg-accent ${allAnswered ? "" : "opacity-40"}`}
+          className={`h-12 items-center justify-center rounded-2xl bg-cta ${allAnswered ? "" : "opacity-40"}`}
         >
-          <Text className="text-[15px] font-semibold text-canvas">Submit answers</Text>
+          <Text className="text-[15px] font-semibold text-white">Submit answers</Text>
         </Pressable>
       )}
     </View>

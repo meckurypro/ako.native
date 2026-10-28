@@ -102,9 +102,9 @@ export function CustomPages() {
       <ScreenHeader
         title="Custom pages"
         right={
-          <Pressable onPress={() => setCreating(true)} accessibilityRole="button" accessibilityLabel="New custom page" className="flex-row items-center gap-1.5 rounded-full bg-accent px-4 py-2">
-            <Icon as={Plus} size={16} className="text-canvas" />
-            <Text className="text-sm font-medium text-canvas">New</Text>
+          <Pressable onPress={() => setCreating(true)} accessibilityRole="button" accessibilityLabel="New custom page" className="flex-row items-center gap-1.5 rounded-full bg-cta px-4 py-2">
+            <Icon as={Plus} size={16} className="text-white" />
+            <Text className="text-sm font-medium text-white">New</Text>
           </Pressable>
         }
       />

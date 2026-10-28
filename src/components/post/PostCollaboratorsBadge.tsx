@@ -51,9 +51,9 @@ export function PostCollaboratorsBadge({
         onPress={openPopover}
         accessibilityRole="button"
         accessibilityLabel={`Posted with ${accepted.length} ${accepted.length === 1 ? "collaborator" : "collaborators"}`}
-        className={`absolute -bottom-1 ${side === "left" ? "-left-1" : "-right-1"} h-5 w-5 items-center justify-center rounded-full border-2 border-surface bg-accent`}
+        className={`absolute -bottom-1 ${side === "left" ? "-left-1" : "-right-1"} h-5 w-5 items-center justify-center rounded-full border-2 border-surface bg-cta`}
       >
-        <Icon as={Users} size={11} strokeWidth={2.5} className="text-canvas" />
+        <Icon as={Users} size={11} strokeWidth={2.5} className="text-white" />
       </Pressable>
 
       {open ? (

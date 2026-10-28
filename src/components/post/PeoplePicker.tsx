@@ -94,10 +94,10 @@ export function PeoplePicker({ title, subtitle, confirmLabel, initialSelected = 
                 </View>
                 <View
                   className={`h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
-                    isSelected ? "border-accent bg-accent" : "border-border"
+                    isSelected ? "border-cta bg-cta" : "border-border"
                   }`}
                 >
-                  {isSelected ? <Icon as={Check} size={12} strokeWidth={3} className="text-canvas" /> : null}
+                  {isSelected ? <Icon as={Check} size={12} strokeWidth={3} className="text-white" /> : null}
                 </View>
               </Pressable>
             );

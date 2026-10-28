@@ -58,9 +58,9 @@ function AudioFile({ uri }: { uri: string }) {
           onPress={() => (status.playing ? player.pause() : player.play())}
           accessibilityRole="button"
           accessibilityLabel={status.playing ? "Pause" : "Play"}
-          className="h-16 w-16 items-center justify-center rounded-full bg-accent"
+          className="h-16 w-16 items-center justify-center rounded-full bg-cta"
         >
-          <Icon as={status.playing ? Pause : Play} size={28} className="text-canvas" />
+          <Icon as={status.playing ? Pause : Play} size={28} className="text-white" />
         </Pressable>
         <Pressable onPress={() => skip(15)} accessibilityRole="button" accessibilityLabel="Forward 15 seconds" hitSlop={10}>
           <Icon as={RotateCw} size={26} className="text-ink-muted" />
@@ -107,8 +107,8 @@ function OpenFileCard({ file, uri, title }: { file: OfflineFileInfo; uri: string
       </View>
       <Button onPress={() => void open()}>
         <View className="flex-row items-center gap-2">
-          <Icon as={ExternalLink} size={18} className="text-canvas" />
-          <Text className="text-base text-canvas">Open</Text>
+          <Icon as={ExternalLink} size={18} className="text-white" />
+          <Text className="text-base text-white">Open</Text>
         </View>
       </Button>
     </View>

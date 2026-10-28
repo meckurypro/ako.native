@@ -63,8 +63,8 @@ export function DraftPosts() {
                   <Text className="text-[11px] font-medium uppercase tracking-wide text-ink-muted">Draft</Text>
                 </View>
                 {draft.id === highlightId ? (
-                  <View className="rounded-full bg-accent px-2 py-0.5">
-                    <Text className="text-[10px] font-semibold uppercase tracking-wide text-canvas">Just saved</Text>
+                  <View className="rounded-full bg-cta px-2 py-0.5">
+                    <Text className="text-[10px] font-semibold uppercase tracking-wide text-white">Just saved</Text>
                   </View>
                 ) : null}
                 {draft.category_id ? <Text className="text-[11px] text-ink-muted">{new Date(draft.created_at).toLocaleDateString()}</Text> : null}
@@ -78,8 +78,8 @@ export function DraftPosts() {
                 {draft.content || "(No text yet — just media or a heading.)"}
               </Text>
               <View className="mt-3 flex-row items-center gap-2">
-                <Pressable onPress={() => router.push({ pathname: "/compose", params: { draftId: draft.id } } as Href)} accessibilityRole="button" className="flex-1 items-center rounded-full bg-accent py-2">
-                  <Text className="text-sm font-medium text-canvas">Resume</Text>
+                <Pressable onPress={() => router.push({ pathname: "/compose", params: { draftId: draft.id } } as Href)} accessibilityRole="button" className="flex-1 items-center rounded-full bg-cta py-2">
+                  <Text className="text-sm font-medium text-white">Resume</Text>
                 </Pressable>
                 <Pressable onPress={() => setPendingDiscard(draft.id)} accessibilityRole="button" accessibilityLabel="Discard draft" className="rounded-full border border-border p-2">
                   <Icon as={Trash2} size={16} className="text-ink-muted" />

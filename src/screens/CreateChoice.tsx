@@ -7,6 +7,7 @@ import { router, type Href } from "expo-router";
 import { useCallback, useEffect, useRef } from "react";
 import { Pressable, View } from "react-native";
 
+import { BrandDot } from "@/components/ui/BrandDot";
 import { PortalHost } from "@/components/ui/Portal";
 import { Sheet, useSheet } from "@/components/ui/Sheet";
 import { Icon } from "@/components/ui/styled";
@@ -27,7 +28,10 @@ function Body({ onPick }: { onPick: (to: string) => void }) {
   return (
     <>
       <View className="flex-row items-center justify-between px-6 pb-2 pt-6">
-        <Text className="text-lg font-semibold text-ink">Create</Text>
+        <View className="flex-row items-center gap-1.5">
+          <Text className="text-lg font-semibold text-ink">Create</Text>
+          <BrandDot />
+        </View>
         <Pressable onPress={close} accessibilityRole="button" accessibilityLabel="Close" hitSlop={10} className="p-1">
           <Icon as={X} size={22} className="text-ink-muted" />
         </Pressable>

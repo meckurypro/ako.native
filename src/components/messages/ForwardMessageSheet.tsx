@@ -68,10 +68,10 @@ export function ForwardMessageSheet({ messages, onClose, onSent }: ForwardMessag
             onPress={() => void handleSend()}
             disabled={!selected.size || forwardMessages.isPending}
             accessibilityRole="button"
-            className={`flex-row items-center justify-center gap-2 rounded-full bg-accent py-3 ${!selected.size || forwardMessages.isPending ? "opacity-50" : ""}`}
+            className={`flex-row items-center justify-center gap-2 rounded-full bg-cta py-3 ${!selected.size || forwardMessages.isPending ? "opacity-50" : ""}`}
           >
-            <Icon as={Send} size={16} className="text-canvas" />
-            <Text className="text-sm font-medium text-canvas">
+            <Icon as={Send} size={16} className="text-white" />
+            <Text className="text-sm font-medium text-white">
               {forwardMessages.isPending ? "Sending…" : selected.size ? `Send to ${selected.size}` : "Select someone"}
             </Text>
           </Pressable>

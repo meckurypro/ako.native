@@ -445,9 +445,9 @@ export function Course() {
                 onPress={handlePublishCourse}
                 disabled={publishCourse.isPending || !publishReady}
                 accessibilityRole="button"
-                className={`rounded-full bg-accent px-3 py-1.5 ${publishCourse.isPending || !publishReady ? "opacity-50" : ""}`}
+                className={`rounded-full bg-cta px-3 py-1.5 ${publishCourse.isPending || !publishReady ? "opacity-50" : ""}`}
               >
-                <Text className="text-xs font-medium text-canvas">{publishCourse.isPending ? "Publishing…" : "Publish"}</Text>
+                <Text className="text-xs font-medium text-white">{publishCourse.isPending ? "Publishing…" : "Publish"}</Text>
               </Pressable>
             )}
           </View>
@@ -462,8 +462,8 @@ export function Course() {
             <Icon as={PenLine} size={15} className="text-ink" />
             <Text className="text-sm font-medium text-ink">Forewords</Text>
             {forewordsToReview > 0 && (
-              <View className="ml-1 h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5">
-                <Text className="text-[11px] text-canvas">{forewordsToReview}</Text>
+              <View className="ml-1 h-5 min-w-5 items-center justify-center rounded-full bg-cta px-1.5">
+                <Text className="text-[11px] text-white">{forewordsToReview}</Text>
               </View>
             )}
           </Pressable>
@@ -811,9 +811,9 @@ export function Course() {
                 onPress={handleAddModule}
                 disabled={addModule.isPending || !newModuleTitle.trim()}
                 accessibilityRole="button"
-                className={`justify-center rounded-full bg-accent px-4 py-2.5 ${addModule.isPending || !newModuleTitle.trim() ? "opacity-50" : ""}`}
+                className={`justify-center rounded-full bg-cta px-4 py-2.5 ${addModule.isPending || !newModuleTitle.trim() ? "opacity-50" : ""}`}
               >
-                <Text className="text-sm font-medium text-canvas">Add</Text>
+                <Text className="text-sm font-medium text-white">Add</Text>
               </Pressable>
             </View>
           )}

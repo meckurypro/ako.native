@@ -215,10 +215,10 @@ export function MediaFields({ value, onChange, onError, onUploadingChange }: Med
               onPress={() => onChange({ ...value, [key]: { ...channel, enabled: !channel.enabled } })}
               accessibilityRole="switch"
               accessibilityState={{ checked: channel.enabled }}
-              className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 ${channel.enabled ? "border-accent bg-accent" : "border-border bg-surface"}`}
+              className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 ${channel.enabled ? "border-cta bg-cta" : "border-border bg-surface"}`}
             >
-              <Icon as={icon} size={14} className={channel.enabled ? "text-canvas" : "text-ink-muted"} />
-              <Text className={`text-sm font-medium ${channel.enabled ? "text-canvas" : "text-ink-muted"}`}>{label}</Text>
+              <Icon as={icon} size={14} className={channel.enabled ? "text-white" : "text-ink-muted"} />
+              <Text className={`text-sm font-medium ${channel.enabled ? "text-white" : "text-ink-muted"}`}>{label}</Text>
             </Pressable>
           );
         })}

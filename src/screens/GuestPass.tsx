@@ -59,7 +59,7 @@ function PillButton({ onPress, children, soft, disabled }: { onPress: () => void
       onPress={onPress}
       disabled={disabled}
       accessibilityRole="button"
-      className={`flex-row items-center gap-2 self-start rounded-full px-5 py-2.5 ${soft ? "bg-accent-soft" : "bg-accent"} ${disabled ? "opacity-60" : ""}`}
+      className={`flex-row items-center gap-2 self-start rounded-full px-5 py-2.5 ${soft ? "bg-accent-soft" : "bg-cta"} ${disabled ? "opacity-60" : ""}`}
     >
       {children}
     </Pressable>
@@ -103,9 +103,9 @@ function EndedScreen({ view, signedIn }: { view: GuestPassView | undefined; sign
           {profilePath && status !== "not_found" ? (
             <Pressable
               onPress={() => (signedIn ? router.push(profilePath as Href) : goAuth(profilePath))}
-              className="items-center rounded-xl bg-accent py-3"
+              className="items-center rounded-xl bg-cta py-3"
             >
-              <Text className="text-sm font-medium text-canvas">
+              <Text className="text-sm font-medium text-white">
                 {signedIn ? `Message ${creator ?? "the creator"} for a new link` : `Join Akọ to ask ${creator ?? "the creator"}`}
               </Text>
             </Pressable>
@@ -121,8 +121,8 @@ function EndedScreen({ view, signedIn }: { view: GuestPassView | undefined; sign
             </Pressable>
           ) : null}
           {signedIn && !profilePath ? (
-            <Pressable onPress={() => router.replace("/feed" as Href)} className="items-center rounded-xl bg-accent py-3">
-              <Text className="text-sm font-medium text-canvas">Go to your feed</Text>
+            <Pressable onPress={() => router.replace("/feed" as Href)} className="items-center rounded-xl bg-cta py-3">
+              <Text className="text-sm font-medium text-white">Go to your feed</Text>
             </Pressable>
           ) : null}
         </View>
@@ -140,8 +140,8 @@ function LinkButton({ href, children }: { href: string | null; children: string 
   if (!href) return null;
   return (
     <PillButton onPress={() => openLink(href)}>
-      <Icon as={ExternalLink} size={15} className="text-canvas" />
-      <Text className="text-sm font-medium text-canvas">{children}</Text>
+      <Icon as={ExternalLink} size={15} className="text-white" />
+      <Text className="text-sm font-medium text-white">{children}</Text>
     </PillButton>
   );
 }
@@ -181,8 +181,8 @@ function MediaContent({ detail, token, onExpired }: { detail: GuestPassView["det
             <Text className="mb-2 text-xs font-medium uppercase text-ink-muted">{label}</Text>
             {hosted ? (
               <PillButton disabled={pending} onPress={() => void open({ kind, action: "stream" })}>
-                <Icon as={Play} size={15} className="text-canvas" />
-                <Text className="text-sm font-medium text-canvas">{pending ? "Loading…" : action}</Text>
+                <Icon as={Play} size={15} className="text-white" />
+                <Text className="text-sm font-medium text-white">{pending ? "Loading…" : action}</Text>
               </PillButton>
             ) : (
               <LinkButton href={href}>{kind === "audio" ? "Listen" : kind === "video" ? "Watch" : "Open image"}</LinkButton>
@@ -214,10 +214,10 @@ function FileContent({ detail, token, onExpired }: { detail: GuestPassView["deta
               await open({ kind: "file", fileId: f.id });
               setBusyId(null);
             }}
-            className={`flex-row items-center gap-1.5 rounded-full bg-accent px-3.5 py-1.5 ${pending ? "opacity-60" : ""}`}
+            className={`flex-row items-center gap-1.5 rounded-full bg-cta px-3.5 py-1.5 ${pending ? "opacity-60" : ""}`}
           >
-            <Icon as={Download} size={14} className="text-canvas" />
-            <Text className="text-sm font-medium text-canvas">{busyId === f.id ? "Preparing…" : "Download"}</Text>
+            <Icon as={Download} size={14} className="text-white" />
+            <Text className="text-sm font-medium text-white">{busyId === f.id ? "Preparing…" : "Download"}</Text>
           </Pressable>
         </View>
       ))}
@@ -248,8 +248,8 @@ function BookContent({ detail, token, onExpired }: { detail: GuestPassView["deta
       <View className="flex-row flex-wrap gap-2">
         {d.hosted && d.allow_read_in_app ? (
           <PillButton disabled={pending} onPress={() => void open({ kind: "book", action: "stream" })}>
-            <Icon as={Play} size={15} className="text-canvas" />
-            <Text className="text-sm font-medium text-canvas">Read the book</Text>
+            <Icon as={Play} size={15} className="text-white" />
+            <Text className="text-sm font-medium text-white">Read the book</Text>
           </PillButton>
         ) : null}
         {d.hosted && d.allow_download ? (
@@ -446,8 +446,8 @@ export function GuestPass() {
         <View className="mt-10 items-center rounded-2xl bg-accent-soft px-5 py-5">
           <Text className="text-sm font-medium text-ink">Like what you see?</Text>
           <Text className="mt-1 text-center text-xs text-ink-muted">Akọ is where people say, make, teach, host and share.</Text>
-          <Pressable onPress={() => goAuth(p.slug ? getProjectPath({ id: p.id, slug: p.slug }) : null)} className="mt-3 rounded-full bg-accent px-5 py-2">
-            <Text className="text-sm font-medium text-canvas">Join Akọ</Text>
+          <Pressable onPress={() => goAuth(p.slug ? getProjectPath({ id: p.id, slug: p.slug }) : null)} className="mt-3 rounded-full bg-cta px-5 py-2">
+            <Text className="text-sm font-medium text-white">Join Akọ</Text>
           </Pressable>
         </View>
       ) : null}

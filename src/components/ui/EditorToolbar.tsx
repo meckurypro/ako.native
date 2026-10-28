@@ -50,10 +50,10 @@ export function EditorToolbar({ onUndo, onRedo, canUndo, canRedo, onSave, saving
         accessibilityRole="button"
         accessibilityLabel={saveLabel}
         accessibilityState={{ disabled: saveDisabled, busy: saving }}
-        className={`ml-1 flex-row items-center gap-1 rounded-lg bg-accent px-3 py-1.5 ${saveDisabled ? "opacity-40" : ""}`}
+        className={`ml-1 flex-row items-center gap-1 rounded-lg bg-cta px-3 py-1.5 ${saveDisabled ? "opacity-40" : ""}`}
       >
-        {!dirty && !saving && <Icon as={Check} size={14} className="text-canvas" />}
-        <Text className="text-sm font-medium text-canvas">{saving ? "Saving…" : dirty ? saveLabel : "Saved"}</Text>
+        {!dirty && !saving && <Icon as={Check} size={14} className="text-white" />}
+        <Text className="text-sm font-medium text-white">{saving ? "Saving…" : dirty ? saveLabel : "Saved"}</Text>
       </Pressable>
       {onCancel && (
         <Pressable onPress={onCancel} accessibilityRole="button" hitSlop={8} className="px-2 py-1.5">

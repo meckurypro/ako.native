@@ -8,6 +8,7 @@ import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useSmartBack } from "@/hooks/useSmartBack";
+import { BrandDot } from "./BrandDot";
 import { Icon } from "./styled";
 import { Text } from "./Text";
 
@@ -42,9 +43,19 @@ export function ScreenHeader({ title, right, bar = false, onBack, back = true, i
         </Pressable>
       ) : null}
       {icon ? <Icon as={icon} size={titleClassName.includes("text-[28px]") ? 24 : 22} className={iconClassName} /> : null}
-      <Text numberOfLines={1} className={`min-w-0 flex-1 ${titleClassName}`}>
-        {title}
-      </Text>
+      {icon ? (
+        <Text numberOfLines={1} className={`min-w-0 flex-1 ${titleClassName}`}>
+          {title}
+        </Text>
+      ) : (
+        // Secondary screens: the title carries the page's one small orange mark. (Tab roots show an orange icon instead.)
+        <View className="min-w-0 flex-1 flex-row items-center gap-1.5">
+          <Text numberOfLines={1} className={`shrink ${titleClassName}`}>
+            {title}
+          </Text>
+          <BrandDot />
+        </View>
+      )}
       {right}
     </View>
   );

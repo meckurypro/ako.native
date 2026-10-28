@@ -28,8 +28,8 @@ function MeetingRow({ meeting, onJoin }: { meeting: RoomMeeting; onJoin: () => v
       ) : meeting.status === "cancelled" ? (
         <Text className="mt-1 text-xs text-danger">Cancelled</Text>
       ) : isLive ? (
-        <Pressable onPress={onJoin} accessibilityRole="button" className="mt-1.5 self-start rounded-full bg-accent px-3 py-1.5">
-          <Text className="text-xs font-medium text-canvas">Join now</Text>
+        <Pressable onPress={onJoin} accessibilityRole="button" className="mt-1.5 self-start rounded-full bg-cta px-3 py-1.5">
+          <Text className="text-xs font-medium text-white">Join now</Text>
         </Pressable>
       ) : (
         <Text className="mt-1 text-xs font-medium text-accent">Starts in {formatCountdown(remainingMs)}</Text>
@@ -100,9 +100,9 @@ export function MeetingsTab({ projectId, isHost }: { projectId: string; isHost: 
                 onPress={handleSchedule}
                 disabled={scheduleMeeting.isPending || !when}
                 accessibilityRole="button"
-                className={`items-center rounded-lg bg-accent py-2 ${scheduleMeeting.isPending || !when ? "opacity-50" : ""}`}
+                className={`items-center rounded-lg bg-cta py-2 ${scheduleMeeting.isPending || !when ? "opacity-50" : ""}`}
               >
-                <Text className="text-sm font-medium text-canvas">{scheduleMeeting.isPending ? "Scheduling…" : "Schedule meeting"}</Text>
+                <Text className="text-sm font-medium text-white">{scheduleMeeting.isPending ? "Scheduling…" : "Schedule meeting"}</Text>
               </Pressable>
             </View>
           )}

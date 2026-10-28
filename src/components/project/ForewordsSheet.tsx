@@ -99,8 +99,8 @@ function ForewordRow({
             >
               <Text className="text-sm font-medium text-ink">Decline</Text>
             </Pressable>
-            <Pressable onPress={onApprove} disabled={busy} accessibilityRole="button" className={`flex-1 items-center rounded-full bg-accent py-2 ${busy ? "opacity-60" : ""}`}>
-              <Text className="text-sm font-medium text-canvas">Approve</Text>
+            <Pressable onPress={onApprove} disabled={busy} accessibilityRole="button" className={`flex-1 items-center rounded-full bg-cta py-2 ${busy ? "opacity-60" : ""}`}>
+              <Text className="text-sm font-medium text-white">Approve</Text>
             </Pressable>
           </View>
         </>
@@ -213,10 +213,10 @@ export function ForewordsSheet({ projectId, projectType, onClose }: { projectId:
                 onPress={() => setShowPicker(true)}
                 disabled={slotsLeft === 0}
                 accessibilityRole="button"
-                className={`flex-row items-center justify-center gap-2 rounded-full bg-accent py-3 active:bg-accent-hover ${slotsLeft === 0 ? "opacity-50" : ""}`}
+                className={`flex-row items-center justify-center gap-2 rounded-full bg-cta py-3 active:opacity-85 ${slotsLeft === 0 ? "opacity-50" : ""}`}
               >
-                <Icon as={UserPlus} size={16} className="text-canvas" />
-                <Text className="text-sm font-medium text-canvas">Invite someone</Text>
+                <Icon as={UserPlus} size={16} className="text-white" />
+                <Text className="text-sm font-medium text-white">Invite someone</Text>
               </Pressable>
               <Text className="mt-2 text-center text-[11px] text-ink-muted">
                 {slotsLeft === 0 ? `You have ${FOREWORD_MAX_LIVE} forewords in progress — remove or wait for one to invite another.` : `${live} of ${FOREWORD_MAX_LIVE} in progress`}

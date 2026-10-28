@@ -305,8 +305,8 @@ export function BookBuilder({ projectId, project, chapters, publishBook }: BookB
           <Icon as={PenLine} size={16} className="text-ink" />
           <Text className="text-sm font-medium text-ink">Forewords</Text>
           {forewordsToReview > 0 && (
-            <View className="ml-1 h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5">
-              <Text className="text-[11px] text-canvas">{forewordsToReview}</Text>
+            <View className="ml-1 h-5 min-w-5 items-center justify-center rounded-full bg-cta px-1.5">
+              <Text className="text-[11px] text-white">{forewordsToReview}</Text>
             </View>
           )}
         </Pressable>

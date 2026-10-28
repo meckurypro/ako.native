@@ -134,10 +134,10 @@ export function CollaboratorsSheet({ target, targetId, onClose }: { target: Coll
             <Pressable
               onPress={() => setShowPicker(true)}
               accessibilityRole="button"
-              className="flex-row items-center justify-center gap-2 rounded-full bg-accent py-3 active:bg-accent-hover"
+              className="flex-row items-center justify-center gap-2 rounded-full bg-cta py-3 active:opacity-85"
             >
-              <Icon as={UserPlus} size={16} className="text-canvas" />
-              <Text className="text-sm font-medium text-canvas">Invite collaborators</Text>
+              <Icon as={UserPlus} size={16} className="text-white" />
+              <Text className="text-sm font-medium text-white">Invite collaborators</Text>
             </Pressable>
           )
         }

@@ -149,8 +149,8 @@ export function InterestPicker() {
         <Icon as={Search} size={16} className="ml-1 shrink-0 text-ink-muted" />
 
         {selectedInterests.map((interest) => (
-          <View key={interest.id} className="flex-row items-center gap-1 rounded-full bg-accent py-1 pl-2.5 pr-1.5">
-            <Text className="text-xs font-medium text-canvas">{interest.name}</Text>
+          <View key={interest.id} className="flex-row items-center gap-1 rounded-full bg-cta py-1 pl-2.5 pr-1.5">
+            <Text className="text-xs font-medium text-white">{interest.name}</Text>
             <Pressable
               onPress={() => toggleInterest(interest.id)}
               accessibilityRole="button"
@@ -158,7 +158,7 @@ export function InterestPicker() {
               hitSlop={8}
               className="rounded-full p-0.5 active:bg-canvas-a20"
             >
-              <Icon as={X} size={11} className="text-canvas" />
+              <Icon as={X} size={11} className="text-white" />
             </Pressable>
           </View>
         ))}

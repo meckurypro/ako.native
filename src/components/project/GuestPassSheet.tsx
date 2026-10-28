@@ -59,10 +59,10 @@ function PassRow({ row, fresh, revoking, onRevoke }: { row: GuestPassRow; fresh:
         <Pressable
           onPress={() => void copy()}
           disabled={!live}
-          className={`flex-row items-center gap-1.5 rounded-full bg-accent px-3.5 py-1.5 ${live ? "" : "opacity-50"}`}
+          className={`flex-row items-center gap-1.5 rounded-full bg-cta px-3.5 py-1.5 ${live ? "" : "opacity-50"}`}
         >
-          <Icon as={copied ? Check : Copy} size={14} className="text-canvas" />
-          <Text className="text-sm font-medium text-canvas">{copied ? "Copied" : "Copy link"}</Text>
+          <Icon as={copied ? Check : Copy} size={14} className="text-white" />
+          <Text className="text-sm font-medium text-white">{copied ? "Copied" : "Copy link"}</Text>
         </Pressable>
         <Pressable
           onPress={() => void share()}

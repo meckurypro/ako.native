@@ -70,9 +70,9 @@ export function FollowRequests() {
                     onPress={() => accept.mutate({ id: req.id, requesterId: req.requester.id })}
                     disabled={pending}
                     accessibilityRole="button"
-                    className={`rounded-full bg-accent px-3.5 py-1.5 ${pending ? "opacity-40" : ""}`}
+                    className={`rounded-full bg-cta px-3.5 py-1.5 ${pending ? "opacity-40" : ""}`}
                   >
-                    <Text className="text-sm font-medium text-canvas">Accept</Text>
+                    <Text className="text-sm font-medium text-white">Accept</Text>
                   </Pressable>
                 </View>
               </View>

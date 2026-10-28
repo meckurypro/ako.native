@@ -107,8 +107,8 @@ export function ChoiceSelect({ label, value, options, onChange }: { label: strin
                   accessibilityState={{ selected: active }}
                   className={`flex-row items-start gap-3 px-4 py-3 ${i > 0 ? "border-t border-border" : ""} ${active ? "bg-accent-soft" : ""}`}
                 >
-                  <View className={`mt-0.5 h-5 w-5 items-center justify-center rounded-full ${active ? "bg-accent" : "border border-border"}`}>
-                    {active ? <Icon as={Check} size={13} className="text-canvas" /> : null}
+                  <View className={`mt-0.5 h-5 w-5 items-center justify-center rounded-full ${active ? "bg-cta" : "border border-border"}`}>
+                    {active ? <Icon as={Check} size={13} className="text-white" /> : null}
                   </View>
                   <View className="min-w-0 flex-1">
                     <Text className="text-sm font-semibold text-ink">{o.label}</Text>
@@ -132,8 +132,8 @@ export function Choice({ active, title, blurb, onPress }: { active: boolean; tit
       accessibilityState={{ selected: active }}
       className={`flex-row items-start gap-3 rounded-2xl border p-4 ${active ? "border-accent bg-accent-soft" : "border-border bg-surface"}`}
     >
-      <View className={`mt-0.5 h-5 w-5 items-center justify-center rounded-full ${active ? "bg-accent" : "border border-border"}`}>
-        {active ? <Icon as={Check} size={13} className="text-canvas" /> : null}
+      <View className={`mt-0.5 h-5 w-5 items-center justify-center rounded-full ${active ? "bg-cta" : "border border-border"}`}>
+        {active ? <Icon as={Check} size={13} className="text-white" /> : null}
       </View>
       <View className="min-w-0 flex-1">
         <Text className="text-sm font-semibold text-ink">{title}</Text>

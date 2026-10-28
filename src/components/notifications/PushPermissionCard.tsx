@@ -39,8 +39,8 @@ export function PushPermissionCard() {
         </View>
       </View>
       <View className="mt-3 flex-row items-center gap-4 pl-12">
-        <Pressable onPress={() => (blocked ? void Linking.openSettings() : void request())} accessibilityRole="button" className="rounded-full bg-accent px-4 py-1.5">
-          <Text className="text-xs font-medium text-canvas">{blocked ? "Open Settings" : "Turn on"}</Text>
+        <Pressable onPress={() => (blocked ? void Linking.openSettings() : void request())} accessibilityRole="button" className="rounded-full bg-cta px-4 py-1.5">
+          <Text className="text-xs font-medium text-white">{blocked ? "Open Settings" : "Turn on"}</Text>
         </Pressable>
         <Pressable
           onPress={() => {

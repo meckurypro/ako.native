@@ -93,10 +93,10 @@ export function TopicPicker({ selected, onToggle }: { selected: Set<string>; onT
                               accessibilityRole="checkbox"
                               accessibilityState={{ checked: isSelected, disabled }}
                               className={`rounded-full border px-3 py-1.5 ${
-                                isSelected ? "border-accent bg-accent" : disabled ? "border-border bg-surface" : "border-border bg-surface active:border-accent-a50"
+                                isSelected ? "border-cta bg-cta" : disabled ? "border-border bg-surface" : "border-border bg-surface active:border-accent-a50"
                               }`}
                             >
-                              <Text className={`text-xs font-medium ${isSelected ? "text-canvas" : disabled ? "text-ink-muted-a40" : "text-ink"}`}>
+                              <Text className={`text-xs font-medium ${isSelected ? "text-white" : disabled ? "text-ink-muted-a40" : "text-ink"}`}>
                                 {interest.name}
                               </Text>
                             </Pressable>

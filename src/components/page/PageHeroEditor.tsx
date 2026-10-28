@@ -37,9 +37,9 @@ function Choice({ label, selected, onPress }: { label: string; selected: boolean
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected }}
-      className={`flex-1 items-center rounded-xl py-2 ${selected ? "bg-accent" : "bg-surface"}`}
+      className={`flex-1 items-center rounded-xl py-2 ${selected ? "bg-cta" : "bg-surface"}`}
     >
-      <Text className={`text-sm font-medium ${selected ? "text-canvas" : "text-ink"}`}>{label}</Text>
+      <Text className={`text-sm font-medium ${selected ? "text-white" : "text-ink"}`}>{label}</Text>
     </Pressable>
   );
 }

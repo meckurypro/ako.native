@@ -113,9 +113,9 @@ export function TalentReviewsSection({ projectId }: { projectId: string }) {
               onPress={() => void handleSubmit()}
               disabled={addReview.isPending}
               accessibilityRole="button"
-              className={`rounded-full bg-accent px-4 py-2 ${addReview.isPending ? "opacity-50" : ""}`}
+              className={`rounded-full bg-cta px-4 py-2 ${addReview.isPending ? "opacity-50" : ""}`}
             >
-              <Text className="text-sm font-medium text-canvas">{addReview.isPending ? "Posting…" : "Post review"}</Text>
+              <Text className="text-sm font-medium text-white">{addReview.isPending ? "Posting…" : "Post review"}</Text>
             </Pressable>
             <Pressable onPress={() => setShowForm(false)} accessibilityRole="button">
               <Text className="text-sm text-ink-muted">Cancel</Text>

@@ -94,9 +94,9 @@ export function PageMessageThread() {
                       </View>
                     </View>
                   ) : null}
-                  <View className={`mb-2 max-w-[75%] rounded-2xl px-3.5 py-2 ${fromPage ? "self-end bg-accent" : "self-start border border-border bg-surface"}`}>
-                    <Text className={`text-sm ${fromPage ? "text-canvas" : "text-ink"}`}>{item.message.content}</Text>
-                    <Text className={`mt-0.5 text-[10px] ${fromPage ? "text-canvas-a70" : "text-ink-muted"}`}>{listAgo(item.message.created_at)}</Text>
+                  <View className={`mb-2 max-w-[75%] rounded-2xl px-3.5 py-2 ${fromPage ? "self-end bg-cta" : "self-start border border-border bg-surface"}`}>
+                    <Text className={`text-sm ${fromPage ? "text-white" : "text-ink"}`}>{item.message.content}</Text>
+                    <Text className={`mt-0.5 text-[10px] ${fromPage ? "text-white/70" : "text-ink-muted"}`}>{listAgo(item.message.created_at)}</Text>
                   </View>
                 </View>
               );
@@ -127,9 +127,9 @@ export function PageMessageThread() {
             disabled={!messagingEnabled || !canReply || !draft.trim() || sendMessage.isPending}
             accessibilityRole="button"
             accessibilityLabel="Send"
-            className={`h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent ${!messagingEnabled || !canReply || !draft.trim() || sendMessage.isPending ? "opacity-40" : ""}`}
+            className={`h-10 w-10 shrink-0 items-center justify-center rounded-full bg-cta ${!messagingEnabled || !canReply || !draft.trim() || sendMessage.isPending ? "opacity-40" : ""}`}
           >
-            <Icon as={Send} size={16} className="text-canvas" />
+            <Icon as={Send} size={16} className="text-white" />
           </Pressable>
         </View>
       </Animated.View>

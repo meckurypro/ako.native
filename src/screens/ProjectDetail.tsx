@@ -290,8 +290,8 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
                 >
                   <Text className="text-sm font-medium text-ink">Log in</Text>
                 </Pressable>
-                <Pressable onPress={() => goAuth("signup")} accessibilityRole="button" className="rounded-full bg-accent px-4 py-2 active:opacity-90" style={{ elevation: 2 }}>
-                  <Text className="text-sm font-semibold text-canvas">Sign up</Text>
+                <Pressable onPress={() => goAuth("signup")} accessibilityRole="button" className="rounded-full bg-cta px-4 py-2 active:opacity-90" style={{ elevation: 2 }}>
+                  <Text className="text-sm font-semibold text-white">Sign up</Text>
                 </Pressable>
               </View>
             </View>
@@ -360,8 +360,8 @@ export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: strin
                 <Pressable onPress={() => setForewordsOpen(true)} accessibilityRole="button" className="mb-4 w-full flex-row items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-3">
                   <Text className="text-sm font-semibold text-ink">Forewords</Text>
                   {forewordsToReview > 0 ? (
-                    <View className="h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5">
-                      <Text className="text-[11px] text-canvas">{forewordsToReview}</Text>
+                    <View className="h-5 min-w-5 items-center justify-center rounded-full bg-cta px-1.5">
+                      <Text className="text-[11px] text-white">{forewordsToReview}</Text>
                     </View>
                   ) : null}
                 </Pressable>

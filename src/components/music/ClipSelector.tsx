@@ -219,9 +219,9 @@ export function ClipSelector({ audioUrl, onConfirm, onCancel }: ClipSelectorProp
           onPress={handleConfirm}
           disabled={!decoded || isEncoding}
           accessibilityRole="button"
-          className={`flex-1 items-center rounded-full bg-accent py-3 ${!decoded || isEncoding ? "opacity-50" : ""}`}
+          className={`flex-1 items-center rounded-full bg-cta py-3 ${!decoded || isEncoding ? "opacity-50" : ""}`}
         >
-          <Text className="text-sm font-medium text-canvas">{isEncoding ? "Preparing…" : "Use this clip"}</Text>
+          <Text className="text-sm font-medium text-white">{isEncoding ? "Preparing…" : "Use this clip"}</Text>
         </Pressable>
       </View>
     </View>

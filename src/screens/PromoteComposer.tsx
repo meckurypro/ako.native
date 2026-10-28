@@ -5,6 +5,7 @@
 // pause/resume, extend, or end it early (refunded for undelivered days).
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Megaphone, Pause, Play, TimerReset, XCircle } from "lucide-react-native";
+import { BrandDot } from "@/components/ui/BrandDot";
 import { router, useLocalSearchParams, type Href } from "expo-router";
 import { useMemo, useState, type ReactNode } from "react";
 import { Pressable, ScrollView, View } from "react-native";
@@ -237,6 +238,7 @@ export function PromoteComposer() {
             <View className="flex-row items-center gap-2">
               <Icon as={Megaphone} size={20} className="text-accent" />
               <Text className="font-display text-xl text-ink">Promote this post</Text>
+              <BrandDot />
             </View>
           </View>
 
@@ -306,9 +308,9 @@ export function PromoteComposer() {
                         onPress={handleExtend}
                         disabled={extendPromotion.isPending}
                         accessibilityRole="button"
-                        className={`mb-7 rounded-lg bg-accent px-3 py-2 ${extendPromotion.isPending ? "opacity-50" : ""}`}
+                        className={`mb-7 rounded-lg bg-cta px-3 py-2 ${extendPromotion.isPending ? "opacity-50" : ""}`}
                       >
-                        <Text className="text-sm font-medium text-canvas">{extendPromotion.isPending ? "Adding…" : "Add"}</Text>
+                        <Text className="text-sm font-medium text-white">{extendPromotion.isPending ? "Adding…" : "Add"}</Text>
                       </Pressable>
                     </View>
                   ) : null}
@@ -363,9 +365,9 @@ export function PromoteComposer() {
                               onPress={() => toggleInterest(interest.id)}
                               accessibilityRole="checkbox"
                               accessibilityState={{ checked: isSelected }}
-                              className={`rounded-full border px-3 py-1.5 ${isSelected ? "border-accent bg-accent" : "border-border bg-surface"}`}
+                              className={`rounded-full border px-3 py-1.5 ${isSelected ? "border-cta bg-cta" : "border-border bg-surface"}`}
                             >
-                              <Text className={`text-sm font-medium ${isSelected ? "text-canvas" : "text-ink"}`}>{interest.name}</Text>
+                              <Text className={`text-sm font-medium ${isSelected ? "text-white" : "text-ink"}`}>{interest.name}</Text>
                             </Pressable>
                           );
                         })}

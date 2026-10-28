@@ -272,11 +272,11 @@ export function LessonReader(props: LessonReaderProps) {
           onPress={props.onPrimary}
           disabled={props.pending || mustPass}
           accessibilityRole="button"
-          className={`h-12 flex-1 flex-row items-center justify-center gap-2 rounded-2xl bg-accent active:bg-accent-hover ${props.pending || mustPass ? "opacity-60" : ""}`}
+          className={`h-12 flex-1 flex-row items-center justify-center gap-2 rounded-2xl bg-cta active:opacity-85 ${props.pending || mustPass ? "opacity-60" : ""}`}
         >
-          {!hasAccess && !(hasNext && !nextLocked) ? <Icon as={Lock} size={16} className="text-canvas" /> : null}
-          <Text className="text-[15px] font-semibold text-canvas">{primary}</Text>
-          {hasAccess && !isLast ? <Icon as={ArrowRight} size={18} className="text-canvas" /> : null}
+          {!hasAccess && !(hasNext && !nextLocked) ? <Icon as={Lock} size={16} className="text-white" /> : null}
+          <Text className="text-[15px] font-semibold text-white">{primary}</Text>
+          {hasAccess && !isLast ? <Icon as={ArrowRight} size={18} className="text-white" /> : null}
         </Pressable>
       </View>
     </View>

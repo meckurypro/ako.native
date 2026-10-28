@@ -142,8 +142,8 @@ export function ConversationRow({
       </View>
 
       {unread ? (
-        <View className="h-[22px] min-w-[22px] shrink-0 items-center justify-center rounded-full bg-accent px-1.5">
-          <Text className="text-xs font-semibold text-canvas">{c.unreadCount > 99 ? "99+" : c.unreadCount}</Text>
+        <View className="h-[22px] min-w-[22px] shrink-0 items-center justify-center rounded-full bg-cta px-1.5">
+          <Text className="text-xs font-semibold text-white">{c.unreadCount > 99 ? "99+" : c.unreadCount}</Text>
         </View>
       ) : null}
     </Pressable>

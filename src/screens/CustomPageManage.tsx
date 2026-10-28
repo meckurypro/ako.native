@@ -122,9 +122,9 @@ export function CustomPageManage() {
         title={page.name}
         onBack={() => router.replace("/me/custom-pages" as Href)}
         right={
-          <Pressable onPress={() => router.push(`/me/custom-pages/${page.id}/edit` as Href)} accessibilityRole="button" accessibilityLabel="Edit page" className="flex-row items-center gap-1.5 rounded-full bg-accent px-4 py-2">
-            <Icon as={Pencil} size={14} className="text-canvas" />
-            <Text className="text-sm font-medium text-canvas">Edit</Text>
+          <Pressable onPress={() => router.push(`/me/custom-pages/${page.id}/edit` as Href)} accessibilityRole="button" accessibilityLabel="Edit page" className="flex-row items-center gap-1.5 rounded-full bg-cta px-4 py-2">
+            <Icon as={Pencil} size={14} className="text-white" />
+            <Text className="text-sm font-medium text-white">Edit</Text>
           </Pressable>
         }
       />
@@ -179,9 +179,9 @@ export function CustomPageManage() {
               onPress={() => void act(() => publish.mutateAsync(page.id), "Published. Your page is live.")}
               disabled={publish.isPending}
               accessibilityRole="button"
-              className={`self-start rounded-full bg-accent px-5 py-2 ${publish.isPending ? "opacity-50" : ""}`}
+              className={`self-start rounded-full bg-cta px-5 py-2 ${publish.isPending ? "opacity-50" : ""}`}
             >
-              <Text className="text-sm font-medium text-canvas">{publish.isPending ? "Publishing…" : "Publish page"}</Text>
+              <Text className="text-sm font-medium text-white">{publish.isPending ? "Publishing…" : "Publish page"}</Text>
             </Pressable>
           )}
           <View className="mt-4 gap-3">

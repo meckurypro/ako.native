@@ -109,10 +109,10 @@ export function EventCheckIn() {
                   onPress={() => setMode(key)}
                   accessibilityRole="button"
                   accessibilityState={{ selected: active }}
-                  className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-xl border py-2.5 ${active ? "border-accent bg-accent" : "border-border bg-surface"}`}
+                  className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-xl border py-2.5 ${active ? "border-cta bg-cta" : "border-border bg-surface"}`}
                 >
-                  <Icon as={icon} size={14} className={active ? "text-canvas" : "text-ink-muted"} />
-                  <Text className={`text-sm font-medium ${active ? "text-canvas" : "text-ink-muted"}`}>{label}</Text>
+                  <Icon as={icon} size={14} className={active ? "text-white" : "text-ink-muted"} />
+                  <Text className={`text-sm font-medium ${active ? "text-white" : "text-ink-muted"}`}>{label}</Text>
                 </Pressable>
               );
             })}
@@ -138,9 +138,9 @@ export function EventCheckIn() {
                   }
                 }}
                 accessibilityRole="button"
-                className="rounded-full bg-accent px-4 py-2"
+                className="rounded-full bg-cta px-4 py-2"
               >
-                <Text className="text-sm font-medium text-canvas">{permission.canAskAgain ? "Allow camera" : "Open settings"}</Text>
+                <Text className="text-sm font-medium text-white">{permission.canAskAgain ? "Allow camera" : "Open settings"}</Text>
               </Pressable>
             </View>
           ) : (
@@ -170,8 +170,8 @@ export function EventCheckIn() {
               style={{ fontFamily: MONO_FONT }}
               accessibilityLabel="Ticket code"
             />
-            <Pressable onPress={handleManualSubmit} disabled={!manualCode.trim()} accessibilityRole="button" className={`justify-center rounded-full bg-accent px-4 py-2.5 ${manualCode.trim() ? "" : "opacity-50"}`}>
-              <Text className="text-sm font-medium text-canvas">Look up</Text>
+            <Pressable onPress={handleManualSubmit} disabled={!manualCode.trim()} accessibilityRole="button" className={`justify-center rounded-full bg-cta px-4 py-2.5 ${manualCode.trim() ? "" : "opacity-50"}`}>
+              <Text className="text-sm font-medium text-white">Look up</Text>
             </Pressable>
           </View>
         )}
@@ -208,9 +208,9 @@ export function EventCheckIn() {
                       }
                       disabled={checkIn.isPending}
                       accessibilityRole="button"
-                      className={`rounded-full bg-accent px-4 py-2 ${checkIn.isPending ? "opacity-50" : ""}`}
+                      className={`rounded-full bg-cta px-4 py-2 ${checkIn.isPending ? "opacity-50" : ""}`}
                     >
-                      <Text className="text-sm font-medium text-canvas">{checkIn.isPending ? "Checking in…" : "Check in"}</Text>
+                      <Text className="text-sm font-medium text-white">{checkIn.isPending ? "Checking in…" : "Check in"}</Text>
                     </Pressable>
                   )}
                   <Pressable onPress={reset} accessibilityRole="button" hitSlop={8}>

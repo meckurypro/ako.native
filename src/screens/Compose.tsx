@@ -619,9 +619,9 @@ export function Compose() {
             onPress={() => void submitPost("published")}
             disabled={busy}
             accessibilityRole="button"
-            className={`rounded-full bg-accent px-5 py-2 ${busy ? "opacity-50" : "active:bg-accent-hover"}`}
+            className={`rounded-full bg-cta px-5 py-2 ${busy ? "opacity-50" : "active:opacity-85"}`}
           >
-            <Text className="text-sm font-medium text-canvas">{createPost.isPending || publishPost.isPending ? "Posting…" : "Post"}</Text>
+            <Text className="text-sm font-medium text-white">{createPost.isPending || publishPost.isPending ? "Posting…" : "Post"}</Text>
           </Pressable>
         </View>
       </View>

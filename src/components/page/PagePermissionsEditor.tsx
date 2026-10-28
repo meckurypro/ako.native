@@ -27,8 +27,8 @@ export function PagePermissionsEditor({ value, onChange, disabled }: Props) {
           accessibilityState={{ checked: value[key], disabled: !!disabled }}
           className={`flex-row items-start gap-2.5 ${disabled ? "opacity-50" : ""}`}
         >
-          <View className={`mt-0.5 h-5 w-5 items-center justify-center rounded border ${value[key] ? "border-accent bg-accent" : "border-border bg-canvas"}`}>
-            {value[key] ? <Icon as={Check} size={13} strokeWidth={3} className="text-canvas" /> : null}
+          <View className={`mt-0.5 h-5 w-5 items-center justify-center rounded border ${value[key] ? "border-cta bg-cta" : "border-border bg-canvas"}`}>
+            {value[key] ? <Icon as={Check} size={13} strokeWidth={3} className="text-white" /> : null}
           </View>
           <View className="min-w-0 flex-1">
             <Text className="text-sm text-ink">{label}</Text>
