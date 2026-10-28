@@ -1,7 +1,7 @@
 // src/app/(app)/activity/affiliates.tsx
-// Affiliates moved to the Connect tab.
+// Affiliates (Forked) live under Wallet → Affiliate.
 import { Redirect, type Href } from "expo-router";
 
 export default function AffiliatesRedirectRoute() {
-  return <Redirect href={"/connect?tab=affiliates" as Href} />;
+  return <Redirect href={"/wallet/affiliate-links" as Href} />;
 }

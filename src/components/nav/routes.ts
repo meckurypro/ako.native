@@ -68,7 +68,7 @@ export const NAV_PATH: Record<NavKey, string> = {
   feed: "/feed",
   topics: "/topics",
   library: "/library",
-  connect: "/connect", // Events · Meetings · Rooms · Affiliates
+  connect: "/connect", // Events · Meetings · Rooms
   messages: "/inbox", // redirect route: /messages or /page-inbox depending on identity
   profile: "/me", // redirect route: own profile or the active Page
 };

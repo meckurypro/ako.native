@@ -22,7 +22,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react-native";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { useSharedValue } from "react-native-reanimated";
 
@@ -48,16 +48,17 @@ import { haptics } from "@/lib/haptics";
 import { formatBytes, offlineErrorMessage, OfflineError } from "@/lib/offlineProjects";
 import { removeOfflineProject, startOfflineDownload, useDownloadState, type OfflineEntry } from "@/lib/offlineStore";
 
-// One tab per kind of thing you own — same tabbed shape as Connect.
-const TABS = ["books", "courses", "media", "files", "links"] as const;
-type LibraryTab = (typeof TABS)[number];
+// One tab per kind of thing you own — same tabbed shape as Connect. Tabs are dynamic: a tab only appears once
+// there's something in it, and with nothing at all the screen shows a single empty state.
+const ALL_TABS = ["books", "courses", "media", "files", "links"] as const;
+type LibraryTab = (typeof ALL_TABS)[number];
 
-const TAB_META: Record<LibraryTab, { label: string; type: LibraryItemType; empty: string }> = {
-  books: { label: "Books", type: "book", empty: "Books you buy or open will show up here." },
-  courses: { label: "Courses", type: "course", empty: "Courses you buy or open will show up here." },
-  media: { label: "Media", type: "media", empty: "Music, video and other media you buy or open will show up here." },
-  files: { label: "Files", type: "file", empty: "Files you buy or open will show up here." },
-  links: { label: "Links", type: "url", empty: "Links you buy or open will show up here." },
+const TAB_META: Record<LibraryTab, { label: string; type: LibraryItemType }> = {
+  books: { label: "Books", type: "book" },
+  courses: { label: "Courses", type: "course" },
+  media: { label: "Media", type: "media" },
+  files: { label: "Files", type: "file" },
+  links: { label: "Links", type: "url" },
 };
 
 const ICON_FOR: Record<LibraryItemType, LucideIcon> = { book: BookText, course: GraduationCap, media: Music, file: FileText, url: LinkIcon };
@@ -201,19 +202,17 @@ interface LibraryPaneProps {
   stale: Set<string>;
   savedCount: number;
   totalBytes: number;
-  isLoading: boolean;
-  online: boolean;
   highlightedId: string | null;
 }
 
 // One pane per tab, each with its own scroll list (see SwipeableTabs) so every tab keeps its own scroll position.
-function LibraryPane({ tab, items, byId, stale, savedCount, totalBytes, isLoading, online, highlightedId }: LibraryPaneProps) {
+function LibraryPane({ tab, items, byId, stale, savedCount, totalBytes, highlightedId }: LibraryPaneProps) {
   const bottomInset = useBottomNavInset();
   const onScroll = useChromeScroll();
   const meta = TAB_META[tab];
 
-  // Offline, only what's saved on the device can open — showing the rest would just be a list of dead ends.
-  const rows = items.filter((i) => i.projectType === meta.type && (online || byId.has(i.projectId)));
+  // `items` is already narrowed to what can open (offline: only what's saved on the device).
+  const rows = items.filter((i) => i.projectType === meta.type);
 
   // ── Scroll the item we were just sent here for into view ──
   const scrolledFor = useRef<string | null>(null);
@@ -239,10 +238,6 @@ function LibraryPane({ tab, items, byId, stale, savedCount, totalBytes, isLoadin
     [scrollToHighlight]
   );
 
-  const emptyMessage = !online ? `Nothing saved on this device under ${meta.label} yet. Download something while you're online to use it offline.` : meta.empty;
-
-  if (isLoading) return <Text className="px-4 text-sm text-ink-muted">Loading…</Text>;
-  if (rows.length === 0) return <EmptyNotice icon={LibraryBig} message={emptyMessage} />;
   return (
     <ScrollView showsHorizontalScrollIndicator={false} ref={onScroll.listRef} onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset }}>
       <View className="gap-2">
@@ -269,8 +264,15 @@ function LibraryPane({ tab, items, byId, stale, savedCount, totalBytes, isLoadin
 export function LibraryActivity() {
   const online = useIsOnline();
   const { items, byId, stale, savedCount, totalBytes, isLoading } = useLibraryWithDownloads();
-  const [tab, setTab] = useTabState<LibraryTab>(TABS, "books");
-  const activeIndex = Math.max(TABS.indexOf(tab), 0);
+
+  // Offline, only what's saved on the device can open — showing the rest would just be a list of dead ends.
+  const visibleItems = useMemo(() => items.filter((i) => online || byId.has(i.projectId)), [items, online, byId]);
+
+  // Only tabs that have something in them are shown.
+  const tabs = useMemo(() => ALL_TABS.filter((t) => visibleItems.some((i) => i.projectType === TAB_META[t].type)), [visibleItems]);
+  const [tab, setTab] = useTabState<LibraryTab>(ALL_TABS, tabs[0] ?? "books");
+  // If the selected tab disappears (e.g. its last item was removed), fall back to the first one left.
+  const activeIndex = Math.max(tabs.indexOf(tab), 0);
   const progress = useSharedValue(activeIndex);
 
   // ── Highlight the item we were just sent here for ──
@@ -295,14 +297,6 @@ export function LibraryActivity() {
     <View className="flex-1 bg-canvas">
       <ScreenHeader title="Library" back={false} icon={LibraryBig} iconClassName="text-brand-orange" titleClassName="text-[28px] font-bold leading-tight tracking-tight text-ink" />
 
-      <SlidingTabBar
-        className="mx-4 mb-2"
-        tabs={TABS.map((t) => ({ id: t, label: TAB_META[t].label }))}
-        activeIndex={activeIndex}
-        progress={progress}
-        onSelect={(i) => setTab(TABS[i])}
-      />
-
       {!online ? (
         <View accessibilityRole="alert" className="mx-4 mb-2 flex-row items-center gap-2 rounded-xl bg-surface px-3 py-2">
           <Icon as={WifiOff} size={14} className="text-ink-muted" />
@@ -310,19 +304,39 @@ export function LibraryActivity() {
         </View>
       ) : null}
 
-      {/* Swipe left/right to change tab — same carousel as Feed. */}
-      <SwipeableTabs
-        index={activeIndex}
-        progress={progress}
-        onIndexChange={(i) => {
-          haptics.selection();
-          setTab(TABS[i]);
-        }}
-      >
-        {TABS.map((t) => (
-          <LibraryPane key={t} tab={t} items={items} byId={byId} stale={stale} savedCount={savedCount} totalBytes={totalBytes} isLoading={isLoading} online={online} highlightedId={highlightedId} />
-        ))}
-      </SwipeableTabs>
+      {isLoading ? (
+        <Text className="px-4 text-sm text-ink-muted">Loading…</Text>
+      ) : tabs.length === 0 ? (
+        <EmptyNotice
+          icon={LibraryBig}
+          title={online ? "Your library is empty" : "Nothing saved on this device"}
+          message={online ? "When you buy or open books, courses, media, files or links, you'll find them here." : "Download something while you're online to use it offline."}
+        />
+      ) : (
+        <>
+          <SlidingTabBar
+            className="mx-4 mb-2"
+            tabs={tabs.map((t) => ({ id: t, label: TAB_META[t].label }))}
+            activeIndex={activeIndex}
+            progress={progress}
+            onSelect={(i) => setTab(tabs[i])}
+          />
+
+          {/* Swipe left/right to change tab — same carousel as Feed. */}
+          <SwipeableTabs
+            index={activeIndex}
+            progress={progress}
+            onIndexChange={(i) => {
+              haptics.selection();
+              setTab(tabs[i]);
+            }}
+          >
+            {tabs.map((t) => (
+              <LibraryPane key={t} tab={t} items={visibleItems} byId={byId} stale={stale} savedCount={savedCount} totalBytes={totalBytes} highlightedId={highlightedId} />
+            ))}
+          </SwipeableTabs>
+        </>
+      )}
     </View>
   );
 }

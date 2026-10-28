@@ -1,10 +1,13 @@
 // src/screens/Connect.tsx
-// Bottom-nav home for Events, Meetings, Rooms and Affiliates. Replaces the old
-// "Events & meetings" / "Affiliates" Activity rows and the Messages tab
-// (messages now sit behind the floating chat button).
+// Bottom-nav home for Events, Meetings and Rooms. Replaces the old
+// "Events & meetings" Activity row and the Messages tab (messages now sit
+// behind the floating chat button). Forked (affiliate) projects live under Wallet.
+//
+// Tabs are dynamic: a tab only appears once the user has something in it, and
+// with nothing at all the screen shows a single empty state instead of a tab bar.
 import { router, type Href } from "expo-router";
-import { CalendarClock, Image as ImageIcon, MoreHorizontal, TrendingUp, Users, X } from "lucide-react-native";
-import { useRef, useState } from "react";
+import { CalendarClock, Image as ImageIcon, MoreHorizontal, Users, X } from "lucide-react-native";
+import { useMemo, useRef, useState } from "react";
 import { useSharedValue } from "react-native-reanimated";
 import { Pressable, ScrollView, View } from "react-native";
 
@@ -21,19 +24,17 @@ import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useToast } from "@/components/ui/Toast";
 import { useActivity, type ActivityItem } from "@/hooks/useActivity";
-import { useMyAffiliateRelationships } from "@/hooks/useAffiliates";
 import { useIsOnline } from "@/hooks/useIsOnline";
 import { useRemoveFromLibrary } from "@/hooks/useLibraryRemovals";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useTabState } from "@/hooks/useTabState";
 import { haptics } from "@/lib/haptics";
-import { AffiliateLinkRow } from "./MyAffiliateLinks";
 
-const TABS = ["events", "meetings", "rooms", "affiliates"] as const;
-type ConnectTab = (typeof TABS)[number];
+const ALL_TABS = ["events", "meetings", "rooms"] as const;
+type ConnectTab = (typeof ALL_TABS)[number];
 
-const TAB_LABEL: Record<ConnectTab, string> = { events: "Events", meetings: "Meetings", rooms: "Rooms", affiliates: "Forked" };
-const KIND_FOR_TAB: Record<Exclude<ConnectTab, "affiliates">, ActivityItem["kind"]> = { events: "event", meetings: "meeting", rooms: "room_meeting" };
+const TAB_LABEL: Record<ConnectTab, string> = { events: "Events", meetings: "Meetings", rooms: "Rooms" };
+const KIND_FOR_TAB: Record<ConnectTab, ActivityItem["kind"]> = { events: "event", meetings: "meeting", rooms: "room_meeting" };
 
 const ROUTE_FOR: Record<ActivityItem["kind"], (item: ActivityItem) => string> = {
   event: (item) => `/projects/${item.projectId}/ticket`,
@@ -41,13 +42,6 @@ const ROUTE_FOR: Record<ActivityItem["kind"], (item: ActivityItem) => string> = 
   room_meeting: (item) => `/rooms/${item.projectId}`,
 };
 const LABEL_FOR: Record<ActivityItem["kind"], string> = { event: "Event", meeting: "Meeting", room_meeting: "Room meeting" };
-
-const EMPTY_COPY: Record<ConnectTab, string> = {
-  events: "Events you have tickets for will show up here.",
-  meetings: "Meetings you've joined or bought access to will show up here.",
-  rooms: "Room meetings for rooms you're a member of will show up here.",
-  affiliates: 'Projects you fork show up here. Tap "Fork & earn" on a project to start.',
-};
 
 function ActivityRow({ item }: { item: ActivityItem }) {
   const toast = useToast();
@@ -112,42 +106,23 @@ function ActivityRow({ item }: { item: ActivityItem }) {
 
 interface ConnectPaneProps {
   tab: ConnectTab;
-  items: ActivityItem[] | undefined;
-  activityLoading: boolean;
-  affiliatesLoading: boolean;
-  relationships: ReturnType<typeof useMyAffiliateRelationships>["data"];
+  items: ActivityItem[];
   refetch: (() => Promise<unknown>)[];
 }
 
 // One pane per tab, each with its own scroll list (see SwipeableTabs) so every tab keeps its own scroll position.
-function ConnectPane({ tab, items, activityLoading, affiliatesLoading, relationships, refetch }: ConnectPaneProps) {
+function ConnectPane({ tab, items, refetch }: ConnectPaneProps) {
   const bottomInset = useBottomNavInset();
   const onScroll = useChromeScroll();
   const { refreshControl, refreshing } = usePullToRefresh(refetch);
 
   const now = Date.now();
-  const kindItems = tab === "affiliates" ? [] : (items ?? []).filter((i) => i.kind === KIND_FOR_TAB[tab]);
+  const kindItems = items.filter((i) => i.kind === KIND_FOR_TAB[tab]);
   const upcoming = kindItems.filter((i) => !i.when || new Date(i.when).getTime() >= now);
   const past = kindItems.filter((i) => i.when && new Date(i.when).getTime() < now);
-  const affiliates = relationships ?? [];
 
   const scrollProps = { ref: onScroll.listRef, refreshControl, onScroll, scrollEventThrottle: 16, showsVerticalScrollIndicator: false, contentContainerStyle: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset, opacity: refreshing ? 0 : 1 } } as const;
 
-  if (tab === "affiliates") {
-    if (affiliatesLoading) return <Text className="px-4 text-sm text-ink-muted">Loading…</Text>;
-    if (affiliates.length === 0) return <EmptyNotice icon={TrendingUp} message={EMPTY_COPY.affiliates} />;
-    return (
-      <ScrollView {...scrollProps}>
-        <View className="gap-2">
-          {affiliates.map((r) => (
-            <AffiliateLinkRow key={r.id} relationship={r} />
-          ))}
-        </View>
-      </ScrollView>
-    );
-  }
-  if (activityLoading) return <Text className="px-4 text-sm text-ink-muted">Loading…</Text>;
-  if (kindItems.length === 0) return <EmptyNotice icon={CalendarClock} message={EMPTY_COPY[tab]} />;
   return (
     <ScrollView {...scrollProps}>
       <View className="mb-6">
@@ -163,37 +138,49 @@ function ConnectPane({ tab, items, activityLoading, affiliatesLoading, relations
 }
 
 export function Connect() {
-  const [tab, setTab] = useTabState<ConnectTab>(TABS, "events");
-  const activeIndex = Math.max(TABS.indexOf(tab), 0);
+  const { data, isLoading, refetch } = useActivity();
+  const items = useMemo(() => data ?? [], [data]);
+
+  // Only tabs that have something in them are shown.
+  const tabs = useMemo(() => ALL_TABS.filter((t) => items.some((i) => i.kind === KIND_FOR_TAB[t])), [items]);
+  const [tab, setTab] = useTabState<ConnectTab>(ALL_TABS, tabs[0] ?? "events");
+  // If the selected tab disappears (e.g. its last item was removed), fall back to the first one left.
+  const activeIndex = Math.max(tabs.indexOf(tab), 0);
   const progress = useSharedValue(activeIndex);
-  const { data: items, isLoading: activityLoading, refetch: refetchActivity } = useActivity();
-  const { data: relationships, isLoading: affiliatesLoading, refetch: refetchAffiliates } = useMyAffiliateRelationships();
 
   return (
     <View className="flex-1 bg-canvas">
       <ScreenHeader title="Connect" back={false} icon={Users} iconClassName="text-brand-orange" titleClassName="text-[28px] font-bold leading-tight tracking-tight text-ink" />
 
-      <SlidingTabBar
-        className="mx-4 mb-2"
-        tabs={TABS.map((t) => ({ id: t, label: TAB_LABEL[t] }))}
-        activeIndex={activeIndex}
-        progress={progress}
-        onSelect={(i) => setTab(TABS[i])}
-      />
+      {isLoading ? (
+        <Text className="px-4 text-sm text-ink-muted">Loading…</Text>
+      ) : tabs.length === 0 ? (
+        <EmptyNotice icon={CalendarClock} title="Nothing here yet" message="When you get tickets to events or join meetings and rooms, you'll find them here." />
+      ) : (
+        <>
+          <SlidingTabBar
+            className="mx-4 mb-2"
+            tabs={tabs.map((t) => ({ id: t, label: TAB_LABEL[t] }))}
+            activeIndex={activeIndex}
+            progress={progress}
+            onSelect={(i) => setTab(tabs[i])}
+          />
 
-      {/* Swipe left/right to change tab — same carousel as Feed. */}
-      <SwipeableTabs
-        index={activeIndex}
-        progress={progress}
-        onIndexChange={(i) => {
-          haptics.selection();
-          setTab(TABS[i]);
-        }}
-      >
-        {TABS.map((t) => (
-          <ConnectPane key={t} tab={t} items={items} activityLoading={activityLoading} affiliatesLoading={affiliatesLoading} relationships={relationships} refetch={[refetchActivity, refetchAffiliates]} />
-        ))}
-      </SwipeableTabs>
+          {/* Swipe left/right to change tab — same carousel as Feed. */}
+          <SwipeableTabs
+            index={activeIndex}
+            progress={progress}
+            onIndexChange={(i) => {
+              haptics.selection();
+              setTab(tabs[i]);
+            }}
+          >
+            {tabs.map((t) => (
+              <ConnectPane key={t} tab={t} items={items} refetch={[refetch]} />
+            ))}
+          </SwipeableTabs>
+        </>
+      )}
     </View>
   );
 }
