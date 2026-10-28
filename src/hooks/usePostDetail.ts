@@ -2,10 +2,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { PROFILE_ROLES_SELECT, toProfileRoles } from "../lib/profileRoles";
-import { PAGE_SELECT } from "../lib/postSelects";
+import { PAGE_SELECT, TAGGED_PROJECT_SELECT } from "../lib/postSelects";
 import type { PostWithAuthor } from "../types/database";
 
-const POST_SELECT = `*, author:profiles!posts_author_id_fkey(id, username, display_name, avatar_url, tier, is_private, ${PROFILE_ROLES_SELECT}), remover:profiles!posts_deleted_by_fkey(username, display_name), ${PAGE_SELECT}`;
+const POST_SELECT = `*, author:profiles!posts_author_id_fkey(id, username, display_name, avatar_url, tier, is_private, ${PROFILE_ROLES_SELECT}), remover:profiles!posts_deleted_by_fkey(username, display_name), ${PAGE_SELECT}, ${TAGGED_PROJECT_SELECT}`;
 
 // Unlike the feed queries, this one must also return deleted/archived rows the viewer is allowed to see, so the
 // page can say WHY a post is gone.

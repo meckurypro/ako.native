@@ -466,6 +466,12 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
     setShowDeleteConfirm(false);
     try {
       await deleteProject.mutateAsync(project.id);
+      // On the project's own page the deleted project is gone, so leave it: go back if
+      // there is somewhere to go, otherwise land on the feed (deep link / cold start).
+      if (isDetailView) {
+        if (router.canGoBack()) router.back();
+        else router.replace("/feed" as Href);
+      }
       toast(`${project.title} deleted.`, { variant: "success" });
     } catch (err) {
       notifyError(err, "Couldn't delete this project.");

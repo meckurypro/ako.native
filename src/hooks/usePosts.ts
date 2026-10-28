@@ -5,7 +5,7 @@ import { supabase } from "../lib/supabase";
 import { resolveFunctionErrorMessage } from "../lib/functionErrors";
 import { useAuth } from "./useAuth";
 import { PROFILE_ROLES_SELECT, toProfileRoles } from "../lib/profileRoles";
-import { PAGE_SELECT } from "../lib/postSelects";
+import { PAGE_SELECT, TAGGED_PROJECT_SELECT } from "../lib/postSelects";
 import type { PostWithAuthor, RepostSource } from "../types/database";
 import { DEBUG_DISABLE_PER_CARD_QUERIES } from "../lib/debugFlags";
 import { EDITABLE_POST_FIELDS, patchFieldsInCaches, pickFields, POST_QUERY_ROOTS, restorePatched } from "../lib/optimisticCache";
@@ -26,7 +26,6 @@ const AUTHOR_SELECT = `id, username, display_name, avatar_url, tier, is_private,
 // it to what TaggedProjectEmbed.tsx actually renders (thumbnail,
 // title, type, price, status, owner byline) matters for payload size
 // on a feed page of 15 posts.
-const TAGGED_PROJECT_SELECT = `tagged_project:projects!posts_tagged_project_id_fkey(id, title, thumbnail_url, project_type, price_usd, promo_price_usd, status, slug, owner:profiles!projects_owner_id_fkey(username, display_name), posted_as_page:pages(username))`;
 
 // One level deep: the embedded reshared_post carries its own author but
 // not a further-nested reshared_post, so repost-of-a-repost links to the
