@@ -5,13 +5,13 @@ import { useState } from "react";
 import { View } from "react-native";
 
 import { Button } from "@/components/ui/Button";
+import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { PasswordField } from "@/components/ui/PasswordField";
 import { SettingsSection } from "@/components/ui/SettingsSection";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useChangePassword } from "@/hooks/usePrivacy";
 import { haptics } from "@/lib/haptics";
-import { friendlyError } from "@/lib/friendlyError";
 
 const MIN_PASSWORD = 8;
 
@@ -41,18 +41,23 @@ export function SecuritySection({ open, onToggle }: { open: boolean; onToggle: (
     }
   }
 
-  const error = localError ?? (changePassword.isError ? friendlyError(changePassword.error, "Couldn't change your password.") : null);
+  // A validation sentence we wrote, or the raw failure — ErrorBanner sanitises and classifies either.
+  const error: unknown = localError ?? (changePassword.isError ? changePassword.error : null);
 
   return (
     <SettingsSection icon={<Icon as={KeyRound} size={18} className="text-ink-muted" />} title="Account & security" open={open} onToggle={onToggle}>
       <View className="mt-3">
         <PasswordField label="Current password" value={currentPassword} onChangeText={setCurrentPassword} autoComplete="current-password" textContentType="password" />
         <PasswordField label="New password" value={newPassword} onChangeText={setNewPassword} autoComplete="new-password" textContentType="newPassword" />
-        {error ? (
-          <Text className="mb-4 text-sm text-danger" accessibilityRole="alert">
-            {error}
-          </Text>
-        ) : null}
+        <ErrorBanner
+          error={error}
+          fallback="Couldn't change your password. Please try again."
+          onRetry={changePassword.isError && !localError ? handleChangePassword : undefined}
+          onDismiss={() => {
+            setLocalError(null);
+            changePassword.reset();
+          }}
+        />
         {passwordSuccess ? <Text className="mb-4 text-sm text-accent">Password updated.</Text> : null}
         <Button onPress={handleChangePassword} loading={changePassword.isPending}>
           Update password

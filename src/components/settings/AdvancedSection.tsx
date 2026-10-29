@@ -5,6 +5,7 @@ import { AlertTriangle, ChevronRight, FileText, SlidersHorizontal } from "lucide
 import { useState } from "react";
 import { Pressable, View } from "react-native";
 
+import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { SettingsSection } from "@/components/ui/SettingsSection";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
@@ -14,7 +15,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useDeactivateAccount } from "@/hooks/usePrivacy";
 import { removeSavedAccount } from "@/lib/accountSessions";
 import { haptics } from "@/lib/haptics";
-import { friendlyError } from "@/lib/friendlyError";
 
 const LEGAL_LINKS = [
   { href: "/privacy", label: "Privacy Policy", description: "What we collect, why, and your choices" },
@@ -28,7 +28,7 @@ export function AdvancedSection({ open, onToggle }: { open: boolean; onToggle: (
   const signOut = useSignOut();
   const [confirming, setConfirming] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
 
   async function handleDeactivate() {
     setDeactivating(true);
@@ -41,7 +41,7 @@ export function AdvancedSection({ open, onToggle }: { open: boolean; onToggle: (
       haptics.success();
       toast("Account deactivated.", { variant: "success" });
     } catch (err) {
-      setError(friendlyError(err, "Couldn't deactivate account."));
+      setError(err);
       setDeactivating(false);
     }
   }
@@ -79,7 +79,7 @@ export function AdvancedSection({ open, onToggle }: { open: boolean; onToggle: (
                 This signs you out everywhere and hides your profile and posts. Your wallet and transaction history are kept for financial record-keeping — this can't be undone from the app.
               </Text>
             </View>
-            {error ? <Text className="mb-2 text-sm text-danger">{error}</Text> : null}
+            <ErrorBanner error={error} fallback="Couldn't deactivate your account. Please try again." className="mb-2" />
             <View className="mt-3 flex-row gap-2">
               <Pressable onPress={handleDeactivate} disabled={deactivating} accessibilityRole="button" className={`flex-1 items-center rounded-lg bg-danger py-2.5 ${deactivating ? "opacity-50" : ""}`}>
                 <Text className="text-sm font-medium text-canvas">{deactivating ? "Deactivating…" : "Confirm deactivation"}</Text>

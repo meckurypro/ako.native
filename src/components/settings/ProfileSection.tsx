@@ -22,7 +22,7 @@ import { useUploadAvatar } from "@/hooks/useUploadAvatar";
 import { haptics } from "@/lib/haptics";
 import { pickSingleImage } from "@/lib/pickImage";
 import { supabase } from "@/lib/supabase";
-import { friendlyError } from "@/lib/friendlyError";
+import { ErrorBanner } from "@/components/ui/ErrorBanner";
 
 type UsernameStatus = "idle" | "checking" | "available" | "taken" | "error";
 const USERNAME_DEBOUNCE_MS = 400;
@@ -60,8 +60,9 @@ export function ProfileSection({ open, onToggle, photoRequest = 0, onAvatarChang
     .slice(0, canAddMoreWebsites ? MAX_WEBSITES : 1);
   const [avatarUrl, setAvatarUrl] = useState("");
   const [roleIds, setRoleIds] = useState<string[]>([]);
-  const [profileError, setProfileError] = useState<string | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+  // Raw on purpose: ErrorBanner classifies it (offline vs timeout vs server) — validation messages are plain strings.
+  const [profileError, setProfileError] = useState<unknown>(null);
+  const [uploadError, setUploadError] = useState<unknown>(null);
   const [profileSaved, setProfileSaved] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>("idle");
   const usernameCheckId = useRef(0);
@@ -114,7 +115,7 @@ export function ProfileSection({ open, onToggle, photoRequest = 0, onAvatarChang
       setAvatarUrl(url);
       onAvatarChange?.(url);
     } catch (err) {
-      setUploadError(friendlyError(err, "Upload failed."));
+      setUploadError(err);
     }
   }
 
@@ -155,7 +156,7 @@ export function ProfileSection({ open, onToggle, photoRequest = 0, onAvatarChang
       // Re-check right before saving: the debounced result could be stale.
       const { data: existing, error: recheckError } = await supabase.from("profiles").select("id").eq("username", normalizedUsername).neq("id", user!.id).maybeSingle();
       if (recheckError) {
-        setProfileError("Couldn't verify that username right now. Please try again.");
+        setProfileError(recheckError);
         return;
       }
       if (existing) {
@@ -187,7 +188,7 @@ export function ProfileSection({ open, onToggle, photoRequest = 0, onAvatarChang
         replaceWith: usernameChanged ? `/profile/${normalizedUsername}` : undefined,
       });
     } catch (err) {
-      setProfileError(friendlyError(err, "Couldn't save changes."));
+      setProfileError(err);
     }
   }
 
@@ -197,7 +198,7 @@ export function ProfileSection({ open, onToggle, photoRequest = 0, onAvatarChang
     <SettingsSection icon={<Icon as={UserCircle2} size={18} className="text-ink-muted" />} title="Profile" summary={displayName || undefined} open={open} onToggle={onToggle}>
       {/* The photo and visit count live in the Settings hero above; a photo picked there lands here to be saved
           with the rest of the profile. */}
-      {uploadError ? <Text className="mb-3 mt-3 text-sm text-danger">{uploadError}</Text> : null}
+      <ErrorBanner error={uploadError} fallback="Couldn't upload that photo. Please try again." onRetry={handleChangePhoto} onDismiss={() => setUploadError(null)} className="mb-3 mt-3" />
       {avatarUrl !== (profile?.avatar_url ?? "") ? (
         <Text className="mb-3 mt-3 text-sm text-accent">New photo selected — save your changes to apply it.</Text>
       ) : (
@@ -263,11 +264,12 @@ export function ProfileSection({ open, onToggle, photoRequest = 0, onAvatarChang
         </View>
       )}
 
-      {profileError ? (
-        <Text className="mb-4 text-sm text-danger" accessibilityRole="alert">
-          {profileError}
-        </Text>
-      ) : null}
+      <ErrorBanner
+        error={profileError}
+        fallback="Couldn't save your changes. Please try again."
+        onRetry={typeof profileError === "string" ? undefined : handleSave}
+        onDismiss={() => setProfileError(null)}
+      />
       {profileSaved ? <Text className="mb-4 text-sm text-accent">Profile updated.</Text> : null}
 
       <Button onPress={handleSave} loading={updateProfile.isPending || updateProfileRoles.isPending}>

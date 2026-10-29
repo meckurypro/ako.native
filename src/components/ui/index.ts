@@ -49,5 +49,6 @@ export { ScreenHeader } from "./ScreenHeader";
 export { SelectField, type SelectOption } from "./SelectField";
 export { SurfaceInput } from "./SurfaceInput";
 export { DateTimeFormField } from "./DateTimeFormField";
+export { ErrorBanner } from "./ErrorBanner";
 export { InfoNote } from "./InfoNote";
 export { Checkbox } from "./Checkbox";
