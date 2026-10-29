@@ -1,7 +1,7 @@
 // src/screens/ConversationList.tsx
-// The inbox: Archive entry, search, Pinned section, then chats by recency.
+// The inbox: title bar, search, Archive entry, Pinned section, then chats by recency.
 // Long-press a chat for actions, or enter select mode to archive/delete in bulk.
-import { Archive, CheckSquare, ChevronRight, MessageCircle, Search, Trash2, X } from "lucide-react-native";
+import { Archive, CheckSquare, MessageCircle, Search, Trash2, X } from "lucide-react-native";
 import { router, type Href } from "expo-router";
 import { FlashList } from "@shopify/flash-list";
 import { useMemo, useState } from "react";
@@ -35,6 +35,9 @@ import { messagePlainText } from "@/lib/chatMedia";
 import { useTheme } from "@/theme/ThemeProvider";
 
 const MAX_PINNED = 3;
+
+// Same title treatment as Connect and Library: orange section icon, big bold title, no bar.
+const TITLE_CLASS = "text-[28px] font-bold leading-tight tracking-tight text-ink";
 
 type Item = { kind: "section"; label: string } | { kind: "chat"; conversation: ConversationSummary };
 
@@ -131,7 +134,7 @@ export function ConversationList() {
   if (!messagingEnabled) {
     return (
       <View className="flex-1 bg-canvas">
-        <ScreenHeader title="Chats" bar back={false} icon={MessageCircle} />
+        <ScreenHeader title="Chats" back={false} icon={MessageCircle} iconClassName="text-brand-orange" titleClassName={TITLE_CLASS} />
         <Text className="px-4 pt-10 text-center text-sm text-ink-muted">Messaging is temporarily unavailable. Check back later.</Text>
       </View>
     );
@@ -158,38 +161,20 @@ export function ConversationList() {
       </Pressable>
     </View>
   ) : (
-    <View>
-      <ScreenHeader
-        title="Chats"
-        bar
-        back={false}
-        icon={MessageCircle}
-        right={
-          conversations && conversations.length > 0 ? (
-            <Pressable onPress={() => setSelectMode(true)} accessibilityRole="button" accessibilityLabel="Select chats" hitSlop={10}>
-              <Icon as={CheckSquare} size={20} className="text-ink-muted" />
-            </Pressable>
-          ) : undefined
-        }
-      />
-      {/* Archive sits at the top: manually archived chats plus requests from people who don't follow you. */}
-      <Pressable
-        onPress={() => router.push("/messages/archive")}
-        accessibilityRole="button"
-        className="flex-row items-center gap-3 border-b border-border-a60 bg-canvas px-4 py-3 active:bg-surface-a60"
-      >
-        <View className="h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent-soft">
-          <Icon as={Archive} size={18} className="text-accent" />
-        </View>
-        <Text className="flex-1 text-sm font-medium text-ink">Archive</Text>
-        {archiveBadgeCount > 0 ? (
-          <View className="h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-cta px-1.5">
-            <Text className="text-[11px] font-semibold text-white">{archiveBadgeCount > 99 ? "99+" : archiveBadgeCount}</Text>
-          </View>
-        ) : null}
-        <Icon as={ChevronRight} size={16} className="shrink-0 text-ink-muted" />
-      </Pressable>
-    </View>
+    <ScreenHeader
+      title="Chats"
+      back={false}
+      icon={MessageCircle}
+      iconClassName="text-brand-orange"
+      titleClassName={TITLE_CLASS}
+      right={
+        conversations && conversations.length > 0 ? (
+          <Pressable onPress={() => setSelectMode(true)} accessibilityRole="button" accessibilityLabel="Select chats" hitSlop={10}>
+            <Icon as={CheckSquare} size={22} className="text-ink" />
+          </Pressable>
+        ) : undefined
+      }
+    />
   );
 
   return (
@@ -197,9 +182,9 @@ export function ConversationList() {
       {header}
 
       {!selectMode && conversations && conversations.length > 0 ? (
-        <View className="px-4 pt-3">
-          <View className="flex-row items-center rounded-full border border-border bg-surface px-3.5">
-            <Icon as={Search} size={16} className="shrink-0 text-ink-muted" />
+        <View className="px-4 pb-2 pt-1">
+          <View className="h-12 flex-row items-center rounded-full border border-border bg-surface px-4">
+            <Icon as={Search} size={20} className="shrink-0 text-ink-muted" />
             <TextInput
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -210,16 +195,35 @@ export function ConversationList() {
               autoCapitalize="none"
               autoCorrect={false}
               returnKeyType="search"
-              className="ml-2.5 flex-1 py-2.5 text-sm text-ink"
-              style={{ fontFamily: "Inter_400Regular" }}
+              className="ml-3 flex-1 text-base text-ink"
+              style={{ fontFamily: "Inter_400Regular", paddingVertical: 0 }}
             />
             {searchQuery ? (
               <Pressable onPress={() => setSearchQuery("")} accessibilityRole="button" accessibilityLabel="Clear search" hitSlop={10}>
-                <Icon as={X} size={16} className="text-ink-muted" />
+                <Icon as={X} size={18} className="text-ink-muted" />
               </Pressable>
             ) : null}
           </View>
         </View>
+      ) : null}
+
+      {/* Archive sits under the search: manually archived chats plus requests from people who don't follow you. */}
+      {!selectMode ? (
+        <Pressable
+          onPress={() => router.push("/messages/archive")}
+          accessibilityRole="button"
+          className="flex-row items-center gap-3.5 px-4 py-2 active:bg-surface-a60"
+        >
+          <View className="h-14 w-14 shrink-0 items-center justify-center">
+            <Icon as={Archive} size={22} className="text-ink-muted" />
+          </View>
+          <Text className="flex-1 text-base font-medium text-ink">Archive</Text>
+          {archiveBadgeCount > 0 ? (
+            <View className="h-[22px] min-w-[22px] shrink-0 items-center justify-center rounded-full bg-cta px-1.5">
+              <Text className="text-xs font-semibold text-white">{archiveBadgeCount > 99 ? "99+" : archiveBadgeCount}</Text>
+            </View>
+          ) : null}
+        </Pressable>
       ) : null}
 
       {isLoading ? (
@@ -240,10 +244,10 @@ export function ConversationList() {
           onScroll={chromeScroll}
           scrollEventThrottle={16}
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset }}
+          contentContainerStyle={{ paddingBottom: bottomInset }}
           renderItem={({ item }) =>
             item.kind === "section" ? (
-              <Text className="pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">{item.label}</Text>
+              <Text className="px-4 pb-1 pt-3 text-xs font-semibold uppercase tracking-wide text-ink-muted">{item.label}</Text>
             ) : (
               <ConversationRow
                 conversation={item.conversation}

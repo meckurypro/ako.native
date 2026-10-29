@@ -1,8 +1,8 @@
 // src/components/messages/ConversationRow.tsx
-// One chat in the inbox: avatar (ringed when they have a post you haven't seen),
-// name + pin + group badge, time, last-message preview with delivery ticks, and
-// an unread count. Tap opens; long-press opens actions; in select mode a tap
-// toggles selection.
+// One chat in the inbox, laid out like a modern messenger: avatar (ringed when they have a post you haven't seen),
+// then two lines — name + time, and the last-message preview with delivery ticks, with the unread count and pin
+// tucked at the end of that second line. No divider lines; the whole row is the tap target. Tap opens; long-press
+// opens actions; in select mode a tap toggles selection.
 import { Pin, Users } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 
@@ -12,6 +12,7 @@ import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import type { ConversationSummary } from "@/hooks/useMessaging";
 import { haptics } from "@/lib/haptics";
+import { formatChatListTime } from "@/lib/messageTime";
 import { MessagePreviewLine } from "./MessagePreviewLine";
 
 /** Compact list stamp: now / 5m / 3h / 2d. */
@@ -61,7 +62,7 @@ export function ConversationRow({
   const showTicks = c.last_message?.sender_id === currentUserId;
   const unread = c.unreadCount > 0;
 
-  const avatar = <Avatar src={identity.avatarUrl} name={identity.name} />;
+  const avatar = <Avatar src={identity.avatarUrl} name={identity.name} size="vn" />;
 
   return (
     <Pressable
@@ -77,7 +78,7 @@ export function ConversationRow({
       delayLongPress={450}
       accessibilityRole="link"
       accessibilityState={{ selected: selectMode ? selected : undefined }}
-      className="flex-row items-center gap-3 border-b border-border py-3.5 active:bg-surface-a60"
+      className="flex-row items-center gap-3.5 px-4 py-3 active:bg-surface-a60"
     >
       {selectMode ? (
         <View className={`h-5 w-5 shrink-0 items-center justify-center rounded-full border ${selected ? "border-accent bg-accent" : "border-border"}`}>
@@ -85,13 +86,14 @@ export function ConversationRow({
         </View>
       ) : null}
 
+      {/* Both variants occupy the same 56px box, so names line up whether or not there's a ring. */}
       {unseenPostId ? (
         // A glowing ring means they've posted something you haven't seen — tapping the avatar opens it.
         <Pressable
           onPress={() => (selectMode ? onToggleSelect() : onUnseenPostPress(unseenPostId))}
           accessibilityRole="link"
           accessibilityLabel={`View ${identity.name}'s new post`}
-          className="shrink-0 rounded-full bg-accent p-[2.5px]"
+          className="h-14 w-14 shrink-0 items-center justify-center rounded-full bg-accent"
           style={{ shadowColor: "#3D5A45", shadowOpacity: 0.45, shadowRadius: 6, shadowOffset: { width: 0, height: 0 }, elevation: 3 }}
         >
           <View className="rounded-full bg-canvas p-[2px]">{avatar}</View>
@@ -101,17 +103,16 @@ export function ConversationRow({
           onPress={onAvatarPress}
           accessibilityRole="imagebutton"
           accessibilityLabel={`View ${identity.name}'s photo`}
-          className="shrink-0"
+          className="h-14 w-14 shrink-0 items-center justify-center"
         >
           {avatar}
         </Pressable>
       )}
 
       <View className="min-w-0 flex-1">
-        <View className="flex-row items-center justify-between">
-          <View className="min-w-0 flex-1 flex-row items-center gap-1">
-            {c.pinned_at ? <Icon as={Pin} size={12} className="shrink-0 text-ink-muted" /> : null}
-            <Text numberOfLines={1} className={`shrink text-sm ${unread ? "font-semibold text-ink" : "font-medium text-ink"}`}>
+        <View className="flex-row items-center">
+          <View className="min-w-0 flex-1 flex-row items-center gap-1.5">
+            <Text numberOfLines={1} className={`shrink text-base text-ink ${unread ? "font-semibold" : "font-medium"}`}>
               {identity.name}
             </Text>
             {c.is_group ? (
@@ -121,13 +122,14 @@ export function ConversationRow({
               </View>
             ) : null}
           </View>
-          <Text className="ml-2 shrink-0 text-xs text-ink-muted">{listAgo(c.last_message_at)}</Text>
+          {/* The stamp turns the unread colour, like the badge below it. */}
+          <Text className={`ml-2 shrink-0 text-xs ${unread ? "font-semibold text-cta" : "text-ink-muted"}`}>{formatChatListTime(c.last_message_at)}</Text>
         </View>
 
-        <View className="min-w-0 flex-row items-center gap-1">
+        <View className="mt-0.5 min-h-[22px] min-w-0 flex-row items-center gap-1">
           {showTicks && c.last_message && !c.last_message.is_deleted ? (
             <View className="shrink-0">
-              <MessageStatusTicks deliveredAt={c.last_message.delivered_at} readAt={c.last_message.read_at} variant="list" size={13} />
+              <MessageStatusTicks deliveredAt={c.last_message.delivered_at} readAt={c.last_message.read_at} variant="list" size={15} />
             </View>
           ) : null}
           <View className="min-w-0 flex-1">
@@ -138,14 +140,14 @@ export function ConversationRow({
               iconClassName={unread ? "text-ink" : "text-ink-muted"}
             />
           </View>
+          {unread ? (
+            <View className="ml-1 h-[22px] min-w-[22px] shrink-0 items-center justify-center rounded-full bg-cta px-1.5">
+              <Text className="text-xs font-semibold text-white">{c.unreadCount > 99 ? "99+" : c.unreadCount}</Text>
+            </View>
+          ) : null}
+          {c.pinned_at ? <Icon as={Pin} size={15} className="ml-1 shrink-0 text-ink-muted" /> : null}
         </View>
       </View>
-
-      {unread ? (
-        <View className="h-[22px] min-w-[22px] shrink-0 items-center justify-center rounded-full bg-cta px-1.5">
-          <Text className="text-xs font-semibold text-white">{c.unreadCount > 99 ? "99+" : c.unreadCount}</Text>
-        </View>
-      ) : null}
     </Pressable>
   );
 }

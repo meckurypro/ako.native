@@ -47,3 +47,32 @@ export function formatMessageDayLabel(createdAt: string): string {
   if (diffDays > 1 && diffDays < 7) return day.toLocaleDateString([], { weekday: "long" });
   return day.toLocaleDateString([], { day: "numeric", month: "long", year: "numeric" });
 }
+
+/** True when the device clock is 24-hour, so "00:41" can keep its leading zero ("1:05 PM" on a 12-hour clock). */
+function uses24HourClock(locales: string | string[]): boolean {
+  try {
+    const cycle = new Intl.DateTimeFormat(locales, { hour: "numeric" }).resolvedOptions().hourCycle;
+    return cycle === "h23" || cycle === "h24";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The stamp on a row in the Chats list. Counted in calendar days (the viewer's local midnight), not 24-hour
+ * blocks, so a message from 23:50 last night is "Yesterday" at 00:10 rather than "today":
+ *   today → the time of day (device 12/24-hour setting) · 1 day → "Yesterday" · 2–7 days → "2d ago" … "7d ago"
+ *   8–14 days → "Last week" · older → the date (device locale order, e.g. 28/10/2026).
+ * A timestamp slightly in the future (clock skew) is treated as today. `now` and `locales` exist for tests.
+ */
+export function formatChatListTime(createdAt: string, now: Date = new Date(), locales: string | string[] = []): string {
+  const d = new Date(createdAt);
+  if (Number.isNaN(d.getTime())) return "";
+  const diffDays = Math.round((startOfDay(now).getTime() - startOfDay(d).getTime()) / 86_400_000);
+
+  if (diffDays <= 0) return d.toLocaleTimeString(locales, { hour: uses24HourClock(locales) ? "2-digit" : "numeric", minute: "2-digit" });
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays <= 7) return `${diffDays}d ago`;
+  if (diffDays <= 14) return "Last week";
+  return d.toLocaleDateString(locales, { day: "2-digit", month: "2-digit", year: "numeric" });
+}
