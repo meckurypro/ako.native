@@ -179,6 +179,13 @@ export const FEATURE_FLAG_DEFS: FeatureFlagDef[] = [
       "When ON, users must be Admin-approved (Admin > Account review) before they can enter Akọ — anyone not yet approved sees the Under Review screen. Turning this OFF does not approve anyone; it only stops the gate from being enforced, and turning it back ON automatically re-locks accounts that were never approved.",
     category: "access",
   },
+  {
+    key: "progressive_feed_access_enabled",
+    label: "Progressive feed access",
+    description:
+      "When ON, pending accounts unlock the Feed on their own by meeting any enabled pathway (managed in the web admin). Admin approval in Account review always still works. Turning this OFF only stops automatic unlocking — nobody already approved loses access.",
+    category: "access",
+  },
 ];
 
 export type FeatureFlagMap = Record<string, boolean>;
