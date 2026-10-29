@@ -16,7 +16,7 @@ export interface RoutableNotification {
 
 /** Project types whose detail lives on a dedicated screen instead of /projects/:id. */
 const PROJECT_TYPE_ROUTE: Record<string, (id: string) => string> = {
-  room: (id) => `/rooms/${id}`,
+  room: (id) => `/groups/${id}`,
   course: (id) => `/courses/${id}`,
   book: (id) => `/books/${id}`,
   meeting: (id) => `/meetings/${id}`,
@@ -60,7 +60,7 @@ export function notificationAction(n: RoutableNotification): NotificationAction 
 export function notificationLink(n: RoutableNotification): string | null {
   if (n.type === "follow_request") return "/requests";
   // A join request is answered in the room's settings panel, so open it there.
-  if (n.type === "room_join_request" && n.target_id) return `/rooms/${n.target_id}?settings=1`;
+  if (n.type === "room_join_request" && n.target_id) return `/groups/${n.target_id}?settings=1`;
   if (n.target_type === "post" && n.target_id) return `/post/${n.target_id}`;
   if (n.target_type === "project" && n.target_id) {
     const route = n.project_type ? PROJECT_TYPE_ROUTE[n.project_type] : undefined;

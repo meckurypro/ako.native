@@ -52,7 +52,7 @@ export const RESERVED_PROJECT_SLUGS = new Set([
   "saved", "liked", "library",
   "verify-email", "reset-password", "auth", "onboarding", "compose",
   "promote", "hashtag", "topics", "post", "requests", "bookmarks", "inbox",
-  "page-inbox", "rooms", "courses", "books", "meetings", "gigs", "talents",
+  "page-inbox", "rooms", "groups", "courses", "books", "meetings", "gigs", "talents",
   "saved-projects", "settings-advanced", "settings-appearance", "pass",
 ]);
 

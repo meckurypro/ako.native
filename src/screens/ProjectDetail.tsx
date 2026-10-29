@@ -14,7 +14,7 @@ import {
   GitFork,
   Video,
 } from "lucide-react-native";
-import { router, useLocalSearchParams, usePathname, type Href } from "expo-router";
+import { Redirect, router, useLocalSearchParams, usePathname, type Href } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -63,7 +63,17 @@ import { getProjectUrl } from "@/lib/projectLinks";
 import { openExternal } from "@/lib/openExternal";
 import { friendlyError } from "@/lib/friendlyError";
 
+// A group is a project underneath, but it is never presented as one: it has its own full-screen page (no bottom nav,
+// a docked chat composer), so both /projects/:id and a group's /:slug move there.
 export function ProjectDetail({ resolvedProjectId }: { resolvedProjectId?: string } = {}) {
+  const routeParams = useLocalSearchParams<{ projectId?: string }>();
+  const id = resolvedProjectId ?? routeParams.projectId;
+  const { data: head } = useProjectDetail(id);
+  if (head?.project_type === "room") return <Redirect href={`/groups/${head.id}` as Href} />;
+  return <ProjectDetailPage resolvedProjectId={resolvedProjectId} />;
+}
+
+function ProjectDetailPage({ resolvedProjectId }: { resolvedProjectId?: string } = {}) {
   const params = useLocalSearchParams<{ projectId?: string; forewords?: string }>();
   const projectId = resolvedProjectId ?? params.projectId;
   const smartBack = useSmartBack();

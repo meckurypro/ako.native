@@ -40,6 +40,7 @@ export interface Profile {
   last_seen_at: string | null;
   hide_followers_list: boolean;
   hide_following_list: boolean;
+  show_groups_on_profile: boolean;
   // Null = acting as yourself. Set = you're currently acting as one of
   // the pages you have an active role on (see /areas/account-mode).
   active_page_id: string | null;

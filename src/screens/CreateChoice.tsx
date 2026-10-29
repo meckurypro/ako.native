@@ -2,7 +2,7 @@
 // "+" menu: Post or Project. Presented as a transparent modal over whatever
 // screen opened it (see (app)/_layout), so it needs its own PortalHost — a
 // native modal sits above the app's root overlay layer.
-import { ChevronRight, FolderPlus, PenSquare, X, type LucideIcon } from "lucide-react-native";
+import { ChevronRight, FolderPlus, PenSquare, Users, X, type LucideIcon } from "lucide-react-native";
 import { router, type Href } from "expo-router";
 import { useCallback, useEffect, useRef } from "react";
 import { Pressable, View } from "react-native";
@@ -18,12 +18,13 @@ import { useSmartBack } from "@/hooks/useSmartBack";
 const CHOICES: { to: string; icon: LucideIcon; label: string; description: string }[] = [
   { to: "/compose", icon: PenSquare, label: "Post", description: "Share a thought with your followers" },
   { to: "/projects/new", icon: FolderPlus, label: "Project", description: "List a file, event, course, or paid link" },
+  { to: "/groups/new", icon: Users, label: "Group", description: "Start a community or a cohort" },
 ];
 
 function Body({ onPick }: { onPick: (to: string) => void }) {
   const { close } = useSheet();
   const projectsEnabled = useFeatureFlag("projects_enabled");
-  const choices = projectsEnabled ? CHOICES : CHOICES.filter((c) => c.to !== "/projects/new");
+  const choices = projectsEnabled ? CHOICES : CHOICES.filter((c) => c.to !== "/projects/new" && c.to !== "/groups/new");
 
   return (
     <>

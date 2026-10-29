@@ -1,6 +1,8 @@
 // src/app/(app)/rooms/[projectId].tsx
-import { Room } from "@/screens/Room";
+// Old /rooms/:id links (notifications, shares) keep working: rooms are groups now.
+import { Redirect, useLocalSearchParams, type Href } from "expo-router";
 
-export default function RoomRoute() {
-  return <Room />;
+export default function RoomRedirect() {
+  const { projectId } = useLocalSearchParams<{ projectId: string }>();
+  return <Redirect href={`/groups/${projectId}` as Href} />;
 }

@@ -214,7 +214,7 @@ export function useMutedList() {
  * the exact previous value on error, surfacing the failure via the
  * mutation's own `error` field instead of hiding it.
  */
-function useTogglePrivacyField(field: "is_private" | "hide_followers_list" | "hide_following_list") {
+function useTogglePrivacyField(field: "is_private" | "hide_followers_list" | "hide_following_list" | "show_groups_on_profile") {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const queryKey = ["own-profile", user?.id];
@@ -259,6 +259,11 @@ export function useToggleHideFollowersList() {
 
 export function useToggleHideFollowingList() {
   return useTogglePrivacyField("hide_following_list");
+}
+
+// Opt-in: whether the public groups you're in appear on your profile (private groups never do).
+export function useToggleShowGroupsOnProfile() {
+  return useTogglePrivacyField("show_groups_on_profile");
 }
 
 /**

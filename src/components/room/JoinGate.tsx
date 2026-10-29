@@ -1,103 +1,169 @@
 // src/components/room/JoinGate.tsx
-// Shown to someone who isn't in the room yet. Open communities: one tap. Free public rooms: a request the
-// host reviews. Paid rooms: bought from the project page. Private rooms: invitation-only.
-import { router, type Href } from "expo-router";
-import { Lock, Users } from "lucide-react-native";
-import { Pressable, View } from "react-native";
+// The group's landing page — what anyone sees before they're in: the group itself, who it's for, and the one way in that applies to it.
+//   private → invitation only · paid → buy access · open community → join · everything else → ask a host.
+import { router, usePathname, type Href } from "expo-router";
+import { ArrowLeft, Calendar, Lock, Users } from "lucide-react-native";
+import { useQueryClient } from "@tanstack/react-query";
+import { Image } from "expo-image";
+import { Pressable, ScrollView, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useToast } from "@/components/ui/Toast";
-import { useCancelRoomJoinRequest, useGroupPublicInfo, useJoinOpenRoom, useMyRoomJoinRequest, useRequestRoomJoin } from "@/hooks/useRoom";
+import { friendlyError } from "@/lib/friendlyError";
+import { formatUsd } from "@/lib/money";
+import { GROUP_KIND_LABEL, type GroupKind } from "@/lib/groups";
+import { useSmartBack } from "@/hooks/useSmartBack";
+import { usePurchaseProject, type Project } from "@/hooks/useProjects";
+import {
+  invalidateRoomMembership,
+  useCancelRoomJoinRequest,
+  useJoinOpenRoom,
+  useMyRoomJoinRequest,
+  useRequestRoomJoin,
+  type GroupPublicInfo,
+} from "@/hooks/useRoom";
 
-const errorMessage = (err: unknown, fallback: string) => (err instanceof Error && err.message ? err.message : fallback);
+const fmt = (v: string) => new Date(v).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 
-interface JoinGateProps {
-  projectId: string;
-  title: string;
-  isPrivate: boolean;
-  isFree: boolean;
-}
-
-export function JoinGate({ projectId, title, isPrivate, isFree }: JoinGateProps) {
+export function JoinGate({ project, info, isGuest }: { project: Project; info: GroupPublicInfo | null | undefined; isGuest: boolean }) {
+  const insets = useSafeAreaInsets();
+  const smartBack = useSmartBack();
+  const pathname = usePathname();
   const toast = useToast();
-  const { data: info } = useGroupPublicInfo(projectId);
+  const queryClient = useQueryClient();
+  const projectId = project.id;
   const { data: myRequest } = useMyRoomJoinRequest(projectId);
   const requestJoin = useRequestRoomJoin(projectId);
   const cancelRequest = useCancelRoomJoinRequest(projectId);
   const joinOpen = useJoinOpenRoom(projectId);
+  const purchase = usePurchaseProject();
+
+  const kind: GroupKind = info?.kind ?? "community";
+  const price = Number(project.promo_price_usd ?? project.price_usd);
+  const isFree = price <= 0;
   const status = myRequest?.status;
-  const isOpen = info?.kind === "community" && info?.join_mode === "open";
+  const memberWord = kind === "cohort" ? "participants" : "members";
+  const goLogin = () => router.replace(`/login?redirect=${encodeURIComponent(pathname)}` as Href);
 
-  if (isPrivate) {
-    return (
-      <View className="mt-16 items-center gap-3 px-6">
-        <Icon as={Lock} size={28} className="text-ink-muted" />
-        <Text className="font-medium text-ink">Private room</Text>
-        <Text className="text-center text-sm text-ink-muted">“{title}” is invitation-only. The host adds the people who can join.</Text>
+  const schedule =
+    kind === "cohort" && info
+      ? info.start_date && info.end_date
+        ? `${fmt(info.start_date)} – ${fmt(info.end_date)}`
+        : info.start_date
+          ? `Starts ${fmt(info.start_date)}`
+          : info.end_date
+            ? `Ends ${fmt(info.end_date)}`
+            : null
+      : null;
+
+  let action: React.ReactNode;
+  if (info?.is_closed) {
+    action = <Text className="text-sm text-ink-muted">This cohort has ended.</Text>;
+  } else if (project.is_private) {
+    action = (
+      <View className="flex-row items-start gap-2">
+        <Icon as={Lock} size={16} className="mt-0.5 text-ink-muted" />
+        <Text className="min-w-0 flex-1 text-sm text-ink-muted">This group is private. The host adds the people who can join.</Text>
       </View>
     );
-  }
-
-  if (!isFree) {
-    return (
-      <View className="mt-16 items-center gap-3 px-6">
-        <Icon as={Lock} size={28} className="text-ink-muted" />
-        <Text className="font-medium text-ink">Members only</Text>
-        <Text className="text-center text-sm text-ink-muted">Buy access to “{title}” from its project page to join this room.</Text>
-        <Pressable onPress={() => router.push(`/projects/${projectId}` as Href)} accessibilityRole="link" hitSlop={8} className="mt-2">
-          <Text className="text-sm font-medium text-accent">Go to project page</Text>
-        </Pressable>
-      </View>
+  } else if (!isFree) {
+    action = (
+      <Button
+        loading={purchase.isPending}
+        onPress={() => {
+          if (isGuest) return goLogin();
+          purchase.mutate(projectId, {
+            onSuccess: () => {
+              invalidateRoomMembership(queryClient, projectId);
+              toast(`You're in. Welcome to ${project.title}.`, { variant: "success" });
+            },
+            onError: (err) => toast(friendlyError(err, "Couldn't complete your purchase."), { variant: "error" }),
+          });
+        }}
+      >
+        {`Join · ${formatUsd(price)}`}
+      </Button>
     );
-  }
-
-  if (isOpen) {
-    return (
-      <View className="mt-16 items-center gap-3 px-6">
-        <Icon as={Users} size={28} className="text-ink-muted" />
-        <Text className="font-medium text-ink">{title}</Text>
-        <Pressable
-          onPress={() => joinOpen.mutate(undefined, { onError: (err) => toast(errorMessage(err, "Couldn't join."), { variant: "error" }) })}
-          disabled={joinOpen.isPending}
-          accessibilityRole="button"
-          className={`mt-2 rounded-full bg-cta px-5 py-2 ${joinOpen.isPending ? "opacity-50" : ""}`}
+  } else if (kind === "community" && info?.join_mode === "open") {
+    action = (
+      <Button
+        loading={joinOpen.isPending}
+        onPress={() => {
+          if (isGuest) return goLogin();
+          joinOpen.mutate(undefined, {
+            onSuccess: () => toast(`You joined ${project.title}.`, { variant: "success" }),
+            onError: (err) => toast(friendlyError(err, "Couldn't join."), { variant: "error" }),
+          });
+        }}
+      >
+        Join community
+      </Button>
+    );
+  } else if (status === "pending") {
+    action = (
+      <>
+        <Text className="text-sm text-ink-muted">Your request is waiting for a host to review it.</Text>
+        <Button
+          variant="ghost"
+          loading={cancelRequest.isPending}
+          onPress={() => cancelRequest.mutate(undefined, { onSuccess: () => toast("Request cancelled.", { variant: "success" }) })}
         >
-          <Text className="text-sm font-medium text-white">Join</Text>
-        </Pressable>
-      </View>
+          Cancel request
+        </Button>
+      </>
+    );
+  } else {
+    action = (
+      <>
+        <Text className="text-sm text-ink-muted">
+          {status === "declined" ? "Your last request wasn't accepted. You can ask again." : "A host reviews every request to join this group."}
+        </Text>
+        <Button
+          loading={requestJoin.isPending}
+          onPress={() => {
+            if (isGuest) return goLogin();
+            requestJoin.mutate(undefined, {
+              onSuccess: () => toast("Request sent.", { variant: "success" }),
+              onError: (err) => toast(friendlyError(err, "Couldn't send your request."), { variant: "error" }),
+            });
+          }}
+        >
+          {status === "declined" ? "Ask again" : "Request to join"}
+        </Button>
+      </>
     );
   }
 
   return (
-    <View className="mt-16 items-center gap-3 px-6">
-      <Icon as={Users} size={28} className="text-ink-muted" />
-      <Text className="font-medium text-ink">{title}</Text>
-      {status === "pending" ? (
-        <>
-          <Text className="text-center text-sm text-ink-muted">Your request is waiting for a host to review it.</Text>
-          <Pressable onPress={() => cancelRequest.mutate(undefined, { onSuccess: () => toast("Request cancelled.", { variant: "success" }) })} disabled={cancelRequest.isPending} accessibilityRole="button" hitSlop={8} className="mt-2">
-            <Text className="text-sm font-medium text-ink-muted">Cancel request</Text>
-          </Pressable>
-        </>
-      ) : (
-        <>
-          <Text className="text-center text-sm text-ink-muted">{status === "declined" ? "Your last request wasn't accepted. You can ask again." : "A host reviews every request to join this room."}</Text>
-          <Pressable
-            onPress={() =>
-              requestJoin.mutate(undefined, {
-                onSuccess: () => toast("Request sent.", { variant: "success" }),
-                onError: (err) => toast(errorMessage(err, "Couldn't send your request."), { variant: "error" }),
-              })
-            }
-            disabled={requestJoin.isPending}
-            accessibilityRole="button"
-            className={`mt-2 rounded-full bg-cta px-5 py-2 ${requestJoin.isPending ? "opacity-50" : ""}`}
-          >
-            <Text className="text-sm font-medium text-white">{status === "declined" ? "Ask again" : "Request to join"}</Text>
-          </Pressable>
-        </>
-      )}
+    <View className="flex-1 bg-canvas">
+      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: insets.bottom + 32, paddingHorizontal: 16 }} showsVerticalScrollIndicator={false}>
+        <Pressable onPress={smartBack} accessibilityRole="button" accessibilityLabel="Back" hitSlop={12} className="mb-4 self-start">
+          <Icon as={ArrowLeft} size={22} className="text-ink-muted" />
+        </Pressable>
+        {project.thumbnail_url ? <Image source={{ uri: project.thumbnail_url }} style={{ width: "100%", aspectRatio: 16 / 9, borderRadius: 16, marginBottom: 16 }} contentFit="cover" /> : null}
+        <Text className="text-[11px] font-medium uppercase tracking-wide text-accent">{GROUP_KIND_LABEL[kind]}</Text>
+        <Text className="mt-1 font-display text-2xl text-ink">{project.title}</Text>
+        <View className="mt-1.5 flex-row flex-wrap items-center gap-x-3 gap-y-1">
+          {info ? (
+            <View className="flex-row items-center gap-1">
+              <Icon as={Users} size={13} className="text-ink-muted" />
+              <Text className="text-xs text-ink-muted">{`${info.member_count} ${memberWord}`}</Text>
+            </View>
+          ) : null}
+          {schedule ? (
+            <View className="flex-row items-center gap-1">
+              <Icon as={Calendar} size={13} className="text-ink-muted" />
+              <Text className="text-xs text-ink-muted">{schedule}</Text>
+            </View>
+          ) : null}
+          {!isFree && !project.is_private ? <Text className="text-xs text-ink-muted">{formatUsd(price)}</Text> : null}
+        </View>
+        {project.description ? <Text className="mt-4 text-sm text-ink-muted">{project.description}</Text> : null}
+        <View className="mt-6 gap-2">{action}</View>
+      </ScrollView>
     </View>
   );
 }

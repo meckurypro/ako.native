@@ -348,9 +348,9 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
     await buyThisOnly();
   }
 
+  // A group opens on its own page, which knows the right way in (join, request, buy, or invitation only).
   function handleJoinRoom() {
-    if (hasAccess) router.push(`/rooms/${project.id}` as Href);
-    else void handleBuy();
+    router.push(`/groups/${project.id}` as Href);
   }
 
   async function handleBookTalent() {
@@ -503,7 +503,7 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
       ? [
           {
             key: "join",
-            label: hasAccess ? "Enter cohort" : "Join cohort",
+            label: hasAccess ? "Open group" : "View group",
             icon: mk(Users, hasAccess ? colors.accent : ink, hasAccess ? colors.accent : "none"),
             count: null,
             onClick: handleJoinRoom,
@@ -629,8 +629,8 @@ function ProjectCardImpl({ project, isOwnerView, isDetailView, manageContent, sh
     }
   } else if (isRoom) {
     detailCta = hasAccess
-      ? { label: "Enter cohort", icon: Users, onPress: handleJoinRoom }
-      : { label: purchaseProject.isPending ? "Joining…" : isFree ? "Join cohort" : `Join for ${priceLabel}`, icon: Users, onPress: handleJoinRoom, disabled: purchaseProject.isPending };
+      ? { label: "Open group", icon: Users, onPress: handleJoinRoom }
+      : { label: isFree ? "View group" : `Join for ${priceLabel}`, icon: Users, onPress: handleJoinRoom };
   } else if (!user && isFree && !isCourseUnpublished && !isBookDraftUnpublished) {
     // Signed-out visitor on a FREE project: no price to show ("Buy for $0.00" reads wrong).
     detailCta = isMedia && !hasMediaLink ? { label: "Gift", icon: GiftIcon, onPress: openGift } : { label: guestCta.label, icon: guestCta.icon, onPress: redirectToLogin };

@@ -44,7 +44,7 @@ export const PROJECT_TYPE_LABELS: Record<ProjectType, string> = {
   file: "File",
   url: "URL",
   course: "Course",
-  room: "Cohort",
+  room: "Group",
   meeting: "Meeting",
   gig: "Talent",
   pitch: "Pitch",
@@ -70,7 +70,7 @@ export const PROJECT_TYPE_OPTIONS: ProjectType[] = [
 export const PROJECT_TYPE_HINTS: Record<ProjectType, string> = {
   event: "Sell tickets to something happening in person or online.",
   meeting: "A single scheduled live session people buy access to join.",
-  room: "A structured learning group with a start and end date — lectures, live meetings, assignments, and its own chat.",
+  room: "A community or a cohort — its own chat, live meetings, and for cohorts a classroom with assignments.",
   course: "Structured modules and lessons. Build it, then publish when ready.",
   media: "Audio, video, or both. Link out (Spotify, YouTube) or upload to stream here.",
   file: "A file you upload and host here — visitors download it with one click.",
@@ -93,7 +93,8 @@ export type ProjectAccess = "page" | "personal" | "either";
 export const PROJECT_TYPE_ACCESS: Record<ProjectType, ProjectAccess> = {
   // Page-only — benefits from a team/brand identity behind it.
   event: "page",
-  room: "page",
+  // Either — a person can run a community; an organization can run a cohort.
+  room: "either",
   // Personal-only — inherently about one person's own time/skill/work
   // or, for pitch, one person's own idea.
   gig: "personal",
@@ -451,12 +452,16 @@ export function useUserProjects(
       includePageProjects,
     ],
     queryFn: async (): Promise<Project[]> => {
+      // Groups are never presented as projects on a profile — they're listed (if the person allows it) under
+      // "Groups". The Archive screen (includePageProjects) still sees everything so nothing becomes unrecoverable.
+      const withoutGroups = (list: Project[]) => (includePageProjects ? list : list.filter((p) => p.project_type !== "room"));
+
       if (includeAllStatuses) {
         let query = supabase.from("projects").select("*").eq("owner_id", userId);
         if (!includePageProjects) query = query.is("posted_as_page_id", null);
         const { data, error } = await query.order("created_at", { ascending: false });
         if (error) throw error;
-        return data;
+        return withoutGroups(data);
       }
 
       const { data, error } = await supabase.rpc("get_profile_projects", {
@@ -464,7 +469,7 @@ export function useUserProjects(
         p_viewer_id: viewer?.id ?? null,
       });
       if (error) throw error;
-      return (data ?? []) as Project[];
+      return withoutGroups((data ?? []) as Project[]);
     },
     enabled: !!userId,
   });
@@ -486,7 +491,8 @@ export function usePageProjects(pageId: string | undefined) {
     queryFn: async (): Promise<Project[]> => {
       const { data, error } = await supabase.rpc("get_page_projects", { p_page_id: pageId });
       if (error) throw error;
-      return (data ?? []) as Project[];
+      // Groups have their own page; they aren't listed as the page's projects.
+      return ((data ?? []) as Project[]).filter((p) => p.project_type !== "room");
     },
     enabled: !!pageId,
   });
@@ -549,6 +555,8 @@ interface TalentDetailsInput {
 }
 
 interface RoomDetailsInput {
+  kind?: "cohort" | "community";
+  join_mode?: "open" | "request";
   start_date?: string;
   end_date?: string;
 }

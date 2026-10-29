@@ -41,9 +41,9 @@ export function DiscoverBrowse({ lead }: { lead?: ReactNode }) {
       ) : (
         <>
           {rails.map(({ section, items, hasMore }) => {
-            const moreTo = `/topics/${section.type}`;
+            const moreTo = `/topics/${section.key}`;
             return (
-              <DiscoverRail key={section.type} title={section.title} moreTo={hasMore ? moreTo : undefined}>
+              <DiscoverRail key={section.key} title={section.title} moreTo={hasMore ? moreTo : undefined}>
                 {items.map((item) => (
                   <DiscoverTile key={item.project.id} item={item} />
                 ))}

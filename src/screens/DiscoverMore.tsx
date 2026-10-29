@@ -38,8 +38,8 @@ function Notice({ children }: { children: string }) {
   return <Text className="py-4 text-sm text-ink-muted">{children}</Text>;
 }
 
-function ProjectsMore({ type, tileWidth }: { type: ProjectType; tileWidth: number }) {
-  const { data, isLoading, isError, hasNextPage, fetchNextPage, isFetchingNextPage } = useDiscoverMore(type);
+function ProjectsMore({ sectionKey, tileWidth }: { sectionKey: string; tileWidth: number }) {
+  const { data, isLoading, isError, hasNextPage, fetchNextPage, isFetchingNextPage } = useDiscoverMore(sectionKey);
   const items = (data?.pages ?? []).flatMap((p) => p.items);
 
   if (isLoading) return <Notice>Loading…</Notice>;
@@ -102,7 +102,7 @@ export function DiscoverMore() {
         contentContainerStyle={{ paddingHorizontal: PAGE_PADDING, paddingTop: 16, paddingBottom: bottomInset }}
       >
         <View className="w-full max-w-xl self-center">
-          {section === "pages" ? <PagesMore /> : <ProjectsMore type={section as ProjectType} tileWidth={tileWidth} />}
+          {section === "pages" ? <PagesMore /> : <ProjectsMore sectionKey={section ?? ""} tileWidth={tileWidth} />}
         </View>
       </ScrollView>
     </View>

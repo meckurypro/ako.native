@@ -9,6 +9,7 @@
 // Time-bound kinds (events, live meetings, cohorts) list only what is still ahead.
 // Everything is ranked by relevance to the viewer's interests first, then popularity (likes).
 // A project needs a title, description and thumbnail to be listed, and Files are never listed here.
+import type { GroupKind } from "../lib/groups";
 import { useInfiniteQuery, useQueries } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { formatUsd } from "../lib/money";
@@ -21,28 +22,39 @@ export const RAIL_SIZE = 10;
 export const MORE_PAGE_SIZE = 18;
 
 export interface DiscoverSection {
+  /** Unique per row, and what the "More" link carries. Same as `type` except for the two group rows. */
+  key: string;
   type: ProjectType;
   title: string;
+  /** Group rows only: a community and a cohort are separate rows over the same project type. */
+  kind?: GroupKind;
 }
 
-// Order = order on the page. Titles follow the app's own labels (a "room" project is called a Cohort everywhere).
+// Order = order on the page. Titles follow the app's own labels (a "room" project is a Group: a Community or a Cohort).
 export const DISCOVER_SECTIONS: DiscoverSection[] = [
-  { type: "event", title: "Events" },
-  { type: "course", title: "Courses" },
-  { type: "book", title: "Books" },
-  { type: "room", title: "Cohorts" },
-  { type: "meeting", title: "Live meetings" },
-  { type: "media", title: "Audio & video" },
-  { type: "gig", title: "Talents" },
-  { type: "pitch", title: "Pitches" },
-  { type: "url", title: "Links" },
+  { key: "event", type: "event", title: "Events" },
+  { key: "course", type: "course", title: "Courses" },
+  { key: "book", type: "book", title: "Books" },
+  { key: "community", type: "room", kind: "community", title: "Communities" },
+  { key: "cohort", type: "room", kind: "cohort", title: "Cohorts" },
+  { key: "meeting", type: "meeting", title: "Live meetings" },
+  { key: "media", type: "media", title: "Audio & video" },
+  { key: "gig", type: "gig", title: "Talents" },
+  { key: "pitch", type: "pitch", title: "Pitches" },
+  { key: "url", type: "url", title: "Links" },
 ];
 
-export type DiscoverSectionKey = ProjectType | "pages";
+/** A section by its key. The old /topics/room link (before groups had two kinds) lands on Communities. */
+export function getDiscoverSection(key: string): DiscoverSection | null {
+  const k = key === "room" ? "community" : key;
+  return DISCOVER_SECTIONS.find((s) => s.key === k) ?? null;
+}
+
+export type DiscoverSectionKey = string;
 
 export function getDiscoverSectionTitle(key: string): string | null {
   if (key === "pages") return "Pages";
-  return DISCOVER_SECTIONS.find((s) => s.type === key)?.title ?? null;
+  return getDiscoverSection(key)?.title ?? null;
 }
 
 export interface DiscoverItem {
@@ -57,13 +69,14 @@ export interface DiscoverPage {
   rawCount: number;
 }
 
-export async function fetchDiscoverPage(type: ProjectType, from: number, to: number): Promise<DiscoverPage> {
+export async function fetchDiscoverPage(type: ProjectType, from: number, to: number, kind?: GroupKind): Promise<DiscoverPage> {
   // Ranking and eligibility live in the database (discover_projects): relevance to the viewer's interests first, then
   // popularity; only projects with a title, description and thumbnail; only what is still ahead for time-bound kinds.
   const { data, error } = await supabase.rpc("discover_projects", {
     p_type: type,
     p_offset: from,
     p_limit: to - from + 1,
+    p_kind: kind ?? null,
   });
   if (error) throw error;
   const rows = (data ?? []) as Array<{ project: Project; when_at: string | null }>;
@@ -86,8 +99,8 @@ export function useDiscoverRails(): { rails: DiscoverRailData[]; isLoading: bool
 
   const results = useQueries({
     queries: sections.map((s) => ({
-      queryKey: ["discover-rail", s.type],
-      queryFn: () => fetchDiscoverPage(s.type, 0, RAIL_SIZE),
+      queryKey: ["discover-rail", s.key],
+      queryFn: () => fetchDiscoverPage(s.type, 0, RAIL_SIZE, s.kind),
       staleTime: 5 * 60 * 1000,
     })),
   });
@@ -103,14 +116,15 @@ export function useDiscoverRails(): { rails: DiscoverRailData[]; isLoading: bool
 }
 
 /** The "More" screen for one kind of project: pages of MORE_PAGE_SIZE, loaded on request. */
-export function useDiscoverMore(type: ProjectType, enabled = true) {
+export function useDiscoverMore(sectionKey: string, enabled = true) {
+  const section = getDiscoverSection(sectionKey);
   return useInfiniteQuery({
-    queryKey: ["discover-more", type],
-    queryFn: ({ pageParam }) => fetchDiscoverPage(type, pageParam, pageParam + MORE_PAGE_SIZE - 1),
+    queryKey: ["discover-more", section?.key ?? sectionKey],
+    queryFn: ({ pageParam }) => fetchDiscoverPage((section?.type ?? sectionKey) as ProjectType, pageParam, pageParam + MORE_PAGE_SIZE - 1, section?.kind),
     initialPageParam: 0,
     getNextPageParam: (last, all) => (last.rawCount >= MORE_PAGE_SIZE ? all.length * MORE_PAGE_SIZE : undefined),
     staleTime: 5 * 60 * 1000,
-    enabled,
+    enabled: enabled && !!section,
   });
 }
 

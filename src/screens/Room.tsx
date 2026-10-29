@@ -1,7 +1,8 @@
 // src/screens/Room.tsx
-// A cohort "Room": members-only classroom, group chat, meetings and assignments. Hosts also get
-// cohort settings. Gates: not a member → locked; before start date → countdown; after end date →
-// archive (media stays, chat/meetings/assignments close).
+// A Group — a cohort or a community. Members get the group's chat, meetings and updates; cohorts add a classroom
+// with assignments. Hosts also get group settings. Gates: not a member → the landing page (join / request / buy /
+// invitation only); before a cohort's start date → countdown; after its end date → archive (media stays,
+// chat/meetings/assignments close). Communities never close.
 import { router, useLocalSearchParams, type Href } from "expo-router";
 import { ArrowLeft, BookOpen, Calendar, ClipboardList, Eye, EyeOff, LogOut, MessageCircle, Settings, Users, type LucideIcon } from "lucide-react-native";
 import { useEffect, useState } from "react";
@@ -22,13 +23,40 @@ import { useToast } from "@/components/ui/Toast";
 import { useProjectOwnership } from "@/hooks/useProjectOwnership";
 import { formatCountdown, useCountdown } from "@/hooks/useCountdown";
 import { useSmartBack } from "@/hooks/useSmartBack";
+import { useAuth } from "@/hooks/useAuth";
+import { GROUP_KIND_LABEL, type GroupKind } from "@/lib/groups";
 import { useProject } from "@/hooks/useProjects";
-import { useIsRoomHost, useIsRoomMember, useLeaveRoom, useRoomConversationId, useRoomDetails, useRoomIsClosed, useRoomJoinRequests, useRoomMemberCount } from "@/hooks/useRoom";
+import { useGroupPublicInfo, useIsRoomHost, useIsRoomMember, useLeaveRoom, useRoomConversationId, useRoomDetails, useRoomIsClosed, useRoomJoinRequests, useRoomMemberCount } from "@/hooks/useRoom";
 
 type Tab = "classroom" | "chat" | "meetings" | "assignments";
 
-export function Room() {
-  const { projectId, settings } = useLocalSearchParams<{ projectId: string; settings?: string }>();
+function LoadingScreen() {
+  return (
+    <View className="flex-1 items-center justify-center bg-canvas">
+      <Text className="text-ink-muted">Loading…</Text>
+    </View>
+  );
+}
+
+// Signed-out visitors (a shared link) get the group's landing page; joining sends them through login.
+function GuestGroup({ projectId }: { projectId: string | undefined }) {
+  const { data: project } = useProject(projectId);
+  const { data: info } = useGroupPublicInfo(projectId);
+  if (!project) return <LoadingScreen />;
+  return <JoinGate project={project} info={info} isGuest />;
+}
+
+// The group page — at /groups/:id and, through a group's custom slug, at /:slug (which passes the id in).
+export function Room({ projectId: projectIdProp }: { projectId?: string } = {}) {
+  const params = useLocalSearchParams<{ projectId: string; settings?: string }>();
+  const projectId = projectIdProp ?? params.projectId;
+  const { user, loading } = useAuth();
+  if (loading) return <LoadingScreen />;
+  if (!user) return <GuestGroup projectId={projectId} />;
+  return <GroupPage projectId={projectId} settings={params.settings} />;
+}
+
+function GroupPage({ projectId, settings }: { projectId: string | undefined; settings?: string }) {
   const toast = useToast();
   const insets = useSafeAreaInsets();
   const smartBack = useSmartBack();
@@ -44,11 +72,18 @@ export function Room() {
   const hasAccess = isOwner || !!isMember;
 
   const { data: details } = useRoomDetails(projectId);
+  const { data: publicInfo } = useGroupPublicInfo(projectId);
+  // A group is a cohort or a community. Members read it from the details; non-members from the public info.
+  const kind: GroupKind = details?.kind ?? publicInfo?.kind ?? "community";
+  const kindLabel = GROUP_KIND_LABEL[kind];
+  const isCohort = kind === "cohort";
   const isClosed = useRoomIsClosed(details);
   const startCountdownMs = useCountdown(details?.start_date ?? undefined);
   const notYetStarted = !!details?.start_date && startCountdownMs !== null && startCountdownMs > 0;
 
-  const [tab, setTab] = useState<Tab>("classroom");
+  // A cohort opens on its classroom; a community opens on its chat — that's where the people are.
+  const [pickedTab, setTab] = useState<Tab | null>(null);
+  const tab: Tab = pickedTab ?? (isCohort ? "classroom" : "chat");
   const [chatVisited, setChatVisited] = useState(false);
   // A join-request notification opens the room with settings already showing.
   const [showSettings, setShowSettings] = useState(settings === "1");
@@ -74,7 +109,9 @@ export function Room() {
   useEffect(() => {
     if (isClosed && (tab === "meetings" || tab === "assignments")) setTab("classroom");
     if (isClosed && !isHost && tab === "chat") setTab("classroom");
-  }, [isClosed, isHost, tab]);
+    // A community has no assignments tab.
+    if (!isCohort && tab === "assignments") setTab("chat");
+  }, [isClosed, isHost, tab, isCohort]);
 
   if (!project) {
     return (
@@ -85,12 +122,7 @@ export function Room() {
   }
 
   if (!hasAccess) {
-    return (
-      <View className="flex-1 bg-canvas">
-        <ScreenHeader title="" />
-        <JoinGate projectId={project.id} title={project.title} isPrivate={project.is_private} isFree={Number(project.promo_price_usd ?? project.price_usd) <= 0} />
-      </View>
-    );
+    return <JoinGate project={project} info={publicInfo} isGuest={false} />;
   }
 
   if (notYetStarted) {
@@ -107,16 +139,22 @@ export function Room() {
 
   const showChatTab = !isClosed || isHost;
   const chatUnlockedForMe = !isClosed || isHost || viewArchivedChat;
-  const tabs: [Tab, string, LucideIcon][] = [
-    ["classroom", "Classroom", BookOpen],
-    ...(showChatTab ? ([["chat", "Chat", MessageCircle]] as [Tab, string, LucideIcon][]) : []),
-    ...(!isClosed
-      ? ([
-          ["meetings", "Meetings", Calendar],
-          ["assignments", "Assignments", ClipboardList],
-        ] as [Tab, string, LucideIcon][])
-      : []),
-  ];
+  const tabs: [Tab, string, LucideIcon][] = isCohort
+    ? [
+        ["classroom", "Classroom", BookOpen],
+        ...(showChatTab ? ([["chat", "Chat", MessageCircle]] as [Tab, string, LucideIcon][]) : []),
+        ...(!isClosed
+          ? ([
+              ["meetings", "Meetings", Calendar],
+              ["assignments", "Assignments", ClipboardList],
+            ] as [Tab, string, LucideIcon][])
+          : []),
+      ]
+    : [
+        ["chat", "Chat", MessageCircle],
+        ["classroom", "Updates", BookOpen],
+        ["meetings", "Meetings", Calendar],
+      ];
   const paneStyle = (key: Tab) => ({ flex: 1, display: tab === key ? ("flex" as const) : ("none" as const) });
 
   return (
@@ -138,16 +176,16 @@ export function Room() {
                       onPress: () =>
                         leaveRoom.mutate(undefined, {
                           onSuccess: () => {
-                            toast("You left the room.", { variant: "success" });
+                            toast("You left the group.", { variant: "success" });
                             smartBack();
                           },
-                          onError: (err) => toast(err instanceof Error ? err.message : "Couldn't leave the room.", { variant: "error" }),
+                          onError: (err) => toast(err instanceof Error ? err.message : "Couldn't leave the group.", { variant: "error" }),
                         }),
                     },
                   ])
                 }
                 accessibilityRole="button"
-                accessibilityLabel="Leave room"
+                accessibilityLabel="Leave group"
                 hitSlop={12}
                 className="flex-row items-center gap-1"
               >
@@ -156,7 +194,7 @@ export function Room() {
               </Pressable>
             )}
             {isHost && (
-              <Pressable onPress={() => setShowSettings((s) => !s)} accessibilityRole="button" accessibilityLabel="Room settings" accessibilityState={{ expanded: showSettings }} hitSlop={12}>
+              <Pressable onPress={() => setShowSettings((s) => !s)} accessibilityRole="button" accessibilityLabel="Group settings" accessibilityState={{ expanded: showSettings }} hitSlop={12}>
                 <Icon as={Settings} size={20} className="text-ink-muted" />
                 {(pendingRequests ?? []).length > 0 && (
                   <View className="absolute -right-1.5 -top-1.5 h-4 min-w-[16px] items-center justify-center rounded-full bg-cta px-1">
@@ -180,7 +218,7 @@ export function Room() {
 
         {isClosed && (
           <View className="mx-4 mb-3 flex-row items-center justify-between rounded-xl bg-accent-soft-a60 px-3 py-2">
-            <Text className="min-w-0 flex-1 text-sm text-ink-muted">This cohort has ended — media stays here for people who were in it.</Text>
+            <Text className="min-w-0 flex-1 text-sm text-ink-muted">{`This ${kindLabel.toLowerCase()} has ended — media stays here for people who were in it.`}</Text>
             {isHost && (
               <Pressable onPress={() => setViewArchivedChat((v) => !v)} accessibilityRole="button" className="ml-2 shrink-0 flex-row items-center gap-1" hitSlop={8}>
                 <Icon as={viewArchivedChat ? EyeOff : Eye} size={13} className="text-accent" />
@@ -237,9 +275,11 @@ export function Room() {
             <View style={paneStyle("meetings")}>
               <MeetingsTab projectId={project.id} isHost={isHost} />
             </View>
-            <View style={paneStyle("assignments")}>
-              <AssignmentsTab projectId={project.id} isHost={isHost} />
-            </View>
+            {isCohort ? (
+              <View style={paneStyle("assignments")}>
+                <AssignmentsTab projectId={project.id} isHost={isHost} />
+              </View>
+            ) : null}
           </>
         )}
       </View>

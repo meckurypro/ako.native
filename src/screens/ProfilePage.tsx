@@ -46,6 +46,7 @@ import Animated, { Easing, FadeIn, FadeOut, useAnimatedStyle, useSharedValue, wi
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { FAB_GAP, FAB_SIZE, useBottomNavInset } from "@/components/nav/BottomNav";
+import { ProfileGroups } from "@/components/profile/ProfileGroups";
 import { useChromeScroll } from "@/components/nav/ChromeProvider";
 import { PostCard } from "@/components/post/PostCard";
 import { ProjectMiniGrid } from "@/components/post/ProjectMiniCard";
@@ -609,6 +610,8 @@ export function ProfilePage() {
           </View>
 
           {profile.bio ? <Text className="mt-5 text-[15px] leading-relaxed text-ink">{profile.bio}</Text> : null}
+
+          {!isPrivateLocked ? <ProfileGroups profileId={profile.id} /> : null}
 
           {showOwnerView ? (
             <>

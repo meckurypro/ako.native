@@ -1,12 +1,12 @@
 // src/screens/Connect.tsx
-// Bottom-nav home for Events, Meetings and Rooms. Replaces the old
+// Bottom-nav home for Events, Meetings and Groups (communities and cohorts). Replaces the old
 // "Events & meetings" Activity row and the Messages tab (messages now sit
 // behind the floating chat button). Forked (affiliate) projects live under Wallet.
 //
 // Tabs are dynamic: a tab only appears once the user has something in it, and
 // with nothing at all the screen shows a single empty state instead of a tab bar.
 import { router, type Href } from "expo-router";
-import { CalendarClock, Image as ImageIcon, MoreHorizontal, Users, X } from "lucide-react-native";
+import { CalendarClock, Image as ImageIcon, MoreHorizontal, Plus, Users, X } from "lucide-react-native";
 import { useMemo, useRef, useState } from "react";
 import { useSharedValue } from "react-native-reanimated";
 import { Pressable, ScrollView, View } from "react-native";
@@ -25,26 +25,27 @@ import { Text } from "@/components/ui/Text";
 import { useToast } from "@/components/ui/Toast";
 import { useActivity, type ActivityItem } from "@/hooks/useActivity";
 import { formatCountdown, useCountdown } from "@/hooks/useCountdown";
+import { useFeatureFlag } from "@/hooks/useFeatureFlags";
 import { useIsOnline } from "@/hooks/useIsOnline";
 import { useRemoveFromLibrary } from "@/hooks/useLibraryRemovals";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useTabState } from "@/hooks/useTabState";
 import { haptics } from "@/lib/haptics";
 
-const ALL_TABS = ["events", "meetings", "rooms"] as const;
+const ALL_TABS = ["events", "meetings", "groups"] as const;
 type ConnectTab = (typeof ALL_TABS)[number];
 
-const TAB_LABEL: Record<ConnectTab, string> = { events: "Events", meetings: "Meetings", rooms: "Rooms" };
-// Room meetings sit with the other meetings (room name + a countdown); the Rooms tab lists the rooms themselves.
-const KINDS_FOR_TAB: Record<ConnectTab, ActivityItem["kind"][]> = { events: ["event"], meetings: ["meeting", "room_meeting"], rooms: ["room"] };
+const TAB_LABEL: Record<ConnectTab, string> = { events: "Events", meetings: "Meetings", groups: "Groups" };
+// Group meetings sit with the other meetings (group name + a countdown); the Groups tab lists the groups themselves.
+const KINDS_FOR_TAB: Record<ConnectTab, ActivityItem["kind"][]> = { events: ["event"], meetings: ["meeting", "room_meeting"], groups: ["room"] };
 
 const ROUTE_FOR: Record<ActivityItem["kind"], (item: ActivityItem) => string> = {
   event: (item) => `/projects/${item.projectId}/ticket`,
   meeting: (item) => `/meetings/${item.projectId}`,
-  room_meeting: (item) => `/rooms/${item.projectId}`,
-  room: (item) => `/rooms/${item.projectId}`,
+  room_meeting: (item) => `/groups/${item.projectId}`,
+  room: (item) => `/groups/${item.projectId}`,
 };
-const LABEL_FOR: Record<ActivityItem["kind"], string> = { event: "Event", meeting: "Meeting", room_meeting: "Room meeting", room: "Room" };
+const LABEL_FOR: Record<ActivityItem["kind"], string> = { event: "Event", meeting: "Meeting", room_meeting: "Group meeting", room: "Group" };
 
 function ActivityRow({ item }: { item: ActivityItem }) {
   const toast = useToast();
@@ -133,8 +134,8 @@ function ConnectPane({ tab, items, refetch }: ConnectPaneProps) {
 
   const scrollProps = { ref: onScroll.listRef, refreshControl, onScroll, scrollEventThrottle: 16, showsVerticalScrollIndicator: false, contentContainerStyle: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset, opacity: refreshing ? 0 : 1 } } as const;
 
-  // The Rooms tab lists the rooms themselves, with nothing to split into upcoming/past.
-  if (tab === "rooms") {
+  // The Groups tab lists the groups themselves, with nothing to split into upcoming/past.
+  if (tab === "groups") {
     return (
       <ScrollView {...scrollProps}>
         <View className="gap-2">{kindItems.map((item) => <ActivityRow key={`${item.kind}-${item.projectId}`} item={item} />)}</View>
@@ -159,6 +160,8 @@ function ConnectPane({ tab, items, refetch }: ConnectPaneProps) {
 export function Connect() {
   const { data, isLoading, refetch } = useActivity();
   const items = useMemo(() => data ?? [], [data]);
+  // Groups are created from here; the creation form is the project form in group mode, so it shares its kill switch.
+  const canCreateGroup = useFeatureFlag("projects_enabled");
 
   // Only tabs that have something in them are shown.
   const tabs = useMemo(() => ALL_TABS.filter((t) => items.some((i) => KINDS_FOR_TAB[t].includes(i.kind))), [items]);
@@ -169,12 +172,26 @@ export function Connect() {
 
   return (
     <View className="flex-1 bg-canvas">
-      <ScreenHeader title="Connect" back={false} icon={Users} iconClassName="text-brand-orange" titleClassName="text-[28px] font-bold leading-tight tracking-tight text-ink" />
+      <ScreenHeader
+        title="Connect"
+        back={false}
+        icon={Users}
+        iconClassName="text-brand-orange"
+        titleClassName="text-[28px] font-bold leading-tight tracking-tight text-ink"
+        right={
+          canCreateGroup ? (
+            <Pressable onPress={() => router.push("/groups/new" as Href)} accessibilityRole="button" accessibilityLabel="New group" className="mr-4 flex-row items-center gap-1 rounded-full bg-cta px-3.5 py-2">
+              <Icon as={Plus} size={16} className="text-white" />
+              <Text className="text-sm font-medium text-white">New group</Text>
+            </Pressable>
+          ) : null
+        }
+      />
 
       {isLoading ? (
         <Text className="px-4 text-sm text-ink-muted">Loading…</Text>
       ) : tabs.length === 0 ? (
-        <EmptyNotice icon={CalendarClock} title="Nothing here yet" message="When you get tickets to events or join meetings and rooms, you'll find them here." />
+        <EmptyNotice icon={CalendarClock} title="Nothing here yet" message="When you get tickets to events or join meetings and groups, you'll find them here. You can also start a group of your own." />
       ) : (
         <>
           <SlidingTabBar

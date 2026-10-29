@@ -92,7 +92,8 @@ import {
 import { CONTENT_LIMIT, contentCounterClass } from "@/lib/textLimits";
 import { friendlyError } from "@/lib/friendlyError";
 
-export function CreateProject() {
+// `fixedType` makes this a single-purpose creator (groups, at /groups/new): no type picker, its own draft, its own wording.
+export function CreateProject({ fixedType }: { fixedType?: ProjectType } = {}) {
   const insets = useSafeAreaInsets();
   const toast = useToast();
   const createProject = useCreateProject();
@@ -103,7 +104,7 @@ export function CreateProject() {
   const [pagesOpen, setPagesOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [projectType, setProjectType] = useState<ProjectType>("file");
+  const [projectType, setProjectType] = useState<ProjectType>(fixedType ?? "file");
   const [topicIds, setTopicIds] = useState<Set<string>>(new Set());
   const [priceUsd, setPriceUsd] = useState("0");
   const [showPromo, setShowPromo] = useState(false);
@@ -145,6 +146,7 @@ export function CreateProject() {
 
   // If the current pick isn't offered in this mode, fall back to the first one that is.
   useEffect(() => {
+    if (fixedType) return;
     if (allowedTypes.length > 0 && !allowedTypes.includes(projectType)) setProjectType(allowedTypes[0]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postingAsPage?.id, typeSettings, accessRules, myStats, isExempt, creatorRules, creatorKind]);
@@ -179,7 +181,7 @@ export function CreateProject() {
   // Leaving this form with something filled in asks "save as a draft / discard?" (see useLeaveGuard). The draft is
   // kept on this phone — see lib/projectDraft.ts for why it isn't a `draft` row in `projects` — and is put back
   // the next time New project opens. One draft per account per acting identity (personal / each Page).
-  const draftKey = me?.id && identity !== undefined ? projectDraftKey(me.id, postingAsPage?.id) : null;
+  const draftKey = me?.id && identity !== undefined ? projectDraftKey(me.id, postingAsPage?.id, fixedType) : null;
   const restoredRef = useRef(false);
   // The form as last restored from a draft; leaving with the form still identical to it isn't "unsaved".
   const baselineRef = useRef<string | null>(null);
@@ -214,7 +216,7 @@ export function CreateProject() {
   function applyDraft(d: ProjectDraftData) {
     setTitle(d.title);
     setDescription(d.description);
-    setProjectType(d.projectType);
+    setProjectType(fixedType ?? d.projectType);
     setTopicIds(new Set(d.topicIds));
     setPriceUsd(d.priceUsd);
     setShowPromo(d.showPromo);
@@ -230,14 +232,14 @@ export function CreateProject() {
     setMeetingFields(d.meetingFields);
     setTalentFields(d.talentFields);
     setPitchFields(d.pitchFields);
-    setRoomFields(d.roomFields);
+    setRoomFields({ ...EMPTY_ROOM_FIELDS, ...d.roomFields });
     setBookFields(d.bookFields);
   }
 
   function resetForm() {
     setTitle("");
     setDescription("");
-    setProjectType(allowedTypes.length === 0 || allowedTypes.includes("file") ? "file" : allowedTypes[0]);
+    setProjectType(fixedType ?? (allowedTypes.length === 0 || allowedTypes.includes("file") ? "file" : allowedTypes[0]));
     setTopicIds(new Set());
     setPriceUsd("0");
     setShowPromo(false);
@@ -357,7 +359,7 @@ export function CreateProject() {
       const goal = parseFloat(pitchFields.goal_amount_usd);
       if (!pitchFields.goal_amount_usd.trim() || Number.isNaN(goal) || goal <= 0) return "Set a fundraising goal above $0.";
     }
-    if (projectType === "room" && roomFields.start_date && roomFields.end_date && new Date(roomFields.end_date) <= new Date(roomFields.start_date)) {
+    if (projectType === "room" && roomFields.kind === "cohort" && roomFields.start_date && roomFields.end_date && new Date(roomFields.end_date) <= new Date(roomFields.start_date)) {
       return "End date needs to be after the start date.";
     }
     if (projectType === "book" && bookFields.content_source !== "authored") {
@@ -371,7 +373,7 @@ export function CreateProject() {
     return null;
   }
 
-  function goToCreated(courseId?: string) {
+  function goToCreated(courseId?: string, groupId?: string) {
     // The project exists now: the saved draft has done its job, and the redirect below is the person finishing,
     // not leaving unsaved work behind.
     if (draftKey) void clearProjectDraft(draftKey);
@@ -379,6 +381,8 @@ export function CreateProject() {
     toast(`${title.trim()} created successfully.`, { variant: "success" });
     // A new course goes straight into the builder, where the setup wizard opens for the empty draft.
     if (courseId) router.replace(`/courses/${courseId}` as Href);
+    // A group lives at its own page, not on the profile's Projects tab — land the creator inside it.
+    else if (groupId) router.replace(`/groups/${groupId}` as Href);
     else if (postingAsPage) router.replace(`/page/${postingAsPage.username}?tab=projects` as Href);
     else if (me?.username) router.replace(`/profile/${me.username}?tab=projects` as Href);
     else router.back();
@@ -499,8 +503,10 @@ export function CreateProject() {
         room_details:
           projectType === "room"
             ? {
-                start_date: roomFields.start_date ? new Date(roomFields.start_date).toISOString() : undefined,
-                end_date: roomFields.end_date ? new Date(roomFields.end_date).toISOString() : undefined,
+                kind: roomFields.kind,
+                join_mode: roomFields.kind === "community" ? roomFields.join_mode : "request",
+                start_date: roomFields.kind === "cohort" && roomFields.start_date ? new Date(roomFields.start_date).toISOString() : undefined,
+                end_date: roomFields.kind === "cohort" && roomFields.end_date ? new Date(roomFields.end_date).toISOString() : undefined,
               }
             : undefined,
         book_details:
@@ -523,7 +529,7 @@ export function CreateProject() {
       if (projectType === "book" && bookFields.content_source === "upload" && bookFields.allow_read_in_app && created?.id) {
         void extractBookPdf(created.id).catch(() => {});
       }
-      goToCreated(projectType === "course" ? created?.id : undefined);
+      goToCreated(projectType === "course" ? created?.id : undefined, projectType === "room" ? created?.id : undefined);
     } catch (err) {
       setError(friendlyError(err, "Couldn't create project."));
     }
@@ -536,7 +542,7 @@ export function CreateProject() {
   if (!projectsEnabled) {
     return (
       <View className="flex-1 bg-canvas">
-        <ScreenHeader title="New project" />
+        <ScreenHeader title={fixedType === "room" ? "New group" : "New project"} />
         <Text className="px-4 text-sm text-ink-muted">New projects aren't being created right now. Check back later.</Text>
       </View>
     );
@@ -550,7 +556,7 @@ export function CreateProject() {
 
   return (
     <KeyboardAvoider className="flex-1 bg-canvas">
-      <ScreenHeader title="New project" />
+      <ScreenHeader title={fixedType === "room" ? "New group" : "New project"} />
       <ScrollView showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="none" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 24 }}>
         <View className="w-full max-w-md gap-3 self-center">
           {restoredDraftNotice ? (
@@ -579,13 +585,14 @@ export function CreateProject() {
           </View>
 
           {/* 1 — What are you making? The type decides which fields appear below. */}
+          {!fixedType ? (
           <FormSection icon={PROJECT_TYPE_ICONS[projectType]} title="Project type" description="What are you creating? The form adapts to your choice.">
-            <ProjectTypeChips options={allowedTypes} value={projectType} onChange={setProjectType} />
+            <ProjectTypeChips options={allowedTypes.filter((t) => t !== "room")} value={projectType} onChange={setProjectType} />
             <Text className="mb-4 text-xs text-ink-muted">
               {PROJECT_TYPE_HINTS[projectType]}
               {postingAsPage
-                ? " Event and Room are page-only — that's why some types you might expect aren't listed here."
-                : " Talent, Meeting, Media, and File are personal-only — switch to a page to create an Event or Room."}
+                ? " Event is page-only — that's why some types you might expect aren't listed here. Groups are created from Connect."
+                : " Talent, Meeting, Media, and File are personal-only — switch to a page to create an Event. Groups are created from Connect."}
             </Text>
             {eligibility && !eligibility.eligible ? (
               <View className="mb-4 rounded-xl border border-danger-a30 bg-danger-a10 px-4 py-3">
@@ -596,6 +603,7 @@ export function CreateProject() {
               </View>
             ) : null}
           </FormSection>
+          ) : null}
 
           {/* 2 — Cover. */}
           <FormSection icon={ImageIcon} title="Cover" description={isBook ? "Your book's cover." : projectType === "file" ? undefined : "The image people see first."}>
@@ -684,7 +692,7 @@ export function CreateProject() {
 
       <FormFooter error={error} bottomInset={insets.bottom}>
         <Button onPress={() => void handleSubmit()} loading={submitting} disabled={(projectType === "file" && fileUploading) || (projectType === "media" && mediaUploading)}>
-          {isDraftType ? "Create draft" : projectType === "pitch" ? "Publish pitch" : "Publish project"}
+          {isDraftType ? "Create draft" : projectType === "pitch" ? "Publish pitch" : projectType === "room" ? "Create group" : "Publish project"}
         </Button>
       </FormFooter>
 

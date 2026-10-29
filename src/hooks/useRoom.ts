@@ -5,6 +5,7 @@ import { useAuth } from "./useAuth";
 import { encodeVoiceNote } from "../lib/voiceNotes";
 import { fileExtension, type LocalFile } from "../lib/localFile";
 import { uploadLocalFile } from "../lib/storageUpload";
+import type { GroupKind, GroupRole } from "../lib/groups";
 
 export interface RoomMember {
   project_id: string;
@@ -221,7 +222,13 @@ export interface RoomDetails {
   chat_muted: boolean;
   // What people who join later can read (ako_rooms_group.sql). Anchored messages are always visible.
   history_mode: RoomHistoryMode;
+  // cohort | community — fixed at creation (ako_groups_kinds.sql).
+  kind: GroupKind;
+  // Communities only: "open" = anyone joins in one tap, "request" = a host reviews every request.
+  join_mode: GroupJoinMode;
 }
+
+export type GroupJoinMode = "open" | "request";
 
 export type RoomHistoryMode = "all" | "admins_and_anchored" | "anchored";
 
@@ -254,7 +261,7 @@ export function useUpdateRoomDetails(projectId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     meta: { blocking: true },
-    mutationFn: async (input: Partial<Pick<RoomDetails, "start_date" | "end_date" | "hosts_only_chat" | "chat_muted" | "history_mode">>) => {
+    mutationFn: async (input: Partial<Pick<RoomDetails, "start_date" | "end_date" | "hosts_only_chat" | "chat_muted" | "history_mode" | "join_mode">>) => {
       const { error } = await supabase
         .from("project_room_details")
         .upsert({ project_id: projectId, ...input }, { onConflict: "project_id" });
@@ -722,7 +729,7 @@ export function useRoomJoinRequests(projectId: string | undefined, enabled = tru
   });
 }
 
-function invalidateRoomMembership(queryClient: ReturnType<typeof useQueryClient>, projectId: string) {
+export function invalidateRoomMembership(queryClient: ReturnType<typeof useQueryClient>, projectId: string) {
   for (const key of [
     "is-room-member",
     "room-member-count",
@@ -879,15 +886,48 @@ export async function findProfileByUsername(username: string): Promise<{ id: str
 }
 
 // What a non-member may see about a group, and one-tap joining for open communities (ako_groups_kinds).
+export interface GroupPublicInfo {
+  kind: GroupKind;
+  join_mode: GroupJoinMode;
+  start_date: string | null;
+  end_date: string | null;
+  member_count: number;
+  is_closed: boolean;
+}
+
+// Null for a private group the viewer isn't part of.
 export function useGroupPublicInfo(projectId: string | undefined) {
   return useQuery({
     queryKey: ["group-public-info", projectId],
-    queryFn: async (): Promise<{ kind: string; join_mode: string; is_closed: boolean } | null> => {
+    queryFn: async (): Promise<GroupPublicInfo | null> => {
       const { data, error } = await supabase.rpc("get_group_public_info", { p_project_id: projectId });
       if (error) throw error;
-      return ((data as { kind: string; join_mode: string; is_closed: boolean }[]) ?? [])[0] ?? null;
+      return ((data as GroupPublicInfo[]) ?? [])[0] ?? null;
     },
     enabled: !!projectId,
+  });
+}
+
+export interface ProfileGroup {
+  project_id: string;
+  title: string;
+  slug: string | null;
+  kind: GroupKind;
+  role: GroupRole;
+  thumbnail_url: string | null;
+}
+
+// The groups a profile's owner has chosen to list. The server applies every rule (their setting, private groups,
+// private accounts, blocks), so an empty list means "nothing to show" and says nothing about why.
+export function useProfileGroups(profileId: string | undefined) {
+  return useQuery({
+    queryKey: ["profile-groups", profileId],
+    queryFn: async (): Promise<ProfileGroup[]> => {
+      const { data, error } = await supabase.rpc("get_profile_groups", { p_profile_id: profileId });
+      if (error) throw error;
+      return (data as ProfileGroup[]) ?? [];
+    },
+    enabled: !!profileId,
   });
 }
 
@@ -899,6 +939,9 @@ export function useJoinOpenRoom(projectId: string) {
       const { error } = await supabase.rpc("join_open_room", { p_project_id: projectId });
       if (error) throw error;
     },
-    onSuccess: () => invalidateRoomMembership(queryClient, projectId),
+    onSuccess: () => {
+      invalidateRoomMembership(queryClient, projectId);
+      queryClient.invalidateQueries({ queryKey: ["group-public-info", projectId] });
+    },
   });
 }

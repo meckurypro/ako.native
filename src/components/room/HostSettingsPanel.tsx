@@ -1,5 +1,5 @@
 // src/components/room/HostSettingsPanel.tsx
-// Host-only room settings: join requests, chat restrictions, what new members see, adding people,
+// Host-only group settings: join requests, chat restrictions, what new members see, adding people,
 // members (co-host / remove / remove + blacklist) and the blacklist.
 import { router, type Href } from "expo-router";
 import { Ban, Shield, UserPlus } from "lucide-react-native";
@@ -124,7 +124,7 @@ export function HostSettingsPanel({ projectId, isOwner = false }: { projectId: s
     <View className="mb-4 gap-4 rounded-xl border border-border bg-surface p-3">
       <View className="flex-row items-center gap-1.5">
         <Icon as={Shield} size={14} className="text-ink-muted" />
-        <Text className="text-sm font-medium text-ink">Room settings</Text>
+        <Text className="text-sm font-medium text-ink">Group settings</Text>
       </View>
 
       {(requests ?? []).length > 0 && (
@@ -153,6 +153,12 @@ export function HostSettingsPanel({ projectId, isOwner = false }: { projectId: s
       )}
 
       <View className="gap-2.5">
+        {details?.kind === "community" ? (
+          <View className="flex-row items-center justify-between gap-3">
+            <Text className="min-w-0 flex-1 text-sm text-ink-muted">Anyone can join without approval</Text>
+            <Toggle checked={details.join_mode === "open"} onChange={(v) => updateDetails.mutate({ join_mode: v ? "open" : "request" }, { onError })} accessibilityLabel="Anyone can join without approval" />
+          </View>
+        ) : null}
         <View className="flex-row items-center justify-between gap-3">
           <Text className="min-w-0 flex-1 text-sm text-ink-muted">Only hosts can post in chat</Text>
           <Toggle checked={!!details?.hosts_only_chat} onChange={(v) => updateDetails.mutate({ hosts_only_chat: v }, { onError })} accessibilityLabel="Only hosts can post in chat" />

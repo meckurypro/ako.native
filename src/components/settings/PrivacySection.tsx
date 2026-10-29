@@ -10,7 +10,7 @@ import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useToast } from "@/components/ui/Toast";
 import { useOwnProfile } from "@/hooks/useOwnProfile";
-import { useBlockedList, useMutedList, useToggleBlock, useToggleHideFollowersList, useToggleHideFollowingList, useToggleMute, useTogglePrivateAccount } from "@/hooks/usePrivacy";
+import { useBlockedList, useMutedList, useToggleBlock, useToggleHideFollowersList, useToggleHideFollowingList, useToggleMute, useTogglePrivateAccount, useToggleShowGroupsOnProfile } from "@/hooks/usePrivacy";
 
 function PersonRow({ avatarUrl, name, actionLabel, pending, onAction }: { avatarUrl: string | null; name: string; actionLabel: string; pending: boolean; onAction: () => void }) {
   return (
@@ -45,6 +45,7 @@ export function PrivacySection({ open, onToggle }: { open: boolean; onToggle: ()
   const togglePrivate = useTogglePrivateAccount();
   const toggleHideFollowers = useToggleHideFollowersList();
   const toggleHideFollowing = useToggleHideFollowingList();
+  const toggleShowGroups = useToggleShowGroupsOnProfile();
   const { data: blocked } = useBlockedList();
   const { data: muted } = useMutedList();
   const failure = "Couldn't update this setting. Try again.";
@@ -70,6 +71,15 @@ export function PrivacySection({ open, onToggle }: { open: boolean; onToggle: ()
           onToggle={() => toggleHideFollowing.mutate(!profile?.hide_following_list)}
           pending={toggleHideFollowing.isPending}
           error={toggleHideFollowing.isError ? failure : null}
+        />
+        <ToggleRow
+          icon={Users}
+          title="Show my groups on my profile"
+          description="Lists the public communities and cohorts you're in. Private groups are never listed"
+          checked={!!profile?.show_groups_on_profile}
+          onToggle={() => toggleShowGroups.mutate(!profile?.show_groups_on_profile)}
+          pending={toggleShowGroups.isPending}
+          error={toggleShowGroups.isError ? failure : null}
         />
 
         <View className="mb-2 mt-5 flex-row items-center gap-1.5">

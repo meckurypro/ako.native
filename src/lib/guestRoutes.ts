@@ -15,7 +15,7 @@ export function isGuestPassPath(pathname: string | null | undefined): boolean {
   return parts.length === 2 && parts[0] === "pass";
 }
 
-/** True for /projects/:id and /:slug (a custom project link) — never for /projects/new, /projects/:id/edit, /feed, … */
+/** True for /projects/:id, /groups/:id and /:slug (a custom project link) — never for /projects/new, /groups/new, /feed, … */
 export function isGuestProjectPath(pathname: string | null | undefined): boolean {
   if (!pathname) return false;
   if (isGuestPassPath(pathname)) return true;
@@ -23,6 +23,8 @@ export function isGuestProjectPath(pathname: string | null | undefined): boolean
   const parts = path.split("/").filter(Boolean);
 
   if (parts.length === 2 && parts[0] === "projects") return parts[1] !== "new";
+  // A shared group link: signed-out visitors get the group's landing page (joining sends them through login).
+  if (parts.length === 2 && parts[0] === "groups") return parts[1] !== "new";
 
   if (parts.length === 1) {
     const slug = parts[0]!.toLowerCase();

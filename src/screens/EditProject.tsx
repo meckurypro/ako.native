@@ -218,7 +218,7 @@ export function EditProject() {
       setPitchFields({ goal_amount_usd: String(existingPitchDetails.goal_amount_usd) });
       setTypeDetailsHydrated(true);
     } else if (t === "room" && existingRoomDetails !== undefined) {
-      setRoomFields({ start_date: isoToLocalInput(existingRoomDetails?.start_date), end_date: isoToLocalInput(existingRoomDetails?.end_date) });
+      setRoomFields({ kind: existingRoomDetails?.kind ?? "community", join_mode: existingRoomDetails?.join_mode ?? "request", start_date: isoToLocalInput(existingRoomDetails?.start_date), end_date: isoToLocalInput(existingRoomDetails?.end_date) });
       setTypeDetailsHydrated(true);
     } else if (t === "book" && existingBookDetails !== undefined) {
       setBookFields({
@@ -275,7 +275,7 @@ export function EditProject() {
       const goal = parseFloat(pitchFields.goal_amount_usd);
       if (!pitchFields.goal_amount_usd.trim() || Number.isNaN(goal) || goal <= 0) return "Set a fundraising goal above $0.";
     }
-    if (t === "room" && roomFields.start_date && roomFields.end_date && new Date(roomFields.end_date) <= new Date(roomFields.start_date)) return "End date needs to be after the start date.";
+    if (t === "room" && roomFields.kind === "cohort" && roomFields.start_date && roomFields.end_date && new Date(roomFields.end_date) <= new Date(roomFields.start_date)) return "End date needs to be after the start date.";
     if (t === "book" && bookFields.content_source !== "authored") {
       if (bookFields.content_source === "link" && !bookFields.url.trim()) return "Add the link to the book or article.";
       if (bookFields.content_source === "upload" && !bookFields.file_path) return "Upload a PDF to continue.";
@@ -413,8 +413,10 @@ export function EditProject() {
       if (t === "room") {
         const { error: e } = await supabase.from("project_room_details").upsert({
           project_id: projectId,
-          start_date: roomFields.start_date ? new Date(roomFields.start_date).toISOString() : null,
-          end_date: roomFields.end_date ? new Date(roomFields.end_date).toISOString() : null,
+          // The kind is never sent: it's fixed at creation (the database refuses a change).
+          join_mode: roomFields.kind === "community" ? roomFields.join_mode : "request",
+          start_date: roomFields.kind === "cohort" && roomFields.start_date ? new Date(roomFields.start_date).toISOString() : null,
+          end_date: roomFields.kind === "cohort" && roomFields.end_date ? new Date(roomFields.end_date).toISOString() : null,
         });
         fail(e);
       }
@@ -541,8 +543,8 @@ export function EditProject() {
             {t === "meeting" ? <MeetingFields value={meetingFields} onChange={setMeetingFields} /> : null}
             {t === "room" ? (
               <>
-                <RoomFields value={roomFields} onChange={setRoomFields} />
-                <Text className="-mt-2 mb-4 text-xs text-ink-muted">Manage lectures, chat, meetings, and assignments from the cohort itself.</Text>
+                <RoomFields value={roomFields} onChange={setRoomFields} lockKind />
+                <Text className="-mt-2 mb-4 text-xs text-ink-muted">Manage chat, meetings{roomFields.kind === "cohort" ? ", lectures and assignments" : " and updates"} from the group itself.</Text>
               </>
             ) : null}
             {t === "course" ? <Text className="mb-4 text-xs text-ink-muted">Manage modules and lessons from the course builder.</Text> : null}
