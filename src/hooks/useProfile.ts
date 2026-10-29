@@ -47,10 +47,10 @@ export function useMyProfile() {
 
   return useQuery({
     queryKey: ["my-profile", user?.id],
-    queryFn: async (): Promise<Pick<Profile, "id" | "username" | "display_name" | "avatar_url" | "is_verified">> => {
+    queryFn: async (): Promise<Pick<Profile, "id" | "username" | "display_name" | "avatar_url" | "is_verified" | "post_limit_bonus">> => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, username, display_name, avatar_url, is_verified")
+        .select("id, username, display_name, avatar_url, is_verified, post_limit_bonus")
         .eq("id", user!.id)
         .single();
       if (error) throw error;

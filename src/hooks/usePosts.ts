@@ -369,6 +369,8 @@ export function useCreatePost({ blocking = true }: { blocking?: boolean } = {}) 
     onSuccess: async (post, variables) => {
       const isPublished = variables.status !== "draft" && variables.status !== "scheduled";
       if (isPublished) {
+        // A verified user's first post of the day raises their character cap server-side; refresh it.
+        void queryClient.invalidateQueries({ queryKey: ["my-profile"], refetchType: "all" });
         const createdId = (post as { id?: string } | null)?.id;
         if (createdId) {
           try {

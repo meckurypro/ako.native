@@ -22,7 +22,7 @@ export function contentCounterClass(length: number, limit: number = CONTENT_LIMI
 }
 
 // Posts get a tiered cap. Everyone gets CONTENT_LIMIT (450); users whose
-// profiles.is_verified is true get VERIFIED_POST_LIMIT (1,200). The gate is
+// profiles.is_verified is true get VERIFIED_POST_LIMIT (1,200) plus their earned daily bonus (see below). The gate is
 // is_verified — the permanent, admin-assigned status — NOT badge_visible, so
 // a verified user whose badge is hidden for missing the weekly posting streak
 // keeps the longer limit. Comments, stances and project descriptions stay at
@@ -31,6 +31,15 @@ export function contentCounterClass(length: number, limit: number = CONTENT_LIMI
 // constraint is the 1,200 ceiling), so keep all of these in sync.
 export const VERIFIED_POST_LIMIT = 1200;
 
-export function postContentLimit(isVerified: boolean | null | undefined): number {
-  return isVerified ? VERIFIED_POST_LIMIT : CONTENT_LIMIT;
+// Gamified: a verified user's first published post of each (UTC) day permanently adds
+// POST_LIMIT_BONUS_STEP characters to their cap (profiles.post_limit_bonus, awarded by the
+// tg_post_limit_bonus DB trigger). Losing verification resets the bonus to 0, so they start over
+// from VERIFIED_POST_LIMIT. The edge functions compute the same number server-side.
+export const POST_LIMIT_BONUS_STEP = 10;
+
+export function postContentLimit(
+  isVerified: boolean | null | undefined,
+  bonus: number | null | undefined = 0
+): number {
+  return isVerified ? VERIFIED_POST_LIMIT + Math.max(0, bonus ?? 0) : CONTENT_LIMIT;
 }

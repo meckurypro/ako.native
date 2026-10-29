@@ -62,6 +62,10 @@ export interface Profile {
   // account_status/KYC/founding status. Never set directly by
   // clients (see admin_set_verified()/admin_bulk_set_verified()).
   is_verified: boolean;
+  // Earned extra post characters for verified users (+10 on the first published post of each UTC day;
+  // reset to 0 when verification is lost). Server-managed — never written by clients.
+  post_limit_bonus: number;
+  post_limit_bonus_day: string | null;
   // Computed (Postgres computed columns) — only present when selected.
   // badge_visible: is_verified AND (admin OR posted in each of the last
   // four 7-day windows). This, not is_verified, decides whether the badge

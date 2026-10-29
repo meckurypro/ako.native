@@ -69,7 +69,7 @@ export function EditPost() {
   const toast = useToast();
   const { user } = useAuth();
   const { data: me } = useMyProfile();
-  const contentLimit = postContentLimit(me?.is_verified);
+  const contentLimit = postContentLimit(me?.is_verified, me?.post_limit_bonus);
   const { data: post, isLoading } = usePostForEdit(postId);
   const updatePost = useUpdatePost();
   const { data: collaborators } = useCollaborators("post", postId);
