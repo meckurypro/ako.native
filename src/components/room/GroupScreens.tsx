@@ -136,7 +136,7 @@ export function GroupInfoScreen({
         <Avatar src={thumbnailUrl} name={title} size="2xl" />
         <Text className="mt-4 text-center font-display text-2xl leading-tight text-ink">{title}</Text>
         <Text className="mt-1 text-sm text-ink-muted">{`${kindLabel} · ${people.length} ${memberWord}`}</Text>
-        {description ? <Text className="mt-3 text-center text-sm leading-5 text-ink-muted">{description}</Text> : null}
+        {description ? <Text className="mt-3 text-center text-sm text-ink-muted">{description}</Text> : null}
         {isClosed ? (
           <View className="mt-3 rounded-full bg-accent-soft-a60 px-3 py-1">
             <Text className="text-xs text-ink-muted">{`This ${kindLabel.toLowerCase()} has ended`}</Text>

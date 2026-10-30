@@ -54,6 +54,8 @@ function ActivityRow({ item }: { item: ActivityItem }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const menuRef = useRef<View>(null);
+  // A group (and its meetings) is managed from inside the group, so its row carries no options menu here.
+  const canRemove = item.kind !== "room" && item.kind !== "room_meeting";
   // Live countdown for a meeting that hasn't started; "Live now" for a room meeting that is running.
   const remaining = useCountdown(item.kind === "meeting" || item.kind === "room_meeting" ? item.when : null);
   const countdown = remaining !== null && remaining > 0 ? `Starts in ${formatCountdown(remaining)}` : item.kind === "room_meeting" && item.meetingStatus === "live" ? "Live now" : null;
@@ -82,9 +84,11 @@ function ActivityRow({ item }: { item: ActivityItem }) {
       title={item.projectTitle}
       subtitle={subtitle}
       trailing={
-        <Pressable ref={menuRef} onPress={() => setMenuOpen(true)} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Options for ${item.projectTitle}`} className="p-1">
-          <Icon as={MoreHorizontal} size={20} className="text-ink-muted" />
-        </Pressable>
+        canRemove ? (
+          <Pressable ref={menuRef} onPress={() => setMenuOpen(true)} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Options for ${item.projectTitle}`} className="p-1">
+            <Icon as={MoreHorizontal} size={20} className="text-ink-muted" />
+          </Pressable>
+        ) : undefined
       }
     />
     {menuOpen ? (

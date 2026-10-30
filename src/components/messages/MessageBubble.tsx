@@ -311,7 +311,7 @@ function MessageBubbleImpl({
               className={
                 isJumbo
                   ? ""
-                  : `${groupMode ? "rounded-[18px]" : "rounded-2xl"} ${isPhoto ? "p-1" : groupMode ? "px-3.5 py-2" : "px-3 py-2"} ${tailRadius} ${isMine ? "bg-bubble-mine" : "bg-bubble-theirs"} ${m.is_deleted ? "opacity-70" : ""}`
+                  : `${groupMode ? "rounded-[18px]" : "rounded-2xl"} ${isPhoto ? "p-1" : groupMode ? "px-3.5 py-2" : "px-3 py-2"} ${tailRadius} ${isMine ? "bg-bubble-mine" : "bg-bubble-theirs"}`
               }
               style={[
                 bubbleStyle,
@@ -354,14 +354,17 @@ function MessageBubbleImpl({
               ) : null}
 
               {m.is_deleted ? (
+                // Only the tombstone wording is faded/italic — the sender name above it and the time stay normal, and
+                // everyone's tombstone carries a time so a run of deleted bubbles lines up like any other run.
                 <View>
-                  <Text className={`text-sm italic ${textColor}`}>This message was deleted</Text>
-                  {ticks ? (
-                    <View className="mt-1 flex-row items-center justify-end gap-1">
-                      <Text className="text-[11px] text-ink-muted">{timeStr}</Text>
-                      {ticks}
-                    </View>
-                  ) : null}
+                  <Text className={`text-sm italic opacity-70 ${textColor}`}>
+                    This message was deleted
+                    <Text className="text-[11px]" style={{ color: "rgba(0,0,0,0.01)" }} accessibilityElementsHidden importantForAccessibility="no">{`\u00A0\u00A0\u00A0\u00A0${timeStr}${isMine ? "\u00A0\u00A0\u00A0\u00A0\u00A0" : ""}`}</Text>
+                  </Text>
+                  <View pointerEvents="none" className="absolute bottom-0 right-0 flex-row items-center gap-1">
+                    <Text className={`text-[11px] leading-none ${footerColor}`}>{timeStr}</Text>
+                    {ticks}
+                  </View>
                 </View>
               ) : media ? (
                 <MediaMessage
