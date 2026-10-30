@@ -8,6 +8,7 @@ import { View } from "react-native";
 import { Text } from "@/components/ui/Text";
 import { useDiscoverRails } from "@/hooks/useDiscoverBrowse";
 import { useSuggestedPages } from "@/hooks/useSearch";
+import { discoverTileShape } from "@/lib/discoverTileShape";
 import { pageModeLabel } from "@/lib/pageRoles";
 import {
   AVATAR_TILE_WIDTH,
@@ -43,11 +44,11 @@ export function DiscoverBrowse({ lead }: { lead?: ReactNode }) {
           {rails.map(({ section, items, hasMore }) => {
             const moreTo = `/topics/${section.key}`;
             return (
-              <DiscoverRail key={section.key} title={section.title} moreTo={hasMore ? moreTo : undefined}>
+              <DiscoverRail key={section.key} title={section.title} moreTo={hasMore ? moreTo : undefined} snap={discoverTileShape(section.type).width + 12}>
                 {items.map((item) => (
                   <DiscoverTile key={item.project.id} item={item} />
                 ))}
-                {hasMore ? <DiscoverMoreTile to={moreTo} label={section.title} tall={section.type === "book"} /> : null}
+                {hasMore ? <DiscoverMoreTile to={moreTo} label={section.title} projectType={section.type} /> : null}
               </DiscoverRail>
             );
           })}

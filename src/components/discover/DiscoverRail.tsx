@@ -16,7 +16,7 @@ import { Icon, Image } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import { discoverTileMeta, type DiscoverItem } from "@/hooks/useDiscoverBrowse";
-import { thumbBoxAspectClass } from "@/lib/bookCover";
+import { discoverTileShape } from "@/lib/discoverTileShape";
 import { isFileType } from "@/lib/fileProject";
 import { getProjectPath } from "@/lib/projectLinks";
 
@@ -73,19 +73,21 @@ export function DiscoverRail({
 }
 
 /** One project: cover, title (two lines at most), and one muted line — a date or a price. */
-export function DiscoverTile({ item, width = TILE_WIDTH }: { item: DiscoverItem; width?: number }) {
+export function DiscoverTile({ item, width }: { item: DiscoverItem; width?: number }) {
   const { project } = item;
   const meta = discoverTileMeta(item);
+  const shape = discoverTileShape(project.project_type);
   return (
     <Pressable
       onPress={() => router.push(getProjectPath(project) as Href)}
       accessibilityRole="link"
       accessibilityLabel={meta ? `${project.title}, ${meta}` : project.title}
       className="active:opacity-80"
-      style={{ width }}
+      style={{ width: width ?? shape.width }}
     >
       <View
-        className={`${thumbBoxAspectClass(project.project_type, "aspect-square")} w-full items-center justify-center overflow-hidden rounded-xl border border-border-a60 bg-surface`}
+        className="w-full items-center justify-center overflow-hidden rounded-xl border border-border-a60 bg-surface"
+        style={{ aspectRatio: shape.ratio }}
       >
         {isFileType(project.project_type) ? (
           <FileFolderIcon size={120} fill />
@@ -107,18 +109,20 @@ export function DiscoverTile({ item, width = TILE_WIDTH }: { item: DiscoverItem;
   );
 }
 
-/** The last tile of a row: same footprint as the others (cover-shaped for books), pointing at the full list. */
-export function DiscoverMoreTile({ to, label, tall = false }: { to: string; label: string; tall?: boolean }) {
+/** The last tile of a row: same footprint as the others in that row, pointing at the full list. */
+export function DiscoverMoreTile({ to, label, projectType }: { to: string; label: string; projectType?: string }) {
+  const shape = discoverTileShape(projectType);
   return (
     <Pressable
       onPress={() => router.push(to as Href)}
       accessibilityRole="link"
       accessibilityLabel={`More ${label}`}
       className="active:opacity-80"
-      style={{ width: TILE_WIDTH }}
+      style={{ width: shape.width }}
     >
       <View
-        className={`${tall ? "aspect-[2/3]" : "aspect-square"} w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border bg-surface-a60`}
+        className="w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border bg-surface-a60"
+        style={{ aspectRatio: shape.ratio }}
       >
         <View className="h-9 w-9 items-center justify-center rounded-full bg-accent-soft">
           <Icon as={ArrowRight} size={18} className="text-accent" />
