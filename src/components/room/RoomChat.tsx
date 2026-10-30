@@ -12,6 +12,7 @@ import { EmojiPickerSheet, removeLastGrapheme } from "@/components/messages/Emoj
 import { VoiceMessageBubble } from "@/components/messages/VoiceMessageBubble";
 import { VoiceComposerOverlay } from "@/components/room/VoiceComposerOverlay";
 import { Avatar } from "@/components/ui/Avatar";
+import { Wallpaper } from "@/components/ui/Wallpaper";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useToast } from "@/components/ui/Toast";
@@ -98,13 +99,14 @@ export function RoomChat({ projectId, conversationId, canPost, cantPostReason, i
           onPress={() => setAnchoredOnly((v) => !v)}
           accessibilityRole="button"
           accessibilityState={{ selected: anchoredOnly }}
-          className={`mb-1 flex-row items-center gap-1.5 self-start rounded-full px-2.5 py-1 ${anchoredOnly ? "bg-cta" : "bg-accent-soft-a60"}`}
+          className={`mx-4 mb-1 flex-row items-center gap-1.5 self-start rounded-full px-2.5 py-1 ${anchoredOnly ? "bg-cta" : "bg-accent-soft-a60"}`}
         >
           <Icon as={AnchorIcon} size={12} className={anchoredOnly ? "text-white" : "text-accent"} />
           <Text className={`text-xs font-medium ${anchoredOnly ? "text-white" : "text-accent"}`}>{anchoredOnly ? "Showing anchored" : `Anchored (${anchoredCount})`}</Text>
         </Pressable>
       )}
-      <View className="flex-1">
+      <View className="relative min-h-0 flex-1 overflow-hidden">
+        <Wallpaper />
         {list.length === 0 ? (
           <Text className="mt-6 text-center text-sm text-ink-muted">{anchoredOnly ? "Nothing anchored yet." : "No messages yet — say hello."}</Text>
         ) : (
@@ -118,7 +120,7 @@ export function RoomChat({ projectId, conversationId, canPost, cantPostReason, i
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="interactive"
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 4, paddingVertical: 8 }}
+            contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 8 }}
             ListHeaderComponent={isLoadingOlder ? <Text className="py-2 text-center text-xs text-ink-muted">Loading earlier messages…</Text> : null}
             renderItem={({ item: m }) => {
               const isMine = m.sender_id === user?.id;
@@ -163,14 +165,14 @@ export function RoomChat({ projectId, conversationId, canPost, cantPostReason, i
       </View>
 
       {!canPost ? (
-        <Animated.View style={composerSafeStyle} className="flex-row items-center gap-1.5 border-t border-border px-3 py-2.5">
+        <Animated.View style={composerSafeStyle} className="flex-row items-center gap-1.5 border-t border-border bg-canvas px-7 py-2.5">
           <Icon as={Lock} size={14} className="text-ink-muted" />
           <Text className="text-sm text-ink-muted">{cantPostReason ?? "Chat is closed"}</Text>
         </Animated.View>
       ) : (
         <Animated.View style={composerSafeStyle} className="relative border-t border-border bg-canvas">
           {/* Always mounted: the mic is the touch target for the whole hold-to-record gesture. */}
-          <View className="flex-row items-center gap-2 px-1 py-2" pointerEvents={recordingActive ? "none" : "auto"} accessibilityElementsHidden={recordingActive}>
+          <View className="flex-row items-center gap-2 px-5 py-2" pointerEvents={recordingActive ? "none" : "auto"} accessibilityElementsHidden={recordingActive}>
             <Pressable
               onPress={() => {
                 const closing = emojiOpen;

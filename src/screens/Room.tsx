@@ -254,9 +254,9 @@ function GroupPage({ projectId, settings }: { projectId: string | undefined; set
           <ClassroomTab projectId={project.id} isHost={isHost} />
         </View>
         {showChatTab && chatVisited && (
-          <View style={paneStyle("chat")} className="px-4">
+          <View style={paneStyle("chat")}>
             {!chatUnlockedForMe ? (
-              <Text className="text-xs text-ink-muted">Chat closed when the cohort ended.</Text>
+              <Text className="px-4 text-xs text-ink-muted">Chat closed when the cohort ended.</Text>
             ) : conversationId ? (
               <RoomChat
                 projectId={project.id}
@@ -266,7 +266,7 @@ function GroupPage({ projectId, settings }: { projectId: string | undefined; set
                 cantPostReason={isClosed ? "This cohort has ended." : details?.chat_muted ? "Chat is muted." : details?.hosts_only_chat ? "Only hosts can post here." : undefined}
               />
             ) : (
-              <Text className="text-xs text-ink-muted">Loading chat…</Text>
+              <Text className="px-4 text-xs text-ink-muted">Loading chat…</Text>
             )}
           </View>
         )}

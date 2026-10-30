@@ -329,8 +329,8 @@ function MessageBubbleImpl({
                 <View>
                   <Text className={`text-[12.25px] leading-[20px] ${textColor}`}>
                     {searchQuery ? highlightMatches(m.content, searchQuery, isMine) : m.content}
-                    {/* Reserves room at the end of the last line for the timestamp pinned bottom-right. Nested <Text> ignores opacity on Android, so the spacer is hidden via a transparent color instead. */}
-                    <Text className="text-[11px]" style={{ color: "transparent" }} accessibilityElementsHidden importantForAccessibility="no">{`\u00A0\u00A0\u00A0\u00A0${timeStr}${isMine ? "\u00A0\u00A0\u00A0\u00A0\u00A0" : ""}`}</Text>
+                    {/* Reserves room at the end of the last line for the timestamp pinned bottom-right. Nested <Text> ignores opacity on Android, and a fully transparent color (alpha 0) is treated as "unset" by the text engine so the span inherits the parent's colour and the time shows twice. A ~1% alpha colour is non-zero (so it is honoured) yet invisible. */}
+                    <Text className="text-[11px]" style={{ color: "rgba(0,0,0,0.01)" }} accessibilityElementsHidden importantForAccessibility="no">{`\u00A0\u00A0\u00A0\u00A0${timeStr}${isMine ? "\u00A0\u00A0\u00A0\u00A0\u00A0" : ""}`}</Text>
                   </Text>
                   <View pointerEvents="none" className="absolute bottom-0 right-0 flex-row items-center gap-1">
                     <Text className={`text-[11px] leading-none ${footerColor}`}>{timeStr}</Text>
