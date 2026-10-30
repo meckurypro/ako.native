@@ -4,20 +4,24 @@
 //   • swipe right  → reply (icon reveals, haptic tick at the threshold)
 //   • long-press   → action menu (reports the bubble's on-screen rect)
 //   • tap          → toggles selection while in select mode
-import { Reply } from "lucide-react-native";
+import { Anchor, Reply } from "lucide-react-native";
 import { memo, useCallback, useRef } from "react";
 import { Pressable, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, { FadeInLeft, FadeInRight, interpolate, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 
+import { Avatar } from "@/components/ui/Avatar";
 import { MessageStatusTicks } from "@/components/ui/MessageStatusTicks";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
+import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import type { MessageReaction } from "@/hooks/useMessageReactions";
 import type { MessageWithSender } from "@/hooks/useMessaging";
 import { getEmojiOnlyInfo } from "@/lib/emoji";
 import { haptics } from "@/lib/haptics";
+import { senderHue } from "@/lib/senderColor";
+import { useTheme } from "@/theme/ThemeProvider";
 import { decodeMedia } from "@/lib/chatMedia";
 import { formatMessageDayLabel, formatMessageTime } from "@/lib/messageTime";
 import { decodeVoiceNote } from "@/lib/voiceNotes";
@@ -108,6 +112,20 @@ function ReactionChip({ emoji, count, mine, onAdd, onManage }: { emoji: string; 
 
 interface MessageBubbleProps {
   message: MessageWithSender;
+  /**
+   * Group-thread props (all flat primitives / stable callbacks, so memo() keeps skipping untouched rows). Present
+   * only when `groupMode` is on: other people's messages get a name (first bubble of a run) and an avatar (last
+   * bubble of a run), a single "sent" tick, and larger, more readable type.
+   */
+  groupMode?: boolean;
+  senderName?: string;
+  senderUsername?: string | null;
+  senderAvatarUrl?: string | null;
+  senderVerified?: boolean;
+  isFirstInRun?: boolean;
+  isLastInRun?: boolean;
+  resolveName?: (senderId: string) => string;
+  onOpenProfile?: (username: string) => void;
   currentUserId: string | undefined;
   otherParticipantName: string;
   otherParticipantAvatarUrl?: string | null;
@@ -132,6 +150,15 @@ interface MessageBubbleProps {
 
 function MessageBubbleImpl({
   message: m,
+  groupMode = false,
+  senderName = "Member",
+  senderUsername = null,
+  senderAvatarUrl = null,
+  senderVerified = false,
+  isFirstInRun = true,
+  isLastInRun = true,
+  resolveName,
+  onOpenProfile,
   currentUserId,
   otherParticipantName,
   otherParticipantAvatarUrl,
@@ -162,7 +189,18 @@ function MessageBubbleImpl({
   const timeStr = formatMessageTime(m.created_at);
   const emojiInfo = !m.is_deleted && !voiceNote && !media && !repliedTo ? getEmojiOnlyInfo(m.content) : { isEmojiOnly: false, count: 0 };
   const isJumbo = emojiInfo.isEmojiOnly;
-  const ticks = isMine ? <MessageStatusTicks deliveredAt={m.delivered_at} readAt={m.read_at} size={14} /> : null;
+  // A group message has many recipients, so the 1:1 delivered/read ticks would mislead (one person reading would turn
+  // them blue for everyone). A group shows a single "sent" tick instead.
+  const ticks = isMine ? (
+    groupMode ? <MessageStatusTicks deliveredAt={null} readAt={null} size={14} /> : <MessageStatusTicks deliveredAt={m.delivered_at} readAt={m.read_at} size={14} />
+  ) : null;
+  const { resolvedTheme } = useTheme();
+  const quoteName = (id: string) => (id === currentUserId ? "You" : groupMode && resolveName ? resolveName(id) : otherParticipantName);
+  const bubbleSenderName = isMine ? (myName ?? "You") : groupMode ? senderName : otherParticipantName;
+  const bubbleSenderAvatar = isMine ? myAvatarUrl : groupMode ? senderAvatarUrl : otherParticipantAvatarUrl;
+  const showSenderName = groupMode && !isMine && isFirstInRun;
+  const hue = senderHue(m.sender_id);
+  const nameColor = resolvedTheme === "dark" ? `hsl(${hue}, 62%, 74%)` : `hsl(${hue}, 52%, 33%)`;
 
   const bubbleRef = useRef<View>(null);
 
@@ -207,6 +245,23 @@ function MessageBubbleImpl({
     });
   }, [selectMode, m, onLongPress]);
 
+  const senderNameEl = showSenderName ? (
+    <Pressable
+      onPress={() => senderUsername && onOpenProfile?.(senderUsername)}
+      onLongPress={handleLongPress}
+      delayLongPress={450}
+      accessibilityRole="button"
+      accessibilityLabel={`View ${senderName}'s profile`}
+      className="mb-0.5 flex-row items-center gap-1 self-start"
+    >
+      <Text numberOfLines={1} className="shrink text-[13px] font-semibold leading-[18px]" style={{ color: nameColor }}>
+        {senderName}
+      </Text>
+      {senderVerified ? <VerifiedBadge size={13} className="shrink-0" /> : null}
+    </Pressable>
+  ) : null;
+  const tailRadius = !groupMode ? (isMine ? "rounded-br-md" : "rounded-bl-md") : isFirstInRun ? (isMine ? "rounded-tr-md" : "rounded-tl-md") : "";
+
   const textColor = isMine ? "text-white" : "text-ink";
   const footerColor = isMine ? "text-white-a70" : "text-ink-muted";
   const entering = animateIn ? (isMine ? FadeInRight.duration(220) : FadeInLeft.duration(220)) : undefined;
@@ -215,10 +270,25 @@ function MessageBubbleImpl({
   if (voiceNote && !voiceNotesEnabled) return null;
 
   return (
-    <Animated.View entering={entering} className="-mx-2 mb-2 flex-row items-center gap-2 px-2 py-0.5">
+    <Animated.View
+      entering={entering}
+      className={`-mx-2 flex-row gap-2 px-2 py-0.5 ${groupMode ? `items-end mb-px ${isFirstInRun ? "mt-2.5" : ""}` : "mb-2 items-center"}`}
+    >
       {selectMode ? (
-        <View className={`h-5 w-5 shrink-0 items-center justify-center rounded-full border ${isSelected ? "border-accent bg-accent" : "border-border"}`}>
+        <View className={`h-5 w-5 shrink-0 items-center justify-center self-center rounded-full border ${isSelected ? "border-accent bg-accent" : "border-border"}`}>
           {isSelected ? <View className="h-2 w-2 rounded-full bg-canvas" /> : null}
+        </View>
+      ) : null}
+
+      {/* Group threads: a 32px avatar column beside other people's messages. The avatar sits on the last bubble of a
+          run; earlier bubbles in the run keep the empty column so the whole run lines up. */}
+      {groupMode && !isMine ? (
+        <View className="w-8 shrink-0 self-end">
+          {isLastInRun ? (
+            <Pressable onPress={() => senderUsername && onOpenProfile?.(senderUsername)} accessibilityRole="button" accessibilityLabel={`View ${senderName}'s profile`} hitSlop={4}>
+              <Avatar src={senderAvatarUrl} name={senderName} size="sm" />
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
 
@@ -245,17 +315,27 @@ function MessageBubbleImpl({
               className={
                 isJumbo
                   ? ""
-                  : `rounded-2xl ${isPhoto ? "p-1" : "px-3 py-2"} ${isMine ? "rounded-br-md bg-bubble-mine" : "rounded-bl-md bg-bubble-theirs"} ${m.is_deleted ? "opacity-70" : ""}`
+                  : `${groupMode ? "rounded-[18px]" : "rounded-2xl"} ${isPhoto ? "p-1" : groupMode ? "px-3.5 py-2" : "px-3 py-2"} ${tailRadius} ${isMine ? "bg-bubble-mine" : "bg-bubble-theirs"} ${m.is_deleted ? "opacity-70" : ""}`
               }
               style={[
                 bubbleStyle,
                 !isJumbo && !isMine
                   ? { shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 3, elevation: 1 }
-                  : null,
+                  : !isJumbo && groupMode
+                    ? { shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.14, shadowRadius: 2, elevation: 1 }
+                    : null,
               ]}
             >
               {isHighlighted || isSelected ? (
                 <View pointerEvents="none" className={`absolute inset-0 rounded-2xl ${isSelected ? "bg-highlight-a50" : "bg-accent-a25"}`} />
+              ) : null}
+
+              {!isJumbo ? senderNameEl : null}
+              {m.anchored_at && !m.is_deleted && !isJumbo ? (
+                <View className="mb-1 flex-row items-center gap-1">
+                  <Icon as={Anchor} size={11} className={isMine ? "text-white-a70" : "text-accent"} />
+                  <Text className={`text-[11px] font-medium ${isMine ? "text-white-a70" : "text-accent"}`}>Anchored</Text>
+                </View>
               ) : null}
 
               {repliedTo && !m.is_deleted ? (
@@ -265,7 +345,7 @@ function MessageBubbleImpl({
                   className={`mb-1.5 rounded-sm border-l-2 pl-2 ${isMine ? "border-white-a50" : "border-accent-a50"}`}
                 >
                   <Text className={`text-xs font-medium ${isMine ? "text-white-a80" : "text-ink-muted"}`}>
-                    {repliedTo.sender_id === currentUserId ? "You" : otherParticipantName}
+                    {quoteName(repliedTo.sender_id)}
                   </Text>
                   {repliedTo.is_deleted ? (
                     <Text numberOfLines={1} className={`text-xs ${isMine ? "text-white-a80" : "text-ink-muted"}`}>
@@ -293,7 +373,7 @@ function MessageBubbleImpl({
                   isMine={isMine}
                   timeStr={timeStr}
                   ticks={ticks}
-                  senderName={otherParticipantName}
+                  senderName={bubbleSenderName}
                   sentLabel={`${formatMessageDayLabel(m.created_at)}, ${timeStr}`}
                   footerColor={footerColor}
                   textColor={textColor}
@@ -308,8 +388,8 @@ function MessageBubbleImpl({
                   viewOnce={voiceNote.viewOnce}
                   openedOnceAt={voiceNoteOpenedAt}
                   onOpened={() => onVoiceNoteOpened?.(m.id)}
-                  senderAvatarUrl={isMine ? myAvatarUrl : otherParticipantAvatarUrl}
-                  senderName={isMine ? (myName ?? "You") : otherParticipantName}
+                  senderAvatarUrl={bubbleSenderAvatar}
+                  senderName={bubbleSenderName}
                   footer={
                     <View className="flex-row items-center gap-1">
                       <Text className={`text-[11px] ${footerColor}`}>{timeStr}</Text>
@@ -319,6 +399,7 @@ function MessageBubbleImpl({
                 />
               ) : isJumbo ? (
                 <View className="items-end">
+                  {senderNameEl ? <View className="self-start">{senderNameEl}</View> : null}
                   <Text style={{ fontSize: JUMBO_SIZE[emojiInfo.count] ?? 36, lineHeight: (JUMBO_SIZE[emojiInfo.count] ?? 36) + 6 }}>{m.content.trim()}</Text>
                   <View className="mt-0.5 flex-row items-center gap-1">
                     <Text className="text-[11px] text-ink-muted">{timeStr}</Text>
@@ -327,7 +408,7 @@ function MessageBubbleImpl({
                 </View>
               ) : (
                 <View>
-                  <Text className={`text-[12.25px] leading-[20px] ${textColor}`}>
+                  <Text className={`${groupMode ? "text-[15px] leading-[21px]" : "text-[12.25px] leading-[20px]"} ${textColor}`}>
                     {searchQuery ? highlightMatches(m.content, searchQuery, isMine) : m.content}
                     {/* Reserves room at the end of the last line for the timestamp pinned bottom-right. Nested <Text> ignores opacity on Android, and a fully transparent color (alpha 0) is treated as "unset" by the text engine so the span inherits the parent's colour and the time shows twice. A ~1% alpha colour is non-zero (so it is honoured) yet invisible. */}
                     <Text className="text-[11px]" style={{ color: "rgba(0,0,0,0.01)" }} accessibilityElementsHidden importantForAccessibility="no">{`\u00A0\u00A0\u00A0\u00A0${timeStr}${isMine ? "\u00A0\u00A0\u00A0\u00A0\u00A0" : ""}`}</Text>

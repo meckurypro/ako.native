@@ -5,7 +5,7 @@
 //     above (or below) the message
 //   • the message itself lifted onto a highlight, so it's obvious which one it is
 // "More" holds Select, Pin, Hide for me, Share outside app.
-import { CheckSquare, Copy, EyeOff, Forward, MoreHorizontal, Pin, Plus, Redo2, Reply, Star, Trash2, X } from "lucide-react-native";
+import { Anchor, CheckSquare, Copy, EyeOff, Forward, MoreHorizontal, Pin, Plus, Redo2, Reply, Star, Trash2, X } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { Keyboard, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
@@ -44,6 +44,9 @@ interface MessageActionMenuProps {
   onHide: () => void;
   onShare: () => void;
   onSelect: () => void;
+  /** Group hosts only: make this message permanent for people who join later (or undo that). */
+  isAnchored?: boolean;
+  onToggleAnchor?: () => void;
   onClose: () => void;
 }
 
@@ -68,6 +71,8 @@ export function MessageActionMenu({
   onHide,
   onShare,
   onSelect,
+  isAnchored,
+  onToggleAnchor,
   onClose,
 }: MessageActionMenuProps) {
   useBackDismiss(onClose);
@@ -100,6 +105,16 @@ export function MessageActionMenu({
 
   const moreItems: (DropdownMenuItem | "divider")[] = [
     { key: "select", label: "Select", icon: <Icon as={CheckSquare} size={22} className="text-overlay-ink" />, onSelect: done(onSelect) },
+    ...(!isDeleted && onToggleAnchor
+      ? ([
+          {
+            key: "anchor",
+            label: isAnchored ? "Unanchor" : "Anchor for new members",
+            icon: <Icon as={Anchor} size={22} className={isAnchored ? "text-overlay-accent" : "text-overlay-ink"} />,
+            onSelect: done(onToggleAnchor),
+          },
+        ] satisfies DropdownMenuItem[])
+      : []),
     ...(!isDeleted
       ? ([
           {

@@ -1,0 +1,32 @@
+// src/components/ui/SendButton.tsx
+import { ArrowUp } from "lucide-react-native";
+import { Pressable } from "react-native";
+
+import { Icon } from "./styled";
+
+interface SendButtonProps {
+  /** Nothing to send yet (empty draft) — the circle goes quiet and can't be tapped. */
+  disabled?: boolean;
+  onPress: () => void;
+  label?: string;
+}
+
+/**
+ * The send control: a plain up arrow in a circle, the same shape Claude uses. Filled when there is something to send,
+ * a soft grey disc when there isn't. Same 44px footprint as the mic button it swaps with, so the composer never
+ * shifts when the draft goes from empty to typed.
+ */
+export function SendButton({ disabled = false, onPress, label = "Send" }: SendButtonProps) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled }}
+      className={`h-11 w-11 shrink-0 items-center justify-center rounded-full ${disabled ? "bg-ink-a10" : "bg-cta active:opacity-80"}`}
+    >
+      <Icon as={ArrowUp} size={22} strokeWidth={2.4} className={disabled ? "text-ink-muted" : "text-white"} />
+    </Pressable>
+  );
+}

@@ -128,6 +128,56 @@ export function useRoomMembersList(projectId: string | undefined) {
   });
 }
 
+export type RoomPersonRole = "owner" | "host" | "member";
+
+export interface RoomPerson {
+  user_id: string;
+  username: string;
+  display_name: string;
+  avatar_url: string | null;
+  is_verified: boolean;
+  role: RoomPersonRole;
+  joined_at: string;
+}
+
+// Everyone in the group — the owner and hosts included. room_members only holds people who joined, so the owner and
+// hosts never appear in it; the room_people RPC (supabase/ako_group_room_people.sql) merges them in.
+export function useRoomPeople(projectId: string | undefined) {
+  return useQuery({
+    queryKey: ["room-people", projectId],
+    queryFn: async (): Promise<RoomPerson[]> => {
+      const { data, error } = await supabase.rpc("room_people", { p_project_id: projectId });
+      if (error) throw error;
+      return (data ?? []) as RoomPerson[];
+    },
+    enabled: !!projectId,
+    staleTime: 30_000,
+  });
+}
+
+export interface SenderProfile {
+  id: string;
+  username: string;
+  display_name: string;
+  avatar_url: string | null;
+}
+
+// People who wrote in the chat but are no longer in the group (left or removed) still need a name on their old
+// messages — look those few up directly instead of showing "Member".
+export function useProfilesByIds(ids: string[]) {
+  const key = [...ids].sort().join(",");
+  return useQuery({
+    queryKey: ["profiles-by-ids", key],
+    queryFn: async (): Promise<SenderProfile[]> => {
+      const { data, error } = await supabase.from("profiles").select("id, username, display_name, avatar_url").in("id", ids);
+      if (error) throw error;
+      return (data ?? []) as SenderProfile[];
+    },
+    enabled: ids.length > 0,
+    staleTime: 5 * 60_000,
+  });
+}
+
 // "Host" = the project's owner, a member of the owning Page's team,
 // or an explicitly-added room co-host — see is_room_host() in the
 // migration, which this just calls so the client-side check can
@@ -734,6 +784,7 @@ export function invalidateRoomMembership(queryClient: ReturnType<typeof useQuery
     "is-room-member",
     "room-member-count",
     "room-members-list",
+    "room-people",
     "room-join-requests",
     "my-room-join-request",
     "room-blocklist",
