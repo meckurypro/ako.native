@@ -17,7 +17,7 @@ import { getProjectSlugFormatError, getProjectUrl, normalizeProjectSlug } from "
 import { useTheme } from "@/theme/ThemeProvider";
 import { friendlyError } from "@/lib/friendlyError";
 
-export function ProjectLinkSheet({ project, onClose }: { project: Project; onClose: () => void }) {
+export function ProjectLinkSheet({ project, onClose, noun = "Project" }: { project: Project; onClose: () => void; noun?: string }) {
   const { colors } = useTheme();
   const toast = useToast();
   const { profile } = useAuth();
@@ -72,7 +72,7 @@ export function ProjectLinkSheet({ project, onClose }: { project: Project; onClo
   return (
     <SheetFrame title="Custom URL" subtitle={project.title} onClose={onClose} avoidKeyboard zIndex={55} scrim="ink">
       <Text className="mb-4 mt-1 text-sm text-ink-muted">
-        This is the link people use to find this Project. You can change it any time — the old link will still bring people here.
+        This is the link people use to find this {noun}. You can change it any time — the old link will still bring people here.
       </Text>
 
       {project.slug ? (

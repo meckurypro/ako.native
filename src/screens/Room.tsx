@@ -253,7 +253,7 @@ function GroupPage({ projectId, settings }: { projectId: string | undefined; set
       {view === "assignments" ? <AssignmentsTab projectId={project.id} isHost={isHost} /> : null}
       {view === "settings" ? (
         <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 48 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <HostSettingsPanel projectId={project.id} isOwner={isOwner} />
+          <HostSettingsPanel projectId={project.id} project={project} isOwner={isOwner} onOpenMembers={() => openView("members")} />
         </ScrollView>
       ) : null}
     </GroupScreenShell>
