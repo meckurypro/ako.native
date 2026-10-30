@@ -196,6 +196,14 @@ async function batchGetUnreadCounts(
  * conversation. Fetches every conversation's other-participant profile
  * in a single query instead.
  */
+// A group's chat is a conversation too, but it belongs to the group — never to the Chats inbox, where it would pass
+// for a private thread with whichever member happened to be "the other participant".
+async function fetchGroupChatConversationIds(ids: string[]): Promise<Set<string>> {
+  if (!ids.length) return new Set();
+  const { data } = await supabase.from("project_room_details").select("conversation_id").in("conversation_id", ids);
+  return new Set((data ?? []).map((r) => r.conversation_id as string));
+}
+
 async function batchGetOtherParticipants(
   conversationIds: string[],
   userId: string
@@ -254,7 +262,7 @@ export function useConversations() {
       // from the list the way archived_at does.
       const leftMap = new Map(visible.map((p) => [p.conversation_id, !!p.left_at]));
 
-      const { data: conversations, error: convError } = await supabase
+      const { data: allConversations, error: convError } = await supabase
         .from("conversations")
         .select(
           "id, last_message_at, is_group, team_page:pages!conversations_team_page_id_fkey(id, username, name, avatar_url, page_type, is_verified)"
@@ -263,6 +271,8 @@ export function useConversations() {
         .order("last_message_at", { ascending: false });
 
       if (convError) throw convError;
+      const groupChatIds = await fetchGroupChatConversationIds(conversationIds);
+      const conversations = (allConversations ?? []).filter((c) => !groupChatIds.has(c.id));
       if (!conversations?.length) return [];
 
       // These three used to be up to 4 sequential round trips PER
@@ -1204,7 +1214,7 @@ export function useArchivedConversations() {
       const readMap = new Map(myParticipation.map((p) => [p.conversation_id, p.last_read_at]));
       const requestMap = new Map(myParticipation.map((p) => [p.conversation_id, p.is_request]));
 
-      const { data: conversations, error: convError } = await supabase
+      const { data: allConversations, error: convError } = await supabase
         .from("conversations")
         .select(
           "id, last_message_at, is_group, team_page:pages!conversations_team_page_id_fkey(id, username, name, avatar_url, page_type, is_verified)"
@@ -1213,6 +1223,8 @@ export function useArchivedConversations() {
         .order("last_message_at", { ascending: false });
 
       if (convError) throw convError;
+      const groupChatIds = await fetchGroupChatConversationIds(conversationIds);
+      const conversations = (allConversations ?? []).filter((c) => !groupChatIds.has(c.id));
       if (!conversations?.length) return [];
 
       // Same fixed-round-trip batching as useConversations above —

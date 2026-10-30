@@ -930,7 +930,6 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
                     senderName={group ? resolveName(m.sender_id) : undefined}
                     senderUsername={group ? (profileById.get(m.sender_id)?.username ?? null) : null}
                     senderAvatarUrl={group ? (profileById.get(m.sender_id)?.avatar_url ?? null) : null}
-                    senderVerified={group ? !!profileById.get(m.sender_id)?.is_verified : false}
                     isFirstInRun={item.isFirstInRun}
                     isLastInRun={item.isLastInRun}
                     resolveName={group ? resolveName : undefined}

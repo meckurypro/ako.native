@@ -1,0 +1,8 @@
+-- DMs must never land in a group's chat.
+-- Applied to the Ako project as migration direct_conversation_never_reuses_group_threads.
+--
+-- get_or_create_direct_conversation used to reuse ANY conversation two people shared, including a group's chat
+-- (project_room_details.conversation_id), so a private message between two group members showed up for the whole
+-- group. It now only reuses a plain conversation with exactly those two participants: not a team/page chat, not a
+-- group's chat, nothing with a third person in it. Existing messages are left as they are.
+-- (Full function body: see the live definition of public.get_or_create_direct_conversation.)

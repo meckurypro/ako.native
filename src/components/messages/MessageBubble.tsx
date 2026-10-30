@@ -15,7 +15,6 @@ import { Avatar } from "@/components/ui/Avatar";
 import { MessageStatusTicks } from "@/components/ui/MessageStatusTicks";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
-import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import type { MessageReaction } from "@/hooks/useMessageReactions";
 import type { MessageWithSender } from "@/hooks/useMessaging";
 import { getEmojiOnlyInfo } from "@/lib/emoji";
@@ -121,7 +120,6 @@ interface MessageBubbleProps {
   senderName?: string;
   senderUsername?: string | null;
   senderAvatarUrl?: string | null;
-  senderVerified?: boolean;
   isFirstInRun?: boolean;
   isLastInRun?: boolean;
   resolveName?: (senderId: string) => string;
@@ -154,7 +152,6 @@ function MessageBubbleImpl({
   senderName = "Member",
   senderUsername = null,
   senderAvatarUrl = null,
-  senderVerified = false,
   isFirstInRun = true,
   isLastInRun = true,
   resolveName,
@@ -257,7 +254,6 @@ function MessageBubbleImpl({
       <Text numberOfLines={1} className="shrink text-[13px] font-semibold leading-[18px]" style={{ color: nameColor }}>
         {senderName}
       </Text>
-      {senderVerified ? <VerifiedBadge size={13} className="shrink-0" /> : null}
     </Pressable>
   ) : null;
   const tailRadius = !groupMode ? (isMine ? "rounded-br-md" : "rounded-bl-md") : isFirstInRun ? (isMine ? "rounded-tr-md" : "rounded-tl-md") : "";
