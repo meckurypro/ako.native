@@ -326,7 +326,6 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
   const [content, setContent] = useState(draftMessage ?? "");
   const [replyTarget, setReplyTarget] = useState<MessageWithSender | null>(null);
   const [emojiPickerTarget, setEmojiPickerTarget] = useState<EmojiPickerTarget>(null);
-  const [inputHeight, setInputHeight] = useState(0);
   const [infoBanner, setInfoBanner] = useState<string | null>(null);
   const [attachOpen, setAttachOpen] = useState(false);
   const [attachAnchor, setAttachAnchor] = useState<AttachAnchor | null>(null);
@@ -1026,7 +1025,6 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
                 ref={inputRef}
                 value={content}
                 onChangeText={setContent}
-                onContentSizeChange={(e) => setInputHeight(e.nativeEvent.contentSize.height)}
                 onFocus={() => setEmojiPickerTarget((prev) => (prev?.mode === "input" ? null : prev))}
                 maxLength={2000}
                 multiline
@@ -1036,7 +1034,7 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
                 cursorColor={colors.accent}
                 textAlignVertical="center"
                 className="min-w-0 flex-1 py-2.5 text-base text-ink"
-                style={{ fontFamily: "Inter_400Regular", maxHeight: 120, height: Math.min(Math.max(inputHeight + 20, 42), 120) }}
+                style={{ fontFamily: "Inter_400Regular", minHeight: 42, maxHeight: 120 }}
               />
 
               <Pressable onPress={toggleAttach} accessibilityRole="button" accessibilityLabel="Attach" accessibilityState={{ expanded: attachOpen }} hitSlop={6} className="shrink-0 px-2 pb-[11px]">
