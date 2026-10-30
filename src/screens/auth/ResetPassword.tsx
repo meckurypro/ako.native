@@ -14,6 +14,7 @@ import { TextLink } from "@/components/ui/TextLink";
 import { Wordmark } from "@/components/ui/Wordmark";
 import { authErrorMessage, raceAuth, SLOW_AUTH_MESSAGE } from "@/lib/authErrors";
 import { authRedirectUrl } from "@/lib/authLink";
+import { PASSWORD_SET_FLAG } from "@/lib/authMethods";
 import { isNetworkError } from "@/lib/offlineBoot";
 import { supabase } from "@/lib/supabase";
 import { friendlyError } from "@/lib/friendlyError";
@@ -26,6 +27,7 @@ export function ResetPassword() {
   const [step, setStep] = useState<Step>(fromRecovery === "1" ? "new_password" : "email");
   const [email, setEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const doneTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -79,8 +81,18 @@ export function ResetPassword() {
       return;
     }
 
+    if (newPassword !== confirmPassword) {
+      setError("Passwords don't match.");
+      return;
+    }
+
     setLoading(true);
-    const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+    // The flag marks accounts that signed up another way (Google…) as now having a password, so Settings offers
+    // "change password" from here on. See lib/authMethods.ts.
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: newPassword,
+      data: { [PASSWORD_SET_FLAG]: true },
+    });
     setLoading(false);
 
     if (updateError) {
@@ -146,9 +158,17 @@ export function ResetPassword() {
             onChangeText={setNewPassword}
             autoComplete="new-password"
             textContentType="newPassword"
+            returnKeyType="next"
+            autoFocus
+          />
+          <PasswordField
+            label="Confirm new password"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            autoComplete="new-password"
+            textContentType="newPassword"
             returnKeyType="go"
             onSubmitEditing={handleSetNewPassword}
-            autoFocus
           />
           {error ? (
             <Text accessibilityRole="alert" className="mb-4 text-sm text-danger">

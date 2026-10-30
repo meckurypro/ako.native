@@ -14,6 +14,7 @@ import { router } from "expo-router";
 import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
 
 import { classifyError, type ClassifiedError } from "@/lib/friendlyError";
+import { runAfterDismiss } from "@/hooks/useBackDismiss";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { useToast } from "./Toast";
 
@@ -56,10 +57,7 @@ export function ErrorNoticeProvider({ children }: { children: ReactNode }) {
           confirmLabel="Fund wallet"
           cancelLabel="Not now"
           onCancel={() => setLowBalance(null)}
-          onConfirm={() => {
-            setLowBalance(null);
-            router.push("/wallet/fund");
-          }}
+          onConfirm={() => runAfterDismiss(() => setLowBalance(null), () => router.push("/wallet/fund"))}
         />
       ) : null}
     </ErrorNoticeContext.Provider>

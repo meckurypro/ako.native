@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
+import { authRedirectUrl } from "@/lib/authLink";
 import { useAuth } from "./useAuth";
 import { useSound } from "./useSound";
 import { useToast } from "@/components/ui/Toast";
@@ -296,6 +297,25 @@ export function useChangePassword() {
         password: newPassword,
       });
       if (updateError) throw updateError;
+    },
+  });
+}
+
+/**
+ * Emails the signed-in user a password-reset link. Anyone can use this — it is the way in for an account that signed
+ * up with Google (no password yet) and for someone who forgot their current one.
+ */
+export function useSendPasswordReset() {
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async () => {
+      if (!user?.email) throw new Error("Not signed in");
+      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+        redirectTo: authRedirectUrl(),
+      });
+      if (error) throw error;
+      return user.email;
     },
   });
 }
