@@ -205,8 +205,10 @@ export function GroupMembersScreen({
   const q = query.trim().toLowerCase();
   const filtered = q ? people.filter((p) => p.display_name.toLowerCase().includes(q) || p.username.toLowerCase().includes(q)) : people;
   const items = useMemo<MemberListItem[]>(() => {
-    const hosts = filtered.filter((p) => p.role !== "member");
-    const members = filtered.filter((p) => p.role === "member");
+    // A→Z by name inside each section, so a person is always where you'd look for them.
+    const byName = (a: RoomPerson, b: RoomPerson) => a.display_name.localeCompare(b.display_name, undefined, { sensitivity: "base" });
+    const hosts = filtered.filter((p) => p.role !== "member").sort(byName);
+    const members = filtered.filter((p) => p.role === "member").sort(byName);
     const out: MemberListItem[] = [];
     if (hosts.length) {
       out.push({ kind: "header", key: "h-hosts", label: `${isCohort ? "Instructors" : "Hosts"} · ${hosts.length}` });

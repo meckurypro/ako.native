@@ -25,7 +25,7 @@ import { Text } from "@/components/ui/Text";
 import { useToast } from "@/components/ui/Toast";
 import { useActivity, type ActivityItem } from "@/hooks/useActivity";
 import { formatCountdown, useCountdown } from "@/hooks/useCountdown";
-import { useFeatureFlag } from "@/hooks/useFeatureFlags";
+import { useCanCreateGroup } from "@/hooks/useCanCreateGroup";
 import { useIsOnline } from "@/hooks/useIsOnline";
 import { useRemoveFromLibrary } from "@/hooks/useLibraryRemovals";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
@@ -161,7 +161,7 @@ export function Connect() {
   const { data, isLoading, refetch } = useActivity();
   const items = useMemo(() => data ?? [], [data]);
   // Groups are created from here; the creation form is the project form in group mode, so it shares its kill switch.
-  const canCreateGroup = useFeatureFlag("projects_enabled");
+  const { allowed: canCreateGroup } = useCanCreateGroup();
 
   // Only tabs that have something in them are shown.
   const tabs = useMemo(() => ALL_TABS.filter((t) => items.some((i) => KINDS_FOR_TAB[t].includes(i.kind))), [items]);

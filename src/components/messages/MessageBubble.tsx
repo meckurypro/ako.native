@@ -408,7 +408,7 @@ function MessageBubbleImpl({
                 </View>
               ) : (
                 <View>
-                  <Text className={`${groupMode ? "text-[15px] leading-[21px]" : "text-[12.25px] leading-[20px]"} ${textColor}`}>
+                  <Text className={`text-[15px] leading-[21px] ${textColor}`}>
                     {searchQuery ? highlightMatches(m.content, searchQuery, isMine) : m.content}
                     {/* Reserves room at the end of the last line for the timestamp pinned bottom-right. Nested <Text> ignores opacity on Android, and a fully transparent color (alpha 0) is treated as "unset" by the text engine so the span inherits the parent's colour and the time shows twice. A ~1% alpha colour is non-zero (so it is honoured) yet invisible. */}
                     <Text className="text-[11px]" style={{ color: "rgba(0,0,0,0.01)" }} accessibilityElementsHidden importantForAccessibility="no">{`\u00A0\u00A0\u00A0\u00A0${timeStr}${isMine ? "\u00A0\u00A0\u00A0\u00A0\u00A0" : ""}`}</Text>

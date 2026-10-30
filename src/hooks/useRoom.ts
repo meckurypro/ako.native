@@ -785,6 +785,7 @@ export function invalidateRoomMembership(queryClient: ReturnType<typeof useQuery
     "room-member-count",
     "room-members-list",
     "room-people",
+    "room-member-events",
     "room-join-requests",
     "my-room-join-request",
     "room-blocklist",
@@ -994,5 +995,39 @@ export function useJoinOpenRoom(projectId: string) {
       invalidateRoomMembership(queryClient, projectId);
       queryClient.invalidateQueries({ queryKey: ["group-public-info", projectId] });
     },
+  });
+}
+
+// Who left (or was removed) — readable by hosts only (RLS), so members never learn that someone slipped out. The
+// group chat draws these as small centred badges, only for hosts. Written by leave_room / remove_room_member.
+export interface RoomMemberEvent {
+  id: string;
+  user_id: string;
+  kind: "left" | "removed";
+  created_at: string;
+  display_name: string;
+}
+
+export function useRoomMemberEvents(projectId: string | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: ["room-member-events", projectId],
+    queryFn: async (): Promise<RoomMemberEvent[]> => {
+      const { data, error } = await supabase
+        .from("room_member_events")
+        .select("id, user_id, kind, created_at, profile:profiles!room_member_events_user_id_fkey(display_name, username)")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: true })
+        .limit(200);
+      if (error) throw error;
+      return ((data ?? []) as unknown as { id: string; user_id: string; kind: "left" | "removed"; created_at: string; profile: { display_name: string; username: string } | null }[]).map((e) => ({
+        id: e.id,
+        user_id: e.user_id,
+        kind: e.kind,
+        created_at: e.created_at,
+        display_name: e.profile?.display_name || e.profile?.username || "Someone",
+      }));
+    },
+    enabled: !!projectId && enabled,
+    refetchInterval: enabled ? 30_000 : false,
   });
 }

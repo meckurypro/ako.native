@@ -89,7 +89,7 @@ import {
 } from "@/hooks/useMessageReactions";
 import { useUnseenPosts } from "@/hooks/useUnseenPosts";
 import { useSendMedia } from "@/hooks/useSendMedia";
-import { useProfilesByIds, useSetMessageAnchor, type RoomPerson } from "@/hooks/useRoom";
+import { useProfilesByIds, useRoomMemberEvents, useSetMessageAnchor, type RoomMemberEvent, type RoomPerson } from "@/hooks/useRoom";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { useActiveConversationPush } from "@/hooks/useActiveConversationPush";
 import { MAX_MEDIA_BYTES, messagePlainText, messagePreview, type MediaKind } from "@/lib/chatMedia";
@@ -117,9 +117,22 @@ export interface GroupThreadConfig {
   cantPostReason?: string;
   onBack: () => void;
   onOpenInfo: () => void;
+  /** Opens the A→Z members list directly (the member count in the header). */
+  onOpenMembers: () => void;
   onOpenProfile: (username: string) => void;
   /** Rows under Group info / Search / Anchored in the ⋯ menu — the Group screen's pages, ending with Leave. */
   menuItems: (OptionItem | "divider")[];
+}
+
+// A host-only chat badge: "Sharon Eze left" / "Sharon Eze was removed", centred like a day separator.
+function LeaveBadge({ event }: { event: RoomMemberEvent }) {
+  return (
+    <View className="items-center py-1.5">
+      <View className="rounded-full bg-surface-a90 px-3 py-1">
+        <Text className="text-[12px] font-medium text-ink-muted">{`${event.display_name} ${event.kind === "left" ? "left" : "was removed"}`}</Text>
+      </View>
+    </View>
+  );
 }
 
 function useConversationHeader(conversationId: string, enabled = true) {
@@ -173,7 +186,7 @@ interface ActiveMessage {
 const EMPTY_REACTIONS: MessageReaction[] = []; // one shared array, so bubbles with no reactions keep memo() hits
 const VIEWABILITY_CONFIG = { itemVisiblePercentThreshold: 20 };
 
-type ThreadItem = { key: string; message: MessageWithSender; showDaySeparator: boolean; dayLabel: string; isFirstInRun: boolean; isLastInRun: boolean };
+type ThreadItem = { key: string; message: MessageWithSender; showDaySeparator: boolean; dayLabel: string; isFirstInRun: boolean; isLastInRun: boolean; hostBadges?: RoomMemberEvent[] };
 
 export function MessageThread({ conversationId: conversationIdProp, group }: { conversationId?: string; group?: GroupThreadConfig } = {}) {
   const params = useLocalSearchParams<{ conversationId: string; draftMessage?: string }>();
@@ -230,6 +243,8 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
   // ── group mode: who wrote what, and the host's "anchored only" filter ──
   const [anchoredOnly, setAnchoredOnly] = useState(false);
   const setAnchor = useSetMessageAnchor(conversationId);
+  // Hosts (only) see a small centred badge where someone left — the group itself is never told.
+  const { data: memberEvents } = useRoomMemberEvents(group?.projectId, !!group?.isHost);
   const unknownSenderIds = useMemo(() => {
     if (!group || !messages) return [];
     const known = new Set(group.people.map((p) => p.user_id));
@@ -261,11 +276,17 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
     // thread draws as one cluster (name on top, avatar at the bottom).
     const sameRun = (a?: MessageWithSender, b?: MessageWithSender) =>
       !!a && !!b && a.sender_id === b.sender_id && dayKeyFor(a.created_at) === dayKeyFor(b.created_at) && Math.abs(new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) < 10 * 60_000;
+    const events = group?.isHost ? (memberEvents ?? []) : [];
+    let eventIdx = 0;
     return visibleMessages.map((m, i, all) => {
       const dayKey = dayKeyFor(m.created_at);
       const showDaySeparator = dayKey !== lastDayKey;
       lastDayKey = dayKey;
+      // Badges belong just above the first message that came after them.
+      const hostBadges: RoomMemberEvent[] = [];
+      while (eventIdx < events.length && events[eventIdx].created_at <= m.created_at) hostBadges.push(events[eventIdx++]);
       return {
+        hostBadges: hostBadges.length ? hostBadges : undefined,
         key: m.client_key ?? m.id,
         message: m,
         showDaySeparator,
@@ -274,7 +295,13 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
         isLastInRun: !sameRun(m, all[i + 1]),
       };
     });
-  }, [visibleMessages]);
+  }, [visibleMessages, memberEvents, group?.isHost]);
+
+  const trailingBadges = useMemo(() => {
+    if (!group?.isHost || !memberEvents?.length) return [];
+    const last = visibleMessages?.[visibleMessages.length - 1]?.created_at;
+    return last ? memberEvents.filter((e) => e.created_at > last) : memberEvents;
+  }, [group?.isHost, memberEvents, visibleMessages]);
 
   const indexById = useMemo(() => {
     const map = new Map<string, number>();
@@ -599,7 +626,8 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
   const getItemType = useCallback((item: ThreadItem) => {
     const m = item.message;
     const kind = m.is_deleted ? "deleted" : m.content.startsWith("ako-media:") ? "media" : m.content.startsWith("ako-voice-note:") ? "voice" : "text";
-    return item.showDaySeparator ? `${kind}-day` : kind;
+    const withDay = item.showDaySeparator ? `${kind}-day` : kind;
+    return item.hostBadges ? `${withDay}-badge` : withDay;
   }, []);
 
   // Keep the keyboard from covering the composer; drop the safe-area padding while it's up.
@@ -609,7 +637,7 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
   if (!messagingEnabled) {
     return (
       <View className="flex-1 bg-canvas">
-        <View className="flex-row items-center gap-3 border-b border-border px-4 pb-3" style={{ paddingTop: insets.top + 16 }}>
+        <View className="flex-row items-center gap-3 border-b border-border px-3 pb-2" style={{ paddingTop: insets.top + 6 }}>
           <Pressable onPress={() => router.replace("/messages")} accessibilityRole="button" accessibilityLabel="Back" hitSlop={12}>
             <Icon as={ArrowLeft} size={22} className="text-ink-muted" />
           </Pressable>
@@ -729,19 +757,22 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
       </Pressable>
 
       {group ? (
-        <Pressable onPress={group.onOpenInfo} accessibilityRole="button" accessibilityLabel="Group info" className="min-w-0 flex-1 flex-row items-center gap-3">
-          <Avatar src={group.avatarUrl} name={group.title} size="md" />
+        <View className="min-w-0 flex-1 flex-row items-center gap-3">
+          <Pressable onPress={group.onOpenInfo} accessibilityRole="button" accessibilityLabel="Group info" className="shrink-0">
+            <Avatar src={group.avatarUrl} name={group.title} size="md" />
+          </Pressable>
           <View className="min-w-0 flex-1">
-            <Text numberOfLines={1} className="font-semibold leading-tight text-ink">
-              {group.title}
-            </Text>
-            <Text numberOfLines={1} className="text-xs text-ink-muted">
-              {group.people.length > 0 && group.people.length <= 6
-                ? group.people.map((p) => (p.user_id === user?.id ? "You" : p.display_name.trim().split(" ")[0])).join(", ")
-                : `${group.people.length} members`}
-            </Text>
+            <Pressable onPress={group.onOpenInfo} accessibilityRole="button" accessibilityLabel="Group info">
+              <Text numberOfLines={1} className="text-[18px] font-bold leading-tight text-ink">
+                {group.title}
+              </Text>
+            </Pressable>
+            <Pressable onPress={group.onOpenMembers} accessibilityRole="button" accessibilityLabel={`${group.people.length} members. View members`} hitSlop={8} className="flex-row items-center gap-1 self-start">
+              <Icon as={Users} size={14} className="text-accent" />
+              <Text numberOfLines={1} className="text-[13px] font-semibold text-accent">{`${group.people.length} ${group.people.length === 1 ? "member" : "members"}`}</Text>
+            </Pressable>
           </View>
-        </Pressable>
+        </View>
       ) : null}
 
       {teamPage ? (
@@ -811,7 +842,7 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
 
   return (
     <Animated.View style={[{ flex: 1 }, rootStyle]} className="bg-canvas">
-      <View className="z-30 flex-row items-center gap-3 border-b border-border bg-canvas px-4 pb-3" style={{ paddingTop: insets.top + 16 }}>
+      <View className="z-30 flex-row items-center gap-3 border-b border-border bg-canvas px-3 pb-2" style={{ paddingTop: insets.top + 6 }}>
         {headerContent}
       </View>
 
@@ -877,6 +908,7 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: group ? 12 : 16 }}
             ListHeaderComponent={isLoadingOlder ? <Text className="py-2 text-center text-xs text-ink-muted">Loading earlier messages…</Text> : null}
+            ListFooterComponent={trailingBadges.length ? <View>{trailingBadges.map((e) => <LeaveBadge key={e.id} event={e} />)}</View> : null}
             renderItem={({ item, index }) => {
               const m = item.message;
               const reactions = m.is_deleted ? EMPTY_REACTIONS : (reactionsByMessage?.[m.id] ?? EMPTY_REACTIONS);
@@ -891,6 +923,7 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
                       </View>
                     </View>
                   ) : null}
+                  {item.hostBadges?.map((e) => <LeaveBadge key={e.id} event={e} />)}
                   <MessageBubble
                     message={m}
                     groupMode={!!group}

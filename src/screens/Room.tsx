@@ -200,6 +200,7 @@ function GroupPage({ projectId, settings }: { projectId: string | undefined; set
       cantPostReason: isClosed ? "This cohort has ended." : details?.chat_muted ? "Chat is muted." : details?.hosts_only_chat ? "Only hosts can post here." : undefined,
       onBack: smartBack,
       onOpenInfo: () => openView("info"),
+      onOpenMembers: () => openView("members"),
       onOpenProfile: (username) => router.push(`/profile/${username}` as Href),
       menuItems,
     };
