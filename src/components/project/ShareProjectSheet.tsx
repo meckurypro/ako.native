@@ -34,6 +34,7 @@ interface MyGroup {
   id: string;
   title: string;
   thumbnail_url: string | null;
+  thumbnail_shape?: string | null;
 }
 
 // The groups this person is a member of, owns or helps host.
@@ -55,7 +56,7 @@ function useMyGroups() {
       if (!ids.size) return [];
       const { data } = await supabase
         .from("projects")
-        .select("id, title, thumbnail_url")
+        .select("id, title, thumbnail_url, thumbnail_shape")
         .in("id", [...ids])
         .eq("is_active", true)
         .order("title", { ascending: true });

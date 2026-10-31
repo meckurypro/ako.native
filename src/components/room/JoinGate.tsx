@@ -1,6 +1,7 @@
 // src/components/room/JoinGate.tsx
 // The group's landing page — what anyone sees before they're in: the group itself, who it's for, and the one way in that applies to it.
 //   private → invitation only · paid → buy access · open community → join · everything else → ask a host.
+import { thumbnailRatioOf } from "@/lib/thumbnailSpec";
 import { router, usePathname, type Href } from "expo-router";
 import { ArrowLeft, Calendar, Lock, Users } from "lucide-react-native";
 import { useQueryClient } from "@tanstack/react-query";
@@ -143,7 +144,7 @@ export function JoinGate({ project, info, isGuest }: { project: Project; info: G
         <Pressable onPress={smartBack} accessibilityRole="button" accessibilityLabel="Back" hitSlop={12} className="mb-4 self-start">
           <Icon as={ArrowLeft} size={22} className="text-ink-muted" />
         </Pressable>
-        {project.thumbnail_url ? <Image source={{ uri: project.thumbnail_url }} style={{ width: "100%", maxWidth: 360, alignSelf: "center", aspectRatio: 1, borderRadius: 16, marginBottom: 16 }} contentFit="cover" /> : null}
+        {project.thumbnail_url ? <Image source={{ uri: project.thumbnail_url }} style={{ width: "100%", maxWidth: 360, alignSelf: "center", aspectRatio: thumbnailRatioOf(project), borderRadius: 16, marginBottom: 16 }} contentFit="cover" /> : null}
         <Text className="text-[11px] font-medium uppercase tracking-wide text-accent">{GROUP_KIND_LABEL[kind]}</Text>
         <Text className="mt-1 font-display text-2xl text-ink">{project.title}</Text>
         <View className="mt-1.5 flex-row flex-wrap items-center gap-x-3 gap-y-1">

@@ -5,7 +5,7 @@ import { DateTimeFormField } from "@/components/ui/DateTimeFormField";
 import { FormField } from "@/components/ui/FormField";
 import { Image } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
-import { useUploadProjectThumbnail } from "@/hooks/useUploadProjectThumbnail";
+import { useUploadPublicImage } from "@/hooks/useUploadProjectThumbnail";
 import { pickSingleImage } from "@/lib/pickImage";
 import { useState } from "react";
 import { friendlyError } from "@/lib/friendlyError";
@@ -20,7 +20,7 @@ export interface EventFieldsValue {
 export const EMPTY_EVENT_FIELDS: EventFieldsValue = { event_date: "", location_type: "physical", location_value: "", ticket_template_url: "" };
 
 export function EventFields({ value, onChange }: { value: EventFieldsValue; onChange: (value: EventFieldsValue) => void }) {
-  const uploadThumbnail = useUploadProjectThumbnail();
+  const uploadThumbnail = useUploadPublicImage();
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const set = <K extends keyof EventFieldsValue>(key: K, val: EventFieldsValue[K]) => onChange({ ...value, [key]: val });

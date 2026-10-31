@@ -321,6 +321,8 @@ export interface Project {
   thumbnail_url: string | null;
   thumbnail_width: number | null;
   thumbnail_height: number | null;
+  /** Standard shape of the stored thumbnail ("1:1", "16:9", …), derived by the database; null when none/off-standard. See lib/thumbnailSpec.ts. */
+  thumbnail_shape?: string | null;
   // Up to 4 extra images (display order), swiped through on the project's own page only
   // — see src/lib/projectImages.ts. Lists, rails and cards never use these.
   supporting_image_urls: string[];

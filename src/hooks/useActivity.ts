@@ -43,7 +43,7 @@ export function useActivity() {
 
       const { data: tickets } = await supabase
         .from("event_tickets")
-        .select("project:projects!event_tickets_project_id_fkey(id, title, slug, thumbnail_url, project_event_details(event_date))")
+        .select("project:projects!event_tickets_project_id_fkey(id, title, slug, thumbnail_url, thumbnail_shape, project_event_details(event_date))")
         .eq("buyer_id", user!.id);
       for (const row of (tickets as any[]) ?? []) {
         const p = row.project;
@@ -63,7 +63,7 @@ export function useActivity() {
 
       const { data: meetingPurchases } = await supabase
         .from("purchases")
-        .select("project:projects!purchases_project_id_fkey(id, title, slug, thumbnail_url, project_type, project_meeting_details(scheduled_at))")
+        .select("project:projects!purchases_project_id_fkey(id, title, slug, thumbnail_url, thumbnail_shape, project_type, project_meeting_details(scheduled_at))")
         .eq("buyer_id", user!.id);
       for (const row of (meetingPurchases as any[]) ?? []) {
         const p = row.project;
@@ -100,10 +100,10 @@ export function useActivity() {
       if (roomIds.size > 0) {
         const ids = [...roomIds];
         const [{ data: rooms }, { data: roomMeetings }] = await Promise.all([
-          supabase.from("projects").select("id, title, slug, thumbnail_url").in("id", ids).eq("is_active", true),
+          supabase.from("projects").select("id, title, slug, thumbnail_url, thumbnail_shape").in("id", ids).eq("is_active", true),
           supabase
             .from("room_meetings")
-            .select("id, title, scheduled_at, status, project:projects!room_meetings_project_id_fkey(id, title, slug, thumbnail_url)")
+            .select("id, title, scheduled_at, status, project:projects!room_meetings_project_id_fkey(id, title, slug, thumbnail_url, thumbnail_shape)")
             .in("project_id", ids)
             .neq("status", "cancelled"),
         ]);

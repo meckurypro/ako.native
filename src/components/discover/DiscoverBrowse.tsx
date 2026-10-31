@@ -62,11 +62,11 @@ export function DiscoverBrowse({
           {rails.map(({ section, items, hasMore }) => {
             const moreTo = `/topics/${section.key}${tagQuery}`;
             return (
-              <DiscoverRail key={section.key} title={section.title} moreTo={hasMore ? moreTo : undefined} snap={discoverTileShape(section.type).width + 12}>
+              <DiscoverRail key={section.key} title={section.title} moreTo={hasMore ? moreTo : undefined} snap={discoverTileShape({ project_type: section.type, thumbnail_shape: section.kind === "video" ? "16:9" : null }).width + 12}>
                 {items.map((item) => (
                   <DiscoverTile key={item.project.id} item={item} />
                 ))}
-                {hasMore ? <DiscoverMoreTile to={moreTo} label={section.title} projectType={section.type} /> : null}
+                {hasMore ? <DiscoverMoreTile to={moreTo} label={section.title} projectType={section.type} mediaKind={section.type === "media" ? (section.kind as "audio" | "video") : undefined} /> : null}
               </DiscoverRail>
             );
           })}

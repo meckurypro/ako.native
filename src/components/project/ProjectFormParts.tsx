@@ -20,7 +20,7 @@ import {
 import type { ReactNode } from "react";
 import { Pressable, View } from "react-native";
 
-import { BOOK_COVER_HINT } from "@/lib/bookCover";
+import type { ThumbSpec } from "@/lib/thumbnailSpec";
 import { SupportingImagesField } from "@/components/project/SupportingImagesField";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { FormField } from "@/components/ui/FormField";
@@ -107,29 +107,36 @@ export function ProjectTypeChips({
 /** The cover frame plus the supporting-images strip. A book cover is 2:3; every other thumbnail is a 1:1 square (picks are cropped to it). */
 export function ThumbnailPicker({
   url,
-  aspect,
-  isBook,
+  spec,
+  noun,
   uploading,
   onPress,
+  needsRecrop,
+  onRecrop,
   supportingImageUrls,
   onSupportingChange,
 }: {
   url: string | null;
-  aspect: number;
-  isBook: boolean;
+  spec: ThumbSpec;
+  /** "video thumbnail", "book cover", … */
+  noun: string;
   uploading: boolean;
   onPress: () => void;
+  /** The current picture isn't the shape this project now needs (e.g. a video was added to an audio project). */
+  needsRecrop?: boolean;
+  onRecrop?: () => void;
   supportingImageUrls: string[];
   onSupportingChange: (urls: string[]) => void;
 }) {
+  const portrait = spec.ratio < 1;
   return (
     <>
       <Pressable
         onPress={onPress}
         accessibilityRole="button"
-        accessibilityLabel={url ? "Change thumbnail" : "Choose thumbnail"}
-        className={`items-center justify-center overflow-hidden rounded-2xl border border-border bg-canvas ${isBook ? "mb-2 w-48 self-center" : "mb-2 w-full max-w-sm self-center"}`}
-        style={{ aspectRatio: isBook ? aspect : 1 }}
+        accessibilityLabel={url ? `Change ${noun}` : `Choose ${noun}`}
+        className={`mb-2 items-center justify-center self-center overflow-hidden rounded-2xl border border-border bg-canvas ${portrait ? "w-48" : "w-full max-w-sm"}`}
+        style={{ aspectRatio: spec.ratio }}
       >
         {url ? (
           <Image source={{ uri: url }} contentFit="cover" style={{ width: "100%", height: "100%" }} />
@@ -138,16 +145,32 @@ export function ThumbnailPicker({
             <View className="h-11 w-11 items-center justify-center rounded-full bg-border-a40">
               <Icon as={ImageIcon} size={20} className="text-ink-muted" />
             </View>
-            <Text className="text-sm text-ink-muted">{uploading ? "Uploading…" : isBook ? "Add cover (2:3)" : "Add thumbnail (square)"}</Text>
+            <Text className="text-sm text-ink-muted">{uploading ? "Uploading…" : `Add ${noun} (${spec.shape})`}</Text>
           </View>
         )}
       </Pressable>
-      {isBook ? (
-        <Text className="mb-3 text-center text-xs text-ink-muted">{BOOK_COVER_HINT}</Text>
+      {needsRecrop ? (
+        <View className="mb-3 items-center rounded-xl border border-danger/40 bg-danger/5 px-3 py-2">
+          <Text className="text-center text-xs text-danger">This picture isn't the {spec.label} shape a {noun} needs.</Text>
+          {onRecrop ? (
+            <Pressable onPress={onRecrop} accessibilityRole="button" hitSlop={8}>
+              <Text className="mt-1 text-xs font-medium text-accent underline">Crop it to fit</Text>
+            </Pressable>
+          ) : null}
+        </View>
       ) : (
-        <Text className="mb-3 text-center text-xs text-ink-muted">Thumbnails are square (1:1). Any other shape is cropped to the middle.</Text>
+        <View className="mb-3 items-center">
+          <Text className="text-center text-xs text-ink-muted">
+            A {noun} is {spec.label}. Choose any picture — if it isn't that shape you'll crop it to fit.
+          </Text>
+          {url && onRecrop ? (
+            <Pressable onPress={onRecrop} accessibilityRole="button" hitSlop={8}>
+              <Text className="mt-1 text-xs font-medium text-accent underline">Adjust crop</Text>
+            </Pressable>
+          ) : null}
+        </View>
       )}
-      <SupportingImagesField urls={supportingImageUrls} onChange={onSupportingChange} hasThumbnail={!!url} />
+      <SupportingImagesField urls={supportingImageUrls} onChange={onSupportingChange} hasThumbnail={!!url} spec={spec} />
     </>
   );
 }

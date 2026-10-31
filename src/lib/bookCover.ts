@@ -5,7 +5,7 @@ export const BOOK_COVER_RATIO = 2 / 3;
 /** Allow a small rounding drift (e.g. 1000×1499) so exact-2:3 exports are never rejected. */
 export const BOOK_COVER_TOLERANCE = 0.02;
 
-export const BOOK_COVER_HINT = "Book covers must be 2:3 portrait (e.g. 1600 × 2400 px). Other shapes are not accepted.";
+export const BOOK_COVER_HINT = "Book covers are 2:3 portrait. Choose any picture — if it isn't 2:3 you'll crop it to fit.";
 export const BOOK_COVER_ERROR =
   "This image isn't 2:3. Book covers must be 2:3 portrait (e.g. 1600 × 2400 px) — crop or resize it and try again.";
 

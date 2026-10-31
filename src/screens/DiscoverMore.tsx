@@ -11,7 +11,7 @@ import { useChromeScroll } from "@/components/nav/ChromeProvider";
 import { PageRow } from "@/components/post/PageRow";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { Text } from "@/components/ui/Text";
-import { getDiscoverSectionTitle, useDiscoverMore, useDiscoverPagesMore } from "@/hooks/useDiscoverBrowse";
+import { getDiscoverSection, getDiscoverSectionTitle, useDiscoverMore, useDiscoverPagesMore } from "@/hooks/useDiscoverBrowse";
 import type { ProjectType } from "@/hooks/useProjects";
 import { useTagsBySlug } from "@/hooks/useTags";
 
@@ -96,7 +96,10 @@ export function DiscoverMore() {
   if (!title) return <Redirect href="/topics" />;
 
   const contentWidth = Math.min(width, MAX_CONTENT_WIDTH + PAGE_PADDING * 2) - PAGE_PADDING * 2;
-  const tileWidth = Math.floor((contentWidth - GAP * (COLUMNS - 1)) / COLUMNS);
+  // Wide shapes (16:9 video, 2:1 banners) need room: two columns instead of three.
+  const sec = getDiscoverSection(section ?? "");
+  const columns = sec?.kind === "video" || sec?.type === "gig" || sec?.type === "url" ? 2 : COLUMNS;
+  const tileWidth = Math.floor((contentWidth - GAP * (columns - 1)) / columns);
 
   return (
     <View className="flex-1 bg-canvas">

@@ -1,5 +1,6 @@
 // src/components/activity/ThumbRow.tsx
 // Thumbnail + title + subtitle row shared by History, Library, Events, Talents and Affiliate links.
+import { thumbBoxStyle, type ThumbnailCarrier } from "@/lib/thumbnailSpec";
 import { FileFolderIcon } from "@/components/project/FileFolderArt";
 import type { LucideIcon } from "lucide-react-native";
 import type { ReactNode } from "react";
@@ -20,14 +21,14 @@ interface ThumbRowProps {
   variant?: "card" | "line";
   /** Thumbnail edge in px (Tailwind w-11 = 44, w-12 = 48). */
   size?: 44 | 48;
-  /** Book covers are 2:3 portrait — draw the thumbnail 1.5× as tall as it is wide so nothing is cropped. */
-  tall?: boolean;
+  /** Draw the thumbnail in the shape it was created in (lib/thumbnailSpec.ts): wide for video, tall for books. */
+  shapeOf?: ThumbnailCarrier;
   /** File projects show the 📂 folder instead of a thumbnail. */
   isFile?: boolean;
   accessibilityLabel?: string;
 }
 
-export function ThumbRow({ onPress, thumbnailUrl, fallbackIcon, title, subtitle, subtitleIcon, trailing, variant = "card", size = 48, tall = false, isFile = false, accessibilityLabel }: ThumbRowProps) {
+export function ThumbRow({ onPress, thumbnailUrl, fallbackIcon, title, subtitle, subtitleIcon, trailing, variant = "card", size = 48, shapeOf, isFile = false, accessibilityLabel }: ThumbRowProps) {
   return (
     <Pressable
       onPress={onPress}
@@ -35,7 +36,7 @@ export function ThumbRow({ onPress, thumbnailUrl, fallbackIcon, title, subtitle,
       accessibilityLabel={accessibilityLabel ?? title}
       className={`flex-row items-center gap-3 ${variant === "card" ? "rounded-xl border border-border bg-surface p-3" : "border-b border-border py-3"}`}
     >
-      <View className={`shrink-0 items-center justify-center overflow-hidden rounded-lg ${variant === "card" ? "bg-canvas" : "bg-surface"}`} style={{ width: size, height: tall ? size * 1.5 : size }}>
+      <View className={`shrink-0 items-center justify-center overflow-hidden rounded-lg ${variant === "card" ? "bg-canvas" : "bg-surface"}`} style={shapeOf ? thumbBoxStyle(shapeOf, size) : { width: size, height: size }}>
         {isFile ? <FileFolderIcon size={size} fill /> : thumbnailUrl ? <Image source={thumbnailUrl} contentFit="cover" className="h-full w-full" /> : <Icon as={fallbackIcon} size={18} className="text-ink-muted" />}
       </View>
       <View className="min-w-0 flex-1">

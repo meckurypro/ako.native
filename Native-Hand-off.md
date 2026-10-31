@@ -455,3 +455,18 @@ read policy); the composer only mirrors them so it offers what will be accepted.
   readable by anyone in the chat who can name it, so the name must be unguessable. The bucket policies only read segments 1–3.
 - Old app builds can't post in a **cohort** (the server answers "Choose a message type"); community and DMs are unaffected.
   This is JS-only, so it can ship as an OTA update.
+
+## Thumbnails: one shape per kind, enforced and drawn the same everywhere
+`src/lib/thumbnailSpec.ts` (identical on web) is the single source of truth. book 2:3 · audio 1:1 · **video 16:9** · **talent 2:1 banner** ·
+group 1:1 · event 4:5 · pitch 5:4 · course 4:3 · meeting 3:2 · link 2:1 · file none. "media" is one project type: 16:9 when it has a video,
+else 1:1 — so toggling Video on a form changes the required shape and the form asks for a re-crop ("Crop it to fit").
+- **Creation:** pick any picture → `useThumbnailCropper().request(file, spec)`. A picture already in shape is silently centre-cropped; anything else
+  opens `ThumbnailCropSheet` (drag/pinch, frame locked to the shape). `useUploadProjectThumbnail` then *refuses* an off-shape file (second lock);
+  the DB trigger `projects_set_thumbnail_shape` is the third. Never use the thumbnail hook for non-thumbnail images (ticket templates, book
+  chapter images) — use `useUploadPublicImage`.
+- **Display:** `projects.thumbnail_shape` (derived by the DB from stored width/height) → `thumbnailShapeOf(project)`. Boxes: `thumbnailRatioOf`,
+  `thumbBoxStyle` (list rows), `fitThumbBox` (embeds), `discoverTileShape` (rails). Selects that carry `thumbnail_url` should carry
+  `thumbnail_shape` too. An older off-shape thumbnail is drawn centre-cropped in the type's default shape until its owner re-crops it.
+- **Discover:** Audio and Video are separate rails (`discover_projects(p_kind => 'audio' | 'video')`); `/topics/media` redirects to Audio.
+- Supporting images share the cover's shape. Offline-downloaded library entries don't carry `thumbnail_shape` yet (they use the type default).
+- SQL: `supabase/ako_thumbnail_shapes.sql`, `supabase/ako_discover_projects.sql`.

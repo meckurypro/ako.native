@@ -237,6 +237,7 @@ export interface EligibleTalentSample {
   id: string;
   title: string;
   thumbnail_url: string | null;
+  thumbnail_shape?: string | null;
   project_type: ProjectType;
 }
 
@@ -259,13 +260,13 @@ export function useEligibleTalentSampleProjects(excludeProjectId?: string) {
       const [ownRes, collabRes] = await Promise.all([
         supabase
           .from("projects")
-          .select("id, title, thumbnail_url, project_type, parent_gig_id")
+          .select("id, title, thumbnail_url, thumbnail_shape, project_type, parent_gig_id")
           .eq("owner_id", user.id)
           .neq("project_type", "gig"),
         supabase
           .from("project_collaborators")
           .select(
-            "project:projects!project_collaborators_project_id_fkey(id, title, thumbnail_url, project_type, status)"
+            "project:projects!project_collaborators_project_id_fkey(id, title, thumbnail_url, thumbnail_shape, project_type, status)"
           )
           .eq("user_id", user.id)
           .eq("status", "accepted"),
@@ -285,6 +286,7 @@ export function useEligibleTalentSampleProjects(excludeProjectId?: string) {
           id: p.id,
           title: p.title,
           thumbnail_url: p.thumbnail_url,
+          thumbnail_shape: p.thumbnail_shape,
           project_type: p.project_type,
         }));
 
@@ -305,6 +307,7 @@ export interface MyTalent {
   id: string;
   title: string;
   thumbnail_url: string | null;
+  thumbnail_shape?: string | null;
   status: string;
   created_at: string;
   role_label: string | null;
@@ -334,7 +337,7 @@ export function useMyTalents() {
       const { data, error } = await supabase
         .from("projects")
         .select(
-          "id, title, thumbnail_url, status, created_at, project_gig_details!inner(is_complete, source, gig_roles(label, category))"
+          "id, title, thumbnail_url, thumbnail_shape, status, created_at, project_gig_details!inner(is_complete, source, gig_roles(label, category))"
         )
         .eq("owner_id", user.id)
         .eq("project_type", "gig")
@@ -348,6 +351,7 @@ export function useMyTalents() {
             id: row.id,
             title: row.title,
             thumbnail_url: row.thumbnail_url,
+            thumbnail_shape: row.thumbnail_shape,
             status: row.status,
             created_at: row.created_at,
             role_label: role?.label ?? null,

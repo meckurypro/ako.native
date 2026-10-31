@@ -107,6 +107,7 @@ function OfferEditorSheet({ offer, onClose }: { offer: Offer | null; onClose: ()
       id: p.id,
       title: p.title,
       thumbnail_url: p.thumbnail_url,
+      thumbnail_shape: p.thumbnail_shape,
       type: p.project_type,
       price: p.promo_price_usd ?? p.price_usd,
       available: true,
@@ -114,7 +115,7 @@ function OfferEditorSheet({ offer, onClose }: { offer: Offer | null; onClose: ()
     const known = new Set(list.map((r) => r.id));
     for (const item of offer?.items ?? []) {
       if (!known.has(item.id)) {
-        list.push({ id: item.id, title: item.title, thumbnail_url: item.thumbnail_url, type: item.project_type, price: item.price_usd, available: false });
+        list.push({ id: item.id, title: item.title, thumbnail_url: item.thumbnail_url, thumbnail_shape: item.thumbnail_shape, type: item.project_type, price: item.price_usd, available: false });
       }
     }
     return list;

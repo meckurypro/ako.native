@@ -2,7 +2,7 @@
 // Pick one of your published projects, or one you forked, to tag on a post.
 import { isFileType } from "@/lib/fileProject";
 import { FileFolderIcon } from "@/components/project/FileFolderArt";
-import { isBookType } from "@/lib/bookCover";
+import { thumbBoxStyle } from "@/lib/thumbnailSpec";
 import { ImageIcon } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 
@@ -40,7 +40,7 @@ function Rows({ userId, onSelect }: { userId: string; onSelect: (projectId: stri
           accessibilityRole="button"
           className="flex-row items-center gap-2.5 px-1 py-2.5 active:bg-canvas"
         >
-          <View className={`${isBookType(project.project_type) ? "h-[60px]" : "h-10"} w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-canvas`}>
+          <View style={thumbBoxStyle(project, 40)} className="shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-canvas">
             {isFileType(project.project_type) ? (
               <FileFolderIcon size={40} fill />
             ) : project.thumbnail_url ? (

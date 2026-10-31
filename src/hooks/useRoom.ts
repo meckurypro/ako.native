@@ -1106,6 +1106,7 @@ export interface ProfileGroup {
   kind: GroupKind;
   role: GroupRole;
   thumbnail_url: string | null;
+  thumbnail_shape?: string | null;
 }
 
 // The groups a profile's owner has chosen to list. The server applies every rule (their setting, private groups,

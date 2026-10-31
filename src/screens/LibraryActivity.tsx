@@ -129,7 +129,7 @@ function LibraryRow({ item, saved, updateAvailable, highlighted, onLayoutY }: Li
       <ThumbRow
         onPress={() => (saved ? void openSaved(saved) : router.push(libraryItemRoute(item) as Href))}
         thumbnailUrl={item.thumbnailUrl}
-        tall={item.projectType === "book"}
+        shapeOf={{ project_type: item.projectType, thumbnail_shape: item.thumbnailShape }}
         isFile={item.projectType === "file"}
         fallbackIcon={ImageIcon}
         title={item.title}

@@ -30,6 +30,8 @@ import { useUploadProjectThumbnail } from "@/hooks/useUploadProjectThumbnail";
 import { haptics } from "@/lib/haptics";
 import { pickSingleImage } from "@/lib/pickImage";
 import { BOOK_COVER_HINT } from "@/lib/bookCover";
+import { THUMB_SPECS } from "@/lib/thumbnailSpec";
+import { useThumbnailCropper } from "@/hooks/useThumbnailCropper";
 import { ForewordsSheet } from "@/components/project/ForewordsSheet";
 import { useProjectForewords } from "@/hooks/useForewords";
 import { BookChapterEditor } from "./BookChapterEditor";
@@ -47,6 +49,7 @@ export function BookBuilder({ projectId, project, chapters, publishBook }: BookB
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const uploadThumbnail = useUploadProjectThumbnail();
+  const cropper = useThumbnailCropper();
   const updateProject = useUpdateProject();
   const returnAfterSave = useReturnAfterSave();
   const toast = useToast();
@@ -128,9 +131,13 @@ export function BookBuilder({ projectId, project, chapters, publishBook }: BookB
 
   async function handleCover() {
     try {
-      const file = await pickSingleImage({ aspect: [2, 3] });
+      const picked = await pickSingleImage();
+      if (!picked) return;
+      // Book covers are 2:3: a picture of any other shape is cropped to it first.
+      const spec = THUMB_SPECS["2:3"];
+      const file = await cropper.request(picked, spec, { title: "Crop book cover" });
       if (!file) return;
-      const uploaded = await uploadThumbnail.mutateAsync({ file, bookCover: true });
+      const uploaded = await uploadThumbnail.mutateAsync({ file, spec });
       // The web builder uploads but never writes the URL back, so the cover was lost on reload; save it here.
       await updateProject.mutateAsync({ id: projectId, thumbnail_url: uploaded.url, thumbnail_width: uploaded.width, thumbnail_height: uploaded.height });
     } catch (err) {
@@ -187,6 +194,7 @@ export function BookBuilder({ projectId, project, chapters, publishBook }: BookB
       </View>
       {draft.isDirty && <Text className="bg-accent-soft px-4 py-1.5 text-xs text-accent">Unsaved changes — tap Save to apply them.</Text>}
       <ScrollView showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="none" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: insets.bottom + 96 }}>
+        {cropper.element}
         <Pressable
           onPress={handleCover}
           disabled={coverBusy}

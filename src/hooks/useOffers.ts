@@ -24,6 +24,7 @@ export interface OfferItem {
   id: string;
   title: string;
   thumbnail_url: string | null;
+  thumbnail_shape?: string | null;
   project_type: ProjectType;
   // Effective price (promo wins over list price), same definition as a normal purchase.
   price_usd: number;
@@ -70,6 +71,7 @@ export interface OfferableProject {
   id: string;
   title: string;
   thumbnail_url: string | null;
+  thumbnail_shape?: string | null;
   project_type: ProjectType;
   price_usd: number;
   promo_price_usd: number | null;
@@ -83,7 +85,7 @@ export function useOfferableProjects() {
     queryFn: async (): Promise<OfferableProject[]> => {
       const { data, error } = await supabase
         .from("projects")
-        .select("id, title, thumbnail_url, project_type, price_usd, promo_price_usd, published_at")
+        .select("id, title, thumbnail_url, thumbnail_shape, project_type, price_usd, promo_price_usd, published_at")
         .eq("owner_id", user!.id)
         .eq("is_active", true)
         .eq("status", "active")

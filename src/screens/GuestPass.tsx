@@ -3,6 +3,7 @@
 // content, signed in or not, for as long as the pass lives, with a live countdown. When it runs out (or was revoked)
 // the content is withdrawn on the spot and the visitor gets an "expired" screen with a relevant next step.
 // Hosted audio / video / files / book files open in the system browser via a short-lived signed URL.
+import { thumbnailRatioOf } from "@/lib/thumbnailSpec";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, Clock, Download, ExternalLink, KeyRound, Lock, Play } from "lucide-react-native";
 import { router, useLocalSearchParams, type Href } from "expo-router";
@@ -403,7 +404,7 @@ export function GuestPass() {
         <Text className="text-xs text-ink-muted">Guest pass — you&apos;re viewing this without an account</Text>
       </View>
 
-      {p.thumbnail_url ? <Image source={{ uri: p.thumbnail_url }} contentFit="cover" style={{ width: "100%", height: 240, borderRadius: 16 }} /> : null}
+      {p.thumbnail_url ? <Image source={{ uri: p.thumbnail_url }} contentFit="cover" style={{ width: "100%", aspectRatio: thumbnailRatioOf(p), maxHeight: 320, borderRadius: 16 }} /> : null}
 
       <View className="mt-4 flex-row items-center gap-2">
         <View className="rounded-full bg-accent-soft px-2.5 py-0.5">

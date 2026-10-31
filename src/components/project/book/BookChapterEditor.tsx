@@ -10,7 +10,7 @@ import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { BOOK_SECTION_INFO, type BookChapterKind } from "@/hooks/useBookBuilder";
 import { useBookReaderTheme } from "@/hooks/useBookReaderTheme";
-import { useUploadProjectThumbnail } from "@/hooks/useUploadProjectThumbnail";
+import { useUploadPublicImage } from "@/hooks/useUploadProjectThumbnail";
 import { applyBookFormat, insertBookImage, type BookFormatOp } from "@/lib/bookEditorOps";
 import { parseBook } from "@/lib/bookFormat";
 import { splitChapterOpener } from "@/lib/bookReaderText";
@@ -66,7 +66,7 @@ export function BookChapterEditor({
     setForced({ start: r.start, end: r.end });
   }
 
-  const upload = useUploadProjectThumbnail();
+  const upload = useUploadPublicImage();
   const [imageError, setImageError] = useState<string | null>(null);
 
   async function addImage() {

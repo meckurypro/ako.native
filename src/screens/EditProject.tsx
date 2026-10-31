@@ -6,7 +6,9 @@
 import { FileFolderHero } from "@/components/project/FileFolderArt";
 import { NEW_ARTIST_TALENT, SongTalentField } from "@/components/project-types/SongTalentField";
 import { useEnsureArtistTalent } from "@/hooks/usePortfolio";
-import { BOOK_COVER_ERROR, BOOK_COVER_RATIO, isBookCoverRatio } from "@/lib/bookCover";
+import { matchesThumbSpec, thumbnailNoun, thumbnailSpecFor } from "@/lib/thumbnailSpec";
+import { useThumbnailCropper } from "@/hooks/useThumbnailCropper";
+import type { LocalFile } from "@/lib/localFile";
 import { Banknote, CircleDot, Eye, EyeOff, Image as ImageIcon, Link2, Lock, Percent, Ticket, Type, Users } from "lucide-react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
@@ -99,6 +101,8 @@ export function EditProject() {
   const returnAfterSave = useReturnAfterSave();
   const toast = useToast();
   const uploadThumbnail = useUploadProjectThumbnail();
+  const cropper = useThumbnailCropper();
+  const [thumbnailSource, setThumbnailSource] = useState<LocalFile | null>(null);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -123,6 +127,10 @@ export function EditProject() {
   const ensureArtistTalent = useEnsureArtistTalent();
   const [urlFields, setUrlFields] = useState<UrlFieldsValue>(EMPTY_URL_FIELDS);
   const [mediaFields, setMediaFields] = useState<MediaFieldsValue>(EMPTY_MEDIA_FIELDS);
+  // The shape this project's thumbnail must be (a media project's depends on whether it has a video).
+  const thumbSpec = thumbnailSpecFor(project?.project_type, { hasVideo: mediaFields.video.enabled });
+  const thumbNoun = thumbnailNoun(project?.project_type, mediaFields.video.enabled);
+  const thumbMismatch = !!(thumbnailUrl && thumbSpec && !(thumbnailRatio && matchesThumbSpec(thumbnailRatio.width, thumbnailRatio.height, thumbSpec)));
   const [eventFields, setEventFields] = useState<EventFieldsValue>(EMPTY_EVENT_FIELDS);
   const [meetingFields, setMeetingFields] = useState<MeetingFieldsValue>(EMPTY_MEETING_FIELDS);
   const [talentFields, setTalentFields] = useState<TalentFieldsValue>(EMPTY_TALENT_FIELDS);
@@ -242,22 +250,36 @@ export function EditProject() {
     }
   }, [project, existingEventDetails, existingMeetingDetails, existingMediaDetails, existingTalentDetails, existingTalentSamples, existingPitchDetails, existingRoomDetails, existingBookDetails, existingFiles, typeDetailsHydrated]);
 
-  async function handleThumbnailSelect() {
-    const file = await pickSingleImage(project?.project_type === "book" ? { aspect: [2, 3] } : {});
-    if (!file) return;
+  async function cropAndUpload(file: LocalFile) {
+    if (!thumbSpec) return;
     try {
-      const { url, width, height } = await uploadThumbnail.mutateAsync({ file, bookCover: project?.project_type === "book" });
+      const ready = await cropper.request(file, thumbSpec, { title: `Crop ${thumbNoun}` });
+      if (!ready) return; // cancelled
+      const { url, width, height } = await uploadThumbnail.mutateAsync({ file: ready, spec: thumbSpec });
       setThumbnailUrl(url);
       setThumbnailRatio({ width, height });
+      setThumbnailSource(file);
+      setError(null);
     } catch (err) {
       setError(friendlyError(err, "Thumbnail upload failed."));
     }
   }
 
+  async function handleThumbnailSelect() {
+    const file = await pickSingleImage();
+    if (file) await cropAndUpload(file);
+  }
+
+  // Re-crop from the original picked this session; otherwise pick the picture again.
+  async function handleRecrop() {
+    const source = thumbnailSource ?? (await pickSingleImage());
+    if (source) await cropAndUpload(source);
+  }
+
   function validateTypeSpecific(): string | null {
     if (!project) return null;
     const t = project.project_type;
-    if (t === "book" && thumbnailUrl && thumbnailRatio && !isBookCoverRatio(thumbnailRatio.width, thumbnailRatio.height)) return BOOK_COVER_ERROR;
+    if (thumbMismatch && thumbSpec) return `Your ${thumbNoun} needs to be ${thumbSpec.label}. Use "Crop it to fit" under the picture.`;
     if (t === "file") {
       const fileError = fileFieldsError(fileFields);
       if (fileError) return fileError;
@@ -476,8 +498,6 @@ export function EditProject() {
 
   const t = project.project_type;
   const bookNotOwn = t === "book" && !bookFields.is_own_work;
-  const isBook = project?.project_type === "book";
-  const aspect = isBook ? BOOK_COVER_RATIO : thumbnailRatio ? thumbnailRatio.width / thumbnailRatio.height : 16 / 9;
 
   return (
     <KeyboardAvoider className="flex-1 bg-canvas">
@@ -490,7 +510,8 @@ export function EditProject() {
             </View>
           </FormSection>
 
-          <FormSection icon={ImageIcon} title="Cover" description={isBook ? "Your book's cover." : project?.project_type === "file" ? undefined : "The image people see first."}>
+          <FormSection icon={ImageIcon} title="Cover" description={project?.project_type === "file" ? undefined : `Your ${thumbNoun} — the image people see first.`}>
+            {cropper.element}
             {project?.project_type === "file" ? (
               <View className="mb-4 overflow-hidden rounded-2xl border border-border bg-canvas">
                 <FileFolderHero />
@@ -498,10 +519,12 @@ export function EditProject() {
             ) : (
               <ThumbnailPicker
                 url={thumbnailUrl}
-                aspect={aspect}
-                isBook={isBook}
+                spec={thumbSpec!}
+                noun={thumbNoun}
                 uploading={uploadThumbnail.isPending}
                 onPress={() => void handleThumbnailSelect()}
+                needsRecrop={thumbMismatch}
+                onRecrop={() => void handleRecrop()}
                 supportingImageUrls={supportingImageUrls}
                 onSupportingChange={setSupportingImageUrls}
               />

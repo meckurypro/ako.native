@@ -24,6 +24,7 @@ function TalentRow({ talent }: { talent: MyTalent }) {
     <ThumbRow
       onPress={() => router.push(`/projects/${talent.id}/edit` as Href)}
       thumbnailUrl={talent.thumbnail_url}
+      shapeOf={{ project_type: "gig", thumbnail_shape: talent.thumbnail_shape }}
       fallbackIcon={Briefcase}
       title={talent.title}
       subtitle={`${talent.role_label ?? "No role set"}${talent.status !== "active" ? ` · ${STATUS_LABEL[talent.status] ?? talent.status}` : ""}`}

@@ -1,33 +1,20 @@
 // src/lib/thumbnailFit.ts
 // How a project's cover image is laid out on its card / own page.
 //
-// The box used to take the picture's raw aspect ratio, so a tall poster or book cover (say 2:3) produced a box
-// 1.5× as tall as the screen is wide, and an ultra-wide banner a thin sliver. Now the ratio is clamped to a
-// comfortable range; a picture inside the range fills the box (cover), one outside it is shown whole on the
-// card background (contain) instead of being cropped or stretching the page.
-import { BOOK_COVER_RATIO } from "./bookCover";
+// The box is the shape the thumbnail was created in (lib/thumbnailSpec.ts) — the same shape it has on Discover, in
+// embeds and in lists. The picture always fills it edge to edge ("cover"): a thumbnail made through the crop sheet is
+// already exactly that shape, and an older one of another shape is centre-cropped, never stretched or letterboxed.
+import { thumbnailRatioOf, type ThumbnailCarrier } from "./thumbnailSpec";
 
-export const MIN_THUMB_RATIO = 4 / 5; // tallest box: portrait 4:5
-export const MAX_THUMB_RATIO = 2; // widest box: 2:1
-export const DEFAULT_THUMB_RATIO = 16 / 9; // unknown size
-/** The box never grows past this share of the viewport height (the picture still fits inside it). */
+/** The box never grows past this share of the viewport height (the picture still fills it). */
 export const MAX_THUMB_HEIGHT_VH = 0.7;
 
 export interface ThumbnailLayout {
-  /** width / height of the box */
+  /** width ÷ height of the box */
   aspectRatio: number;
-  /** "cover" when the picture fits the box's range, "contain" when it had to be clamped */
-  fit: "cover" | "contain";
+  fit: "cover";
 }
 
-/** Every project thumbnail except a book cover is a square. */
-export const SQUARE_THUMB_RATIO = 1;
-
-export function thumbnailLayout(_width?: number | null, _height?: number | null, projectType?: string | null): ThumbnailLayout {
-  // Books are always 2:3, filled edge to edge (uploads are enforced to 2:3, so cover never crops anything).
-  if (projectType === "book") return { aspectRatio: BOOK_COVER_RATIO, fit: "cover" };
-  // Everything else is 1:1. New uploads are already cropped to a square; an older thumbnail of another shape is
-  // cropped to the middle square for display ("cover"), never letterboxed or stretched. The stored width and height
-  // stay in the signature so callers don't change, but the shape no longer depends on them.
-  return { aspectRatio: SQUARE_THUMB_RATIO, fit: "cover" };
+export function thumbnailLayout(project: ThumbnailCarrier): ThumbnailLayout {
+  return { aspectRatio: thumbnailRatioOf(project), fit: "cover" };
 }

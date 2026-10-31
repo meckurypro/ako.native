@@ -2,6 +2,7 @@
 // What the person asked to write a foreword sees: the invite, a way to read the work first, decline (final), or write.
 // The same dialog handles the writer's later visits — edit a submitted or published foreword, or withdraw it.
 // Mirrors the web modal.
+import { thumbBoxStyle } from "@/lib/thumbnailSpec";
 import { router, type Href } from "expo-router";
 import { BookOpen } from "lucide-react-native";
 import { useState } from "react";
@@ -148,7 +149,7 @@ export function ForewordInviteModal({ projectId, onClose }: { projectId: string;
               {project ? (
                 <View className="mt-3 flex-row items-center gap-3 rounded-xl border border-border bg-canvas px-3.5 py-3">
                   {project.thumbnail_url ? (
-                    <Image source={project.thumbnail_url} contentFit="cover" className={`w-12 shrink-0 rounded-lg border border-border ${isBook ? "h-[72px]" : "h-12"}`} />
+                    <Image source={project.thumbnail_url} contentFit="cover" style={thumbBoxStyle(project, 48)} className="shrink-0 rounded-lg border border-border" />
                   ) : (
                     <View className="h-12 w-12 shrink-0 rounded-lg border border-border bg-surface" />
                   )}

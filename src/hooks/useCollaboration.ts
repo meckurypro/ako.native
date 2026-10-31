@@ -106,6 +106,7 @@ export interface PendingProjectCollaborationInvite {
     title: string;
     description: string | null;
     thumbnail_url: string | null;
+    thumbnail_shape?: string | null;
     project_type: string;
     created_at: string;
   } | null;

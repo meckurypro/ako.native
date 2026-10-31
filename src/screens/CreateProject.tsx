@@ -5,7 +5,9 @@
 // admin switches and your eligibility. Course / authored Book / Room are
 // created as drafts you finish building afterwards.
 import { FileFolderHero } from "@/components/project/FileFolderArt";
-import { BOOK_COVER_ERROR, BOOK_COVER_RATIO, isBookCoverRatio } from "@/lib/bookCover";
+import { matchesThumbSpec, thumbnailNoun, thumbnailSpecFor } from "@/lib/thumbnailSpec";
+import { useThumbnailCropper } from "@/hooks/useThumbnailCropper";
+import type { LocalFile } from "@/lib/localFile";
 import { extractBookPdf } from "@/hooks/useBookBuilder";
 import { Banknote, Eye, EyeOff, Image as ImageIcon, Type } from "lucide-react-native";
 import { router, type Href } from "expo-router";
@@ -99,6 +101,8 @@ export function CreateProject({ fixedType }: { fixedType?: ProjectType } = {}) {
   const createProject = useCreateProject();
   const createPitchProject = useCreatePitchProject();
   const uploadThumbnail = useUploadProjectThumbnail();
+  const cropper = useThumbnailCropper();
+  const [thumbnailSource, setThumbnailSource] = useState<LocalFile | null>(null);
   const projectsEnabled = useFeatureFlag("projects_enabled");
 
   const [pagesOpen, setPagesOpen] = useState(false);
@@ -160,6 +164,10 @@ export function CreateProject({ fixedType }: { fixedType?: ProjectType } = {}) {
   const ensureArtistTalent = useEnsureArtistTalent();
   const [urlFields, setUrlFields] = useState<UrlFieldsValue>(EMPTY_URL_FIELDS);
   const [mediaFields, setMediaFields] = useState<MediaFieldsValue>(EMPTY_MEDIA_FIELDS);
+  // The one shape this project's thumbnail must be: it follows the type, and for media whether there is a video.
+  const thumbSpec = thumbnailSpecFor(projectType, { hasVideo: mediaFields.video.enabled });
+  const thumbNoun = thumbnailNoun(projectType, mediaFields.video.enabled);
+  const thumbMismatch = !!(thumbnailUrl && thumbSpec && thumbnailRatio && !matchesThumbSpec(thumbnailRatio.width, thumbnailRatio.height, thumbSpec));
   const [eventFields, setEventFields] = useState<EventFieldsValue>(EMPTY_EVENT_FIELDS);
   const [meetingFields, setMeetingFields] = useState<MeetingFieldsValue>(EMPTY_MEETING_FIELDS);
   const [talentFields, setTalentFields] = useState<TalentFieldsValue>(EMPTY_TALENT_FIELDS);
@@ -328,20 +336,35 @@ export function CreateProject({ fixedType }: { fixedType?: ProjectType } = {}) {
     });
   }
 
-  async function handleThumbnailSelect() {
-    const file = await pickSingleImage(projectType === "book" ? { aspect: [2, 3] } : {});
-    if (!file) return;
+  // Crop (if needed) to the project's shape, then upload. `file` is what the person picked, or the kept original.
+  async function cropAndUpload(file: LocalFile) {
+    if (!thumbSpec) return;
     try {
-      const { url, width, height } = await uploadThumbnail.mutateAsync({ file, bookCover: projectType === "book" });
+      const ready = await cropper.request(file, thumbSpec, { title: `Crop ${thumbNoun}` });
+      if (!ready) return; // cancelled
+      const { url, width, height } = await uploadThumbnail.mutateAsync({ file: ready, spec: thumbSpec });
       setThumbnailUrl(url);
       setThumbnailRatio({ width, height });
+      setThumbnailSource(file);
+      setError(null);
     } catch (err) {
       setError(friendlyError(err, "Thumbnail upload failed."));
     }
   }
 
+  async function handleThumbnailSelect() {
+    const file = await pickSingleImage();
+    if (file) await cropAndUpload(file);
+  }
+
+  // Re-crop from the original the person picked; after a draft restore there isn't one, so pick the picture again.
+  async function handleRecrop() {
+    const source = thumbnailSource ?? (await pickSingleImage());
+    if (source) await cropAndUpload(source);
+  }
+
   function validateTypeSpecific(): string | null {
-    if (projectType === "book" && thumbnailUrl && thumbnailRatio && !isBookCoverRatio(thumbnailRatio.width, thumbnailRatio.height)) return BOOK_COVER_ERROR;
+    if (thumbMismatch && thumbSpec) return `Your ${thumbNoun} needs to be ${thumbSpec.label}. Use "Crop it to fit" under the picture.`;
     if (projectType === "file") {
       const fileError = fileFieldsError(fileFields);
       if (fileError) return fileError;
@@ -551,8 +574,6 @@ export function CreateProject({ fixedType }: { fixedType?: ProjectType } = {}) {
   const bookNotOwn = projectType === "book" && !bookFields.is_own_work;
   const isDraftType = projectType === "course" || (projectType === "book" && bookFields.content_source === "authored");
   const submitting = projectType === "pitch" ? createPitchProject.isPending : createProject.isPending;
-  const isBook = projectType === "book";
-  const aspect = isBook ? BOOK_COVER_RATIO : thumbnailRatio ? thumbnailRatio.width / thumbnailRatio.height : 16 / 9;
 
   return (
     <KeyboardAvoider className="flex-1 bg-canvas">
@@ -606,7 +627,8 @@ export function CreateProject({ fixedType }: { fixedType?: ProjectType } = {}) {
           ) : null}
 
           {/* 2 — Cover. */}
-          <FormSection icon={ImageIcon} title="Cover" description={isBook ? "Your book's cover." : projectType === "file" ? undefined : "The image people see first."}>
+          <FormSection icon={ImageIcon} title="Cover" description={projectType === "file" ? undefined : `Your ${thumbNoun} — the image people see first.`}>
+            {cropper.element}
             {projectType === "file" ? (
               <View className="mb-4 overflow-hidden rounded-2xl border border-border bg-canvas">
                 <FileFolderHero />
@@ -614,10 +636,12 @@ export function CreateProject({ fixedType }: { fixedType?: ProjectType } = {}) {
             ) : (
               <ThumbnailPicker
                 url={thumbnailUrl}
-                aspect={aspect}
-                isBook={isBook}
+                spec={thumbSpec!}
+                noun={thumbNoun}
                 uploading={uploadThumbnail.isPending}
                 onPress={() => void handleThumbnailSelect()}
+                needsRecrop={thumbMismatch}
+                onRecrop={() => void handleRecrop()}
                 supportingImageUrls={supportingImageUrls}
                 onSupportingChange={setSupportingImageUrls}
               />

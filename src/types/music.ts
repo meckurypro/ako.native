@@ -151,6 +151,7 @@ export interface EligibleAudioProject {
   id: string;
   title: string;
   thumbnail_url: string | null;
+  thumbnail_shape?: string | null;
   audio_url: string | null;
   audio_file_path: string | null;
   audio_source: "link" | "upload" | null;

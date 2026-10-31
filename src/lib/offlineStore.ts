@@ -140,6 +140,7 @@ interface Row {
   project_type: string;
   title: string;
   thumbnail_url: string | null;
+  thumbnail_shape?: string | null;
   acquired_via: string;
   version: string | null;
   bytes: number;

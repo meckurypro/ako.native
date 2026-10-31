@@ -16,6 +16,7 @@
 // COLOUR NOTE: opacity-modified classes (`bg-white/15`, `text-white/70`, `bg-canvas/50`) resolve to nothing on device
 // (see OverlayPanel), which is what left this screen's tiles, glows and secondary text invisible. Everything
 // translucent here is an inline rgba value instead.
+import { thumbBoxStyle } from "@/lib/thumbnailSpec";
 import { isFileType } from "@/lib/fileProject";
 import { FileFolderIcon } from "@/components/project/FileFolderArt";
 import { router, type Href } from "expo-router";
@@ -82,7 +83,7 @@ export function AffiliateLinkRow({ relationship }: { relationship: AffiliateRela
     <View className={`rounded-xl border border-border bg-surface ${revoked ? "opacity-70" : ""}`}>
       <View>
         <Pressable onPress={open} accessibilityRole="link" accessibilityLabel={project.title} className="flex-row items-center gap-3 p-3 pr-12">
-          <View className={`${project.project_type === "book" ? "h-[72px]" : "h-12"} w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-canvas`}>
+          <View style={thumbBoxStyle(project, 48)} className="shrink-0 items-center justify-center overflow-hidden rounded-lg bg-canvas">
             {isFileType(project.project_type) ? <FileFolderIcon size={48} fill /> : project.thumbnail_url ? <Image source={project.thumbnail_url} contentFit="cover" className="h-full w-full" /> : <Icon as={ImageIcon} size={18} className="text-ink-muted" />}
           </View>
           <View className="min-w-0 flex-1">
@@ -281,7 +282,7 @@ function ForkedProjectCard({ relationship }: { relationship: AffiliateRelationsh
       style={{ shadowColor: `rgb(${colors.shadowInkRgb})`, shadowOpacity: 0.12, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 2 }}
     >
       <Pressable onPress={() => router.push(`/projects/${relationship.project_id}` as Href)} accessibilityRole="link" accessibilityLabel={project.title} className="flex-row items-center gap-3.5 p-3.5">
-        <View className={`${isBook ? "h-[84px] w-14" : "h-[72px] w-[72px]"} shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-canvas`}>
+        <View style={thumbBoxStyle(project, isBook ? 56 : 72)} className="shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-canvas">
           {isFileType(project.project_type) ? <FileFolderIcon size={56} fill /> : project.thumbnail_url ? <Image source={project.thumbnail_url} contentFit="cover" className="h-full w-full" /> : <Icon as={ImageIcon} size={20} className="text-ink-muted" />}
         </View>
         <View className="min-w-0 flex-1">

@@ -2,6 +2,7 @@
 // The three "answer this request" dialogs opened from a notification: a Page team invite, a collaboration
 // invite (on a post or project), and a music credit. Each looks the pending request up so a stale tap
 // (already answered elsewhere) says so instead of failing.
+import { thumbBoxStyle } from "@/lib/thumbnailSpec";
 import { FileFolderIcon } from "@/components/project/FileFolderArt";
 import { router, type Href } from "expo-router";
 import { useState, type ReactNode } from "react";
@@ -110,8 +111,9 @@ function Preview({ children, light }: { children: ReactNode; light?: boolean }) 
   return <View className={`${light ? "mt-3" : "mt-4"} rounded-xl px-3.5 py-3 ${TONE[light ? "light" : "dark"].preview}`}>{children}</View>;
 }
 
-function Thumb({ url, light, tall, isFile }: { url: string | null | undefined; light?: boolean; tall?: boolean; isFile?: boolean }) {
-  const h = tall ? "h-[72px]" : "h-12";
+function Thumb({ url, light, project, isFile }: { url: string | null | undefined; light?: boolean; project?: { project_type?: string | null; thumbnail_shape?: string | null }; isFile?: boolean }) {
+  // Drawn in the shape the thumbnail was created in (lib/thumbnailSpec.ts).
+  const box = project ? thumbBoxStyle(project, 48) : { width: 48, aspectRatio: 1 };
   if (isFile) {
     return (
       <View className="h-12 w-12 shrink-0 overflow-hidden rounded-lg">
@@ -120,7 +122,7 @@ function Thumb({ url, light, tall, isFile }: { url: string | null | undefined; l
     );
   }
   return url ? (
-    <Image source={url} contentFit="cover" className={`${h} w-12 shrink-0 rounded-lg ${light ? "border border-border" : ""}`} />
+    <Image source={url} contentFit="cover" style={box} className={`shrink-0 rounded-lg ${light ? "border border-border" : ""}`} />
   ) : (
     <View className={`h-12 w-12 shrink-0 rounded-lg ${TONE[light ? "light" : "dark"].thumb}`} />
   );
@@ -233,7 +235,7 @@ export function CollaborationInviteResponseModal({ target, targetId, onClose }: 
           ) : (
             <Preview light>
               <View className="flex-row items-center gap-3">
-                <Thumb light url={content.thumbnail_url} tall={content.project_type === "book"} isFile={content.project_type === "file"} />
+                <Thumb light url={content.thumbnail_url} project={content} isFile={content.project_type === "file"} />
                 <View className="min-w-0 flex-1">
                   <Text numberOfLines={1} className="font-display text-sm font-semibold text-ink">
                     {content.title}

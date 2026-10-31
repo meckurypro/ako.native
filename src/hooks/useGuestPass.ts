@@ -29,6 +29,7 @@ export interface GuestPassProject {
   description: string | null;
   project_type: string;
   thumbnail_url: string | null;
+  thumbnail_shape?: string | null;
   supporting_image_urls: string[] | null;
   price_usd: number;
   promo_price_usd: number | null;

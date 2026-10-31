@@ -1,4 +1,5 @@
 // src/components/project-types/TalentFields.tsx
+import { thumbBoxStyle } from "@/lib/thumbnailSpec";
 import { Check, Image as ImageIcon, Plus, X } from "lucide-react-native";
 import { Pressable, TextInput, View } from "react-native";
 
@@ -175,7 +176,7 @@ export function TalentFields({ value, onChange, excludeProjectId }: { value: Tal
                   accessibilityState={{ checked: selected, disabled: atCap }}
                   className={`w-full flex-row items-center gap-3 rounded-xl border px-3 py-2 ${selected ? "border-accent bg-accent-soft" : "border-border bg-canvas"} ${atCap ? "opacity-40" : ""}`}
                 >
-                  <View className="h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface">
+                  <View style={thumbBoxStyle({ project_type: "media", thumbnail_shape: p.thumbnail_shape }, 40)} className="shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface">
                     {p.thumbnail_url ? (
                       <Image source={{ uri: p.thumbnail_url }} contentFit="cover" style={{ width: "100%", height: "100%" }} />
                     ) : (

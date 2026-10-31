@@ -5,7 +5,7 @@
 import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { thumbBoxAspectClass } from "@/lib/bookCover";
+import { THUMB_SPECS } from "@/lib/thumbnailSpec";
 import type { ProjectType } from "@/hooks/useProjects";
 import { Skeleton } from "./Skeleton";
 
@@ -15,7 +15,9 @@ export function ProjectGridSkeleton({ count = 4, projectType }: { count?: number
     <View className="flex-row flex-wrap justify-between" style={{ rowGap: 16 }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
       {Array.from({ length: count }).map((_, i) => (
         <View key={i} style={{ width: "48.5%" }} className="overflow-hidden rounded-2xl border border-border-a60 bg-surface">
-          <Skeleton className={`${thumbBoxAspectClass(projectType ?? "book", "aspect-square")} w-full !bg-canvas`} />
+          <View style={{ aspectRatio: THUMB_SPECS[projectType === "media" ? "1:1" : projectType === "gig" ? "2:1" : projectType === "course" ? "4:3" : projectType === "event" ? "4:5" : projectType === "room" ? "1:1" : "2:3"].ratio }} className="w-full">
+            <Skeleton className="h-full w-full !bg-canvas" />
+          </View>
           <View className="px-4 pb-4 pt-3.5">
             <Skeleton className="h-3.5 w-3/4 rounded !bg-canvas" />
             <Skeleton className="mt-2 h-3 w-1/3 rounded !bg-canvas" />

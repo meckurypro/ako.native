@@ -76,7 +76,7 @@ export function DiscoverRail({
 export function DiscoverTile({ item, width }: { item: DiscoverItem; width?: number }) {
   const { project } = item;
   const meta = discoverTileMeta(item);
-  const shape = discoverTileShape(project.project_type);
+  const shape = discoverTileShape(project);
   return (
     <Pressable
       onPress={() => router.push(getProjectPath(project) as Href)}
@@ -110,8 +110,9 @@ export function DiscoverTile({ item, width }: { item: DiscoverItem; width?: numb
 }
 
 /** The last tile of a row: same footprint as the others in that row, pointing at the full list. */
-export function DiscoverMoreTile({ to, label, projectType }: { to: string; label: string; projectType?: string }) {
-  const shape = discoverTileShape(projectType);
+export function DiscoverMoreTile({ to, label, projectType, mediaKind }: { to: string; label: string; projectType?: string; mediaKind?: "audio" | "video" }) {
+  // Takes the footprint of the row's own shape (a video row's is 16:9, an audio row's square).
+  const shape = discoverTileShape({ project_type: projectType, thumbnail_shape: mediaKind === "video" ? "16:9" : null });
   return (
     <Pressable
       onPress={() => router.push(to as Href)}

@@ -10,6 +10,9 @@
 // Everything is ranked by relevance to the viewer's interests first, then popularity (likes).
 // A project needs a title, description and thumbnail to be listed, and Files are never listed here.
 import type { GroupKind } from "../lib/groups";
+
+/** "media" is one project type; Discover (and the thumbnail shape) tell audio and video apart. */
+export type MediaKind = "audio" | "video";
 import { useInfiniteQuery, useQueries } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { formatUsd } from "../lib/money";
@@ -27,8 +30,8 @@ export interface DiscoverSection {
   key: string;
   type: ProjectType;
   title: string;
-  /** Group rows only: a community and a cohort are separate rows over the same project type. */
-  kind?: GroupKind;
+  /** Group rows: a community and a cohort are separate rows over the same project type. Media rows: audio and video. */
+  kind?: GroupKind | MediaKind;
 }
 
 // Order = order on the page. Titles follow the app's own labels (a "room" project is a Group: a Community or a Cohort).
@@ -39,15 +42,17 @@ export const DISCOVER_SECTIONS: DiscoverSection[] = [
   { key: "community", type: "room", kind: "community", title: "Communities" },
   { key: "cohort", type: "room", kind: "cohort", title: "Cohorts" },
   { key: "meeting", type: "meeting", title: "Live meetings" },
-  { key: "media", type: "media", title: "Audio & video" },
+  { key: "audio", type: "media", kind: "audio", title: "Audio" },
+  { key: "video", type: "media", kind: "video", title: "Video" },
   { key: "gig", type: "gig", title: "Talents" },
   { key: "pitch", type: "pitch", title: "Pitches" },
   { key: "url", type: "url", title: "Links" },
 ];
 
-/** A section by its key. The old /topics/room link (before groups had two kinds) lands on Communities. */
+/** A section by its key. The old /topics/room link (before groups had two kinds) lands on Communities; the old
+ *  /topics/media link (before audio and video were split) lands on Audio. */
 export function getDiscoverSection(key: string): DiscoverSection | null {
-  const k = key === "room" ? "community" : key;
+  const k = key === "room" ? "community" : key === "media" ? "audio" : key;
   return DISCOVER_SECTIONS.find((s) => s.key === k) ?? null;
 }
 
@@ -74,7 +79,7 @@ export async function fetchDiscoverPage(
   type: ProjectType,
   from: number,
   to: number,
-  kind?: GroupKind,
+  kind?: GroupKind | MediaKind,
   /** Narrow to projects carrying these tags (or strongly connected ones). Empty = no filter. */
   interestIds: string[] = [],
 ): Promise<DiscoverPage> {

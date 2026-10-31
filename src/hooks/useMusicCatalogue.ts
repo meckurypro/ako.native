@@ -73,7 +73,7 @@ export function useMyAudioProjects() {
       const { data, error } = await supabase
         .from("projects")
         .select(
-          "id, title, thumbnail_url, project_media_details!inner(has_audio, audio_url, audio_file_path, audio_source)"
+          "id, title, thumbnail_url, thumbnail_shape, project_media_details!inner(has_audio, audio_url, audio_file_path, audio_source)"
         )
         .eq("owner_id", user.id)
         .eq("project_type", "media")
@@ -84,6 +84,7 @@ export function useMyAudioProjects() {
         id: row.id,
         title: row.title,
         thumbnail_url: row.thumbnail_url,
+        thumbnail_shape: row.thumbnail_shape,
         audio_url: row.project_media_details?.audio_url ?? null,
         audio_file_path: row.project_media_details?.audio_file_path ?? null,
         audio_source: row.project_media_details?.audio_source ?? null,
@@ -192,7 +193,7 @@ export function useMyPublishedMusic() {
       if (!user) return [];
       const { data, error } = await supabase
         .from("music_catalogue")
-        .select("*, contributors:music_catalogue_contributors(*, contributor:profiles(id, username, display_name, avatar_url)), project:projects(slug, thumbnail_url)")
+        .select("*, contributors:music_catalogue_contributors(*, contributor:profiles(id, username, display_name, avatar_url)), project:projects(slug, thumbnail_url, thumbnail_shape)")
         .eq("creator_id", user.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -212,7 +213,7 @@ export function useMusicCatalogueSearch(query: string) {
       const trimmed = query.trim();
       let request = supabase
         .from("music_catalogue")
-        .select("*, contributors:music_catalogue_contributors(role, contributor:profiles(display_name)), project:projects(thumbnail_url)")
+        .select("*, contributors:music_catalogue_contributors(role, contributor:profiles(display_name)), project:projects(thumbnail_url, thumbnail_shape)")
         .eq("publication_status", "published")
         .order("published_at", { ascending: false })
         .limit(25);
@@ -251,7 +252,7 @@ export function useMusicCatalogueEntry(catalogueId: string | null | undefined) {
       if (!catalogueId) return null;
       const { data, error } = await supabase
         .from("music_catalogue")
-        .select("*, contributors:music_catalogue_contributors(*, contributor:profiles(id, username, display_name, avatar_url)), project:projects(slug, thumbnail_url)")
+        .select("*, contributors:music_catalogue_contributors(*, contributor:profiles(id, username, display_name, avatar_url)), project:projects(slug, thumbnail_url, thumbnail_shape)")
         .eq("id", catalogueId)
         .maybeSingle();
       if (error) throw error;

@@ -27,6 +27,7 @@ export interface LibraryItem {
   /** The project's public address (the /:slug page). Sharing always links to it, never straight to the content. */
   slug: string | null;
   thumbnailUrl: string | null;
+  thumbnailShape?: string | null;
   /** Pinned to the top of the list by this person. */
   pinned: boolean;
   /** This person muted its updates. */
@@ -68,7 +69,7 @@ export function useLibrary() {
       const { data: purchases } = await supabase
         .from("purchases")
         .select(
-          "created_at, project:projects!purchases_project_id_fkey(id, title, slug, thumbnail_url, project_type, status)"
+          "created_at, project:projects!purchases_project_id_fkey(id, title, slug, thumbnail_url, thumbnail_shape, project_type, status)"
         )
         .eq("buyer_id", user!.id);
       for (const row of (purchases as any[]) ?? []) {
@@ -80,6 +81,7 @@ export function useLibrary() {
           title: p.title,
           slug: p.slug ?? null,
           thumbnailUrl: p.thumbnail_url,
+          thumbnailShape: p.thumbnail_shape,
           pinned: false,
           muted: false,
           status: p.status,
@@ -96,7 +98,7 @@ export function useLibrary() {
       const { data: events } = await supabase
         .from("project_access_events")
         .select(
-          "created_at, project:projects!project_access_events_project_id_fkey(id, title, slug, thumbnail_url, project_type, status)"
+          "created_at, project:projects!project_access_events_project_id_fkey(id, title, slug, thumbnail_url, thumbnail_shape, project_type, status)"
         )
         .eq("user_id", user!.id)
         .order("created_at", { ascending: false });
@@ -110,6 +112,7 @@ export function useLibrary() {
           title: p.title,
           slug: p.slug ?? null,
           thumbnailUrl: p.thumbnail_url,
+          thumbnailShape: p.thumbnail_shape,
           pinned: false,
           muted: false,
           status: p.status,
