@@ -15,6 +15,7 @@ import { supabase } from "../lib/supabase";
 import { formatUsd } from "../lib/money";
 import { getEffectivePrice, isProjectFree, type Project, type ProjectType } from "./useProjects";
 import type { PageSearchResult } from "./useSearch";
+import { fetchTagPages, tagKey } from "./useTags";
 
 /** Tiles per row on Discover. One extra row is fetched to know whether "More" has anywhere to go. */
 export const RAIL_SIZE = 10;
@@ -69,7 +70,14 @@ export interface DiscoverPage {
   rawCount: number;
 }
 
-export async function fetchDiscoverPage(type: ProjectType, from: number, to: number, kind?: GroupKind): Promise<DiscoverPage> {
+export async function fetchDiscoverPage(
+  type: ProjectType,
+  from: number,
+  to: number,
+  kind?: GroupKind,
+  /** Narrow to projects carrying these tags (or strongly connected ones). Empty = no filter. */
+  interestIds: string[] = [],
+): Promise<DiscoverPage> {
   // Ranking and eligibility live in the database (discover_projects): relevance to the viewer's interests first, then
   // popularity; only projects with a title, description and thumbnail; only what is still ahead for time-bound kinds.
   const { data, error } = await supabase.rpc("discover_projects", {
@@ -77,6 +85,7 @@ export async function fetchDiscoverPage(type: ProjectType, from: number, to: num
     p_offset: from,
     p_limit: to - from + 1,
     p_kind: kind ?? null,
+    p_interest_ids: interestIds.length > 0 ? interestIds : null,
   });
   if (error) throw error;
   const rows = (data ?? []) as Array<{ project: Project; when_at: string | null }>;
@@ -94,13 +103,14 @@ export interface DiscoverRailData {
  * (The admin per-type switch in project_type_settings governs *creating* new projects of a kind, not whether
  * existing public ones are visible — so it is deliberately not consulted here.)
  */
-export function useDiscoverRails(): { rails: DiscoverRailData[]; isLoading: boolean } {
+export function useDiscoverRails(interestIds: string[] = []): { rails: DiscoverRailData[]; isLoading: boolean } {
+  const tags = tagKey(interestIds);
   const sections = DISCOVER_SECTIONS;
 
   const results = useQueries({
     queries: sections.map((s) => ({
-      queryKey: ["discover-rail", s.key],
-      queryFn: () => fetchDiscoverPage(s.type, 0, RAIL_SIZE, s.kind),
+      queryKey: ["discover-rail", s.key, tags],
+      queryFn: () => fetchDiscoverPage(s.type, 0, RAIL_SIZE, s.kind, interestIds),
       staleTime: 5 * 60 * 1000,
     })),
   });
@@ -116,11 +126,11 @@ export function useDiscoverRails(): { rails: DiscoverRailData[]; isLoading: bool
 }
 
 /** The "More" screen for one kind of project: pages of MORE_PAGE_SIZE, loaded on request. */
-export function useDiscoverMore(sectionKey: string, enabled = true) {
+export function useDiscoverMore(sectionKey: string, enabled = true, interestIds: string[] = []) {
   const section = getDiscoverSection(sectionKey);
   return useInfiniteQuery({
-    queryKey: ["discover-more", section?.key ?? sectionKey],
-    queryFn: ({ pageParam }) => fetchDiscoverPage((section?.type ?? sectionKey) as ProjectType, pageParam, pageParam + MORE_PAGE_SIZE - 1, section?.kind),
+    queryKey: ["discover-more", section?.key ?? sectionKey, tagKey(interestIds)],
+    queryFn: ({ pageParam }) => fetchDiscoverPage((section?.type ?? sectionKey) as ProjectType, pageParam, pageParam + MORE_PAGE_SIZE - 1, section?.kind, interestIds),
     initialPageParam: 0,
     getNextPageParam: (last, all) => (last.rawCount >= MORE_PAGE_SIZE ? all.length * MORE_PAGE_SIZE : undefined),
     staleTime: 5 * 60 * 1000,
@@ -130,11 +140,12 @@ export function useDiscoverMore(sectionKey: string, enabled = true) {
 
 const PAGE_RESULT_SELECT = "id, name, username, tagline, avatar_url, page_type, is_verified, follower_count";
 
-/** The "More" screen for pages: every active page, biggest first. */
-export function useDiscoverPagesMore(enabled = true) {
+/** The "More" screen for pages: every active page, biggest first — or, with tags, the best matches for them. */
+export function useDiscoverPagesMore(enabled = true, interestIds: string[] = []) {
   return useInfiniteQuery({
-    queryKey: ["discover-more", "pages"],
+    queryKey: ["discover-more", "pages", tagKey(interestIds)],
     queryFn: async ({ pageParam }): Promise<PageSearchResult[]> => {
+      if (interestIds.length > 0) return fetchTagPages(interestIds, pageParam, MORE_PAGE_SIZE);
       const { data, error } = await supabase
         .from("pages")
         .select(PAGE_RESULT_SELECT)

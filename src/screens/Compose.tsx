@@ -583,7 +583,7 @@ export function Compose() {
           ) : null}
 
           <View className="mt-6">
-            <TopicPicker selected={topicIds} onToggle={toggleTopic} />
+            <TopicPicker selected={topicIds} onToggle={toggleTopic} text={`${heading} ${content}`} />
           </View>
 
           {error ? (

@@ -14,6 +14,7 @@ import { SwipeToSwitch } from "@/components/ui/SwipeToSwitch";
 import { Text } from "@/components/ui/Text";
 import { useAuth } from "@/hooks/useAuth";
 import { useSearchPages, useSearchPeople, useSearchPosts, useSearchProjects } from "@/hooks/useSearch";
+import { useTagScope } from "@/hooks/useTags";
 import { useTabState } from "@/hooks/useTabState";
 import { recordSearchVisit } from "@/lib/searchVisits";
 import { PageRow } from "./PageRow";
@@ -102,15 +103,20 @@ function Section({ title, onSeeAll, showSeeAll, children }: { title: string; onS
   );
 }
 
+const NO_TAGS: string[] = [];
+
 export function SearchResults({
   query,
   isPending = false,
   scope = "all",
+  tagIds = NO_TAGS,
 }: {
   query: string;
   isPending?: boolean;
   /** "discover" searches pages and projects only. */
   scope?: SearchScope;
+  /** Narrow every source to things carrying these tags (or strongly connected ones). */
+  tagIds?: string[];
 }) {
   const { user } = useAuth();
   // The swipe area has to reach well down the screen, not just wrap the results: with a few results (or none) a
@@ -125,10 +131,17 @@ export function SearchResults({
   // Every in-scope source runs for every tab so "All" can preview them and
   // switching tabs is instant. An empty query makes a hook's own `enabled`
   // guard skip the request, so a scoped-out source is never fetched at all.
-  const people = useSearchPeople(showPeople ? query : "");
-  const pages = useSearchPages(query);
-  const posts = useSearchPosts(showPosts ? query : "");
-  const projects = useSearchProjects(query);
+  //
+  // With a tag selected, each source is narrowed to the ids carrying it. Until that id set has loaded the
+  // sources stay idle (empty query) so a half-filtered list never flashes.
+  const tagFilterOn = tagIds.length > 0;
+  const tagScope = useTagScope(tagIds);
+  const scopeReady = !tagFilterOn || !!tagScope.data;
+  const q = scopeReady ? query : "";
+  const people = useSearchPeople(showPeople ? q : "", tagFilterOn ? tagScope.data?.person ?? [] : null);
+  const pages = useSearchPages(q, tagFilterOn ? tagScope.data?.page ?? [] : null);
+  const posts = useSearchPosts(showPosts ? q : "", tagFilterOn ? tagScope.data?.post ?? [] : null);
+  const projects = useSearchProjects(q, tagFilterOn ? tagScope.data?.project ?? [] : null);
   const sources = [...(showPeople ? [people] : []), pages, ...(showPosts ? [posts] : []), projects];
 
   const onVisit = (profileId: string) => recordSearchVisit(user?.id, profileId);

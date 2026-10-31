@@ -199,6 +199,14 @@ export type AuthorSummary = Pick<Profile, "id" | "username" | "display_name" | "
   roles: ProfileRole[];
 };
 
+/** The top level of the tag taxonomy: domain → category → tag (interest). */
+export interface TagDomain {
+  id: string;
+  name: string;
+  slug: string;
+  sort_order: number;
+}
+
 export interface Category {
   id: string;
   name: string;
@@ -206,6 +214,8 @@ export interface Category {
   description: string | null;
   is_active: boolean;
   sort_order: number;
+  domain_id?: string | null;
+  domain?: TagDomain | null;
 }
 
 export interface Interest {
@@ -213,6 +223,11 @@ export interface Interest {
   category_id: string | null;
   name: string;
   is_active: boolean;
+  /** URL-safe name, e.g. "generative-ai". */
+  slug?: string;
+  /** Other words for the same idea ("chatgpt" → Generative AI): used for search, hashtags and auto-tagging. */
+  aliases?: string[];
+  sort_order?: number;
 }
 
 /** What a comment is toward the thing it answers. "disagree" no longer exists (folded into "pushback"). "comment" is the

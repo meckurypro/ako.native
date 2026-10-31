@@ -6,7 +6,7 @@
 // hooks the results use, so submitting a suggestion's text is an instant cache
 // hit, not a second round-trip.
 import { router, type Href } from "expo-router";
-import { ArrowUpLeft, Hash, Search } from "lucide-react-native";
+import { ArrowUpLeft, Hash, Search, Tag } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 
@@ -19,11 +19,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { useHashtagSuggestions } from "@/hooks/useDiscoverSearch";
 import { PROJECT_TYPE_LABELS } from "@/hooks/useProjects";
 import { useSearchPages, useSearchPeople, useSearchProjects } from "@/hooks/useSearch";
+import { useTagSearch, type TagRef } from "@/hooks/useTags";
 import { haptics } from "@/lib/haptics";
 import { splitMatch } from "@/lib/highlightMatch";
 import { recordSearchVisit } from "@/lib/searchVisits";
 
 const MAX_TAGS = 2;
+const MAX_TOPICS = 2;
 const MAX_ACCOUNTS = 3;
 const MAX_PROJECTS = 3;
 
@@ -59,6 +61,7 @@ export function SearchSuggestions({
   scope,
   onSubmit,
   onFill,
+  onPickTag,
 }: {
   /** Debounced, trimmed text — drives the lookups. */
   query: string;
@@ -69,21 +72,25 @@ export function SearchSuggestions({
   onSubmit: (term: string) => void;
   /** Put this text in the bar without searching (the ↖ arrow). */
   onFill: (term: string) => void;
+  /** Use this topic as a filter for the page's contents (instead of searching its name as text). */
+  onPickTag?: (tag: TagRef) => void;
 }) {
   const { user } = useAuth();
   const withPeopleAndTags = scope === "all";
 
   const tags = useHashtagSuggestions(query, withPeopleAndTags);
+  const topics = useTagSearch(onPickTag ? query.replace(/^#/, "") : "");
   const people = useSearchPeople(withPeopleAndTags ? query : "");
   const pages = useSearchPages(query);
   const projects = useSearchProjects(query);
 
   const tagRows = (tags.data ?? []).slice(0, MAX_TAGS);
+  const topicRows = onPickTag ? (topics.data ?? []).slice(0, MAX_TOPICS) : [];
   const personRows = withPeopleAndTags ? (people.data ?? []).slice(0, 2) : [];
   const pageRows = (pages.data ?? []).slice(0, MAX_ACCOUNTS - personRows.length);
   const projectRows = (projects.data ?? []).slice(0, MAX_PROJECTS);
 
-  const hasRows = tagRows.length + personRows.length + pageRows.length + projectRows.length > 0;
+  const hasRows = topicRows.length + tagRows.length + personRows.length + pageRows.length + projectRows.length > 0;
   const loading = tags.isLoading || people.isLoading || pages.isLoading || projects.isLoading;
 
   const open = (href: string) => {
@@ -100,6 +107,28 @@ export function SearchSuggestions({
           {typed.trim()}
         </Text>
       </Pressable>
+
+      {topicRows.map((t) => (
+        <Pressable
+          key={t.id}
+          onPress={() => {
+            haptics.selection();
+            onPickTag?.(t);
+          }}
+          accessibilityRole="button"
+          className="min-h-[48px] flex-row items-center gap-3 py-2 active:opacity-60"
+        >
+          <View className="h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface">
+            <Icon as={Tag} size={15} className="text-accent" />
+          </View>
+          <View className="min-w-0 flex-1">
+            <Text numberOfLines={1} className="text-sm text-ink">
+              <Highlighted text={t.name} query={query.replace(/^#/, "")} />
+            </Text>
+            <Text className="text-xs text-ink-muted">Topic · filter by this</Text>
+          </View>
+        </Pressable>
+      ))}
 
       {tagRows.map((h) => (
         <Pressable

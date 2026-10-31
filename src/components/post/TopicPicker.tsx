@@ -10,6 +10,9 @@ import { Collapsible } from "@/components/ui/Collapsible";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useCategories } from "@/hooks/useCategories";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useMyInterestIds } from "@/hooks/useOnboarding";
+import { useTopicSuggestions } from "@/hooks/useTags";
 import { haptics } from "@/lib/haptics";
 
 export const MAX_TOPICS = 5;
@@ -23,14 +26,52 @@ function Chevron({ open }: { open: boolean }) {
   );
 }
 
-export function TopicPicker({ selected, onToggle }: { selected: Set<string>; onToggle: (interestId: string) => void }) {
+export function TopicPicker({
+  selected,
+  onToggle,
+  text = "",
+}: {
+  selected: Set<string>;
+  onToggle: (interestId: string) => void;
+  /** What's being written (post text, project title + description…). Used to suggest matching topics. */
+  text?: string;
+}) {
   const { data: categories, isLoading } = useCategories();
+  const { data: myInterestIds } = useMyInterestIds();
+  const suggestions = useTopicSuggestions(useDebouncedValue(text, 700));
   const [openCategoryId, setOpenCategoryId] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
 
   if (!isLoading && (!categories || categories.length === 0)) return null;
 
   const atLimit = selected.size >= MAX_TOPICS;
+
+  // One-tap shortcuts: topics the text is about, and the writer's own interests.
+  const suggested = (suggestions.data ?? []).filter((t) => !selected.has(t.id));
+  const mine = (categories ?? [])
+    .flatMap((c) => c.interests)
+    .filter((i) => (myInterestIds ?? []).includes(i.id) && !selected.has(i.id) && !suggested.some((t) => t.id === i.id))
+    .slice(0, 6);
+  const quick = (label: string, items: Array<{ id: string; name: string }>) =>
+    items.length > 0 ? (
+      <View className="mt-2 flex-row flex-wrap items-center gap-1.5">
+        <Text className="text-xs text-ink-muted">{label}</Text>
+        {items.map((t) => (
+          <Pressable
+            key={t.id}
+            disabled={atLimit}
+            onPress={() => {
+              haptics.selection();
+              onToggle(t.id);
+            }}
+            accessibilityRole="button"
+            className={`rounded-full border border-dashed border-accent-a50 px-2.5 py-1 active:opacity-70 ${atLimit ? "opacity-40" : ""}`}
+          >
+            <Text className="text-xs text-ink">+ {t.name}</Text>
+          </Pressable>
+        ))}
+      </View>
+    ) : null;
 
   return (
     <View className="mb-4">
@@ -47,8 +88,13 @@ export function TopicPicker({ selected, onToggle }: { selected: Set<string>; onT
         <Chevron open={isOpen} />
       </Pressable>
 
+      {!isOpen ? quick("Suggested:", suggested) : null}
+
       <Collapsible open={isOpen}>
         <View className="pt-2">
+          {quick("Suggested:", suggested)}
+          {quick("Yours:", mine)}
+          {suggested.length > 0 || mine.length > 0 ? <View className="mb-3" /> : null}
           {isLoading ? (
             <Text className="text-sm text-ink-muted">Loading topics…</Text>
           ) : (

@@ -8,6 +8,7 @@ import { router } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, TextInput, View, type NativeSyntheticEvent, type TextInputKeyPressEventData } from "react-native";
 
+import { InterestBrowser, matchesInterest } from "@/components/interests/InterestBrowser";
 import { OnboardingScreen } from "@/components/onboarding/OnboardingScreen";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/styled";
@@ -47,7 +48,7 @@ export function InterestPicker() {
   const suggestions = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
-    return flatInterests.filter((i) => !selected.has(i.id) && i.name.toLowerCase().includes(q)).slice(0, MAX_SUGGESTIONS);
+    return flatInterests.filter((i) => !selected.has(i.id) && matchesInterest(i, q)).slice(0, MAX_SUGGESTIONS);
   }, [query, flatInterests, selected]);
 
   // Returning to this step (back button, resumed onboarding): keep earlier picks.
@@ -201,6 +202,9 @@ export function InterestPicker() {
           )}
         </View>
       ) : null}
+
+      <Text className="mb-3 mt-8 text-sm font-medium text-ink">Or browse by area</Text>
+      <InterestBrowser selected={selected} onToggle={toggleInterest} showSearch={false} />
     </OnboardingScreen>
   );
 }

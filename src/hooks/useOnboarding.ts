@@ -113,6 +113,10 @@ export function useSaveInterests() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["onboarding-status", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["my-interest-ids", user?.id] });
+      // Interests drive the Discover chips, ranking and people suggestions — refresh them.
+      queryClient.invalidateQueries({ queryKey: ["suggested-tags"] });
+      queryClient.invalidateQueries({ queryKey: ["discover-rail"] });
+      queryClient.invalidateQueries({ queryKey: ["suggested-people"] });
     },
   });
 }

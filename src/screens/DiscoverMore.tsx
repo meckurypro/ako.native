@@ -13,6 +13,7 @@ import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { Text } from "@/components/ui/Text";
 import { getDiscoverSectionTitle, useDiscoverMore, useDiscoverPagesMore } from "@/hooks/useDiscoverBrowse";
 import type { ProjectType } from "@/hooks/useProjects";
+import { useTagsBySlug } from "@/hooks/useTags";
 
 const COLUMNS = 3;
 const GAP = 12;
@@ -38,8 +39,8 @@ function Notice({ children }: { children: string }) {
   return <Text className="py-4 text-sm text-ink-muted">{children}</Text>;
 }
 
-function ProjectsMore({ sectionKey, tileWidth }: { sectionKey: string; tileWidth: number }) {
-  const { data, isLoading, isError, hasNextPage, fetchNextPage, isFetchingNextPage } = useDiscoverMore(sectionKey);
+function ProjectsMore({ sectionKey, tileWidth, tagIds }: { sectionKey: string; tileWidth: number; tagIds: string[] }) {
+  const { data, isLoading, isError, hasNextPage, fetchNextPage, isFetchingNextPage } = useDiscoverMore(sectionKey, true, tagIds);
   const items = (data?.pages ?? []).flatMap((p) => p.items);
 
   if (isLoading) return <Notice>Loading…</Notice>;
@@ -58,8 +59,8 @@ function ProjectsMore({ sectionKey, tileWidth }: { sectionKey: string; tileWidth
   );
 }
 
-function PagesMore() {
-  const { data, isLoading, isError, hasNextPage, fetchNextPage, isFetchingNextPage } = useDiscoverPagesMore();
+function PagesMore({ tagIds }: { tagIds: string[] }) {
+  const { data, isLoading, isError, hasNextPage, fetchNextPage, isFetchingNextPage } = useDiscoverPagesMore(true, tagIds);
   const pages = (data?.pages ?? []).flat();
 
   if (isLoading) return <Notice>Loading…</Notice>;
@@ -79,7 +80,13 @@ function PagesMore() {
 }
 
 export function DiscoverMore() {
-  const { section } = useLocalSearchParams<{ section: string }>();
+  const { section, tag } = useLocalSearchParams<{ section: string; tag?: string }>();
+  // The topic filter carries over from Discover (?tag=slug,slug), so "More" lists the same narrowed set.
+  const slugs = (tag ?? "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean).slice(0, 5);
+  const { data: filterTags } = useTagsBySlug(slugs);
+  const tags = slugs.length > 0 ? filterTags ?? [] : [];
+  const tagIds = tags.map((t) => t.id);
+  const filterPending = slugs.length > 0 && !filterTags;
   const bottomInset = useBottomNavInset();
   const onScroll = useChromeScroll();
   const { width } = useWindowDimensions();
@@ -102,7 +109,22 @@ export function DiscoverMore() {
         contentContainerStyle={{ paddingHorizontal: PAGE_PADDING, paddingTop: 16, paddingBottom: bottomInset }}
       >
         <View className="w-full max-w-xl self-center">
-          {section === "pages" ? <PagesMore /> : <ProjectsMore sectionKey={section ?? ""} tileWidth={tileWidth} />}
+          {tags.length > 0 ? (
+            <View className="mb-5 flex-row flex-wrap items-center gap-1.5" accessibilityLabel="Topic filters">
+              {tags.map((t) => (
+                <View key={t.id} className="rounded-full bg-cta px-2.5 py-1">
+                  <Text className="text-xs font-medium text-white">{t.name}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+          {filterPending ? (
+            <Notice>Loading…</Notice>
+          ) : section === "pages" ? (
+            <PagesMore tagIds={tagIds} />
+          ) : (
+            <ProjectsMore sectionKey={section ?? ""} tileWidth={tileWidth} tagIds={tagIds} />
+          )}
         </View>
       </ScrollView>
     </View>

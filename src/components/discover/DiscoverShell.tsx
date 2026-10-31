@@ -17,7 +17,7 @@
 // real input lives only in the search header (auto-focused when it opens). That is
 // also how TikTok and Instagram do it.
 import { router, useFocusEffect } from "expo-router";
-import { ArrowLeft, Search } from "lucide-react-native";
+import { ArrowLeft, Search, X } from "lucide-react-native";
 import { useCallback, useRef, useState, type ReactNode } from "react";
 import { Keyboard, Pressable, ScrollView, TextInput, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
@@ -35,6 +35,7 @@ import { useBackDismiss } from "@/hooks/useBackDismiss";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useRecentSearches } from "@/hooks/useRecentSearches";
+import type { TagRef } from "@/hooks/useTags";
 import { haptics } from "@/lib/haptics";
 import { SearchStart } from "./SearchStart";
 import { SearchSuggestions } from "./SearchSuggestions";
@@ -47,6 +48,9 @@ export function DiscoverShell({
   accessibilityLabel,
   browse,
   refreshers,
+  tags = [],
+  onRemoveTag,
+  onPickTag,
 }: {
   scope: SearchScope;
   placeholder: string;
@@ -55,6 +59,11 @@ export function DiscoverShell({
   browse: ReactNode;
   /** Pull-to-refresh on the browse page. */
   refreshers: Array<() => unknown>;
+  /** Topics the page is filtered by. They narrow search too, and show as removable pills while searching. */
+  tags?: TagRef[];
+  onRemoveTag?: (slug: string) => void;
+  /** Adds a topic to the filter (from the topic rows in search suggestions). */
+  onPickTag?: (tag: TagRef) => void;
 }) {
   const [typing, setTyping] = useState(false);
   const [submitted, setSubmitted] = useState("");
@@ -84,6 +93,14 @@ export function DiscoverShell({
     Keyboard.dismiss();
     // A new search starts on the "All" tab.
     router.setParams({ tab: undefined });
+  }
+
+  function pickTag(tag: TagRef) {
+    onPickTag?.(tag);
+    // Back to whatever was behind the search box: the results if there were any, otherwise the filtered page.
+    setDraft(submitted);
+    setTyping(false);
+    Keyboard.dismiss();
   }
 
   function leave() {
@@ -171,6 +188,28 @@ export function DiscoverShell({
             </Pressable>
           ) : null}
         </View>
+
+        {tags.length > 0 ? (
+          <View className="w-full max-w-xl flex-row flex-wrap items-center gap-1.5 self-center pt-2.5" accessibilityLabel="Topic filters">
+            {tags.map((t) => (
+              <View key={t.id} className="flex-row items-center gap-1 rounded-full bg-cta py-1 pl-2.5 pr-1.5">
+                <Text className="text-xs font-medium text-white">{t.name}</Text>
+                <Pressable
+                  onPress={() => {
+                    haptics.selection();
+                    onRemoveTag?.(t.slug);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove ${t.name} filter`}
+                  hitSlop={8}
+                  className="rounded-full p-0.5"
+                >
+                  <Icon as={X} size={11} className="text-white" />
+                </Pressable>
+              </View>
+            ))}
+          </View>
+        ) : null}
       </View>
 
       <ScrollView showsHorizontalScrollIndicator={false}
@@ -193,6 +232,7 @@ export function DiscoverShell({
                 setDraft(term);
                 inputRef.current?.focus();
               }}
+              onPickTag={onPickTag ? pickTag : undefined}
             />
           ) : (
             <SearchStart
@@ -205,7 +245,7 @@ export function DiscoverShell({
           )
         ) : (
           <Animated.View entering={FadeIn.duration(200)}>
-            <SearchResults query={submitted} scope={scope} />
+            <SearchResults query={submitted} scope={scope} tagIds={tags.map((t) => t.id)} />
           </Animated.View>
         )}
       </ScrollView>

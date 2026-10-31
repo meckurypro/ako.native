@@ -18,7 +18,7 @@ export function useCategories() {
     queryFn: async (): Promise<CategoryWithInterests[]> => {
       const { data: categories, error: catError } = await supabase
         .from("categories")
-        .select("*")
+        .select("*, domain:tag_domains(id, name, slug, sort_order)")
         .eq("is_active", true)
         .order("sort_order");
 
@@ -27,7 +27,9 @@ export function useCategories() {
       const { data: interests, error: intError } = await supabase
         .from("interests")
         .select("*")
-        .eq("is_active", true);
+        .eq("is_active", true)
+        .order("sort_order")
+        .order("name");
 
       if (intError) throw intError;
 

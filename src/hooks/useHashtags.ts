@@ -21,7 +21,7 @@ export function useHashtagPosts(tag: string) {
     queryFn: async (): Promise<PostWithAuthor[]> => {
       const { data: hashtag } = await supabase
         .from("hashtags")
-        .select("id")
+        .select("id, interest_id")
         .eq("tag", tag.toLowerCase())
         .maybeSingle();
 
@@ -32,7 +32,20 @@ export function useHashtagPosts(tag: string) {
         .select("post_id")
         .eq("hashtag_id", hashtag.id);
 
-      const postIds = (links ?? []).map((l) => l.post_id);
+      const ids = new Set((links ?? []).map((l) => l.post_id as string));
+
+      // A hashtag that is also a tag ("#africanhistory" = African History) gathers the posts filed under
+      // that tag too — whether the author typed the hashtag or the topic was picked / matched from the text.
+      if (hashtag.interest_id) {
+        const { data: topicLinks } = await supabase
+          .from("post_topics")
+          .select("post_id")
+          .eq("interest_id", hashtag.interest_id)
+          .limit(200);
+        for (const l of topicLinks ?? []) ids.add(l.post_id as string);
+      }
+
+      const postIds = [...ids];
       if (postIds.length === 0) return [];
 
       const { data, error } = await supabase

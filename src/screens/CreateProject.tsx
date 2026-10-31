@@ -643,7 +643,7 @@ export function CreateProject({ fixedType }: { fixedType?: ProjectType } = {}) {
               </Text>
             </View>
 
-            <TopicPicker selected={topicIds} onToggle={toggleTopic} />
+            <TopicPicker selected={topicIds} onToggle={toggleTopic} text={`${title} ${description}`} />
           </FormSection>
 
           {/* 4 — Whatever this type needs. */}

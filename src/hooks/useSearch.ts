@@ -9,6 +9,12 @@ import type { Page, PostWithAuthor, ProfileWithRoles } from "../types/database";
 
 const PEOPLE_SELECT = `id, username, display_name, avatar_url, tier, follower_count, ${PROFILE_ROLES_SELECT}`;
 
+/** Search can be narrowed to a set of ids (everything carrying the selected tags). `undefined` = no narrowing. */
+const SCOPE_CAP = 400;
+function scopeKey(ids?: string[] | null): string {
+  return ids ? `scoped:${[...ids].sort().join(",")}` : "all";
+}
+
 /**
  * Builds a quoted PostgREST `ilike` pattern (`"%query%"`) that is safe to
  * drop into an `.or()` filter. Two layers of escaping are needed:
@@ -167,22 +173,24 @@ export function useSuggestedPeople() {
  * (graphs are cached), scoring happens instantly once both resolve.
  * Priority: following > followers > engagement overlap > everyone else.
  */
-export function useSearchPeople(query: string) {
+export function useSearchPeople(query: string, scopeIds?: string[] | null) {
   const { user } = useAuth();
   const { data: graph } = useSocialGraph();
   const { data: engagedIds } = useEngagementGraph();
 
   return useQuery({
-    queryKey: ["search-people", query, user?.id],
+    queryKey: ["search-people", query, user?.id, scopeKey(scopeIds)],
     queryFn: async (): Promise<ProfileWithRoles[]> => {
       if (!query.trim()) return [];
+      if (scopeIds && scopeIds.length === 0) return [];
 
-      const { data, error } = await supabase
+      let q = supabase
         .from("profiles")
         .select(PEOPLE_SELECT)
         .eq("is_deleted", false)
-        .or(`username.ilike.${ilikeContains(query)},display_name.ilike.${ilikeContains(query)}`)
-        .limit(30);
+        .or(`username.ilike.${ilikeContains(query)},display_name.ilike.${ilikeContains(query)}`);
+      if (scopeIds) q = q.in("id", scopeIds.slice(0, SCOPE_CAP));
+      const { data, error } = await q.limit(30);
 
       if (error) throw error;
 
@@ -205,24 +213,26 @@ export function useSearchPeople(query: string) {
  * Full-text post search via the search_vector tsvector column.
  * Uses websearch mode so queries like "AI startup nigeria" just work.
  */
-export function useSearchPosts(query: string) {
+export function useSearchPosts(query: string, scopeIds?: string[] | null) {
   return useQuery({
-    queryKey: ["search-posts", query],
+    queryKey: ["search-posts", query, scopeKey(scopeIds)],
     queryFn: async (): Promise<PostWithAuthor[]> => {
       if (!query.trim()) return [];
+      if (scopeIds && scopeIds.length === 0) return [];
 
       // FEED_SELECT (not a hand-rolled select) so page posts come back
       // with posted_as_page and render under the page's name — the old
       // select omitted it, so a page post showed the team member as
       // its author in results.
-      const { data, error } = await supabase
+      let q = supabase
         .from("posts")
         .select(FEED_SELECT)
         .eq("is_deleted", false)
         .eq("is_archived", false)
         .eq("status", "published")
-        .textSearch("search_vector", query, { type: "websearch" })
-        .limit(20);
+        .textSearch("search_vector", query, { type: "websearch" });
+      if (scopeIds) q = q.in("id", scopeIds.slice(0, SCOPE_CAP));
+      const { data, error } = await q.limit(20);
 
       if (error) throw error;
 
@@ -245,17 +255,20 @@ const PAGE_RESULT_SELECT = "id, name, username, tagline, avatar_url, page_type, 
  * RLS for everyone but their admins, so is_active is also filtered
  * explicitly to keep an admin's own deactivated page out of results.
  */
-export function useSearchPages(query: string) {
+export function useSearchPages(query: string, scopeIds?: string[] | null) {
   return useQuery({
-    queryKey: ["search-pages", query],
+    queryKey: ["search-pages", query, scopeKey(scopeIds)],
     queryFn: async (): Promise<PageSearchResult[]> => {
       if (!query.trim()) return [];
+      if (scopeIds && scopeIds.length === 0) return [];
       const pattern = ilikeContains(query);
-      const { data, error } = await supabase
+      let q = supabase
         .from("pages")
         .select(PAGE_RESULT_SELECT)
         .eq("is_active", true)
-        .or(`name.ilike.${pattern},username.ilike.${pattern},tagline.ilike.${pattern}`)
+        .or(`name.ilike.${pattern},username.ilike.${pattern},tagline.ilike.${pattern}`);
+      if (scopeIds) q = q.in("id", scopeIds.slice(0, SCOPE_CAP));
+      const { data, error } = await q
         .order("follower_count", { ascending: false })
         .limit(20);
       if (error) throw error;
@@ -270,18 +283,21 @@ export function useSearchPages(query: string) {
  * projects: RLS alone would also return private ones (it only checks
  * is_active), and a private project must never be discoverable.
  */
-export function useSearchProjects(query: string) {
+export function useSearchProjects(query: string, scopeIds?: string[] | null) {
   return useQuery({
-    queryKey: ["search-projects", query],
+    queryKey: ["search-projects", query, scopeKey(scopeIds)],
     queryFn: async (): Promise<Project[]> => {
       if (!query.trim()) return [];
+      if (scopeIds && scopeIds.length === 0) return [];
       const pattern = ilikeContains(query);
-      const { data, error } = await supabase
+      let q = supabase
         .from("projects")
         .select("*")
         .eq("status", "active")
         .eq("is_private", false)
-        .or(`title.ilike.${pattern},description.ilike.${pattern}`)
+        .or(`title.ilike.${pattern},description.ilike.${pattern}`);
+      if (scopeIds) q = q.in("id", scopeIds.slice(0, SCOPE_CAP));
+      const { data, error } = await q
         .order("created_at", { ascending: false })
         .limit(20);
       if (error) throw error;

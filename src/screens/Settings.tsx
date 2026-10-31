@@ -1,5 +1,5 @@
 // src/screens/Settings.tsx
-// One Settings hub: Profile, Account & security, Privacy, Appearance, Sound, Advanced (one open at a
+// One Settings hub: Profile, Interests, Account & security, Privacy, Appearance, Sound, Advanced (one open at a
 // time). /settings/profile is the same screen; /settings/appearance and /settings/advanced redirect
 // here with the matching section pre-opened.
 import { useLocalSearchParams } from "expo-router";
@@ -13,6 +13,7 @@ import { KeyboardAvoider } from "@/components/ui/KeyboardAvoider";
 import { AppUpdateCard } from "@/components/settings/AppUpdateCard";
 import { AdvancedSection } from "@/components/settings/AdvancedSection";
 import { AppearanceSection } from "@/components/settings/AppearanceSection";
+import { InterestsSection } from "@/components/settings/InterestsSection";
 import { NotificationsSection } from "@/components/settings/NotificationsSection";
 import { PrivacySection } from "@/components/settings/PrivacySection";
 import { ProfileSection } from "@/components/settings/ProfileSection";
@@ -28,8 +29,8 @@ import { useOwnProfile } from "@/hooks/useOwnProfile";
 import { removeSavedAccount } from "@/lib/accountSessions";
 import { APP_URL } from "@/lib/config";
 
-export type SettingsSectionId = "profile" | "security" | "privacy" | "notifications" | "appearance" | "sound" | "advanced";
-const SECTION_IDS: SettingsSectionId[] = ["profile", "security", "privacy", "notifications", "appearance", "sound", "advanced"];
+export type SettingsSectionId = "profile" | "interests" | "security" | "privacy" | "notifications" | "appearance" | "sound" | "advanced";
+const SECTION_IDS: SettingsSectionId[] = ["profile", "interests", "security", "privacy", "notifications", "appearance", "sound", "advanced"];
 
 function asSectionId(value: string | string[] | undefined): SettingsSectionId | null {
   const raw = Array.isArray(value) ? value[0] : value;
@@ -99,6 +100,7 @@ export function Settings() {
           {/* Android-only, sideloaded-only, and only when the admin has published a newer APK. */}
           <AppUpdateCard />
           <ProfileSection open={openSection === "profile"} onToggle={() => toggle("profile")} photoRequest={photoRequest} onAvatarChange={setPendingAvatarUrl} />
+          <InterestsSection open={openSection === "interests"} onToggle={() => toggle("interests")} />
           <SecuritySection open={openSection === "security"} onToggle={() => toggle("security")} />
           <PrivacySection open={openSection === "privacy"} onToggle={() => toggle("privacy")} />
           <NotificationsSection open={openSection === "notifications"} onToggle={() => toggle("notifications")} />

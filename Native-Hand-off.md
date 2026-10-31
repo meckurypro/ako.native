@@ -417,3 +417,17 @@ is `17.5 × font-size` — paragraphs in the custom-page editor rendered with ~2
 Follow-up: the same `text-[15px] leading-6` pairing was scattering the Privacy Policy / Terms screens (`screens/Legal.tsx`) and one
 footer in `room/HostSettingsPanel.tsx`. Switched to `leading-relaxed` / `leading-snug` (multipliers). Rule unchanged: never pair a
 `text-*` size with a numeric `leading-N` class on native.
+
+## Tags, interests and hashtags are ONE system
+"Interests", "topics" and "tags" are the same thing: a row in `public.interests` (taxonomy: `tag_domains` → `categories` → `interests`).
+People choose them (`user_interests` — onboarding and **Settings → Interests**); content carries them (`post_topics`, `project_topics`,
+`page_interests`, each with a `source` of manual / auto / hashtag); `hashtags.interest_id` makes a `#hashtag` that is a tag file the post
+under it; `tag_relations` connects tags to each other (curated edges ≥ 0.6 widen filters, learned `affinity` edges < 0.6 only inform
+suggestions). Posts, projects and pages tag themselves from their text in the DB (`auto_tag_text`) — the app never needs to; a manual
+pick always wins.
+- Discover chips are `useSuggestedTags` (RPC `suggest_tags`: yours → connected to yours → popular) — **never a hard-coded list**.
+  Tapping one filters the page in place (selection lives in `screens/Discover.tsx` state; `?tag=slug,slug` carries it to the More screens).
+  Rails use `discover_projects(p_interest_ids)`, pages `discover_pages`, people `discover_people`; search is scoped with `tag_entity_ids`.
+- Hooks are in `hooks/useTags.ts` (identical to web). Taxonomy SQL: `supabase/ako_tags_schema_taxonomy.sql`, logic:
+  `supabase/ako_tags_discovery_and_autotag.sql`. New tags only need a row in `interests` (slug + hashtag are created by trigger); give them
+  `aliases` so search, hashtags and auto-tagging find them.
