@@ -83,7 +83,7 @@ function Section({ title, footer, children }: { title: string; footer?: string; 
           </View>
         ))}
       </View>
-      {footer ? <Text className="mt-1.5 px-1 text-[11px] leading-4 text-ink-muted">{footer}</Text> : null}
+      {footer ? <Text className="mt-1.5 px-1 text-[11px] leading-snug text-ink-muted">{footer}</Text> : null}
     </View>
   );
 }

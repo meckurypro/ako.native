@@ -24,7 +24,7 @@ function LegalScreen({ doc, otherPath, otherLabel }: { doc: LegalDocument; other
       <ScreenHeader title={doc.title} bar onBack={goBack} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: insets.bottom + 48 }}>
         <Text className="mb-4 text-xs text-ink-muted">Last updated {LEGAL_UPDATED}</Text>
-        <Text className="mb-8 text-[15px] leading-6 text-ink">{doc.intro}</Text>
+        <Text className="mb-8 text-[15px] leading-relaxed text-ink">{doc.intro}</Text>
 
         {doc.sections.map((section, i) => (
           <View key={section.id} className="mb-8">
@@ -36,13 +36,13 @@ function LegalScreen({ doc, otherPath, otherLabel }: { doc: LegalDocument; other
                 <View key={bi} className="mb-3 gap-2">
                   {block.map((item, ii) => (
                     <View key={ii} className="flex-row gap-2.5 pr-1">
-                      <Text className="text-[15px] leading-6 text-ink-muted">•</Text>
-                      <Text className="min-w-0 flex-1 text-[15px] leading-6 text-ink">{item}</Text>
+                      <Text className="text-[15px] leading-relaxed text-ink-muted">•</Text>
+                      <Text className="min-w-0 flex-1 text-[15px] leading-relaxed text-ink">{item}</Text>
                     </View>
                   ))}
                 </View>
               ) : (
-                <Text key={bi} className="mb-3 text-[15px] leading-6 text-ink">
+                <Text key={bi} className="mb-3 text-[15px] leading-relaxed text-ink">
                   {block}
                 </Text>
               ),
