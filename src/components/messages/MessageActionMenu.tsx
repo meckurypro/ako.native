@@ -47,6 +47,8 @@ interface MessageActionMenuProps {
   /** Group hosts only: make this message permanent for people who join later (or undo that). */
   isAnchored?: boolean;
   onToggleAnchor?: () => void;
+  /** Group hosts: may delete anyone's message for everyone, not just their own. */
+  canModerate?: boolean;
   onClose: () => void;
 }
 
@@ -73,6 +75,7 @@ export function MessageActionMenu({
   onSelect,
   isAnchored,
   onToggleAnchor,
+  canModerate,
   onClose,
 }: MessageActionMenuProps) {
   useBackDismiss(onClose);
@@ -105,16 +108,6 @@ export function MessageActionMenu({
 
   const moreItems: (DropdownMenuItem | "divider")[] = [
     { key: "select", label: "Select", icon: <Icon as={CheckSquare} size={22} className="text-overlay-ink" />, onSelect: done(onSelect) },
-    ...(!isDeleted && onToggleAnchor
-      ? ([
-          {
-            key: "anchor",
-            label: isAnchored ? "Unanchor" : "Anchor for new members",
-            icon: <Icon as={Anchor} size={22} className={isAnchored ? "text-overlay-accent" : "text-overlay-ink"} />,
-            onSelect: done(onToggleAnchor),
-          },
-        ] satisfies DropdownMenuItem[])
-      : []),
     ...(!isDeleted
       ? ([
           {
@@ -150,6 +143,11 @@ export function MessageActionMenu({
             <Pressable onPress={done(onReply)} accessibilityRole="button" accessibilityLabel="Reply" className={barButton}>
               <Icon as={Reply} size={19} className="text-ink" />
             </Pressable>
+            {onToggleAnchor ? (
+              <Pressable onPress={done(onToggleAnchor)} accessibilityRole="button" accessibilityLabel={isAnchored ? "Unanchor" : "Anchor for new members"} className={barButton}>
+                <Icon as={Anchor} size={19} className={isAnchored ? "text-accent" : "text-ink"} />
+              </Pressable>
+            ) : null}
             <Pressable onPress={done(onForward)} accessibilityRole="button" accessibilityLabel="Forward" className={barButton}>
               <Icon as={Forward} size={19} className="text-ink" />
             </Pressable>
@@ -164,7 +162,7 @@ export function MessageActionMenu({
           </>
         ) : null}
 
-        {isMine || isDeleted ? (
+        {isMine || isDeleted || canModerate ? (
           <Pressable onPress={done(onDeletePress)} accessibilityRole="button" accessibilityLabel="Delete" className={barButton}>
             <Icon as={Trash2} size={19} className="text-danger" />
           </Pressable>

@@ -35,6 +35,7 @@ import {
   Hand,
   HelpCircle,
   Inbox,
+  MailPlus,
   type LucideIcon,
 } from "lucide-react-native";
 import { memo, useCallback, useEffect, useState } from "react";
@@ -55,6 +56,8 @@ import { RefreshSkeleton } from "@/components/ui/RefreshSkeleton";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useMarkAllPageNotificationsRead, useMarkPageNotificationRead, usePageNotifications } from "@/hooks/usePageNotifications";
 import { useActiveIdentity, usePageById } from "@/hooks/usePages";
+import { useMyRoomInvites, useRespondRoomInvite } from "@/hooks/useRoom";
+import { useToast } from "@/components/ui/Toast";
 import { notificationAction, type NotificationAction } from "@/lib/notificationRoute";
 import { dismissPresentedWhere } from "@/lib/push";
 import { timeAgo } from "@/lib/timeAgo";
@@ -123,7 +126,12 @@ const TYPE_CONFIG: Record<string, { icon: LucideIcon; verb: string }> = {
   room_join_request: { icon: UserPlus, verb: "asked to join your Room" },
   room_join_approved: { icon: UserCheck, verb: "approved your request to join" },
   room_join_declined: { icon: UserX, verb: "declined your request to join" },
-  room_member_added: { icon: UserPlus, verb: "added you to a Room" },
+  // "Added" = the host put you straight in. "Invited" = you only join groups by invitation (Settings → Privacy), so it
+  // waits for your answer (Accept / Decline on the row). Both carry target_type "project" and preview_text = the group's title.
+  room_member_added: { icon: UserPlus, verb: "added you to a group" },
+  room_invite: { icon: MailPlus, verb: "invited you to join a group" },
+  room_invite_accepted: { icon: UserCheck, verb: "accepted your invitation to join" },
+  room_invite_declined: { icon: UserX, verb: "declined your invitation to join" },
   room_member_removed: { icon: UserX, verb: "removed you from a Room" },
   project_purchased: { icon: Wallet2, verb: "bought your project" },
   affiliate_commission_earned: { icon: Coins, verb: "You earned an affiliate commission" },
@@ -159,6 +167,43 @@ const PROJECT_TARGETABLE_TYPES = new Set(["like", "dislike", "share"]);
 
 function verbFor(n: NotificationWithActor, verb: string): string {
   return n.target_type === "project" && PROJECT_TARGETABLE_TYPES.has(n.type) ? verb.replace("your post", "your project") : verb;
+}
+
+/** Accept / Decline on a group invitation while it's waiting; afterwards, what happened to it. */
+function RoomInviteActions({ projectId, onOpenGroup }: { projectId: string; onOpenGroup: () => void }) {
+  const toast = useToast();
+  const { data: mine } = useMyRoomInvites();
+  const respond = useRespondRoomInvite();
+  const status = mine?.[projectId];
+
+  function answer(accept: boolean) {
+    respond.mutate(
+      { projectId, accept },
+      {
+        onSuccess: () => {
+          toast(accept ? "You joined the group." : "Invitation declined.", { variant: "success" });
+          if (accept) onOpenGroup();
+        },
+        onError: (err) => toast(err instanceof Error && err.message ? err.message : "Couldn't answer that invitation.", { variant: "error" }),
+      }
+    );
+  }
+
+  if (status === "pending") {
+    return (
+      <View className="mt-2 flex-row items-center gap-2">
+        <Pressable onPress={() => answer(true)} disabled={respond.isPending} accessibilityRole="button" accessibilityLabel="Accept invitation" hitSlop={6} className={`rounded-full bg-cta px-4 py-1.5 ${respond.isPending ? "opacity-50" : ""}`}>
+          <Text className="text-xs font-medium text-white">Accept</Text>
+        </Pressable>
+        <Pressable onPress={() => answer(false)} disabled={respond.isPending} accessibilityRole="button" accessibilityLabel="Decline invitation" hitSlop={6} className={`rounded-full border border-border px-4 py-1.5 ${respond.isPending ? "opacity-50" : ""}`}>
+          <Text className="text-xs text-ink-muted">Decline</Text>
+        </Pressable>
+      </View>
+    );
+  }
+  if (status === "accepted") return <Text className="mt-1.5 text-xs font-medium text-accent">Joined</Text>;
+  if (status === "declined") return <Text className="mt-1.5 text-xs text-ink-muted">Declined</Text>;
+  return null;
 }
 
 const NotificationRow = memo(function NotificationRow({ n, onPress }: { n: NotificationWithActor; onPress: (n: NotificationWithActor) => void }) {
@@ -198,6 +243,7 @@ const NotificationRow = memo(function NotificationRow({ n, onPress }: { n: Notif
           </Text>
         ) : null}
         <Text className="mt-0.5 text-xs text-ink-muted">{timeAgo(n.created_at)}</Text>
+        {n.type === "room_invite" && n.target_id ? <RoomInviteActions projectId={n.target_id} onOpenGroup={() => onPress(n)} /> : null}
       </View>
 
       {unread && <View className="mt-2 h-2 w-2 shrink-0 rounded-full bg-accent" />}

@@ -727,6 +727,143 @@ export function useSetMessageAnchor(conversationId: string) {
   });
 }
 
+// Anchor / unanchor a whole selection at once (bulk select) — same host-only rules as the single-message RPC.
+export function useSetMessagesAnchor(conversationId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ messageIds, anchored }: { messageIds: string[]; anchored: boolean }): Promise<number> => {
+      const { data, error } = await supabase.rpc("set_messages_anchor", { p_message_ids: messageIds, p_anchored: anchored });
+      if (error) throw error;
+      return (data as number | null) ?? 0;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["messages", conversationId] }),
+  });
+}
+
+// ---------------------------------------------------------------
+// Adding people: type-ahead search, "add" vs "invite", and the invite log.
+// A person can set "only invite me" in Settings → Privacy (profiles.group_add_policy); the search says which one
+// applies to each result (add_mode), and the server refuses a direct add for them regardless.
+// See supabase/ako_group_invites.sql.
+// ---------------------------------------------------------------
+export type RoomCandidateState = "member" | "invited" | "available";
+
+export interface RoomCandidate {
+  user_id: string;
+  username: string;
+  display_name: string;
+  avatar_url: string | null;
+  is_verified: boolean;
+  is_following: boolean;
+  state: RoomCandidateState;
+  add_mode: "add" | "invite";
+}
+
+export function useRoomCandidates(projectId: string | undefined, query: string, enabled = true) {
+  return useQuery({
+    queryKey: ["room-candidates", projectId, query],
+    queryFn: async (): Promise<RoomCandidate[]> => {
+      const { data, error } = await supabase.rpc("search_room_candidates", {
+        p_project_id: projectId,
+        p_query: query,
+        p_limit: 20,
+      });
+      if (error) throw error;
+      return (data ?? []) as RoomCandidate[];
+    },
+    enabled: !!projectId && enabled,
+    // Keep the previous results on screen while the next keystroke's search is in flight, so the list doesn't flash.
+    placeholderData: (previous) => previous,
+    staleTime: 10_000,
+  });
+}
+
+export type RoomInviteStatus = "pending" | "accepted" | "declined" | "cancelled";
+
+export interface RoomInvite {
+  project_id: string;
+  user_id: string;
+  invited_by: string | null;
+  status: RoomInviteStatus;
+  created_at: string;
+  decided_at: string | null;
+  profile: { username: string; display_name: string; avatar_url: string | null };
+  inviter: { username: string; display_name: string } | null;
+}
+
+// Hosts: everyone invited and not yet answered, newest first.
+export function useRoomInvites(projectId: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ["room-invites", projectId],
+    queryFn: async (): Promise<RoomInvite[]> => {
+      const { data, error } = await supabase
+        .from("room_invites")
+        .select(
+          "*, profile:profiles!room_invites_user_id_fkey(username, display_name, avatar_url), inviter:profiles!room_invites_invited_by_fkey(username, display_name)"
+        )
+        .eq("project_id", projectId)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as RoomInvite[];
+    },
+    enabled: !!projectId && enabled,
+  });
+}
+
+// The signed-in person's own invites (any status) keyed by group id — lets the notification list show Accept / Decline
+// only while an invite is still waiting, and what happened to it afterwards.
+export function useMyRoomInvites() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["my-room-invites", user?.id],
+    queryFn: async (): Promise<Record<string, RoomInviteStatus>> => {
+      const { data, error } = await supabase.from("room_invites").select("project_id, status").eq("user_id", user!.id);
+      if (error) throw error;
+      return Object.fromEntries((data ?? []).map((r) => [r.project_id as string, r.status as RoomInviteStatus]));
+    },
+    enabled: !!user,
+    staleTime: 15_000,
+  });
+}
+
+export function useInviteRoomMember(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase.rpc("invite_room_member", { p_project_id: projectId, p_user_id: userId });
+      if (error) throw error;
+    },
+    onSuccess: () => invalidateRoomMembership(queryClient, projectId),
+  });
+}
+
+export function useCancelRoomInvite(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase.rpc("cancel_room_invite", { p_project_id: projectId, p_user_id: userId });
+      if (error) throw error;
+    },
+    onSuccess: () => invalidateRoomMembership(queryClient, projectId),
+  });
+}
+
+export function useRespondRoomInvite() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ projectId, accept }: { projectId: string; accept: boolean }) => {
+      const { error } = await supabase.rpc("respond_room_invite", { p_project_id: projectId, p_accept: accept });
+      if (error) throw error;
+    },
+    onSuccess: (_data, { projectId }) => {
+      invalidateRoomMembership(queryClient, projectId);
+      queryClient.invalidateQueries({ queryKey: ["my-room-invites"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
+}
+
 // ---------------------------------------------------------------
 // Joining, leaving and moderation (ako_rooms_membership.sql)
 // ---------------------------------------------------------------
@@ -789,6 +926,8 @@ export function invalidateRoomMembership(queryClient: ReturnType<typeof useQuery
     "room-join-requests",
     "my-room-join-request",
     "room-blocklist",
+    "room-invites",
+    "room-candidates",
   ]) {
     queryClient.invalidateQueries({ queryKey: [key, projectId] });
   }

@@ -7,13 +7,12 @@
 //   Managing        — hosts, blocked people
 import * as Clipboard from "expo-clipboard";
 import { router, type Href } from "expo-router";
-import { Ban, Check, ChevronRight, Copy, History, Link2, MessageSquare, Share2, Shield, UserCheck, UserPlus, Users, VolumeX, type LucideIcon } from "lucide-react-native";
+import { Ban, Check, ChevronRight, Copy, History, Link2, MailPlus, MessageSquare, Search, Share2, Shield, UserCheck, UserPlus, Users, VolumeX, type LucideIcon } from "lucide-react-native";
 import { Children, useState, type ReactNode } from "react";
 import { Pressable, Share, TextInput, View } from "react-native";
 
 import { ProjectLinkSheet } from "@/components/project/ProjectLinkSheet";
 import { Avatar } from "@/components/ui/Avatar";
-import { Button } from "@/components/ui/Button";
 import { OptionsModal, type OptionItem } from "@/components/ui/OptionsModal";
 import { SheetFrame } from "@/components/ui/SheetFrame";
 import { Icon } from "@/components/ui/styled";
@@ -21,18 +20,24 @@ import { Text } from "@/components/ui/Text";
 import { Toggle } from "@/components/ui/Toggle";
 import { useToast } from "@/components/ui/Toast";
 import {
-  findProfileByUsername,
   useAddRoomMember,
+  useCancelRoomInvite,
+  useInviteRoomMember,
   useReviewRoomJoinRequest,
   useRoomBlocklist,
+  useRoomCandidates,
   useRoomDetails,
+  useRoomInvites,
   useRoomJoinRequests,
   useRoomPeople,
   useUnblacklistRoomUser,
   useUpdateRoomDetails,
   type GroupJoinMode,
+  type RoomCandidate,
   type RoomHistoryMode,
 } from "@/hooks/useRoom";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { timeAgo } from "@/lib/timeAgo";
 import type { Project } from "@/hooks/useProjects";
 import { APP_URL } from "@/lib/config";
 import { getGroupPath } from "@/lib/groups";
@@ -126,54 +131,142 @@ function ToggleRow({ icon, title, hint, checked, onChange }: { icon: LucideIcon;
 // ---------------------------------------------------------------
 // Sheets
 // ---------------------------------------------------------------
+// Type-ahead: results update as you type (after a short pause), people you follow come first, and each result says what
+// you can do — "Add" puts them straight in, "Invite" is for people who've chosen to join groups by invitation only.
 function AddMembersSheet({ projectId, onClose }: { projectId: string; onClose: () => void }) {
   const toast = useToast();
   const { colors } = useTheme();
   const addMember = useAddRoomMember(projectId);
-  const [username, setUsername] = useState("");
-  const [adding, setAdding] = useState(false);
+  const inviteMember = useInviteRoomMember(projectId);
+  const [query, setQuery] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const debounced = useDebouncedValue(query.trim(), 200);
+  const { data: results, isFetching, isError } = useRoomCandidates(projectId, debounced);
+  const waiting = query.trim() !== debounced || isFetching;
+  const list = results ?? [];
 
-  async function handleAdd() {
-    const name = username.trim();
-    if (!name) return;
-    setAdding(true);
+  async function act(person: RoomCandidate) {
+    setBusyId(person.user_id);
     try {
-      const profile = await findProfileByUsername(name);
-      if (!profile) {
-        toast("No one has that username.", { variant: "error" });
-        return;
+      if (person.add_mode === "invite") {
+        await inviteMember.mutateAsync(person.user_id);
+        toast(`Invitation sent to ${person.display_name}.`, { variant: "success" });
+      } else {
+        await addMember.mutateAsync(person.user_id);
+        toast(`${person.display_name} was added.`, { variant: "success" });
       }
-      await addMember.mutateAsync(profile.id);
-      toast(`${profile.display_name} was added.`, { variant: "success" });
-      setUsername("");
     } catch (err) {
-      toast(errorMessage(err, "Couldn't add them."), { variant: "error" });
+      toast(errorMessage(err, person.add_mode === "invite" ? "Couldn't send the invitation." : "Couldn't add them."), { variant: "error" });
     } finally {
-      setAdding(false);
+      setBusyId(null);
     }
   }
 
   return (
-    <SheetFrame title="Add members" subtitle="Add someone by their username" onClose={onClose} avoidKeyboard zIndex={55} scrim="ink">
-      <TextInput
-        value={username}
-        onChangeText={setUsername}
-        placeholder="@username"
-        placeholderTextColor={colors.inkMuted}
-        selectionColor={colors.accent}
-        autoCapitalize="none"
-        autoCorrect={false}
-        returnKeyType="done"
-        onSubmitEditing={() => void handleAdd()}
-        className="mt-2 rounded-xl bg-canvas px-4 py-3 text-sm text-ink"
-        style={{ fontFamily: "Inter_400Regular" }}
-        accessibilityLabel="Username to add"
-      />
-      <View className="mb-2 mt-4">
-        <Button onPress={() => void handleAdd()} loading={adding} disabled={adding || !username.trim()}>
-          Add to group
-        </Button>
+    <SheetFrame title="Add members" subtitle="People who only join by invitation get an invite instead" onClose={onClose} avoidKeyboard heightRatio={0.8} zIndex={55} scrim="ink">
+      <View className="mt-1 flex-row items-center rounded-xl bg-canvas px-3">
+        <Icon as={Search} size={16} className="text-ink-muted" />
+        <TextInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Search people…"
+          placeholderTextColor={colors.inkMuted}
+          selectionColor={colors.accent}
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoFocus
+          returnKeyType="search"
+          className="min-w-0 flex-1 px-2 py-3 text-sm text-ink"
+          style={{ fontFamily: "Inter_400Regular" }}
+          accessibilityLabel="Search people to add"
+        />
       </View>
+
+      {list.length === 0 ? (
+        <Text className="py-8 text-center text-sm text-ink-muted">
+          {isError ? "Couldn't search just now. Try again." : waiting ? "Searching…" : query.trim() ? "No one matches that search." : "Type to find people. The people you follow show up here first."}
+        </Text>
+      ) : (
+        <View className="pb-2 pt-2">
+          {!query.trim() ? <Text className="px-1 pb-1 text-xs font-semibold uppercase text-ink-muted">People you follow</Text> : null}
+          {list.map((p) => {
+            const busy = busyId === p.user_id;
+            const invite = p.add_mode === "invite";
+            return (
+              <View key={p.user_id} className="flex-row items-center justify-between gap-2 py-2">
+                <PersonLink person={p} />
+                {p.state === "member" ? (
+                  <Text className="shrink-0 px-2 text-xs text-ink-muted">In the group</Text>
+                ) : p.state === "invited" ? (
+                  <View className="shrink-0 rounded-full border border-border px-3 py-1.5">
+                    <Text className="text-xs text-ink-muted">Invited</Text>
+                  </View>
+                ) : (
+                  <View className="shrink-0 items-end gap-0.5">
+                    <Pressable
+                      onPress={() => void act(p)}
+                      disabled={busy}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${invite ? "Invite" : "Add"} ${p.display_name}`}
+                      hitSlop={6}
+                      className={`flex-row items-center gap-1 rounded-full px-3.5 py-1.5 ${invite ? "border border-accent" : "bg-cta"} ${busy ? "opacity-50" : ""}`}
+                    >
+                      <Icon as={invite ? MailPlus : UserPlus} size={13} className={invite ? "text-accent" : "text-white"} />
+                      <Text className={`text-xs font-medium ${invite ? "text-accent" : "text-white"}`}>{busy ? (invite ? "Inviting…" : "Adding…") : invite ? "Invite" : "Add"}</Text>
+                    </Pressable>
+                    {invite ? <Text className="text-[10px] text-ink-muted">Invitation only</Text> : null}
+                  </View>
+                )}
+              </View>
+            );
+          })}
+        </View>
+      )}
+    </SheetFrame>
+  );
+}
+
+// Everyone invited who hasn't answered yet — hosts see who invited them and when, and can take an invite back.
+function InvitesSheet({ projectId, onClose }: { projectId: string; onClose: () => void }) {
+  const toast = useToast();
+  const { data: invites } = useRoomInvites(projectId);
+  const cancel = useCancelRoomInvite(projectId);
+  const list = invites ?? [];
+
+  return (
+    <SheetFrame title="Pending invites" subtitle="They join as soon as they accept" onClose={onClose} zIndex={55} scrim="ink">
+      {list.length === 0 ? (
+        <Text className="py-8 text-center text-sm text-ink-muted">No invites waiting for a reply.</Text>
+      ) : (
+        <View className="gap-3 pb-2 pt-2">
+          {list.map((i) => (
+            <View key={i.user_id} className="flex-row items-center justify-between gap-2">
+              <View className="min-w-0 flex-1">
+                <PersonLink person={i.profile} />
+                <Text className="mt-0.5 pl-10 text-[11px] text-ink-muted">
+                  {i.inviter ? `Invited by ${i.inviter.display_name} · ` : "Invited · "}
+                  {timeAgo(i.created_at)}
+                </Text>
+              </View>
+              <Pressable
+                disabled={cancel.isPending}
+                onPress={() =>
+                  cancel.mutate(i.user_id, {
+                    onSuccess: () => toast(`Invitation to ${i.profile.display_name} cancelled.`, { variant: "success" }),
+                    onError: (err) => toast(errorMessage(err, "Couldn't cancel that invitation."), { variant: "error" }),
+                  })
+                }
+                accessibilityRole="button"
+                accessibilityLabel={`Cancel invitation to ${i.profile.display_name}`}
+                hitSlop={8}
+                className={`shrink-0 rounded-full border border-border px-3 py-1.5 ${cancel.isPending ? "opacity-50" : ""}`}
+              >
+                <Text className="text-xs font-medium text-danger">Cancel invite</Text>
+              </Pressable>
+            </View>
+          ))}
+        </View>
+      )}
     </SheetFrame>
   );
 }
@@ -225,11 +318,13 @@ export function HostSettingsPanel({ projectId, project, isOwner = false, onOpenM
   const { data: people } = useRoomPeople(projectId);
   const { data: requests } = useRoomJoinRequests(projectId);
   const { data: blocklist } = useRoomBlocklist(projectId);
+  const { data: invites } = useRoomInvites(projectId);
   const updateDetails = useUpdateRoomDetails(projectId);
   const review = useReviewRoomJoinRequest(projectId);
   const [picker, setPicker] = useState<Picker>(null);
   const [linkOpen, setLinkOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [invitesOpen, setInvitesOpen] = useState(false);
   const [blockedOpen, setBlockedOpen] = useState(false);
 
   const historyMode = details?.history_mode ?? "anchored";
@@ -242,6 +337,7 @@ export function HostSettingsPanel({ projectId, project, isOwner = false, onOpenM
   const shownUrl = groupUrl.replace(/^https?:\/\//, "");
   const hostNames = (people ?? []).filter((p) => p.role !== "member").map((p) => p.display_name);
   const blockedCount = (blocklist ?? []).length;
+  const inviteCount = (invites ?? []).length;
 
   async function copyLink() {
     await Clipboard.setStringAsync(groupUrl);
@@ -349,7 +445,8 @@ export function HostSettingsPanel({ projectId, project, isOwner = false, onOpenM
 
       <Section title="Joining the group">
         {isCommunity ? <Row icon={UserCheck} title="Who can join" value={joinMode === "open" ? "Anyone" : "Approval required"} onPress={() => setPicker("join")} /> : null}
-        <Row icon={UserPlus} title="Add members" value="Add someone by username" onPress={() => setAddOpen(true)} />
+        <Row icon={UserPlus} title="Add members" value="Search by name or username" onPress={() => setAddOpen(true)} />
+        <Row icon={MailPlus} title="Pending invites" value={inviteCount > 0 ? `${inviteCount} waiting for a reply` : "No one waiting"} badge={inviteCount} onPress={() => setInvitesOpen(true)} />
       </Section>
 
       <Section title="Messaging">
@@ -367,6 +464,7 @@ export function HostSettingsPanel({ projectId, project, isOwner = false, onOpenM
       {active ? <OptionsModal title={active.title} items={active.items} onClose={() => setPicker(null)} /> : null}
       {linkOpen ? <ProjectLinkSheet project={project} noun="group" onClose={() => setLinkOpen(false)} /> : null}
       {addOpen ? <AddMembersSheet projectId={projectId} onClose={() => setAddOpen(false)} /> : null}
+      {invitesOpen ? <InvitesSheet projectId={projectId} onClose={() => setInvitesOpen(false)} /> : null}
       {blockedOpen ? <BlockedSheet projectId={projectId} onClose={() => setBlockedOpen(false)} /> : null}
     </View>
   );

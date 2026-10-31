@@ -10,7 +10,7 @@ import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useToast } from "@/components/ui/Toast";
 import { useOwnProfile } from "@/hooks/useOwnProfile";
-import { useBlockedList, useMutedList, useToggleBlock, useToggleHideFollowersList, useToggleHideFollowingList, useToggleMute, useTogglePrivateAccount, useToggleShowGroupsOnProfile } from "@/hooks/usePrivacy";
+import { useBlockedList, useMutedList, useToggleBlock, useToggleHideFollowersList, useToggleHideFollowingList, useToggleInviteOnlyGroups, useToggleMute, useTogglePrivateAccount, useToggleShowGroupsOnProfile } from "@/hooks/usePrivacy";
 
 function PersonRow({ avatarUrl, name, actionLabel, pending, onAction }: { avatarUrl: string | null; name: string; actionLabel: string; pending: boolean; onAction: () => void }) {
   return (
@@ -46,6 +46,7 @@ export function PrivacySection({ open, onToggle }: { open: boolean; onToggle: ()
   const toggleHideFollowers = useToggleHideFollowersList();
   const toggleHideFollowing = useToggleHideFollowingList();
   const toggleShowGroups = useToggleShowGroupsOnProfile();
+  const toggleInviteOnly = useToggleInviteOnlyGroups();
   const { data: blocked } = useBlockedList();
   const { data: muted } = useMutedList();
   const failure = "Couldn't update this setting. Try again.";
@@ -80,6 +81,15 @@ export function PrivacySection({ open, onToggle }: { open: boolean; onToggle: ()
           onToggle={() => toggleShowGroups.mutate(!profile?.show_groups_on_profile)}
           pending={toggleShowGroups.isPending}
           error={toggleShowGroups.isError ? failure : null}
+        />
+        <ToggleRow
+          icon={Users}
+          title="Only invite me to groups"
+          description="Group hosts can't add you directly. They send an invitation and you choose whether to join"
+          checked={profile?.group_add_policy === "invite_only"}
+          onToggle={() => toggleInviteOnly.mutate(profile?.group_add_policy !== "invite_only")}
+          pending={toggleInviteOnly.isPending}
+          error={toggleInviteOnly.isError ? failure : null}
         />
 
         <View className="mb-2 mt-5 flex-row items-center gap-1.5">

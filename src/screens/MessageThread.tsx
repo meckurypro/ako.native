@@ -12,6 +12,7 @@ import {
   Forward,
   Anchor,
   Camera,
+  Copy,
   Info,
   Inbox,
   Keyboard as KeyboardIcon,
@@ -89,7 +90,8 @@ import {
 } from "@/hooks/useMessageReactions";
 import { useUnseenPosts } from "@/hooks/useUnseenPosts";
 import { useSendMedia } from "@/hooks/useSendMedia";
-import { useProfilesByIds, useRoomMemberEvents, useSetMessageAnchor, type RoomMemberEvent, type RoomPerson } from "@/hooks/useRoom";
+import { useProfilesByIds, useRoomMemberEvents, useSetMessageAnchor, useSetMessagesAnchor, type RoomMemberEvent, type RoomPerson } from "@/hooks/useRoom";
+import { formatMessagesForCopy } from "@/lib/chatCopy";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { useActiveConversationPush } from "@/hooks/useActiveConversationPush";
 import { MAX_MEDIA_BYTES, messagePlainText, messagePreview, type MediaKind } from "@/lib/chatMedia";
@@ -243,6 +245,7 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
   // ── group mode: who wrote what, and the host's "anchored only" filter ──
   const [anchoredOnly, setAnchoredOnly] = useState(false);
   const setAnchor = useSetMessageAnchor(conversationId);
+  const setAnchorBulk = useSetMessagesAnchor(conversationId);
   // Hosts (only) see a small centred badge where someone left — the group itself is never told.
   const { data: memberEvents } = useRoomMemberEvents(group?.projectId, !!group?.isHost);
   const unknownSenderIds = useMemo(() => {
@@ -493,7 +496,8 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
   useBackDismiss(exitSelectMode, selectMode);
 
   const selectedMessages = useMemo(() => visibleMessages?.filter((m) => selectedIds.has(m.id)) ?? [], [visibleMessages, selectedIds]);
-  const selectionAllowsDeleteEveryone = selectedMessages.length > 0 && selectedMessages.every((m) => m.sender_id === user?.id && !m.is_deleted);
+  // Group hosts may also take down other people's messages for everyone.
+  const selectionAllowsDeleteEveryone = selectedMessages.length > 0 && selectedMessages.every((m) => (m.sender_id === user?.id || !!group?.isHost) && !m.is_deleted);
   const selectionHasForwardableContent = selectedMessages.some((m) => !m.is_deleted);
 
   function enterSelectMode(id: string) {
@@ -507,6 +511,41 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
       else next.add(id);
       return next;
     });
+  }
+
+  // Who a message is "from" in a copied transcript: real names, not "You" — the text leaves the app.
+  function copyNameFor(senderId: string): string {
+    if (senderId === user?.id) return profile?.display_name ?? "Me";
+    if (group) return profileById.get(senderId)?.display_name ?? "Former member";
+    return otherParticipant?.display_name ?? "Them";
+  }
+  async function copySelected() {
+    const live = selectedMessages.filter((m) => !m.is_deleted);
+    const text = formatMessagesForCopy(selectedMessages, copyNameFor);
+    if (!text) return;
+    try {
+      await Clipboard.setStringAsync(text);
+      toast(`Copied ${live.length} message${live.length === 1 ? "" : "s"}.`);
+      exitSelectMode();
+    } catch {
+      toast("Couldn't copy.", { variant: "error" });
+    }
+  }
+  // Host-only. If everything selected is already anchored this un-anchors them, otherwise it anchors the lot.
+  function anchorSelected() {
+    const live = selectedMessages.filter((m) => !m.is_deleted);
+    if (!live.length) return;
+    const anchored = !live.every((m) => !!m.anchored_at);
+    setAnchorBulk.mutate(
+      { messageIds: live.map((m) => m.id), anchored },
+      {
+        onSuccess: () => {
+          toast(anchored ? "Anchored. New members will always see these." : "Unanchored.", { variant: "success" });
+          exitSelectMode();
+        },
+        onError: (err) => toast(err instanceof Error ? err.message : "Couldn't update the anchors.", { variant: "error" }),
+      }
+    );
   }
 
   async function shareText(text: string) {
@@ -655,6 +694,24 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
         <Icon as={X} size={22} className="text-ink-muted" />
       </Pressable>
       <Text className="flex-1 text-sm font-medium text-ink">{selectedIds.size} selected</Text>
+      {group?.isHost ? (
+        <Pressable
+          onPress={anchorSelected}
+          disabled={!selectionHasForwardableContent || setAnchorBulk.isPending}
+          accessibilityLabel="Anchor"
+          className={`${headerIconBtn} ${!selectionHasForwardableContent || setAnchorBulk.isPending ? "opacity-30" : ""}`}
+        >
+          <Icon as={Anchor} size={19} className="text-ink-muted" />
+        </Pressable>
+      ) : null}
+      <Pressable
+        onPress={() => void copySelected()}
+        disabled={!selectionHasForwardableContent}
+        accessibilityLabel="Copy"
+        className={`${headerIconBtn} ${!selectionHasForwardableContent ? "opacity-30" : ""}`}
+      >
+        <Icon as={Copy} size={19} className="text-ink-muted" />
+      </Pressable>
       <Pressable
         onPress={() => {
           for (const id of selectedIds) toggleStar.mutate({ messageId: id, active: true }, { onError: onMutationError });
@@ -1182,8 +1239,9 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
           onRequestRemoveReaction={() => activeMyReaction && setReactionPopover({ messageId: activeMessage.message.id, anchorRect: activeMessage.anchorRect, emoji: activeMyReaction })}
           onOpenFullPicker={() => setEmojiPickerTarget({ mode: "reaction", messageId: activeMessage.message.id })}
           onCopy={() => void Clipboard.setStringAsync(messagePlainText(activeMessage.message.content)).then(() => toast("Copied."))}
+          canModerate={!!group?.isHost}
           onDeletePress={() =>
-            setDeleteTarget({ messageIds: [activeMessage.message.id], allowEveryone: activeMessage.message.sender_id === user?.id && !activeMessage.message.is_deleted })
+            setDeleteTarget({ messageIds: [activeMessage.message.id], allowEveryone: (activeMessage.message.sender_id === user?.id || !!group?.isHost) && !activeMessage.message.is_deleted })
           }
           onShare={() => void shareText(messagePlainText(activeMessage.message.content) || messagePreview(activeMessage.message.content).label)}
           onForward={() => setForwardMessages([{ content: activeMessage.message.content }])}

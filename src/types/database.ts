@@ -41,6 +41,8 @@ export interface Profile {
   hide_followers_list: boolean;
   hide_following_list: boolean;
   show_groups_on_profile: boolean;
+  // Who may add this person straight into a group or cohort. "invite_only" = hosts can only send an invitation.
+  group_add_policy?: "anyone" | "invite_only";
   // Null = acting as yourself. Set = you're currently acting as one of
   // the pages you have an active role on (see /areas/account-mode).
   active_page_id: string | null;

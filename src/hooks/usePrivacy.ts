@@ -268,6 +268,38 @@ export function useToggleShowGroupsOnProfile() {
   return useTogglePrivacyField("show_groups_on_profile");
 }
 
+// "Only invite me to groups": when on, hosts can't add you straight into a group or cohort — they send an invitation
+// you accept or decline (see supabase/ako_group_invites.sql). Off (the default) = anyone running a group can add you.
+export function useToggleInviteOnlyGroups() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const queryKey = ["own-profile", user?.id];
+
+  return useMutation({
+    mutationFn: async (inviteOnly: boolean) => {
+      if (!user) throw new Error("Not signed in");
+      const { error } = await supabase
+        .from("profiles")
+        .update({ group_add_policy: inviteOnly ? "invite_only" : "anyone" })
+        .eq("id", user.id);
+      if (error) throw error;
+      return inviteOnly;
+    },
+    onMutate: async (inviteOnly: boolean) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData(queryKey);
+      queryClient.setQueryData(queryKey, (old: any) => (old ? { ...old, group_add_policy: inviteOnly ? "invite_only" : "anyone" } : old));
+      return { previous };
+    },
+    onError: (_err, _value, context) => {
+      if (context?.previous !== undefined) queryClient.setQueryData(queryKey, context.previous);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["own-profile"] });
+    },
+  });
+}
+
 /**
  * Changes the signed-in user's password. Re-verifies the current
  * password via signInWithPassword first — Supabase's updateUser()
