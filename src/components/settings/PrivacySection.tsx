@@ -1,6 +1,6 @@
 // src/components/settings/PrivacySection.tsx
 // Privacy: private account, hide follower/following lists, blocked and muted accounts.
-import { Lock, Shield, UserCircle2, UserX, Users, VolumeX } from "lucide-react-native";
+import { Lock, MessageCircle, Shield, UserCircle2, UserX, Users, VolumeX } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 
 import { ToggleRow } from "@/components/settings/SettingsParts";
@@ -10,7 +10,7 @@ import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
 import { useToast } from "@/components/ui/Toast";
 import { useOwnProfile } from "@/hooks/useOwnProfile";
-import { useBlockedList, useMutedList, useToggleBlock, useToggleHideFollowersList, useToggleHideFollowingList, useToggleInviteOnlyGroups, useToggleMute, useTogglePrivateAccount, useToggleShowGroupsOnProfile } from "@/hooks/usePrivacy";
+import { useBlockedList, useMutedList, useToggleBlock, useToggleHideFollowersList, useToggleAcceptGroupMessages, useToggleHideFollowingList, useToggleInviteOnlyGroups, useToggleMute, useTogglePrivateAccount, useToggleShowGroupsOnProfile } from "@/hooks/usePrivacy";
 
 function PersonRow({ avatarUrl, name, actionLabel, pending, onAction }: { avatarUrl: string | null; name: string; actionLabel: string; pending: boolean; onAction: () => void }) {
   return (
@@ -47,6 +47,7 @@ export function PrivacySection({ open, onToggle }: { open: boolean; onToggle: ()
   const toggleHideFollowing = useToggleHideFollowingList();
   const toggleShowGroups = useToggleShowGroupsOnProfile();
   const toggleInviteOnly = useToggleInviteOnlyGroups();
+  const toggleGroupMessages = useToggleAcceptGroupMessages();
   const { data: blocked } = useBlockedList();
   const { data: muted } = useMutedList();
   const failure = "Couldn't update this setting. Try again.";
@@ -90,6 +91,15 @@ export function PrivacySection({ open, onToggle }: { open: boolean; onToggle: ()
           onToggle={() => toggleInviteOnly.mutate(profile?.group_add_policy !== "invite_only")}
           pending={toggleInviteOnly.isPending}
           error={toggleInviteOnly.isError ? failure : null}
+        />
+        <ToggleRow
+          icon={MessageCircle}
+          title="Allow messages from my groups"
+          description="People who share a group or cohort with you can message you directly. Everyone else you don't follow still sends a message request"
+          checked={!!profile?.accept_group_messages}
+          onToggle={() => toggleGroupMessages.mutate(!profile?.accept_group_messages)}
+          pending={toggleGroupMessages.isPending}
+          error={toggleGroupMessages.isError ? failure : null}
         />
 
         <View className="mb-2 mt-5 flex-row items-center gap-1.5">

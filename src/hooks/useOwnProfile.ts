@@ -13,7 +13,7 @@ export function useOwnProfile() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select(`*, ${PROFILE_ROLES_SELECT}, is_private, hide_followers_list, hide_following_list, group_add_policy`)
+        .select(`*, ${PROFILE_ROLES_SELECT}, is_private, hide_followers_list, hide_following_list, group_add_policy, accept_group_messages`)
         .eq("id", user!.id)
         .single();
       if (error) throw error;

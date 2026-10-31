@@ -43,6 +43,8 @@ export interface Profile {
   show_groups_on_profile: boolean;
   // Who may add this person straight into a group or cohort. "invite_only" = hosts can only send an invitation.
   group_add_policy?: "anyone" | "invite_only";
+  /** Opt-in: people who share a group or cohort with me can message me directly instead of sending a message request. */
+  accept_group_messages?: boolean;
   // Null = acting as yourself. Set = you're currently acting as one of
   // the pages you have an active role on (see /areas/account-mode).
   active_page_id: string | null;
