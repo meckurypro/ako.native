@@ -20,11 +20,14 @@ export interface ThumbnailLayout {
   fit: "cover" | "contain";
 }
 
-export function thumbnailLayout(width?: number | null, height?: number | null, projectType?: string | null): ThumbnailLayout {
+/** Every project thumbnail except a book cover is a square. */
+export const SQUARE_THUMB_RATIO = 1;
+
+export function thumbnailLayout(_width?: number | null, _height?: number | null, projectType?: string | null): ThumbnailLayout {
   // Books are always 2:3, filled edge to edge (uploads are enforced to 2:3, so cover never crops anything).
   if (projectType === "book") return { aspectRatio: BOOK_COVER_RATIO, fit: "cover" };
-  if (!width || !height || width <= 0 || height <= 0) return { aspectRatio: DEFAULT_THUMB_RATIO, fit: "cover" };
-  const natural = width / height;
-  const aspectRatio = Math.min(MAX_THUMB_RATIO, Math.max(MIN_THUMB_RATIO, natural));
-  return { aspectRatio, fit: Math.abs(natural - aspectRatio) < 0.01 ? "cover" : "contain" };
+  // Everything else is 1:1. New uploads are already cropped to a square; an older thumbnail of another shape is
+  // cropped to the middle square for display ("cover"), never letterboxed or stretched. The stored width and height
+  // stay in the signature so callers don't change, but the shape no longer depends on them.
+  return { aspectRatio: SQUARE_THUMB_RATIO, fit: "cover" };
 }

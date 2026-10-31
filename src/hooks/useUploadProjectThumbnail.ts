@@ -4,9 +4,14 @@ import { getImageSize, fileExtension, type LocalFile } from "../lib/localFile";
 import { uploadLocalFile } from "../lib/storageUpload";
 import { useAuth } from "./useAuth";
 import { BOOK_COVER_ERROR, isBookCoverRatio } from "../lib/bookCover";
+import { cropToAspect } from "../lib/cropImage";
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // matches the post-media bucket limit
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+
+// Every project thumbnail is a 1:1 square except a book cover (2:3). Whatever shape a person picks is cropped to the
+// centre square before it is stored, so the file, the stored width and height, and what people see always agree.
+const THUMBNAIL_SIZE_PX = 1200;
 
 export interface UploadedThumbnail {
   url: string;
@@ -48,13 +53,17 @@ export function useUploadProjectThumbnail() {
       } catch {
         throw new Error("Couldn't read this image. Try a different file.");
       }
-      const { width, height } = size;
-      if (bookCover && !isBookCoverRatio(width, height)) throw new Error(BOOK_COVER_ERROR);
+      if (bookCover && !isBookCoverRatio(size.width, size.height)) throw new Error(BOOK_COVER_ERROR);
 
-      const ext = fileExtension(file);
+      // Book covers must already be 2:3 (checked above). Everything else is cropped to a centred square.
+      const upload = bookCover ? file : await cropToAspect(file, 1, { maxWidth: THUMBNAIL_SIZE_PX });
+      const width = bookCover ? size.width : (upload.width ?? size.width);
+      const height = bookCover ? size.height : (upload.height ?? size.height);
+
+      const ext = fileExtension(upload);
       const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
-      await uploadLocalFile("post-media", path, file);
+      await uploadLocalFile("post-media", path, upload);
 
       const { data } = supabase.storage.from("post-media").getPublicUrl(path);
 

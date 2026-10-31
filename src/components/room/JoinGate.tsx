@@ -143,7 +143,7 @@ export function JoinGate({ project, info, isGuest }: { project: Project; info: G
         <Pressable onPress={smartBack} accessibilityRole="button" accessibilityLabel="Back" hitSlop={12} className="mb-4 self-start">
           <Icon as={ArrowLeft} size={22} className="text-ink-muted" />
         </Pressable>
-        {project.thumbnail_url ? <Image source={{ uri: project.thumbnail_url }} style={{ width: "100%", aspectRatio: 16 / 9, borderRadius: 16, marginBottom: 16 }} contentFit="cover" /> : null}
+        {project.thumbnail_url ? <Image source={{ uri: project.thumbnail_url }} style={{ width: "100%", maxWidth: 360, alignSelf: "center", aspectRatio: 1, borderRadius: 16, marginBottom: 16 }} contentFit="cover" /> : null}
         <Text className="text-[11px] font-medium uppercase tracking-wide text-accent">{GROUP_KIND_LABEL[kind]}</Text>
         <Text className="mt-1 font-display text-2xl text-ink">{project.title}</Text>
         <View className="mt-1.5 flex-row flex-wrap items-center gap-x-3 gap-y-1">

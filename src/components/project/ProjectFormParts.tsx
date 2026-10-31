@@ -104,7 +104,7 @@ export function ProjectTypeChips({
   );
 }
 
-/** The cover frame (takes the uploaded image's own aspect ratio) plus the supporting-images strip. */
+/** The cover frame plus the supporting-images strip. A book cover is 2:3; every other thumbnail is a 1:1 square (picks are cropped to it). */
 export function ThumbnailPicker({
   url,
   aspect,
@@ -128,8 +128,8 @@ export function ThumbnailPicker({
         onPress={onPress}
         accessibilityRole="button"
         accessibilityLabel={url ? "Change thumbnail" : "Choose thumbnail"}
-        className={`items-center justify-center overflow-hidden rounded-2xl border border-border bg-canvas ${isBook ? "mb-2 w-48 self-center" : "mb-3 w-full"}`}
-        style={{ aspectRatio: aspect }}
+        className={`items-center justify-center overflow-hidden rounded-2xl border border-border bg-canvas ${isBook ? "mb-2 w-48 self-center" : "mb-2 w-full max-w-sm self-center"}`}
+        style={{ aspectRatio: isBook ? aspect : 1 }}
       >
         {url ? (
           <Image source={{ uri: url }} contentFit="cover" style={{ width: "100%", height: "100%" }} />
@@ -138,11 +138,15 @@ export function ThumbnailPicker({
             <View className="h-11 w-11 items-center justify-center rounded-full bg-border-a40">
               <Icon as={ImageIcon} size={20} className="text-ink-muted" />
             </View>
-            <Text className="text-sm text-ink-muted">{uploading ? "Uploading…" : isBook ? "Add cover (2:3)" : "Add thumbnail"}</Text>
+            <Text className="text-sm text-ink-muted">{uploading ? "Uploading…" : isBook ? "Add cover (2:3)" : "Add thumbnail (square)"}</Text>
           </View>
         )}
       </Pressable>
-      {isBook ? <Text className="mb-3 text-center text-xs text-ink-muted">{BOOK_COVER_HINT}</Text> : null}
+      {isBook ? (
+        <Text className="mb-3 text-center text-xs text-ink-muted">{BOOK_COVER_HINT}</Text>
+      ) : (
+        <Text className="mb-3 text-center text-xs text-ink-muted">Thumbnails are square (1:1). Any other shape is cropped to the middle.</Text>
+      )}
       <SupportingImagesField urls={supportingImageUrls} onChange={onSupportingChange} hasThumbnail={!!url} />
     </>
   );

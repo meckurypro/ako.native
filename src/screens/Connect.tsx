@@ -6,28 +6,24 @@
 // Tabs are dynamic: a tab only appears once the user has something in it, and
 // with nothing at all the screen shows a single empty state instead of a tab bar.
 import { router, type Href } from "expo-router";
-import { CalendarClock, Image as ImageIcon, MoreHorizontal, Plus, Users, X } from "lucide-react-native";
-import { useMemo, useRef, useState } from "react";
+import { CalendarClock, Image as ImageIcon, Plus, Users } from "lucide-react-native";
+import { useMemo } from "react";
 import { useSharedValue } from "react-native-reanimated";
 import { Pressable, ScrollView, View } from "react-native";
 
 import { EmptyNotice } from "@/components/activity/EmptyNotice";
+import { ListItemMenu } from "@/components/activity/ListItemMenu";
 import { ThumbRow } from "@/components/activity/ThumbRow";
 import { useBottomNavInset } from "@/components/nav/BottomNav";
 import { useChromeScroll } from "@/components/nav/ChromeProvider";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { DropdownMenu } from "@/components/ui/DropdownMenu";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { SlidingTabBar } from "@/components/ui/SlidingTabBar";
 import { SwipeableTabs } from "@/components/ui/SwipeableTabs";
 import { Icon } from "@/components/ui/styled";
 import { Text } from "@/components/ui/Text";
-import { useToast } from "@/components/ui/Toast";
 import { useActivity, type ActivityItem } from "@/hooks/useActivity";
 import { formatCountdown, useCountdown } from "@/hooks/useCountdown";
 import { useCanCreateGroup } from "@/hooks/useCanCreateGroup";
-import { useIsOnline } from "@/hooks/useIsOnline";
-import { useRemoveFromLibrary } from "@/hooks/useLibraryRemovals";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useTabState } from "@/hooks/useTabState";
 import { haptics } from "@/lib/haptics";
@@ -48,72 +44,24 @@ const ROUTE_FOR: Record<ActivityItem["kind"], (item: ActivityItem) => string> = 
 const LABEL_FOR: Record<ActivityItem["kind"], string> = { event: "Event", meeting: "Meeting", room_meeting: "Group meeting", room: "Group" };
 
 function ActivityRow({ item }: { item: ActivityItem }) {
-  const toast = useToast();
-  const online = useIsOnline();
-  const removeFromConnect = useRemoveFromLibrary();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [confirming, setConfirming] = useState(false);
-  const menuRef = useRef<View>(null);
-  // A group (and its meetings) is managed from inside the group, so its row carries no options menu here.
-  const canRemove = item.kind !== "room" && item.kind !== "room_meeting";
+  // A group (and its meetings) is managed from inside the group, so its menu has no "Remove from Connect": the way out
+  // of a group is to exit it. Events and meetings can still be taken off the list.
+  const isGroup = item.kind === "room" || item.kind === "room_meeting";
   // Live countdown for a meeting that hasn't started; "Live now" for a room meeting that is running.
   const remaining = useCountdown(item.kind === "meeting" || item.kind === "room_meeting" ? item.when : null);
   const countdown = remaining !== null && remaining > 0 ? `Starts in ${formatCountdown(remaining)}` : item.kind === "room_meeting" && item.meetingStatus === "live" ? "Live now" : null;
   const when = item.kind === "room" ? "" : item.when ? ` · ${new Date(item.when).toLocaleString()}` : " · Date TBA";
-  const subtitle = [`${LABEL_FOR[item.kind]}${when}`, item.kind === "room_meeting" ? item.meetingTitle : null, countdown].filter(Boolean).join(" · ");
-
-  async function removeNow() {
-    if (!online) {
-      toast("Connect to the internet to remove this.", { variant: "error" });
-      return;
-    }
-    try {
-      await removeFromConnect.mutateAsync(item.projectId);
-      toast("Removed from Connect");
-    } catch {
-      toast("Couldn't remove it. Try again.", { variant: "error" });
-    }
-  }
+  const subtitle = [`${LABEL_FOR[item.kind]}${when}`, item.kind === "room_meeting" ? item.meetingTitle : null, countdown, item.pinned ? "Pinned" : null, item.muted ? "Muted" : null].filter(Boolean).join(" · ");
 
   return (
-    <View>
     <ThumbRow
       onPress={() => router.push(ROUTE_FOR[item.kind](item) as Href)}
       thumbnailUrl={item.thumbnailUrl}
       fallbackIcon={ImageIcon}
       title={item.projectTitle}
       subtitle={subtitle}
-      trailing={
-        canRemove ? (
-          <Pressable ref={menuRef} onPress={() => setMenuOpen(true)} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Options for ${item.projectTitle}`} className="p-1">
-            <Icon as={MoreHorizontal} size={20} className="text-ink-muted" />
-          </Pressable>
-        ) : undefined
-      }
+      trailing={<ListItemMenu projectId={item.projectId} title={item.projectTitle} slug={item.slug} pinned={item.pinned} muted={item.muted} listName="Connect" group={isGroup ? { isOwner: item.isOwner } : undefined} />}
     />
-    {menuOpen ? (
-      <DropdownMenu title="Options"
-        anchorRef={menuRef}
-        onClose={() => setMenuOpen(false)}
-        width={224}
-        items={[{ key: "remove", label: "Remove from Connect", icon: <Icon as={X} size={22} className="text-overlay-ink" />, onSelect: () => setConfirming(true) }]}
-      />
-    ) : null}
-    {confirming ? (
-      <ConfirmDialog
-        themed
-        danger={false}
-        title="Remove from Connect?"
-        description="This only takes it off this list. Your access doesn't change."
-        confirmLabel="Remove"
-        onConfirm={() => {
-          setConfirming(false);
-          void removeNow();
-        }}
-        onCancel={() => setConfirming(false)}
-      />
-    ) : null}
-    </View>
   );
 }
 

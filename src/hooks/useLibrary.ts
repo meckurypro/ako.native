@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "./useAuth";
 import { fetchRemovedProjectIds } from "./useLibraryRemovals";
+import { fetchListPrefs, pinnedFirst } from "./useProjectListPrefs";
 import type { ProjectType } from "./useProjects";
 
 // The reference/content half of "things I have access to" — the other
@@ -23,7 +24,13 @@ export interface LibraryItem {
   projectId: string;
   projectType: LibraryItemType;
   title: string;
+  /** The project's public address (the /:slug page). Sharing always links to it, never straight to the content. */
+  slug: string | null;
   thumbnailUrl: string | null;
+  /** Pinned to the top of the list by this person. */
+  pinned: boolean;
+  /** This person muted its updates. */
+  muted: boolean;
   status: string;
   // "purchased" = paid via the purchases table. "free" = the project
   // was free and access was only ever logged as an access event —
@@ -61,7 +68,7 @@ export function useLibrary() {
       const { data: purchases } = await supabase
         .from("purchases")
         .select(
-          "created_at, project:projects!purchases_project_id_fkey(id, title, thumbnail_url, project_type, status)"
+          "created_at, project:projects!purchases_project_id_fkey(id, title, slug, thumbnail_url, project_type, status)"
         )
         .eq("buyer_id", user!.id);
       for (const row of (purchases as any[]) ?? []) {
@@ -71,7 +78,10 @@ export function useLibrary() {
           projectId: p.id,
           projectType: p.project_type,
           title: p.title,
+          slug: p.slug ?? null,
           thumbnailUrl: p.thumbnail_url,
+          pinned: false,
+          muted: false,
           status: p.status,
           acquiredVia: "purchased",
           acquiredAt: row.created_at,
@@ -86,7 +96,7 @@ export function useLibrary() {
       const { data: events } = await supabase
         .from("project_access_events")
         .select(
-          "created_at, project:projects!project_access_events_project_id_fkey(id, title, thumbnail_url, project_type, status)"
+          "created_at, project:projects!project_access_events_project_id_fkey(id, title, slug, thumbnail_url, project_type, status)"
         )
         .eq("user_id", user!.id)
         .order("created_at", { ascending: false });
@@ -98,21 +108,29 @@ export function useLibrary() {
           projectId: p.id,
           projectType: p.project_type,
           title: p.title,
+          slug: p.slug ?? null,
           thumbnailUrl: p.thumbnail_url,
+          pinned: false,
+          muted: false,
           status: p.status,
           acquiredVia: "free",
           acquiredAt: row.created_at,
         });
       }
 
-      // Anything the person chose to remove from their Library stays hidden (access itself is unchanged).
-      const removed = await fetchRemovedProjectIds(user!.id);
+      // Anything the person chose to remove from their Library stays hidden (access itself is unchanged). Pins and
+      // mutes are theirs too: pinned items lead the list, newest first inside each group.
+      const [removed, prefs] = await Promise.all([fetchRemovedProjectIds(user!.id), fetchListPrefs(user!.id)]);
 
-      return Array.from(byProject.values())
+      const visible = Array.from(byProject.values())
         .filter((i) => !removed.has(i.projectId))
-        .sort(
-        (a, b) => new Date(b.acquiredAt).getTime() - new Date(a.acquiredAt).getTime()
-      );
+        .map((i) => ({
+          ...i,
+          pinned: prefs.get(i.projectId)?.pinned ?? false,
+          muted: prefs.get(i.projectId)?.muted ?? false,
+        }))
+        .sort((a, b) => new Date(b.acquiredAt).getTime() - new Date(a.acquiredAt).getTime());
+      return pinnedFirst(visible);
     },
     enabled: !!user,
   });

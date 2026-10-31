@@ -21,6 +21,8 @@
 // Android channels are immutable once created on a device, which is why the ids carry a version
 // suffix. A device that doesn't have the channel falls back to the app's default channel.
 // Sound is the phone's own notification sound ("default") — no custom audio file.
+//
+// Muting: a person who muted a group (Connect, project_list_prefs.muted_at) gets no push for that group's chat.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 import { pushPreview } from "./preview.ts";
@@ -104,13 +106,28 @@ Deno.serve(async (req) => {
     const recipientIds = (participants ?? []).map((p) => p.user_id);
     if (!recipientIds.length) return new Response(JSON.stringify({ sent: 0, reason: "no recipients" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    const [{ data: blocks }, { data: mutes }, { data: tokenRows }] = await Promise.all([
+    // A group's chat belongs to a project (project_room_details.conversation_id). Anyone who muted that group is skipped.
+    const { data: roomDetails } = await admin
+      .from("project_room_details")
+      .select("project_id")
+      .eq("conversation_id", message.conversation_id)
+      .maybeSingle();
+    const mutedGroupQuery = roomDetails?.project_id
+      ? admin.from("project_list_prefs").select("user_id").eq("project_id", roomDetails.project_id).not("muted_at", "is", null).in("user_id", recipientIds)
+      : Promise.resolve({ data: [] as { user_id: string }[] });
+
+    const [{ data: blocks }, { data: mutes }, { data: groupMutes }, { data: tokenRows }] = await Promise.all([
       admin.from("blocked_users").select("blocker_id").eq("blocked_id", message.sender_id).in("blocker_id", recipientIds),
       admin.from("muted_users").select("muter_id").eq("muted_id", message.sender_id).in("muter_id", recipientIds),
+      mutedGroupQuery,
       admin.from("push_tokens").select("id, token, user_id").in("user_id", recipientIds),
     ]);
 
-    const suppressed = new Set([...(blocks ?? []).map((b) => b.blocker_id), ...(mutes ?? []).map((m) => m.muter_id)]);
+    const suppressed = new Set([
+      ...(blocks ?? []).map((b) => b.blocker_id),
+      ...(mutes ?? []).map((m) => m.muter_id),
+      ...(groupMutes ?? []).map((m) => m.user_id),
+    ]);
     const targets = (tokenRows ?? []).filter((row) => !suppressed.has(row.user_id));
     if (!targets.length) return new Response(JSON.stringify({ sent: 0, reason: "no eligible tokens" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 

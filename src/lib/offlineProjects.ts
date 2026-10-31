@@ -240,6 +240,8 @@ export interface LibraryLikeItem {
   status: string;
   acquiredVia: "purchased" | "free";
   acquiredAt: string;
+  /** Pinned to the top of the list by this person (Library only). */
+  pinned?: boolean;
 }
 
 interface SavedLike {
@@ -255,7 +257,7 @@ interface SavedLike {
  * The Library list with saved copies folded in. The server's list wins for anything it knows (it has the real
  * acquisition date and archive status); a saved copy the list doesn't have — because we're offline, or a free
  * project's access event hasn't landed — is added from the device's own record so it's never missing from the
- * place we just sent the person to. Newest first.
+ * place we just sent the person to. Pinned first, then newest first.
  */
 export function mergeLibraryWithDownloads<T extends LibraryLikeItem>(remote: T[] | undefined, saved: SavedLike[] | undefined): T[] {
   const byId = new Map<string, T>();
@@ -270,9 +272,12 @@ export function mergeLibraryWithDownloads<T extends LibraryLikeItem>(remote: T[]
       status: "active",
       acquiredVia: s.acquiredVia === "purchased" ? "purchased" : "free",
       acquiredAt: new Date(s.downloadedAt).toISOString(),
-    } as T);
+      slug: null,
+      pinned: false,
+      muted: false,
+    } as unknown as T);
   }
-  return Array.from(byId.values()).sort((a, b) => new Date(b.acquiredAt).getTime() - new Date(a.acquiredAt).getTime());
+  return Array.from(byId.values()).sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || new Date(b.acquiredAt).getTime() - new Date(a.acquiredAt).getTime());
 }
 
 /**

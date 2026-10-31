@@ -14,12 +14,10 @@ import {
   Image as ImageIcon,
   LibraryBig,
   Link as LinkIcon,
-  MoreHorizontal,
   Music,
   RefreshCw,
   Trash2,
   WifiOff,
-  X,
   type LucideIcon,
 } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -27,11 +25,12 @@ import { Pressable, ScrollView, View } from "react-native";
 import { useSharedValue } from "react-native-reanimated";
 
 import { EmptyNotice } from "@/components/activity/EmptyNotice";
+import { ListItemMenu } from "@/components/activity/ListItemMenu";
 import { ThumbRow } from "@/components/activity/ThumbRow";
 import { useBottomNavInset } from "@/components/nav/BottomNav";
 import { useChromeScroll } from "@/components/nav/ChromeProvider";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { DropdownMenu, type DropdownMenuItem } from "@/components/ui/DropdownMenu";
+import type { DropdownMenuItem } from "@/components/ui/DropdownMenu";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { SlidingTabBar } from "@/components/ui/SlidingTabBar";
 import { SwipeableTabs } from "@/components/ui/SwipeableTabs";
@@ -79,12 +78,8 @@ function LibraryRow({ item, saved, updateAvailable, highlighted, onLayoutY }: Li
   const toast = useToast();
   const openSaved = useOpenOfflineProject();
   const download = useDownloadState(item.projectId);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
-  const [confirmRemoveFromLibrary, setConfirmRemoveFromLibrary] = useState(false);
-  const online = useIsOnline();
-  const removeFromLibrary = useRemoveFromLibrary();
-  const menuRef = useRef<View>(null);
+  const removeFromLibraryRow = useRemoveFromLibrary();
 
   const unavailable = item.status === "archived";
   const updating = download.phase === "downloading" || download.phase === "preparing" || download.phase === "saving";
@@ -102,30 +97,21 @@ function LibraryRow({ item, saved, updateAvailable, highlighted, onLayoutY }: Li
     }
   }
 
-  const menuItems: DropdownMenuItem[] = [
+  // Library's own actions on a downloaded copy. Pin, mute, share, copy link and "Remove from Library" come from the shared menu.
+  const extraItems: DropdownMenuItem[] = [
     ...(updateAvailable && !updating
       ? [{ key: "update", label: "Update download", icon: <Icon as={RefreshCw} size={22} className="text-overlay-ink" />, onSelect: () => void update() } satisfies DropdownMenuItem]
       : []),
     ...(saved
       ? [{ key: "remove", label: "Remove download", icon: <Icon as={Trash2} size={22} className="text-overlay-ink" />, onSelect: () => setConfirmRemove(true) } satisfies DropdownMenuItem]
       : []),
-    { key: "remove-library", label: "Remove from library", icon: <Icon as={X} size={22} className="text-overlay-ink" />, onSelect: () => setConfirmRemoveFromLibrary(true) },
   ];
 
-  async function removeFromLibraryNow() {
-    // Needs a connection: the removal is stored on the server so it holds on every device.
-    if (!online) {
-      toast("Connect to the internet to remove this from your library.", { variant: "error" });
-      return;
-    }
-    try {
-      // A downloaded copy would otherwise keep the project listed (the device's own record is merged into this list).
-      if (user && saved) await removeOfflineProject(user.id, item.projectId);
-      await removeFromLibrary.mutateAsync(item.projectId);
-      toast("Removed from library");
-    } catch {
-      toast("Couldn't remove it. Try again.", { variant: "error" });
-    }
+  // A downloaded copy would otherwise keep the project listed (the device's own record is merged into this list), so
+  // removing from the Library deletes the copy too. The hiding itself is saved on the server by the shared menu.
+  async function removeDeviceCopy() {
+    if (user && saved) await removeOfflineProject(user.id, item.projectId);
+    await removeFromLibraryRow.mutateAsync(item.projectId);
   }
 
   const parts = [
@@ -134,6 +120,8 @@ function LibraryRow({ item, saved, updateAvailable, highlighted, onLayoutY }: Li
     ...(unavailable ? ["Archived by creator"] : []),
     ...(updating ? [`Updating ${Math.round(download.progress * 100)}%`] : saved ? [`Saved offline · ${formatBytes(saved.bytes)}`] : []),
     ...(updateAvailable && !updating ? ["Update available"] : []),
+    ...(item.pinned ? ["Pinned"] : []),
+    ...(item.muted ? ["Muted"] : []),
   ];
 
   return (
@@ -150,34 +138,20 @@ function LibraryRow({ item, saved, updateAvailable, highlighted, onLayoutY }: Li
         trailing={
           <View className="flex-row items-center gap-1">
             {saved ? <Icon as={CircleCheck} size={16} className="text-accent" /> : null}
-            <Pressable
-              ref={menuRef}
-              onPress={() => setMenuOpen(true)}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel={`Options for ${item.title}`}
-              className="p-1"
-            >
-              <Icon as={MoreHorizontal} size={20} className="text-ink-muted" />
-            </Pressable>
+            <ListItemMenu
+              projectId={item.projectId}
+              title={item.title}
+              slug={item.slug}
+              pinned={item.pinned}
+              muted={item.muted}
+              listName="Library"
+              extraItems={extraItems}
+              onRemove={removeDeviceCopy}
+              removeDescription={saved ? "This takes it off your library and deletes the copy saved on this device. Your access doesn't change." : undefined}
+            />
           </View>
         }
       />
-      {menuOpen ? <DropdownMenu title="Library options" anchorRef={menuRef} onClose={() => setMenuOpen(false)} width={224} items={menuItems} /> : null}
-      {confirmRemoveFromLibrary ? (
-        <ConfirmDialog
-          themed
-          title="Remove from library?"
-          description={saved ? "This takes it off your library and deletes the copy saved on this device. Your access doesn't change." : "This only takes it off this list. Your access doesn't change."}
-          confirmLabel="Remove"
-          danger={false}
-          onConfirm={() => {
-            setConfirmRemoveFromLibrary(false);
-            void removeFromLibraryNow();
-          }}
-          onCancel={() => setConfirmRemoveFromLibrary(false)}
-        />
-      ) : null}
       {confirmRemove ? (
         <ConfirmDialog
           title="Remove this download?"
