@@ -5,7 +5,7 @@
 //     above (or below) the message
 //   • the message itself lifted onto a highlight, so it's obvious which one it is
 // "More" holds Select, Pin, Hide for me, Share outside app.
-import { Anchor, CheckSquare, Copy, EyeOff, Forward, MoreHorizontal, Pin, Plus, Redo2, Reply, Star, Trash2, X } from "lucide-react-native";
+import { Anchor, CheckSquare, Copy, EyeOff, Forward, Lock, MoreHorizontal, Pin, Plus, Redo2, Reply, Star, Trash2, Users, X } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { Keyboard, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
@@ -49,6 +49,10 @@ interface MessageActionMenuProps {
   onToggleAnchor?: () => void;
   /** Group hosts: may delete anyone's message for everyone, not just their own. */
   canModerate?: boolean;
+  /** Group messages from someone else: answer them in a DM instead, with this message quoted. */
+  onReplyPrivately?: () => void;
+  /** The asker only, on a private answer: open it to the whole group (can't be undone — the caller confirms). */
+  onShareWithGroup?: () => void;
   onClose: () => void;
 }
 
@@ -75,6 +79,8 @@ export function MessageActionMenu({
   onSelect,
   isAnchored,
   onToggleAnchor,
+  onReplyPrivately,
+  onShareWithGroup,
   canModerate,
   onClose,
 }: MessageActionMenuProps) {
@@ -116,6 +122,12 @@ export function MessageActionMenu({
             icon: <Icon as={Pin} size={22} className={isPinned ? "text-overlay-accent" : "text-overlay-ink"} />,
             onSelect: done(onTogglePin),
           },
+          ...(onReplyPrivately
+            ? ([{ key: "reply-privately", label: "Reply privately", icon: <Icon as={Lock} size={22} className="text-overlay-ink" />, onSelect: done(onReplyPrivately) }] satisfies DropdownMenuItem[])
+            : []),
+          ...(onShareWithGroup
+            ? ([{ key: "share-with-group", label: "Share answer with the group", icon: <Icon as={Users} size={22} className="text-overlay-ink" />, onSelect: done(onShareWithGroup) }] satisfies DropdownMenuItem[])
+            : []),
           { key: "hide", label: "Hide for me", icon: <Icon as={EyeOff} size={22} className="text-overlay-ink" />, onSelect: done(onHide) },
           { key: "share", label: "Share outside app", icon: <Icon as={Redo2} size={22} className="text-overlay-ink" />, onSelect: done(onShare) },
         ] satisfies DropdownMenuItem[])

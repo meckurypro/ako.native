@@ -195,6 +195,7 @@ function GroupPage({ projectId, settings }: { projectId: string | undefined; set
       title: project.title,
       avatarUrl: project.thumbnail_url ?? null,
       people: everyone,
+      roomKind: kind,
       isHost,
       canPost: !isClosed && (isHost || !details?.hosts_only_chat) && !(details?.chat_muted && !isHost),
       cantPostReason: isClosed ? "This cohort has ended." : details?.chat_muted ? "Chat is muted." : details?.hosts_only_chat ? "Only hosts can post here." : undefined,

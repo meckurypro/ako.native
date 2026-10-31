@@ -431,3 +431,27 @@ pick always wins.
 - Hooks are in `hooks/useTags.ts` (identical to web). Taxonomy SQL: `supabase/ako_tags_schema_taxonomy.sql`, logic:
   `supabase/ako_tags_discovery_and_autotag.sql`. New tags only need a row in `interests` (slug + hashtag are created by trigger); give them
   `aliases` so search, hashtags and auto-tagging find them.
+
+## Group message kinds (questions, answers, lectures, announcements, private answers, "Reply privately")
+
+Backend: `supabase/ako_message_kinds.sql` (idempotent end state; applied as migrations in two steps, then
+`ako_anchor_single_private_guard`). **Web and native share `src/lib/messageKinds.ts` — it is identical in both, change
+both together.** The database enforces every rule (`messages_kind_rules` trigger + a RESTRICTIVE `private answers audience`
+read policy); the composer only mirrors them so it offers what will be accepted.
+
+- **Cohort chats are typed**: every message is a question, answer, lecture or announcement. Participants ask and answer;
+  hosts also post lectures and announcements. An answer must reply to a question (swiping a question switches the composer to
+  *Answer*). **Community chats stay plain**; hosts may also post an announcement.
+- **Private answer**: only the asker, the author and the group's hosts can read it (RLS, so the API, realtime and pushes all
+  respect it — `send-message-push` v10 filters recipients with `message_audience_user_ids`). The asker can open it to the group
+  (`share_private_answer`, one-way; `private_to` stays set so the bubble says "Shared with the group by …"). A private answer
+  is never anchored (`set_message_anchor` / `set_messages_anchor` both refuse it).
+- **Reply privately**: ⋯ menu on someone else's group message → opens their DM with the message quoted. The quote
+  (`private_reply_context`) is built by the server from the real message; the client only sends the source message id. It is
+  carried to the DM as the `privateReply` route param (JSON), read once into state, then cleared with `router.setParams`.
+- **Clients may now only update `delivered_at`, `read_at`, `is_deleted` on `messages`** (column grants); anchoring and sharing go
+  through RPCs. Don't add a client `.update()` of any other `messages` column — it will be refused.
+- Chat file paths now carry a random segment (`<uid>/dm/<conversation>/<uuid>/<name>`): a private voice/photo answer's file is
+  readable by anyone in the chat who can name it, so the name must be unguessable. The bucket policies only read segments 1–3.
+- Old app builds can't post in a **cohort** (the server answers "Choose a message type"); community and DMs are unaffected.
+  This is JS-only, so it can ship as an OTA update.

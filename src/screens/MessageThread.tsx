@@ -17,6 +17,7 @@ import {
   Inbox,
   Keyboard as KeyboardIcon,
   Lock,
+  ListFilter,
   Mic,
   MoreHorizontal,
   Paperclip,
@@ -33,7 +34,7 @@ import * as Clipboard from "expo-clipboard";
 import { router, useLocalSearchParams, type Href } from "expo-router";
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, Share, TextInput, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { Pressable, ScrollView, Share, TextInput, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, { FadeIn, FadeOut, useAnimatedKeyboard, useAnimatedStyle } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -71,6 +72,8 @@ import {
   useMarkMessagesRead,
   useMessages,
   useMyParticipantState,
+  useShareAnswer,
+  useStartConversation,
   useSendMessage,
   useSendVoiceNote,
   type DeleteScope,
@@ -95,6 +98,17 @@ import { formatMessagesForCopy } from "@/lib/chatCopy";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { useActiveConversationPush } from "@/hooks/useActiveConversationPush";
 import { MAX_MEDIA_BYTES, messagePlainText, messagePreview, type MediaKind } from "@/lib/chatMedia";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import type { GroupKind } from "@/lib/groups";
+import {
+  MESSAGE_KIND_LABEL,
+  MESSAGE_KIND_PLURAL,
+  composerKinds,
+  isPrivateAnswer,
+  type MessageKind,
+  type MessageMeta,
+  type PrivateReplyContext,
+} from "@/lib/messageKinds";
 import { haptics } from "@/lib/haptics";
 import type { LocalFile } from "@/lib/localFile";
 import { dayKeyFor, formatMessageDayLabel } from "@/lib/messageTime";
@@ -109,8 +123,44 @@ import { friendlyError } from "@/lib/friendlyError";
  * grouping, host anchoring, and an options menu supplied by the Group screen. Without it the thread is a 1:1 DM /
  * page-team chat exactly as before.
  */
+/** "Reply privately": the group message a DM is about to answer. Travels in route params from the group to the DM. */
+interface PrivateReplyTarget {
+  messageId: string;
+  senderId: string;
+  senderName: string;
+  groupTitle: string;
+  messageKind: MessageKind | null;
+  preview: string;
+}
+
+function parsePrivateReplyParam(raw: string | undefined): PrivateReplyTarget | null {
+  if (!raw) return null;
+  try {
+    const v = JSON.parse(raw) as Partial<PrivateReplyTarget>;
+    if (typeof v.messageId !== "string" || typeof v.senderId !== "string") return null;
+    return {
+      messageId: v.messageId,
+      senderId: v.senderId,
+      senderName: typeof v.senderName === "string" ? v.senderName : "them",
+      groupTitle: typeof v.groupTitle === "string" ? v.groupTitle : "a group",
+      messageKind: (v.messageKind ?? null) as MessageKind | null,
+      preview: typeof v.preview === "string" ? v.preview : "",
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Rule violations come back from the database with a readable message; anything else gets the caller's fallback. */
+function sendErrorMessage(err: unknown, fallback: string): string {
+  const e = err as { code?: string; message?: string } | null;
+  return e && (e.code === "23514" || e.code === "42501") && e.message ? e.message : fallback;
+}
+
 export interface GroupThreadConfig {
   projectId: string;
+  /** Cohort chats are typed (question / answer / lecture / announcement); a community's only typed message is an announcement. */
+  roomKind: GroupKind;
   title: string;
   avatarUrl: string | null;
   people: RoomPerson[];
@@ -191,9 +241,9 @@ const VIEWABILITY_CONFIG = { itemVisiblePercentThreshold: 20 };
 type ThreadItem = { key: string; message: MessageWithSender; showDaySeparator: boolean; dayLabel: string; isFirstInRun: boolean; isLastInRun: boolean; hostBadges?: RoomMemberEvent[] };
 
 export function MessageThread({ conversationId: conversationIdProp, group }: { conversationId?: string; group?: GroupThreadConfig } = {}) {
-  const params = useLocalSearchParams<{ conversationId: string; draftMessage?: string }>();
+  const params = useLocalSearchParams<{ conversationId: string; draftMessage?: string; privateReply?: string }>();
   const conversationId = conversationIdProp ?? params.conversationId;
-  const { draftMessage } = params;
+  const { draftMessage, privateReply: privateReplyParam } = params;
   useActiveConversationPush(conversationId);
   const { user, profile } = useAuth();
   const { colors } = useTheme();
@@ -217,6 +267,8 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
   const sendMessage = useSendMessage(conversationId);
   const sendVoiceNote = useSendVoiceNote(conversationId);
   const sendMedia = useSendMedia(conversationId);
+  const shareAnswer = useShareAnswer(conversationId);
+  const startConversation = useStartConversation();
   const deleteMessage = useDeleteMessage(conversationId);
   const bulkDeleteMessages = useBulkDeleteMessages(conversationId);
   const bulkSetHidden = useBulkSetMessagesHidden(conversationId);
@@ -244,6 +296,7 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
 
   // ── group mode: who wrote what, and the host's "anchored only" filter ──
   const [anchoredOnly, setAnchoredOnly] = useState(false);
+  const [kindFilter, setKindFilter] = useState<MessageKind | null>(null);
   const setAnchor = useSetMessageAnchor(conversationId);
   const setAnchorBulk = useSetMessagesAnchor(conversationId);
   // Hosts (only) see a small centred badge where someone left — the group itself is never told.
@@ -268,9 +321,10 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
     return messages.filter((m) => {
       const state = userStates?.[m.id];
       if (group && anchoredOnly && !(m.anchored_at && !m.is_deleted)) return false;
+      if (group && kindFilter && (m.is_deleted || m.message_kind !== kindFilter)) return false;
       return !state?.hidden_at && !state?.deleted_for_me_at;
     });
-  }, [messages, userStates, group, anchoredOnly]);
+  }, [messages, userStates, group, anchoredOnly, kindFilter]);
 
   const items = useMemo<ThreadItem[]>(() => {
     if (!visibleMessages) return [];
@@ -328,6 +382,88 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
   // ── composer ──
   const [content, setContent] = useState(draftMessage ?? "");
   const [replyTarget, setReplyTarget] = useState<MessageWithSender | null>(null);
+  // Arrived from a group's "Reply privately": the group message this DM answers. Cleared once a message goes out.
+  const [privateReplyTarget, setPrivateReplyTarget] = useState<PrivateReplyTarget | null>(() => (group ? null : parsePrivateReplyParam(privateReplyParam)));
+  useEffect(() => {
+    // The param has been read into state; drop it so coming back to this chat later doesn't resurrect the quote.
+    if (privateReplyParam) router.setParams({ privateReply: undefined });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── group message types: what the composer is sending as (see lib/messageKinds.ts). The database enforces the same
+  // rules; this is so the composer only offers what will be accepted. ──
+  const composer = useMemo(() => (group ? composerKinds(group.roomKind, group.isHost) : null), [group?.roomKind, group?.isHost]);
+  const [composeKind, setComposeKind] = useState<MessageKind | null>(composer?.defaultKind ?? null);
+  const [composePrivate, setComposePrivate] = useState(false);
+  // An answer needs a question to answer, and only an answer to someone else's question can be private.
+  const answerTarget = replyTarget && replyTarget.message_kind === "question" && !replyTarget.is_deleted ? replyTarget : null;
+  const canPrivate = !!answerTarget && answerTarget.sender_id !== user?.id;
+  const answerNeedsQuestion = composeKind === "answer" && !answerTarget;
+  useEffect(() => {
+    if (composer && !composer.kinds.includes(composeKind)) setComposeKind(composer.defaultKind);
+  }, [composer, composeKind]);
+  // Replying to a question turns the composer into an answer; clearing the reply (or replying to anything else) undoes it.
+  useEffect(() => {
+    if (!composer || group?.roomKind !== "cohort") return;
+    if (answerTarget) setComposeKind((k) => (k === "question" ? "answer" : k));
+    else setComposeKind((k) => (k === "answer" ? composer.defaultKind : k));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [answerTarget?.id]);
+  useEffect(() => {
+    if (composeKind !== "answer" || !canPrivate) setComposePrivate(false);
+  }, [composeKind, canPrivate]);
+
+  /** Everything about the next message the composer decides: its type, its audience, and a private-reply quote. */
+  function currentMeta(): MessageMeta {
+    const meta: MessageMeta = {};
+    if (composer) {
+      const isPrivate = composeKind === "answer" && composePrivate && canPrivate;
+      meta.messageKind = composeKind;
+      meta.visibility = isPrivate ? "private" : "public";
+      meta.privateTo = isPrivate ? (answerTarget?.sender_id ?? null) : null;
+    }
+    if (privateReplyTarget) {
+      meta.privateReplyToMessageId = privateReplyTarget.messageId;
+      meta.privateReplyContext = {
+        message_id: privateReplyTarget.messageId,
+        conversation_id: "",
+        project_id: null,
+        group_title: privateReplyTarget.groupTitle,
+        sender_id: privateReplyTarget.senderId,
+        sender_name: privateReplyTarget.senderName,
+        message_kind: privateReplyTarget.messageKind,
+        preview: privateReplyTarget.preview,
+      };
+    }
+    return meta;
+  }
+  /** After a send: broadcast types (announcement, lecture) never stay selected for the next message. */
+  function resetComposer() {
+    setComposePrivate(false);
+    setPrivateReplyTarget(null);
+    if (composer) setComposeKind(composer.defaultKind);
+  }
+  const [shareTarget, setShareTarget] = useState<MessageWithSender | null>(null);
+
+  async function replyPrivately(m: MessageWithSender) {
+    try {
+      const dmId = await startConversation.mutateAsync(m.sender_id);
+      const target: PrivateReplyTarget = {
+        messageId: m.id,
+        senderId: m.sender_id,
+        senderName: resolveName(m.sender_id),
+        groupTitle: group?.title ?? "",
+        messageKind: m.message_kind ?? null,
+        preview: messagePreview(m.content).label.slice(0, 140),
+      };
+      router.push({ pathname: "/messages/[conversationId]", params: { conversationId: dmId, privateReply: JSON.stringify(target) } } as Href);
+    } catch {
+      toast("Couldn't open that chat. Please try again.", { variant: "error" });
+    }
+  }
+  const onOpenPrivateReplySource = useCallback((ctx: PrivateReplyContext) => {
+    if (ctx.project_id) router.push(`/groups/${ctx.project_id}` as Href);
+  }, []);
   const [emojiPickerTarget, setEmojiPickerTarget] = useState<EmojiPickerTarget>(null);
   const [infoBanner, setInfoBanner] = useState<string | null>(null);
   const [attachOpen, setAttachOpen] = useState(false);
@@ -381,26 +517,42 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
 
   async function handleSend() {
     if (!content.trim()) return;
+    if (answerNeedsQuestion) {
+      toast("Swipe right on a question to answer it.", { variant: "error" });
+      return;
+    }
     const text = content;
     const replyingTo = replyTarget;
+    const meta = currentMeta();
+    const before = { kind: composeKind, isPrivate: composePrivate, privateReply: privateReplyTarget };
     setContent("");
     setReplyTarget(null);
+    resetComposer();
     try {
       await sendMessage.mutateAsync({
         content: text,
         replyToMessageId: replyingTo?.id ?? null,
         replyToSnippet: replyingTo ? { id: replyingTo.id, content: replyingTo.content, sender_id: replyingTo.sender_id, is_deleted: replyingTo.is_deleted } : null,
+        ...meta,
       });
-    } catch {
+    } catch (err) {
       setContent(text); // restore on failure so nothing typed is lost
       setReplyTarget(replyingTo);
-      toast("Couldn't send that message. Please try again.", { variant: "error" });
+      setComposeKind(before.kind);
+      setComposePrivate(before.isPrivate);
+      setPrivateReplyTarget(before.privateReply);
+      toast(sendErrorMessage(err, "Couldn't send that message. Please try again."), { variant: "error" });
     }
   }
 
   const voiceRecorder = useVoiceRecorder(
     async (file, durationSec, peaks, viewOnce, localUrl) => {
       const replyingTo = replyTarget;
+      if (answerNeedsQuestion) {
+        toast("Swipe right on a question to answer it.", { variant: "error" });
+        throw new Error("send failed"); // keeps the hook from clearing a clip it couldn't send
+      }
+      const meta = currentMeta();
       try {
         await sendVoiceNote.mutateAsync({
           file,
@@ -410,10 +562,12 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
           replyToMessageId: replyingTo?.id ?? null,
           replyToSnippet: replyingTo ? { id: replyingTo.id, content: replyingTo.content, sender_id: replyingTo.sender_id, is_deleted: replyingTo.is_deleted } : null,
           localUrl,
+          ...meta,
         });
         setReplyTarget(null);
-      } catch {
-        toast("Couldn't send the voice message. Please try again.", { variant: "error" });
+        resetComposer();
+      } catch (err) {
+        toast(sendErrorMessage(err, "Couldn't send the voice message. Please try again."), { variant: "error" });
         throw new Error("send failed"); // keeps the hook from clearing a clip it couldn't send
       }
     },
@@ -439,9 +593,15 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
   function handleSendMedia(files: LocalFile[], caption: string, hd: boolean) {
     const draft = mediaDraft;
     if (!draft) return;
+    if (answerNeedsQuestion) {
+      toast("Swipe right on a question to answer it.", { variant: "error" });
+      return;
+    }
     const replyingTo = replyTarget;
+    const meta = currentMeta();
     setMediaDraft(null);
     setReplyTarget(null);
+    resetComposer();
     sendMedia.mutate(
       {
         kind: draft.kind,
@@ -450,6 +610,7 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
         hd,
         replyToMessageId: replyingTo?.id ?? null,
         replyToSnippet: replyingTo ? { id: replyingTo.id, content: replyingTo.content, sender_id: replyingTo.sender_id, is_deleted: replyingTo.is_deleted } : null,
+        ...meta,
       },
       {
         onError: (err) => {
@@ -459,7 +620,7 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
               ? "That file is larger than 25 MB."
               : /bucket not found/i.test(msg)
                 ? "Photo and file sharing isn't set up on the server yet."
-                : "Couldn't send that. Please try again.",
+                : sendErrorMessage(err, "Couldn't send that. Please try again."),
             { variant: "error" }
           );
         },
@@ -909,6 +1070,13 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
         </Pressable>
       ) : null}
 
+      {group && kindFilter ? (
+        <Pressable onPress={() => setKindFilter(null)} accessibilityRole="button" className="flex-row items-center justify-center gap-1.5 border-b border-border bg-accent-soft-a60 px-4 py-2">
+          <Icon as={ListFilter} size={13} className="text-accent" />
+          <Text className="text-xs font-medium text-accent">Showing {MESSAGE_KIND_PLURAL[kindFilter].toLowerCase()} · Tap to show all</Text>
+        </Pressable>
+      ) : null}
+
       {myParticipantState?.is_request ? (
         <View className="flex-row items-center gap-2 border-b border-border bg-accent-soft-a60 px-4 py-2.5">
           <Icon as={Inbox} size={15} className="shrink-0 text-accent" />
@@ -937,9 +1105,9 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
           group ? (
             <View className="mx-auto mt-10 max-w-[260px] items-center gap-2 rounded-2xl bg-surface-a90 px-5 py-6">
               <Avatar src={group.avatarUrl} name={group.title} size="xl" />
-              <Text className="text-center font-display text-lg text-ink">{anchoredOnly ? "Nothing anchored yet" : group.title}</Text>
+              <Text className="text-center font-display text-lg text-ink">{anchoredOnly ? "Nothing anchored yet" : kindFilter ? `No ${MESSAGE_KIND_PLURAL[kindFilter].toLowerCase()} yet` : group.title}</Text>
               <Text className="text-center text-sm text-ink-muted">
-                {anchoredOnly ? "Hosts can anchor a message from its long-press menu." : "No messages yet. Say hello and start the conversation."}
+                {anchoredOnly ? "Hosts can anchor a message from its long-press menu." : kindFilter ? "Tap to show all messages from the ⋯ menu." : "No messages yet. Say hello and start the conversation."}
               </Text>
             </View>
           ) : (
@@ -1010,6 +1178,7 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
                     onScrollToMessage={scrollToMessage}
                     onAddReaction={onAddReaction}
                     onRequestManageReaction={onRequestManageReaction}
+                    onOpenPrivateReplySource={onOpenPrivateReplySource}
                   />
                 </View>
               );
@@ -1058,6 +1227,58 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
             </View>
           ) : null}
 
+          {privateReplyTarget && phase === "idle" ? (
+            <View className="flex-row items-start gap-2 px-4 pt-2.5">
+              <View className="min-w-0 flex-1 border-l-2 border-accent py-0.5 pl-2">
+                <View className="flex-row items-center gap-1">
+                  <Icon as={Lock} size={11} className="text-accent" />
+                  <Text numberOfLines={1} className="shrink text-xs font-medium text-accent">
+                    Replying privately to {privateReplyTarget.senderName} · {privateReplyTarget.groupTitle}
+                  </Text>
+                </View>
+                <Text numberOfLines={1} className="text-xs text-ink-muted">
+                  {privateReplyTarget.preview}
+                </Text>
+              </View>
+              <Pressable onPress={() => setPrivateReplyTarget(null)} accessibilityRole="button" accessibilityLabel="Cancel private reply" hitSlop={10} className="shrink-0 p-1">
+                <Icon as={X} size={16} className="text-ink-muted" />
+              </Pressable>
+            </View>
+          ) : null}
+
+          {composer && phase === "idle" ? (
+            <View className="px-3 pt-2.5">
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" accessibilityRole="radiogroup" contentContainerStyle={{ gap: 6 }}>
+                {composer.kinds.map((k) => (
+                  <Pressable
+                    key={k ?? "message"}
+                    onPress={() => setComposeKind(k)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: composeKind === k }}
+                    className={`rounded-full border px-3 py-1 ${composeKind === k ? "border-cta bg-cta" : "border-border bg-surface"}`}
+                  >
+                    <Text className={`text-xs font-medium ${composeKind === k ? "text-white" : "text-ink-muted"}`}>{k ? MESSAGE_KIND_LABEL[k] : "Message"}</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+              {answerNeedsQuestion ? <Text className="mt-1.5 text-xs text-ink-muted">Swipe right on a question to answer it.</Text> : null}
+              {composeKind === "answer" && canPrivate && answerTarget ? (
+                <Pressable
+                  onPress={() => setComposePrivate((v) => !v)}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: composePrivate }}
+                  className={`mt-1.5 flex-row items-center gap-1.5 self-start rounded-full px-2.5 py-1 ${composePrivate ? "bg-accent-soft" : "bg-surface"}`}
+                >
+                  <Icon as={Lock} size={12} className={composePrivate ? "text-accent" : "text-ink-muted"} />
+                  <Text numberOfLines={1} className={`shrink text-xs font-medium ${composePrivate ? "text-accent" : "text-ink-muted"}`}>
+                    {composePrivate ? `Private. Only ${resolveName(answerTarget.sender_id)} and instructors can see this` : "Make this answer private"}
+                  </Text>
+                </Pressable>
+              ) : null}
+              {composeKind === "announcement" ? <Text className="mt-1.5 text-xs text-ink-muted">Everyone in the group is notified.</Text> : null}
+            </View>
+          ) : null}
+
           {/* ALWAYS mounted — the mic button below is the touch target for the whole
               hold-to-record gesture, so it must never unmount mid-hold. */}
           <View className="flex-row items-end gap-2 px-3 py-2.5" pointerEvents={recordingOverlayActive ? "none" : "auto"} accessibilityElementsHidden={recordingOverlayActive}>
@@ -1085,7 +1306,19 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
                 onFocus={() => setEmojiPickerTarget((prev) => (prev?.mode === "input" ? null : prev))}
                 maxLength={2000}
                 multiline
-                placeholder={group ? "Message the group" : "Message"}
+                placeholder={
+                  composeKind === "question"
+                    ? "Ask a question"
+                    : composeKind === "answer"
+                      ? "Write your answer"
+                      : composeKind === "lecture"
+                        ? "Post a lecture note"
+                        : composeKind === "announcement"
+                          ? "Write an announcement"
+                          : group
+                            ? "Message the group"
+                            : "Message"
+                }
                 placeholderTextColor={colors.inkMuted}
                 selectionColor={colors.accent}
                 cursorColor={colors.accent}
@@ -1105,7 +1338,7 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
             </View>
 
             {content.trim() || !voiceNotesEnabled ? (
-              <SendButton onPress={() => void handleSend()} disabled={sendMessage.isPending || !content.trim()} />
+              <SendButton onPress={() => void handleSend()} disabled={sendMessage.isPending || !content.trim() || answerNeedsQuestion} />
             ) : (
               <GestureDetector gesture={micGesture}>
                 <View accessibilityRole="button" accessibilityLabel="Hold to record a voice message" className="h-11 w-11 shrink-0 items-center justify-center rounded-full bg-cta">
@@ -1207,6 +1440,17 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
                   } satisfies OptionItem,
                 ]
               : []),
+            ...(kindFilter
+              ? [{ key: "kind-all", label: "Show all messages", icon: <Icon as={ListFilter} size={20} className="text-ink" />, onSelect: () => setKindFilter(null) } satisfies OptionItem]
+              : (group.roomKind === "cohort" ? (["question", "answer", "lecture", "announcement"] as const) : (["announcement"] as const)).map(
+                  (k) =>
+                    ({
+                      key: `kind-${k}`,
+                      label: `Show only ${MESSAGE_KIND_PLURAL[k].toLowerCase()}`,
+                      icon: <Icon as={ListFilter} size={20} className="text-ink" />,
+                      onSelect: () => setKindFilter(k),
+                    }) satisfies OptionItem
+                )),
             { key: "hidden", label: "Hidden messages", icon: <Icon as={EyeOff} size={20} className="text-ink" />, onSelect: () => router.push(`/messages/${conversationId}/hidden` as Href) },
             "divider" as const,
             ...group.menuItems,
@@ -1251,8 +1495,13 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
           onHide={() => toggleHidden.mutate({ messageId: activeMessage.message.id, active: true }, { onError: onMutationError })}
           onSelect={() => enterSelectMode(activeMessage.message.id)}
           isAnchored={!!activeMessage.message.anchored_at}
+          onReplyPrivately={group && activeMessage.message.sender_id !== user?.id ? () => void replyPrivately(activeMessage.message) : undefined}
+          onShareWithGroup={
+            group && isPrivateAnswer(activeMessage.message) && activeMessage.message.private_to === user?.id ? () => setShareTarget(activeMessage.message) : undefined
+          }
+          // A private answer is never anchored: anchoring shows a message to people who join later.
           onToggleAnchor={
-            group?.isHost
+            group?.isHost && !isPrivateAnswer(activeMessage.message)
               ? () => setAnchor.mutate({ messageId: activeMessage.message.id, anchored: !activeMessage.message.anchored_at }, { onError: onMutationError })
               : undefined
           }
@@ -1268,6 +1517,25 @@ export function MessageThread({ conversationId: conversationIdProp, group }: { c
             setReaction.mutate({ messageId: emojiPickerTarget.messageId, emoji }, { onError: onMutationError });
             setEmojiPickerTarget(null);
           }}
+        />
+      ) : null}
+
+      {shareTarget ? (
+        <ConfirmDialog
+          title="Share this answer with the group?"
+          description="Everyone in the group will be able to read it. You can't make it private again."
+          confirmLabel="Share"
+          danger={false}
+          themed
+          onConfirm={() => {
+            const id = shareTarget.id;
+            setShareTarget(null);
+            shareAnswer.mutate(id, {
+              onSuccess: () => toast("Answer shared with the group.", { variant: "success" }),
+              onError: (err) => toast(sendErrorMessage(err, "Couldn't share that answer."), { variant: "error" }),
+            });
+          }}
+          onCancel={() => setShareTarget(null)}
         />
       ) : null}
 

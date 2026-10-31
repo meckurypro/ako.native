@@ -23,6 +23,9 @@
 // Sound is the phone's own notification sound ("default") — no custom audio file.
 //
 // Muting: a person who muted a group (Connect, project_list_prefs.muted_at) gets no push for that group's chat.
+//
+// Group message kinds: an announcement is labelled in the push body, and a private answer (visibility "private")
+// is only pushed to the people who can read it — the body carries the answer's text, so that filter is what keeps it private.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 import { pushPreview } from "./preview.ts";
@@ -71,7 +74,7 @@ Deno.serve(async (req) => {
 
     const { data: message, error: messageError } = await admin
       .from("messages")
-      .select("id, conversation_id, sender_id, content, is_deleted")
+      .select("id, conversation_id, sender_id, content, is_deleted, visibility, message_kind")
       .eq("id", message_id)
       .single();
     if (messageError || !message) {
@@ -103,7 +106,15 @@ Deno.serve(async (req) => {
     ]);
     if (participantsError) throw participantsError;
 
-    const recipientIds = (participants ?? []).map((p) => p.user_id);
+    let recipientIds = (participants ?? []).map((p) => p.user_id);
+    // A private answer in a cohort is only for its asker (and the cohort's instructors): nobody else gets a push,
+    // and the push body carries the answer's text, so this filter is what keeps it private.
+    if (message.visibility === "private") {
+      const { data: audience, error: audienceError } = await admin.rpc("message_audience_user_ids", { p_message_id: message.id });
+      if (audienceError) throw audienceError;
+      const allowed = new Set((audience ?? []) as string[]);
+      recipientIds = recipientIds.filter((id) => allowed.has(id));
+    }
     if (!recipientIds.length) return new Response(JSON.stringify({ sent: 0, reason: "no recipients" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     // A group's chat belongs to a project (project_room_details.conversation_id). Anyone who muted that group is skipped.
@@ -132,7 +143,7 @@ Deno.serve(async (req) => {
     if (!targets.length) return new Response(JSON.stringify({ sent: 0, reason: "no eligible tokens" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const senderName = sender?.display_name || sender?.username || "Someone";
-    const body = pushPreview(message.content);
+    const body = `${message.message_kind === "announcement" ? "Announcement: " : ""}${pushPreview(message.content)}`;
 
     const notifications = targets.map((t) => ({
       to: t.token,

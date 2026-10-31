@@ -4,7 +4,7 @@
 //   • swipe right  → reply (icon reveals, haptic tick at the threshold)
 //   • long-press   → action menu (reports the bubble's on-screen rect)
 //   • tap          → toggles selection while in select mode
-import { Anchor, Reply } from "lucide-react-native";
+import { Anchor, CircleCheck, GraduationCap, Lock, Megaphone, MessageCircleQuestionMark, Reply, type LucideIcon } from "lucide-react-native";
 import { memo, useCallback, useRef } from "react";
 import { Pressable, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
@@ -23,12 +23,27 @@ import { senderHue } from "@/lib/senderColor";
 import { useTheme } from "@/theme/ThemeProvider";
 import { decodeMedia } from "@/lib/chatMedia";
 import { formatMessageDayLabel, formatMessageTime } from "@/lib/messageTime";
+import {
+  MESSAGE_KIND_LABEL,
+  isPrivateAnswer,
+  isSharedAnswer,
+  privateAudienceLabel,
+  type MessageKind,
+  type PrivateReplyContext,
+} from "@/lib/messageKinds";
 import { decodeVoiceNote } from "@/lib/voiceNotes";
 import { useVoiceNotesEnabled } from "@/hooks/useFeatureFlags";
 import { MediaMessage } from "./MediaMessage";
 import { MessagePreviewLine } from "./MessagePreviewLine";
 import { VoiceMessageBubble } from "./VoiceMessageBubble";
 import type { Rect } from "./ReactionOptionsPopover";
+
+const KIND_ICON = {
+  question: MessageCircleQuestionMark,
+  answer: CircleCheck,
+  lecture: GraduationCap,
+  announcement: Megaphone,
+} as const satisfies Record<MessageKind, LucideIcon>;
 
 export const SWIPE_THRESHOLD = 56;
 export const SWIPE_MAX = 80;
@@ -144,6 +159,8 @@ interface MessageBubbleProps {
   onScrollToMessage: (id: string) => void;
   onAddReaction: (messageId: string, emoji: string) => void;
   onRequestManageReaction: (messageId: string, anchorRect: Rect, emoji: string) => void;
+  /** A DM message sent with "Reply privately" quotes the group message it answers; tapping the quote opens that group. */
+  onOpenPrivateReplySource?: (context: PrivateReplyContext) => void;
 }
 
 function MessageBubbleImpl({
@@ -176,6 +193,7 @@ function MessageBubbleImpl({
   onScrollToMessage,
   onAddReaction,
   onRequestManageReaction,
+  onOpenPrivateReplySource,
 }: MessageBubbleProps) {
   const isMine = m.sender_id === currentUserId;
   const voiceNotesEnabled = useVoiceNotesEnabled();
@@ -184,7 +202,15 @@ function MessageBubbleImpl({
   const media = !m.is_deleted ? decodeMedia(m.content) : null;
   const isPhoto = media?.items[0].kind === "image";
   const timeStr = formatMessageTime(m.created_at);
-  const emojiInfo = !m.is_deleted && !voiceNote && !media && !repliedTo ? getEmojiOnlyInfo(m.content) : { isEmojiOnly: false, count: 0 };
+  // Group structure (see lib/messageKinds.ts): a typed message always keeps its bubble so its label has somewhere to sit.
+  const kind = !m.is_deleted ? (m.message_kind ?? null) : null;
+  const KindIcon = kind ? KIND_ICON[kind] : null;
+  const privateAnswer = !m.is_deleted && isPrivateAnswer(m);
+  const sharedAnswer = !m.is_deleted && isSharedAnswer(m);
+  const privateContext = !m.is_deleted ? (m.private_reply_context ?? null) : null;
+  const askerName = m.private_to ? (m.private_to === currentUserId ? "you" : resolveName?.(m.private_to) ?? "the asker") : "the asker";
+  const metaColor = isMine ? "text-white-a70" : "text-accent";
+  const emojiInfo = !m.is_deleted && !voiceNote && !media && !repliedTo && !kind && !privateContext ? getEmojiOnlyInfo(m.content) : { isEmojiOnly: false, count: 0 };
   const isJumbo = emojiInfo.isEmojiOnly;
   // A group message has many recipients, so the 1:1 delivered/read ticks would mislead (one person reading would turn
   // them blue for everyone). A group shows a single "sent" tick instead.
@@ -311,7 +337,7 @@ function MessageBubbleImpl({
               className={
                 isJumbo
                   ? ""
-                  : `${groupMode ? "rounded-[18px]" : "rounded-2xl"} ${isPhoto ? "p-1" : groupMode ? "px-3.5 py-2" : "px-3 py-2"} ${tailRadius} ${isMine ? "bg-bubble-mine" : "bg-bubble-theirs"}`
+                  : `${groupMode ? "rounded-[18px]" : "rounded-2xl"} ${isPhoto ? "p-1" : groupMode ? "px-3.5 py-2" : "px-3 py-2"} ${tailRadius} ${isMine ? "bg-bubble-mine" : "bg-bubble-theirs"} ${kind === "announcement" && !isMine ? "border border-accent-a50" : ""}`
               }
               style={[
                 bubbleStyle,
@@ -327,11 +353,48 @@ function MessageBubbleImpl({
               ) : null}
 
               {!isJumbo ? senderNameEl : null}
+              {kind && KindIcon ? (
+                <View className="mb-1 flex-row items-center gap-1">
+                  <Icon as={KindIcon} size={12} className={metaColor} />
+                  <Text className={`text-[11px] font-semibold ${metaColor}`}>{MESSAGE_KIND_LABEL[kind]}</Text>
+                </View>
+              ) : null}
+              {privateAnswer ? (
+                <View className="mb-1 flex-row items-center gap-1 pr-2">
+                  <Icon as={Lock} size={11} className={metaColor} />
+                  <Text className={`shrink text-[11px] font-medium ${metaColor}`}>
+                    {privateAudienceLabel({ viewerId: currentUserId, senderId: m.sender_id, privateTo: m.private_to ?? null, askerName })}
+                  </Text>
+                </View>
+              ) : null}
+              {sharedAnswer ? (
+                <View className="mb-1">
+                  <Text className={`text-[11px] font-medium ${metaColor}`}>Shared with the group by {askerName}</Text>
+                </View>
+              ) : null}
               {m.anchored_at && !m.is_deleted && !isJumbo ? (
                 <View className="mb-1 flex-row items-center gap-1">
                   <Icon as={Anchor} size={11} className={isMine ? "text-white-a70" : "text-accent"} />
                   <Text className={`text-[11px] font-medium ${isMine ? "text-white-a70" : "text-accent"}`}>Anchored</Text>
                 </View>
+              ) : null}
+
+              {privateContext ? (
+                <Pressable
+                  onPress={() => onOpenPrivateReplySource?.(privateContext)}
+                  accessibilityRole="button"
+                  className={`mb-1.5 rounded-sm border-l-2 pl-2 ${isMine ? "border-white-a50" : "border-accent-a50"}`}
+                >
+                  <View className="flex-row items-center gap-1 pr-2">
+                    <Icon as={Lock} size={10} className={isMine ? "text-white-a80" : "text-ink-muted"} />
+                    <Text numberOfLines={1} className={`shrink text-xs font-medium ${isMine ? "text-white-a80" : "text-ink-muted"}`}>
+                      {privateContext.sender_id === currentUserId ? "Private reply to your message" : `Private reply to ${privateContext.sender_name}`} · {privateContext.group_title}
+                    </Text>
+                  </View>
+                  <Text numberOfLines={1} className={`text-xs ${isMine ? "text-white-a80" : "text-ink-muted"}`}>
+                    {privateContext.preview}
+                  </Text>
+                </Pressable>
               ) : null}
 
               {repliedTo && !m.is_deleted ? (
